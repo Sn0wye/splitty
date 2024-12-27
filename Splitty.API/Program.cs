@@ -1,9 +1,8 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using Splitty.API.Middleware;
-using Splitty.Domain.Entities;
+using Splitty.DTO.Response;
 using Splitty.Infrastructure;
 using Splitty.Infrastructure.Interfaces;
 using Splitty.Repository;
@@ -19,19 +18,38 @@ builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 builder.Services.AddDbContext<ApplicationDbContext>();
 
-var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>(); 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opts =>
     {
         opts.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidIssuer = jwtSettings.Issuer,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidateAudience = false,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(5),
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]))
+        };
+        
+        opts.Events = new JwtBearerEvents
+        {
+            OnChallenge = async context =>
+            {
+                // Suppress the default response
+                context.HandleResponse();
+
+                // Write custom 401 response
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                context.Response.ContentType = "application/json";
+                var response = new ErrorResponse
+                {
+                    StatusCode = StatusCodes.Status401Unauthorized,
+                    Message = "You must be authenticated to access this resource.",
+                };
+                
+                await context.Response.WriteAsJsonAsync(response);
+            }
         };
     });
     
@@ -62,9 +80,3 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.Run();
-
-public class JwtSettings
-{
-    public string SecretKey { get; set; }
-    public string Issuer { get; set; }
-}

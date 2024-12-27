@@ -48,8 +48,6 @@ public class AuthController(
     {
         var id = User.FindFirstValue(ClaimTypes.NameIdentifier);
         
-        Console.WriteLine("ID: " + id);
-        
         if (id is null) return Unauthorized();
         
         var user = await authService.GetProfile(int.Parse(id));

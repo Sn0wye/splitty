@@ -12,7 +12,6 @@ public class GlobalExceptionHandlingMiddleware(RequestDelegate next, IWebHostEnv
         }
         catch (InvalidOperationException ex)
         {
-            Console.WriteLine("Development: " + env.IsDevelopment());
             context.Response.StatusCode = 400;
             context.Response.ContentType = "application/json";
             var result = new ErrorResponse
