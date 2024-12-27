@@ -70,7 +70,7 @@ public class AuthService(
     
     private string GenerateJwtToken(User user)
     {
-        var secretKey = configuration["j"];
+        var secretKey = configuration["Jwt:SecretKey"];
         var issuer = configuration["Jwt:Issuer"];
 
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
