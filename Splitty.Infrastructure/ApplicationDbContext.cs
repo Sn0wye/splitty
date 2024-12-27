@@ -4,22 +4,22 @@ using Microsoft.Extensions.Configuration;
 
 namespace Splitty.Infrastructure;
 
-public class ApplicationDbContext: DbContext
+public class ApplicationDbContext : DbContext
 {
     private readonly string _connectionString;
-    
+
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IConfiguration configuration)
         : base(options)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection");
     }
-    
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.UseNpgsql(_connectionString)
             .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
     }
-    
+
     public DbSet<Domain.Entities.User> User { get; set; }
     public DbSet<Domain.Entities.Group> Group { get; set; }
     public DbSet<Domain.Entities.GroupMembership> GroupMembership { get; set; }
@@ -47,9 +47,14 @@ public class ApplicationDbContext: DbContext
             entity.Property(g => g.CreatedBy).IsRequired();
 
             entity.HasOne(g => g.CreatedByUser)
-                  .WithMany()
-                  .HasForeignKey(g => g.CreatedBy)
-                  .OnDelete(DeleteBehavior.Restrict);
+                .WithMany()
+                .HasForeignKey(g => g.CreatedBy)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasMany(g => g.Memberships)
+                .WithOne(gm => gm.Group)
+                .HasForeignKey(gm => gm.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Domain.Entities.GroupMembership>(entity =>
@@ -58,14 +63,14 @@ public class ApplicationDbContext: DbContext
             entity.Property(gm => gm.JoinedAt).IsRequired();
 
             entity.HasOne(gm => gm.User)
-                  .WithMany()
-                  .HasForeignKey(gm => gm.UserId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                .WithMany()
+                .HasForeignKey(gm => gm.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(gm => gm.Group)
-                  .WithMany()
-                  .HasForeignKey(gm => gm.GroupId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                .WithMany(g => g.Memberships)
+                .HasForeignKey(gm => gm.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Domain.Entities.Expense>(entity =>
@@ -77,14 +82,14 @@ public class ApplicationDbContext: DbContext
             entity.Property(e => e.UpdatedAt).IsRequired();
 
             entity.HasOne(e => e.PaidByUser)
-                  .WithMany()
-                  .HasForeignKey(e => e.PaidBy)
-                  .OnDelete(DeleteBehavior.Restrict);
+                .WithMany()
+                .HasForeignKey(e => e.PaidBy)
+                .OnDelete(DeleteBehavior.Restrict);
 
             entity.HasOne(e => e.Group)
-                  .WithMany()
-                  .HasForeignKey(e => e.GroupId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                .WithMany()
+                .HasForeignKey(e => e.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Domain.Entities.ExpenseSplit>(entity =>
@@ -93,14 +98,14 @@ public class ApplicationDbContext: DbContext
             entity.Property(es => es.Amount).IsRequired().HasColumnType("decimal(18,2)");
 
             entity.HasOne(es => es.Expense)
-                  .WithMany()
-                  .HasForeignKey(es => es.ExpenseId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                .WithMany()
+                .HasForeignKey(es => es.ExpenseId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(es => es.User)
-                  .WithMany()
-                  .HasForeignKey(es => es.UserId)
-                  .OnDelete(DeleteBehavior.Cascade);
+                .WithMany()
+                .HasForeignKey(es => es.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

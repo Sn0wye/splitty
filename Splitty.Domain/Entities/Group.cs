@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace Splitty.Domain.Entities;
 
@@ -14,7 +15,10 @@ public class Group
 
     public int CreatedBy { get; set; }
     
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
-    public required User CreatedByUser { get; init; }
+    public virtual User CreatedByUser { get; set; }
+    
+    [JsonIgnore]
+    public virtual ICollection<GroupMembership> Memberships { get; set; }
 }

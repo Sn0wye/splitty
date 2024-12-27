@@ -12,9 +12,9 @@ public class GroupMembership
     
     public int GroupId { get; init; }
     
-    public DateTime JoinedAt { get; init; } = DateTime.Now;
+    public DateTime JoinedAt { get; init; } = DateTime.UtcNow;
     
-    public required User User { get; init; }
+    public virtual User User { get; init; }
     
-    public required Group Group { get; init; }
+    public virtual Group Group { get; init; }
 }

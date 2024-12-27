@@ -16,11 +16,11 @@ public class Expense
     
     public string Description { get; set; }
     
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
-    public DateTime UpdatedAt { get; set; } = DateTime.Now;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     
-    public required Group Group { get; init; }
+    public virtual Group Group { get; init; }
     
-    public required User PaidByUser { get; init; }
+    public virtual User PaidByUser { get; init; }
 }
