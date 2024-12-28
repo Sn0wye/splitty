@@ -19,6 +19,5 @@ public class Group
     
     public virtual User CreatedByUser { get; set; }
     
-    [JsonIgnore]
-    public virtual ICollection<GroupMembership> Memberships { get; set; }
+    public virtual ICollection<GroupMembership> Members { get; set; } = new List<GroupMembership>();
 }

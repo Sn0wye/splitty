@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace Splitty.Domain.Entities;
 
@@ -20,6 +21,7 @@ public class Expense
     
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     
+    [JsonIgnore]
     public virtual Group Group { get; init; }
     
     public virtual User PaidByUser { get; init; }

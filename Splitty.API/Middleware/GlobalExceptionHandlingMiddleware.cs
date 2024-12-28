@@ -22,6 +22,29 @@ public class GlobalExceptionHandlingMiddleware(RequestDelegate next, IWebHostEnv
             };
             await context.Response.WriteAsJsonAsync(result);
         }
+        catch (ArgumentException ex)
+        {
+            context.Response.StatusCode = 400;
+            context.Response.ContentType = "application/json";
+            var result = new ErrorResponse
+            {
+                StatusCode = 404,
+                Message = ex.Message,
+                Details = ex.StackTrace
+            };
+            await context.Response.WriteAsJsonAsync(result);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            context.Response.StatusCode = 403;
+            context.Response.ContentType = "application/json";
+            var result = new ErrorResponse
+            {
+                StatusCode = 403,
+                Message = ex.Message,
+                Details = ex.StackTrace
+            };
+        }
         catch (Exception ex)
         {
             context.Response.StatusCode = 500;

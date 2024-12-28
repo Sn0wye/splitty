@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace Splitty.Domain.Entities;
 
@@ -16,5 +17,6 @@ public class GroupMembership
     
     public virtual User User { get; init; }
     
+    [JsonIgnore]
     public virtual Group Group { get; init; }
 }

@@ -28,7 +28,7 @@ public class ApplicationDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Domain.Entities.User>(entity =>
+                modelBuilder.Entity<Domain.Entities.User>(entity =>
         {
             entity.HasKey(u => u.Id);
             entity.Property(u => u.Name).IsRequired().HasMaxLength(255);
@@ -51,7 +51,7 @@ public class ApplicationDbContext : DbContext
                 .HasForeignKey(g => g.CreatedBy)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            entity.HasMany(g => g.Memberships)
+            entity.HasMany(g => g.Members)
                 .WithOne(gm => gm.Group)
                 .HasForeignKey(gm => gm.GroupId)
                 .OnDelete(DeleteBehavior.Cascade);
@@ -61,6 +61,9 @@ public class ApplicationDbContext : DbContext
         {
             entity.HasKey(gm => gm.Id);
             entity.Property(gm => gm.JoinedAt).IsRequired();
+            
+            entity.HasIndex(gm => gm.GroupId);
+            entity.HasIndex(gm => gm.UserId);
 
             entity.HasOne(gm => gm.User)
                 .WithMany()
@@ -68,7 +71,7 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(gm => gm.Group)
-                .WithMany(g => g.Memberships)
+                .WithMany(g => g.Members)
                 .HasForeignKey(gm => gm.GroupId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
@@ -90,11 +93,6 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.GroupId)
                 .OnDelete(DeleteBehavior.Cascade);
-            
-            entity.HasMany(e => e.Splits)
-                .WithOne(es => es.Expense)
-                .HasForeignKey(es => es)
-                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Domain.Entities.ExpenseSplit>(entity =>
@@ -103,7 +101,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(es => es.Amount).IsRequired().HasColumnType("decimal(18,2)");
 
             entity.HasOne(es => es.Expense)
-                .WithMany()
+                .WithMany(e => e.Splits)
                 .HasForeignKey(es => es.ExpenseId)
                 .OnDelete(DeleteBehavior.Cascade);
 

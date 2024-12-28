@@ -58,10 +58,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<IGroupMembershipRepository, GroupMembershipRepository>();
+builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGroupService, GroupService>();
+builder.Services.AddScoped<IExpenseService, ExpenseService>();
 
 // Utils
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();

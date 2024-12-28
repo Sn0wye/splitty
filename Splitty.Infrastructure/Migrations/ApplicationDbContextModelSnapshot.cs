@@ -196,7 +196,7 @@ namespace Splitty.Infrastructure.Migrations
             modelBuilder.Entity("Splitty.Domain.Entities.ExpenseSplit", b =>
                 {
                     b.HasOne("Splitty.Domain.Entities.Expense", "Expense")
-                        .WithMany()
+                        .WithMany("Splits")
                         .HasForeignKey("ExpenseId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -226,7 +226,7 @@ namespace Splitty.Infrastructure.Migrations
             modelBuilder.Entity("Splitty.Domain.Entities.GroupMembership", b =>
                 {
                     b.HasOne("Splitty.Domain.Entities.Group", "Group")
-                        .WithMany()
+                        .WithMany("Memberships")
                         .HasForeignKey("GroupId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -240,6 +240,16 @@ namespace Splitty.Infrastructure.Migrations
                     b.Navigation("Group");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Splitty.Domain.Entities.Expense", b =>
+                {
+                    b.Navigation("Splits");
+                });
+
+            modelBuilder.Entity("Splitty.Domain.Entities.Group", b =>
+                {
+                    b.Navigation("Memberships");
                 });
 #pragma warning restore 612, 618
         }

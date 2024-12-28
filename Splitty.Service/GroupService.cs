@@ -37,7 +37,7 @@ public class GroupService(
 
         if (group is null) return null;
         
-        return group.Memberships.Any(gm => gm.UserId == userId) ? group : null;
+        return group.Members.Any(gm => gm.UserId == userId) ? group : null;
     }
 
     public async Task<List<Group>> GetGroupsByUserId(int userId)
@@ -54,7 +54,7 @@ public class GroupService(
             throw new ArgumentException("Group not found");
         }
 
-        if (group.Memberships.All(gm => gm.UserId != userId))
+        if (group.Members.All(gm => gm.UserId != userId))
         {
             throw new UnauthorizedAccessException("User is not a member of the group");
         }
@@ -70,6 +70,31 @@ public class GroupService(
         }
 
         await groupRepository.UpdateAsync(group);
+
+        return group;
+    }
+
+    public async Task<Group> JoinGroupAsync(int groupId, int userId)
+    {
+        var group = await groupRepository.GetGroupByIdAsync(groupId);
+
+        if (group is null)
+        {
+            throw new ArgumentException("Group not found");
+        }
+        
+        if (group.Members.Any(gm => gm.UserId == userId))
+        {
+            throw new InvalidOperationException("User is already a member of the group");
+        }
+
+        var groupMembership = new GroupMembership
+        {
+            UserId = userId,
+            GroupId = groupId,
+        };
+
+        await groupMembershipRepository.CreateAsync(groupMembership);
 
         return group;
     }

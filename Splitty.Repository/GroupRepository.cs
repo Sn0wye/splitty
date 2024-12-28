@@ -17,7 +17,8 @@ public class GroupRepository(ApplicationDbContext context): IGroupRepository
     {
         return await context.Group
             .Include(g => g.CreatedByUser)
-            .Include(g => g.Memberships)
+            .Include(g => g.Members)
+            .ThenInclude(gm => gm.User)
             .FirstOrDefaultAsync(g => g.Id == groupId);
     }
 
@@ -29,9 +30,7 @@ public class GroupRepository(ApplicationDbContext context): IGroupRepository
         //     .ToListAsync();
         
         return await context.Group
-            .Join(context.GroupMembership, g => g.Id, gm => gm.GroupId, (g, gm) => new { g, gm })
-            .Where(joined => joined.gm.UserId == userId)
-            .Select(joined => joined.g)
+            .Where(g => g.Members.Any(gm => gm.UserId == userId)) // Assuming navigation property `Memberships`
             .Include(g => g.CreatedByUser)
             .ToListAsync();
     }
