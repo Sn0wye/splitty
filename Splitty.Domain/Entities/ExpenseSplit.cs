@@ -14,7 +14,7 @@ public class ExpenseSplit
     
     public Decimal Amount { get; set; }
     
-    public required Expense Expense { get; init; }
+    public Expense Expense { get; init; }
     
-    public required User User { get; init; }
+    public User User { get; init; }
 }

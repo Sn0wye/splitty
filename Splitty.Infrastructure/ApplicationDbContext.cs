@@ -90,6 +90,11 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.GroupId)
                 .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasMany(e => e.Splits)
+                .WithOne(es => es.Expense)
+                .HasForeignKey(es => es)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Domain.Entities.ExpenseSplit>(entity =>

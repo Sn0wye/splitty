@@ -23,4 +23,6 @@ public class Expense
     public virtual Group Group { get; init; }
     
     public virtual User PaidByUser { get; init; }
+    
+    public virtual IList<ExpenseSplit> Splits { get; set; } = new List<ExpenseSplit>();
 }
