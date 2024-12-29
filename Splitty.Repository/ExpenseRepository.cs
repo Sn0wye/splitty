@@ -14,6 +14,14 @@ public class ExpenseRepository(ApplicationDbContext context): IExpenseRepository
 
         return expense;
     }
+    
+    public async Task<List<Expense>> CreateExpenses(List<Expense> expenses)
+    {
+        await context.Expense.AddRangeAsync(expenses);
+        await context.SaveChangesAsync();
+
+        return expenses;
+    }
 
     public async Task<Expense?> FindByIdAsync(int id)
     {

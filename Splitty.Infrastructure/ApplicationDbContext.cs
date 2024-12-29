@@ -25,6 +25,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Domain.Entities.GroupMembership> GroupMembership { get; set; }
     public DbSet<Domain.Entities.Expense> Expense { get; set; }
     public DbSet<Domain.Entities.ExpenseSplit> ExpenseSplit { get; set; }
+    public DbSet<Domain.Entities.Balance> Balance { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -108,6 +109,27 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(es => es.User)
                 .WithMany()
                 .HasForeignKey(es => es.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Domain.Entities.Balance>(entity =>
+        {
+            entity.HasKey(b => b.Id);
+            entity.Property(b => b.Amount).IsRequired().HasColumnType("decimal(18,2)");
+
+            entity.HasOne(b => b.User)
+                .WithMany()
+                .HasForeignKey(b => b.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(b => b.Peer)
+                .WithMany()
+                .HasForeignKey(b => b.PeerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(b => b.Group)
+                .WithMany()
+                .HasForeignKey(b => b.GroupId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

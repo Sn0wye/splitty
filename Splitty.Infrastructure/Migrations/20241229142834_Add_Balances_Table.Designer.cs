@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Splitty.Infrastructure;
@@ -11,9 +12,11 @@ using Splitty.Infrastructure;
 namespace Splitty.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241229142834_Add_Balances_Table")]
+    partial class Add_Balances_Table
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -50,7 +53,7 @@ namespace Splitty.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Balance", (string)null);
+                    b.ToTable("Balance");
                 });
 
             modelBuilder.Entity("Splitty.Domain.Entities.Expense", b =>
@@ -87,7 +90,7 @@ namespace Splitty.Infrastructure.Migrations
 
                     b.HasIndex("PaidBy");
 
-                    b.ToTable("Expense", (string)null);
+                    b.ToTable("Expense");
                 });
 
             modelBuilder.Entity("Splitty.Domain.Entities.ExpenseSplit", b =>
@@ -113,7 +116,7 @@ namespace Splitty.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("ExpenseSplit", (string)null);
+                    b.ToTable("ExpenseSplit");
                 });
 
             modelBuilder.Entity("Splitty.Domain.Entities.Group", b =>
@@ -143,7 +146,7 @@ namespace Splitty.Infrastructure.Migrations
 
                     b.HasIndex("CreatedBy");
 
-                    b.ToTable("Group", (string)null);
+                    b.ToTable("Group");
                 });
 
             modelBuilder.Entity("Splitty.Domain.Entities.GroupMembership", b =>
@@ -169,7 +172,7 @@ namespace Splitty.Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("GroupMembership", (string)null);
+                    b.ToTable("GroupMembership");
                 });
 
             modelBuilder.Entity("Splitty.Domain.Entities.User", b =>
@@ -202,7 +205,7 @@ namespace Splitty.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("User", (string)null);
+                    b.ToTable("User");
                 });
 
             modelBuilder.Entity("Splitty.Domain.Entities.Balance", b =>

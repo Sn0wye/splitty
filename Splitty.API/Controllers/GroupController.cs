@@ -13,7 +13,8 @@ namespace Splitty.API.Controllers;
 [Authorize]
 public class GroupController(
     IGroupService groupService,
-    IExpenseService expenseService
+    IExpenseService expenseService,
+    IBalanceService balanceService
 ) : ControllerBase
 {
     [HttpPost]
@@ -133,9 +134,6 @@ public class GroupController(
         int expenseId
     )
     {
-        Console.WriteLine("Model state is valid: " + ModelState.IsValid);
-        Console.WriteLine("Group ID: " + groupId);
-        Console.WriteLine("Expense ID: " + expenseId);
         
         if (!ModelState.IsValid)
         {
@@ -159,5 +157,29 @@ public class GroupController(
         var expense = await expenseService.UpdateAsync(dto);
 
         return Ok(expense);
+    }
+    
+    [HttpPost("{groupId}/expenses/summary")]
+    public async Task<ActionResult<List<Balance>>> CalculateExpenseSummary(int groupId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        var balances = await balanceService.CalculateGroupBalances(groupId);
+
+        return Ok(balances);
+    }
+    
+    [HttpGet("{groupId}/expenses/summary")]
+    public async Task<ActionResult<List<Balance>>> GetExpenseSummary(int groupId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        var balances = await balanceService.GetGroupUserBalance(groupId, int.Parse(userId));
+
+        return Ok(balances);
     }
 }

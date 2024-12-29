@@ -20,4 +20,11 @@ public class GroupMembershipRepository(ApplicationDbContext context): IGroupMemb
         return await context.GroupMembership
             .FirstOrDefaultAsync(gm => gm.UserId == userId && gm.GroupId == groupId);
     }
+
+    public async Task<List<GroupMembership>> GetGroupMembershipsAsync(int groupId)
+    {
+        return await context.GroupMembership
+            .Where(gm => gm.GroupId == groupId)
+            .ToListAsync();
+    }
 }
