@@ -123,6 +123,8 @@ public class GroupController(
         };
 
         var expense = await expenseService.CreateAsync(dto);
+        
+        await balanceService.CalculateGroupBalances(groupId);
 
         return Ok(expense);
     }
@@ -155,7 +157,9 @@ public class GroupController(
         };
 
         var expense = await expenseService.UpdateAsync(dto);
-
+        
+        await balanceService.CalculateGroupBalances(groupId);
+        
         return Ok(expense);
     }
     

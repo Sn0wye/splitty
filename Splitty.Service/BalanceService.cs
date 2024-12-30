@@ -13,6 +13,11 @@ public class BalanceService(
     {
         var balances = await balanceRepository.GetGroupBalancesAsync(groupId);
         var expenses = await expenseRepository.FindExpensesByGroupId(groupId);
+        
+        foreach (var balance in balances)
+        {
+            balance.Amount = 0;
+        }
 
         foreach (var expense in expenses)
         {
@@ -53,11 +58,12 @@ public class BalanceService(
         }
 
         await balanceRepository.UpdateBalancesAsync(balances);
+        
         return balances;
     }
 
     public async Task<List<Balance>> GetGroupUserBalance(int groupId, int userId)
     {
-        return await balanceRepository.GetUserGroupBalances(groupId, userId);
+        return await balanceRepository.GetUserGroupBalances(userId, groupId);
     }
 }

@@ -11,6 +11,7 @@ using Splitty.Service;
 using Splitty.Service.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.AddConsole();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
