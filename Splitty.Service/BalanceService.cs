@@ -6,7 +6,8 @@ namespace Splitty.Service;
 
 public class BalanceService(
     IBalanceRepository balanceRepository,
-    IExpenseRepository expenseRepository
+    IExpenseRepository expenseRepository,
+    IUserRepository userRepository
 ) : IBalanceService
 {
     public async Task<List<Balance>> CalculateGroupBalances(int groupId)
@@ -38,7 +39,7 @@ public class BalanceService(
                     };
                     balances.Add(payer);
                 }
-                payer.Amount += split.Amount;
+                payer.Amount += Math.Abs(split.Amount);
 
                 var payee = balances.Find(b => b.UserId == split.UserId && b.PeerId == expense.PaidBy);
                 if (payee == null)
@@ -52,7 +53,7 @@ public class BalanceService(
                     };
                     balances.Add(payee);
                 }
-                payee.Amount -= split.Amount;
+                payee.Amount -= Math.Abs(split.Amount);
 
             }
         }
@@ -65,5 +66,39 @@ public class BalanceService(
     public async Task<List<Balance>> GetGroupUserBalance(int groupId, int userId)
     {
         return await balanceRepository.GetUserGroupBalances(userId, groupId);
+    }
+
+    public async Task SettleUp(int groupId, int userId, int peerId, decimal amount)
+    {
+        var payee = await userRepository.GetByIdAsync(peerId);
+
+        if (payee is null)
+        {
+            throw new ArgumentException("User not found");
+        }
+
+        var settleExpense = new Expense
+        {
+            GroupId = groupId,
+            Description = $"Payment to {payee.Name}",
+            Amount = amount,
+            PaidBy = userId,
+            Type = ExpenseType.Payment,
+            Splits = new List<ExpenseSplit>
+            {
+                new()
+                {
+                    UserId = userId,
+                    Amount = amount
+                },
+                new()
+                {
+                    UserId = peerId,
+                    Amount = -amount
+                }
+            }
+        };
+
+        await expenseRepository.CreateAsync(settleExpense);
     }
 }

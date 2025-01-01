@@ -3,6 +3,12 @@ using System.Text.Json.Serialization;
 
 namespace Splitty.Domain.Entities;
 
+public enum ExpenseType
+{
+    Expense,
+    Payment
+}
+
 [Table("Expense")]
 public class Expense
 {
@@ -16,6 +22,8 @@ public class Expense
     public Decimal Amount { get; set; }
     
     public string Description { get; set; }
+
+    public ExpenseType Type { get; set; } = ExpenseType.Expense;
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     

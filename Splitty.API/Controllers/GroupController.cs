@@ -186,4 +186,18 @@ public class GroupController(
 
         return Ok(balances);
     }
+    
+    [HttpPost("{groupId}/settle")]
+    public async Task<ActionResult> SettleUp(int groupId, [FromBody] SettleUpRequest request)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+        
+        await balanceService.SettleUp(groupId, int.Parse(userId), request.WithUserId, request.Amount);
+
+        await balanceService.CalculateGroupBalances(groupId);
+
+        return Ok();
+    }
 }

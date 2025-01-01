@@ -82,6 +82,7 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Amount).IsRequired().HasColumnType("decimal(18,2)");
             entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.Type).IsRequired().HasDefaultValue(Domain.Entities.ExpenseType.Expense);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
 
