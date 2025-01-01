@@ -2,7 +2,7 @@ using Splitty.DTO.Response;
 
 namespace Splitty.API.Middleware;
 
-public class GlobalExceptionHandlingMiddleware(RequestDelegate next, IWebHostEnvironment env)
+public class GlobalExceptionHandlingMiddleware(RequestDelegate next)
 {
     public async Task InvokeAsync(HttpContext context)
     {
@@ -44,6 +44,7 @@ public class GlobalExceptionHandlingMiddleware(RequestDelegate next, IWebHostEnv
                 Message = ex.Message,
                 Details = ex.StackTrace
             };
+            await context.Response.WriteAsJsonAsync(result);
         }
         catch (Exception ex)
         {
