@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Splitty.Repository", "Split
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Splitty.DTO", "Splitty.DTO\Splitty.DTO.csproj", "{532BE41E-E102-4CA8-B44F-9F69B1A332B8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Splitty.Seeder", "Splitty.Seeder\Splitty.Seeder.csproj", "{D68EF375-8FE1-46CE-B8F5-B5A22375470B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,5 +44,9 @@ Global
 		{532BE41E-E102-4CA8-B44F-9F69B1A332B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{532BE41E-E102-4CA8-B44F-9F69B1A332B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{532BE41E-E102-4CA8-B44F-9F69B1A332B8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D68EF375-8FE1-46CE-B8F5-B5A22375470B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D68EF375-8FE1-46CE-B8F5-B5A22375470B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D68EF375-8FE1-46CE-B8F5-B5A22375470B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D68EF375-8FE1-46CE-B8F5-B5A22375470B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

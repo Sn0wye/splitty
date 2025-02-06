@@ -9,6 +9,7 @@ using Splitty.Infrastructure;
 using Splitty.Infrastructure.Interfaces;
 using Splitty.Repository;
 using Splitty.Repository.Interfaces;
+using Splitty.Seeder;
 using Splitty.Service;
 using Splitty.Service.Interfaces;
 
@@ -94,4 +95,13 @@ app.UseAuthorization();
 // app.UseHttpsRedirection();
 
 app.MapControllers();
+
+if (args.Contains("seed"))
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    DatabaseSeeder.Seed(dbContext);
+    return;
+}
+
 app.Run();

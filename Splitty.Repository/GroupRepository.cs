@@ -32,6 +32,8 @@ public class GroupRepository(ApplicationDbContext context): IGroupRepository
         return await context.Group
             .Where(g => g.Members.Any(gm => gm.UserId == userId)) // Assuming navigation property `Memberships`
             .Include(g => g.CreatedByUser)
+            .Include(g => g.Members)
+            .ThenInclude(gm => gm.User)
             .ToListAsync();
     }
 
