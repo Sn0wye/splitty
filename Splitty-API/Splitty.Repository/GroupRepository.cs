@@ -24,16 +24,12 @@ public class GroupRepository(ApplicationDbContext context): IGroupRepository
 
     public async Task<List<Group>> GetGroupsByUserId(int userId)
     {
-        // return await context.Group
-        //     .Where(g => g.Memberships.Any(gm => gm.UserId == userId))
-        //     .Include(g => g.CreatedByUser)
-        //     .ToListAsync();
-        
         return await context.Group
-            .Where(g => g.Members.Any(gm => gm.UserId == userId)) // Assuming navigation property `Memberships`
+            .Where(g => g.Members.Any(gm => gm.UserId == userId))
             .Include(g => g.CreatedByUser)
             .Include(g => g.Members)
             .ThenInclude(gm => gm.User)
+            .Include(g => g.Balances)
             .ToListAsync();
     }
 

@@ -29,7 +29,7 @@ public class ApplicationDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-                modelBuilder.Entity<Domain.Entities.User>(entity =>
+        modelBuilder.Entity<Domain.Entities.User>(entity =>
         {
             entity.HasKey(u => u.Id);
             entity.Property(u => u.Name).IsRequired().HasMaxLength(255);
@@ -55,6 +55,11 @@ public class ApplicationDbContext : DbContext
             entity.HasMany(g => g.Members)
                 .WithOne(gm => gm.Group)
                 .HasForeignKey(gm => gm.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(g => g.Balances)
+                .WithOne(b => b.Group)
+                .HasForeignKey(b => b.GroupId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -129,7 +134,7 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(b => b.Group)
-                .WithMany()
+                .WithMany(g => g.Balances)
                 .HasForeignKey(b => b.GroupId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

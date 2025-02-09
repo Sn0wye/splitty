@@ -20,4 +20,5 @@ public class Group
     public virtual User CreatedByUser { get; set; }
     
     public virtual ICollection<GroupMembership> Members { get; set; } = new List<GroupMembership>();
+    public virtual ICollection<Balance> Balances { get; set; } = new List<Balance>();
 }
