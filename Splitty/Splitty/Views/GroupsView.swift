@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct GroupsView: View {
+    @StateObject private var viewModel = GroupsViewModel()
+    
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading) {
@@ -26,17 +28,20 @@ struct GroupsView: View {
                 }
                 .padding([.top, .horizontal])
                 
+                
                 ScrollView {
-                    VStack {
-                        GroupCard()
-                        GroupCard()
-                        GroupCard()
+                    VStack(spacing: 10) {
+                        ForEach(viewModel.groups) { group in
+                            GroupCard(group: group)
+                        }
                     }
+                }
+                .onAppear {
+                    viewModel.loadGroups()
                 }
                 
                 Spacer()
             }
-            .navigationTitle("")
         }
     }
 }

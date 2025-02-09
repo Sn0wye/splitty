@@ -8,6 +8,12 @@
 import SwiftUI
 
 struct GroupCard: View {
+    let group: Group
+    
+    var positiveBalance: Bool {
+        return group.netBalance > 0;
+    }
+    
     var body: some View {
         NavigationLink(destination: DetailView()) {
             VStack {
@@ -19,16 +25,17 @@ struct GroupCard: View {
                             URL(string: "https://github.com/diego3g.png")!
                         ])
                         
-                        Text("You and Vini")
+                        Text("\(group.name)")
                             .fontWeight(.semibold)
                             .padding(.bottom, 2)
                         
-                        Text("You are owed")
+                        Text(group.netBalance > 0 ? "You are owed" : "You owe")
                             .font(.system(size: 12))
                         
-                        Text("503.45$")
+                        Text("$\(String(format: "%.2f", abs(group.netBalance)))")
                             .font(.system(size: 18))
                             .fontWeight(.bold)
+                            .foregroundColor(positiveBalance ? .green : .red)
                     }
                     
                     Spacer()
@@ -42,7 +49,7 @@ struct GroupCard: View {
             .cornerRadius(10)
             .padding(.horizontal, 20)
         }
-        .buttonStyle(PlainButtonStyle()) // Removes default NavigationLink styling
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -53,5 +60,36 @@ struct DetailView: View {
 }
 
 #Preview {
-    GroupCard()
+    GroupCard(group: Group(
+        id: 1,
+        name: "Test Group",
+        description: "Test Description",
+        netBalance: 430.28,
+        createdAt: "2025-02-02T13:53:41.950093Z",
+        members: [
+            GroupMember(
+                id: 1,
+                userId: 1,
+                name: "John Doe",
+                email: "johndoe@example.com"
+            )
+        ]
+    ))
+    
+    GroupCard(group: Group(
+        id: 1,
+        name: "Test Group",
+        description: "Test Description",
+        netBalance: -340.12,
+        createdAt: "2025-02-02T13:53:41.950093Z",
+        members: [
+            GroupMember(
+                id: 1,
+                userId: 1,
+                name: "John Doe",
+                email: "johndoe@example.com"
+            )
+        ]
+    ))
+
 }

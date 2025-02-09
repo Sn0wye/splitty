@@ -12,7 +12,7 @@ struct ContentView: View {
         TabView {
             GroupsView()
                 .tabItem {
-                    Image(systemName: "person")
+                    Image(systemName: "person.2.fill")
                 }
             
             SettingsView()
