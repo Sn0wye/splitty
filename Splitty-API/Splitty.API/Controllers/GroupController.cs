@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using System.Threading.Channels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Splitty.Background;
 using Splitty.Domain.Entities;
 using Splitty.DTO.Internal;
 using Splitty.DTO.Request;
@@ -14,7 +16,8 @@ namespace Splitty.API.Controllers;
 public class GroupController(
     IGroupService groupService,
     IExpenseService expenseService,
-    IBalanceService balanceService
+    IBalanceService balanceService,
+    Channel<TransactionRequest> balanceChannel
 ) : ControllerBase
 {
     [HttpPost]
@@ -124,7 +127,7 @@ public class GroupController(
 
         var expense = await expenseService.CreateAsync(dto);
         
-        await balanceService.CalculateGroupBalances(groupId);
+        await balanceChannel.Writer.WriteAsync(new TransactionRequest(groupId));
 
         return Ok(expense);
     }
@@ -158,7 +161,7 @@ public class GroupController(
 
         var expense = await expenseService.UpdateAsync(dto);
         
-        await balanceService.CalculateGroupBalances(groupId);
+        await balanceChannel.Writer.WriteAsync(new TransactionRequest(groupId));
         
         return Ok(expense);
     }
@@ -196,7 +199,7 @@ public class GroupController(
         
         await balanceService.SettleUp(groupId, int.Parse(userId), request.WithUserId, request.Amount);
 
-        await balanceService.CalculateGroupBalances(groupId);
+        await balanceChannel.Writer.WriteAsync(new TransactionRequest(groupId));
 
         return Ok();
     }

@@ -1,9 +1,11 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Channels;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Splitty.API.Middleware;
+using Splitty.Background;
 using Splitty.DTO.Response;
 using Splitty.Infrastructure;
 using Splitty.Infrastructure.Interfaces;
@@ -78,6 +80,17 @@ builder.Services.AddScoped<IBalanceService, BalanceService>();
 
 // Utils
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+
+// Background
+builder.Services.AddHostedService<TransactionBackgroundService>();
+
+builder.Services.AddSingleton<Channel<TransactionRequest>>(
+    _ => Channel.CreateUnbounded<TransactionRequest>(new UnboundedChannelOptions
+    {
+        SingleReader = true,
+        AllowSynchronousContinuations = false
+    })
+    );
 
 var app = builder.Build();
 

@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using System.Threading.Channels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Splitty.Background;
 using Splitty.Domain.Entities;
 using Splitty.Service.Interfaces;
 using Splitty.DTO.Request;

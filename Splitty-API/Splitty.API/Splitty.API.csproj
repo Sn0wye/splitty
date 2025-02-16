@@ -29,6 +29,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Splitty.Background\Splitty.Background.csproj" />
       <ProjectReference Include="..\Splitty.DTO\Splitty.DTO.csproj" />
       <ProjectReference Include="..\Splitty.Infrastructure\Splitty.Infrastructure.csproj" />
       <ProjectReference Include="..\Splitty.Seeder\Splitty.Seeder.csproj" />
