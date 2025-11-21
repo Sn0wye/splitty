@@ -33,13 +33,31 @@ public class GroupService(
         return await groupRepository.GetGroupByIdAsync(group.Id);
     }
 
-    public async Task<Group?> GetGroupAsync(int groupId, int userId)
+    public async Task<GroupDTO?> GetGroupAsync(int groupId, int userId)
     {
         var group = await groupRepository.GetGroupByIdAsync(groupId);
 
         if (group is null) return null;
+        
+        var netBalance = group.Balances.Where(b => b.UserId == userId).ToList().Sum(b => b.Amount);
 
-        return group.Members.Any(gm => gm.UserId == userId) ? group : null;
+        return group.Members.Any(gm => gm.UserId == userId) ? 
+            new GroupDTO
+            {
+                Id = group.Id,
+                Name = group.Name,
+                Description = group.Description,
+                CreatedAt = group.CreatedAt,
+                NetBalance = netBalance,
+                Members = group.Members.Select(gm => new MemberDTO
+                {
+                    Id = gm.Id,
+                    UserId = gm.UserId,
+                    Name = gm.User.Name,
+                    Email = gm.User.Email,
+                }).ToList(),
+            }
+            : null;
     }
 
     public async Task<List<GroupDTO>> GetGroupsByUserId(int userId)

@@ -19,6 +19,7 @@ public class GroupRepository(ApplicationDbContext context): IGroupRepository
             .Include(g => g.CreatedByUser)
             .Include(g => g.Members)
             .ThenInclude(gm => gm.User)
+            .Include(g => g.Balances)
             .FirstOrDefaultAsync(g => g.Id == groupId);
     }
 

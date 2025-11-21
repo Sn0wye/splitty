@@ -39,7 +39,7 @@ public class GroupController(
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<Group>>> GetGroupsByUserId()
+    public async Task<ActionResult<List<GroupDTO>>> GetGroupsByUserId()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -51,7 +51,7 @@ public class GroupController(
     }
 
     [HttpGet("{groupId}")]
-    public async Task<ActionResult<Group>> GetGroupById(int groupId)
+    public async Task<ActionResult<GroupDTO>> GetGroupById(int groupId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
