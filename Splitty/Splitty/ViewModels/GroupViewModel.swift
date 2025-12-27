@@ -7,6 +7,7 @@
 
 import Foundation
 
+@MainActor
 class GroupViewModel: ObservableObject {
     @Published var group: GroupDetail?
     @Published var expenses: [Expense] = []

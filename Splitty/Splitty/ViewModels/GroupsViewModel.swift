@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+@MainActor
 class GroupsViewModel: ObservableObject {
     @Published var groups: [Group] = []
     @Published var errorMessage: String?
