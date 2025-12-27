@@ -11,25 +11,23 @@ struct GroupCard: View {
     let group: Group
     
     var positiveBalance: Bool {
-        return group.netBalance > 0;
+        return (group.netBalance) > 0;
     }
     
     var body: some View {
-        NavigationLink(destination: DetailView()) {
+        NavigationLink(destination: GroupView(groupId: group.id)) {
             VStack {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading) {
-                        MultipleAvatar(urls: [
-                            URL(string: "https://github.com/Sn0wye.png")!,
-                            URL(string: "https://github.com/vinirossado.png")!,
-                            URL(string: "https://github.com/diego3g.png")!
-                        ])
+                        MultipleAvatar(urls: group.members.compactMap { member in
+                            return URL(string: member.avatarUrl)
+                        })
                         
                         Text("\(group.name)")
                             .fontWeight(.semibold)
                             .padding(.bottom, 2)
                         
-                        Text(group.netBalance > 0 ? "You are owed" : "You owe")
+                        Text((group.netBalance) > 0 ? "You are owed" : "You owe")
                             .font(.system(size: 12))
                         
                         Text("$\(String(format: "%.2f", abs(group.netBalance)))")
@@ -53,12 +51,6 @@ struct GroupCard: View {
     }
 }
 
-struct DetailView: View {
-    var body: some View {
-        Text("DetailView")
-    }
-}
-
 #Preview {
     GroupCard(group: Group(
         id: 1,
@@ -71,7 +63,8 @@ struct DetailView: View {
                 id: 1,
                 userId: 1,
                 name: "John Doe",
-                email: "johndoe@example.com"
+                email: "johndoe@example.com",
+                avatarUrl: "https://github.com/Sn0wye.png"
             )
         ]
     ))
@@ -87,7 +80,8 @@ struct DetailView: View {
                 id: 1,
                 userId: 1,
                 name: "John Doe",
-                email: "johndoe@example.com"
+                email: "johndoe@example.com",
+                avatarUrl: "https://github.com/ruymon.png"
             )
         ]
     ))

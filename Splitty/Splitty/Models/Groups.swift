@@ -23,4 +23,5 @@ struct GroupMember: Codable, Identifiable {
     let userId: Int
     let name: String
     let email: String
+    let avatarUrl: String
 }

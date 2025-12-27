@@ -13,20 +13,15 @@ struct ContentView: View {
             GroupsView()
                 .tabItem {
                     Image(systemName: "person.2.fill")
+                    Text("Groups")
                 }
             
             SettingsView()
                 .tabItem {
                     Image(systemName: "gear")
+                    Text("Settings")
                 }
-            
         }
-    }
-}
-
-struct SettingsView: View {
-    var body: some View {
-        Text("Settings")
     }
 }
 

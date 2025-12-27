@@ -36,6 +36,9 @@ struct GroupsView: View {
                         }
                     }
                 }
+                .refreshable {
+                    await viewModel.loadGroupsAsync()
+                }
                 .onAppear {
                     viewModel.loadGroups()
                 }

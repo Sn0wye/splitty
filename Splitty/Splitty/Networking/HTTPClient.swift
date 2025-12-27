@@ -7,7 +7,9 @@
 
 import Foundation
 
-import Foundation
+enum HTTPMethod: String {
+    case GET, POST, PUT, DELETE
+}
 
 struct HTTPClient {
     static let shared = HTTPClient()
@@ -19,6 +21,7 @@ struct HTTPClient {
         method: HTTPMethod = .GET,
         body: Data? = nil,
         headers: [String: String] = [:],
+        requiresAuth: Bool = true,
         completion: @escaping (Result<T, Error>) -> Void
     ) {
         var request = URLRequest(url: url)
@@ -27,7 +30,20 @@ struct HTTPClient {
 
         // Ensure Authorization and Content-Type headers are included
         var requestHeaders = headers
-        requestHeaders["Authorization"] = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6IjQiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiSm9obiBEb2UiLCJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9lbWFpbGFkZHJlc3MiOiJqb2huQGV4YW1wbGUuY29tIiwic3ViIjoiam9obkBleGFtcGxlLmNvbSIsImV4cCI6MTczOTQ5NDM0MywiaXNzIjoiU3BsaXR0eSJ9.gx0Ddpsdtto0YPGbT2JYVm_EAkPe66djjNyvmS-zmos"
+        
+        // Add bearer token from TokenManager if authentication is required
+        if requiresAuth {
+            guard let bearerToken = TokenManager.shared.getBearerToken() else {
+                completion(.failure(NSError(
+                    domain: "Authentication Error",
+                    code: 401,
+                    userInfo: [NSLocalizedDescriptionKey: "No valid authentication token found"]
+                )))
+                return
+            }
+            requestHeaders["Authorization"] = bearerToken
+        }
+        
         requestHeaders["Content-Type"] = "application/json"
         
         // Apply headers correctly
