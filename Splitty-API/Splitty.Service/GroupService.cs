@@ -40,7 +40,7 @@ public class GroupService(
         if (group is null) return null;
         
         var netBalance = group.Balances.Where(b => b.UserId == userId).ToList().Sum(b => b.Amount);
-
+        
         return group.Members.Any(gm => gm.UserId == userId) ? 
             new GroupDTO
             {
@@ -55,6 +55,7 @@ public class GroupService(
                     UserId = gm.UserId,
                     Name = gm.User.Name,
                     Email = gm.User.Email,
+                    AvatarUrl = gm.User.AvatarUrl,
                 }).ToList(),
             }
             : null;
@@ -82,6 +83,7 @@ public class GroupService(
                     UserId = gm.UserId,
                     Name = gm.User.Name,
                     Email = gm.User.Email,
+                    AvatarUrl = gm.User.AvatarUrl,
                 }).ToList(),
             });
         }

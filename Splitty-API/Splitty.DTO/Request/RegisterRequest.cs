@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Runtime.InteropServices;
 
 namespace Splitty.DTO.Request;
 
@@ -15,4 +16,7 @@ public class RegisterRequest
     [MinLength(6, ErrorMessage = "Password must be at least 6 characters.")]
     [MaxLength(20, ErrorMessage = "Password must be at most 20 characters.")]
     public string Password { get; set; }
+    
+    [MaxLength(255, ErrorMessage = "Avatar URL must be at most 255 characters.")]
+    public string AvatarUrl { get; set; } = string.Empty;
 }

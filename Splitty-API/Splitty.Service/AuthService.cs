@@ -16,7 +16,7 @@ public class AuthService(
     IPasswordHasher passwordHasher
 ) : IAuthService
 {
-    public async Task<(User user, string token)> Register(string name, string email, string password)
+    public async Task<(User user, string token)> Register(string name, string email, string password, string avatarUrl)
     {
         var existingUser = await userRepository.GetByEmailAsync(email);
 
@@ -29,6 +29,7 @@ public class AuthService(
         {
             Name = name,
             Email = email,
+            AvatarUrl = avatarUrl
         };
 
         user.Password = passwordHasher.HashPassword(password);

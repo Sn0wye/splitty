@@ -16,6 +16,8 @@ public class User
     [JsonIgnore]
     public string Password { get; set; }
     
+    public string AvatarUrl { get; set; } = string.Empty;
+    
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

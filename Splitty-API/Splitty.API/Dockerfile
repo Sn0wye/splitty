@@ -7,7 +7,15 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+COPY ["Splitty.sln", "."]
 COPY ["Splitty.API/Splitty.API.csproj", "Splitty.API/"]
+COPY ["Splitty.Domain/Splitty.Domain.csproj", "Splitty.Domain/"]
+COPY ["Splitty.Infrastructure/Splitty.Infrastructure.csproj", "Splitty.Infrastructure/"]
+COPY ["Splitty.Repository/Splitty.Repository.csproj", "Splitty.Repository/"]
+COPY ["Splitty.Service/Splitty.Service.csproj", "Splitty.Service/"]
+COPY ["Splitty.DTO/Splitty.DTO.csproj", "Splitty.DTO/"]
+COPY ["Splitty.Background/Splitty.Background.csproj", "Splitty.Background/"]
+COPY ["Splitty.Seeder/Splitty.Seeder.csproj", "Splitty.Seeder/"]
 RUN dotnet restore "Splitty.API/Splitty.API.csproj"
 COPY . .
 WORKDIR "/src/Splitty.API"

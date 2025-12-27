@@ -21,7 +21,7 @@ public class AuthController(
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var (user, token) = await authService.Register(request.Name, request.Email, request.Password);
+        var (user, token) = await authService.Register(request.Name, request.Email, request.Password, request.AvatarUrl);
 
         return Ok(new RegisterResponse
         {

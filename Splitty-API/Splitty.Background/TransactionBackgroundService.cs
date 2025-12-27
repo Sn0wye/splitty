@@ -1,4 +1,5 @@
 ﻿using System.Threading.Channels;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Splitty.Service;
 using Splitty.Service.Interfaces;
@@ -9,11 +10,14 @@ public class TransactionBackgroundService: BackgroundService
 {
     private readonly Channel<TransactionRequest> _channel;
     private readonly IBalanceService _balanceService;
-
-    public TransactionBackgroundService(Channel<TransactionRequest> channel, IBalanceService balanceService)
+    
+    public TransactionBackgroundService(Channel<TransactionRequest> channel,
+        IServiceScopeFactory serviceScopeFactory
+        )
     {
         _channel = channel;
-        _balanceService = balanceService;
+        var scope = serviceScopeFactory.CreateScope();
+        _balanceService = scope.ServiceProvider.GetRequiredService<IBalanceService>();
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
