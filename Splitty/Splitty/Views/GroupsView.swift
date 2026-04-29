@@ -13,6 +13,7 @@ struct GroupsView: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading) {
+
                 HStack {
                     VStack(alignment: .leading) {
                         Text("Groups")
@@ -45,6 +46,7 @@ struct GroupsView: View {
                 
                 Spacer()
             }
+            .background(Color("background").ignoresSafeArea())
         }
     }
 }

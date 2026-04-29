@@ -15,13 +15,12 @@ struct GroupView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Black background to match app theme
-                Color.black
+                Color("background")
                     .ignoresSafeArea()
                 
                 if viewModel.isLoading {
                     ProgressView("Loading...")
-                        .foregroundColor(.white)
+                        .foregroundColor(Color("foreground"))
                 } else {
                     ScrollView {
                         VStack(spacing: 0) {
@@ -35,31 +34,6 @@ struct GroupView: View {
                             expensesList
                         }
                     }
-                    
-                    // Floating Add Button
-                    // VStack {
-                    //     Spacer()
-                    //     HStack {
-                    //         Spacer()
-                            
-                    //         Button(action: {
-                    //             // TODO: Add expense action
-                    //         }) {
-                    //             Image(systemName: "plus")
-                    //                 .font(.title2)
-                    //                 .fontWeight(.bold)
-                    //                 .foregroundColor(.white)
-                    //                 .frame(width: 56, height: 56)
-                    //                 .background(
-                    //                     Circle()
-                    //                         .fill(Color.green)
-                    //                         .shadow(radius: 4)
-                    //                 )
-                    //         }
-                    //         .padding(.trailing, 20)
-                    //         .padding(.bottom, 100) // Account for tab bar
-                    //     }
-                    // }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -71,7 +45,7 @@ struct GroupView: View {
                             Image(systemName: "chevron.left")
                             Text("Groups")
                         }
-                        .foregroundColor(.white)
+                        .foregroundColor(Color("foreground"))
                     }
                 }
                 
@@ -79,7 +53,7 @@ struct GroupView: View {
                     Button("Edit") {
                         // TODO: Edit action
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(Color("foreground"))
                 }
             }
         }
@@ -90,9 +64,7 @@ struct GroupView: View {
     
     private var headerSection: some View {
         VStack(spacing: 16) {
-            // Group avatar and name
             HStack(spacing: 16) {
-                // Group avatar with member avatars
                 ZStack {
                     MultipleAvatar(urls: viewModel.group?.members.compactMap { member in
                         return URL(string: member.avatarUrl)
@@ -103,7 +75,7 @@ struct GroupView: View {
                     Text(viewModel.group?.name ?? "Loading...")
                         .font(.largeTitle)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .foregroundColor(Color("foreground"))
                     
                     balanceText
                 }
@@ -120,35 +92,35 @@ struct GroupView: View {
         if let balance = viewModel.group?.netBalance {
             if balance > 0 {
                 Text("You are owed $\(String(format: "%.2f", balance)) overall")
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundColor(Color("muted-foreground"))
             } else if balance < 0 {
                 Text("You owe $\(String(format: "%.2f", abs(balance))) overall")
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundColor(Color("muted-foreground"))
             } else {
                 Text("You are all settled up")
-                    .foregroundColor(.white.opacity(0.9))
+                    .foregroundColor(Color("muted-foreground"))
             }
         } else {
             Text("Loading balance...")
-                .foregroundColor(.white.opacity(0.9))
+                .foregroundColor(Color("muted-foreground"))
         }
     }
     
     private var actionButtonsSection: some View {
         HStack(spacing: 12) {
-            ActionButton(title: "Settle up", color: .white, textColor: .black) {
+            ActionButton(title: "Settle", color: Color("foreground"), textColor: Color("background")) {
                 // TODO: Settle up action
             }
             
-            ActionButton(title: "Remind...", color: .white.opacity(0.2), textColor: .white) {
+            ActionButton(title: "Remind...", color: Color("muted"), textColor: Color("foreground")) {
                 // TODO: Remind action
             }
             
-            ActionButton(title: "Charts", color: .white.opacity(0.2), textColor: .white) {
+            ActionButton(title: "Charts", color: Color("muted"), textColor: Color("foreground")) {
                 // TODO: Charts action
             }
             
-            ActionButton(title: "Export", color: .white.opacity(0.2), textColor: .white) {
+            ActionButton(title: "Export", color: Color("muted"), textColor: Color("foreground")) {
                 // TODO: Export action
             }
         }
@@ -164,6 +136,7 @@ struct GroupView: View {
                     .padding()
             } else if viewModel.expenses.isEmpty {
                 Text("No expenses found (\(viewModel.expenses.count) total, \(viewModel.groupedExpenses.count) grouped)")
+                    .foregroundColor(Color("muted-foreground"))
                     .padding()
             } else {
                 LazyVStack(spacing: 0) {
@@ -181,7 +154,7 @@ struct GroupView: View {
                 }
             }
         }
-        .background(Color.gray.opacity(0.2))
+        .background(Color("card"))
         .cornerRadius(20, corners: [.topLeft, .topRight])
         .padding(.top, 0)
     }
@@ -191,21 +164,21 @@ struct GroupView: View {
             Text(groupedExpense.dateString)
                 .font(.title2)
                 .fontWeight(.semibold)
-                .foregroundColor(.primary)
+                .foregroundColor(Color("card-foreground"))
             
             Spacer()
             
             Text("Latest")
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(Color("muted-foreground"))
             
             Image(systemName: "chevron.down")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(Color("muted-foreground"))
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(Color.gray.opacity(0.2))
+        .background(Color("card"))
     }
 }
 
@@ -240,7 +213,7 @@ struct ExpenseRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(expense.description)
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundColor(Color("card-foreground"))
                 
                 paymentText
             }
@@ -254,11 +227,11 @@ struct ExpenseRow: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
-        .background(Color.gray.opacity(0.2))
+        .background(Color("card"))
         .overlay(
             Rectangle()
                 .frame(height: 0.5)
-                .foregroundColor(.gray.opacity(0.3)),
+                .foregroundColor(Color("border")),
             alignment: .bottom
         )
     }
@@ -276,7 +249,6 @@ struct ExpenseRow: View {
     }
     
     private var categoryColor: Color {
-        // Default colors since we don't have category in the new model
         switch expense.type {
         case .expense: return .blue
         case .payment: return .green
@@ -294,7 +266,7 @@ struct ExpenseRow: View {
         let displayInfo = expense.getDisplayInfo(currentUserId: currentUserId)
         return Text(displayInfo.isUserPaid ? "You paid $\(String(format: "%.2f", expense.amount))" : "\(expense.paidByUser.name) paid $\(String(format: "%.2f", expense.amount))")
             .font(.subheadline)
-            .foregroundColor(.secondary)
+            .foregroundColor(Color("muted-foreground"))
     }
     
     private var balanceLabel: some View {

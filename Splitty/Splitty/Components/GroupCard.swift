@@ -43,7 +43,7 @@ struct GroupCard: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(Color.gray.opacity(0.2))
+            .background(Color("card"))
             .cornerRadius(10)
             .padding(.horizontal, 20)
         }
