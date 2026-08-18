@@ -14,6 +14,10 @@ public class GlobalExceptionHandlingMiddleware(RequestDelegate next, IHostEnviro
         {
             await WriteAsync(context, 400, ex.Message, ex);
         }
+        catch (KeyNotFoundException ex)
+        {
+            await WriteAsync(context, 404, ex.Message, ex);
+        }
         catch (ArgumentException ex)
         {
             await WriteAsync(context, 400, ex.Message, ex);

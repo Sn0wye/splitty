@@ -12,15 +12,6 @@ namespace Splitty.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<string>(
-                name: "AvatarUrl",
-                table: "User",
-                type: "character varying(255)",
-                maxLength: 255,
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "text");
-
             migrationBuilder.CreateTable(
                 name: "Invite",
                 columns: table => new
@@ -94,15 +85,6 @@ namespace Splitty.Infrastructure.Migrations
             migrationBuilder.DropIndex(
                 name: "IX_GroupMembership_UserId_GroupId",
                 table: "GroupMembership");
-
-            migrationBuilder.AlterColumn<string>(
-                name: "AvatarUrl",
-                table: "User",
-                type: "text",
-                nullable: false,
-                oldClrType: typeof(string),
-                oldType: "character varying(255)",
-                oldMaxLength: 255);
         }
     }
 }

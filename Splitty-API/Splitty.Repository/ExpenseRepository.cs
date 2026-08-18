@@ -44,6 +44,7 @@ public class ExpenseRepository(ApplicationDbContext context): IExpenseRepository
     {
         return await context.Expense
             .Include(e => e.Splits)
+            .ThenInclude(es => es.User)
             .Include(e => e.PaidByUser)
             .Where(e => e.GroupId == groupId)
             .ToListAsync();

@@ -52,7 +52,7 @@ public class ExpenseService(
 
         if (expense is null)
         {
-            throw new ArgumentException("Expense not found");
+            throw new KeyNotFoundException("Expense not found");
         }
 
         // The expense must belong to the group the request was made against,
