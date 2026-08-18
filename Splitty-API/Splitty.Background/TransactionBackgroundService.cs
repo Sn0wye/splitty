@@ -1,31 +1,22 @@
 ﻿using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Splitty.Service;
 using Splitty.Service.Interfaces;
 
 namespace Splitty.Background;
 
-public class TransactionBackgroundService: BackgroundService
+public class TransactionBackgroundService(
+    Channel<TransactionRequest> channel,
+    IServiceScopeFactory serviceScopeFactory
+) : BackgroundService
 {
-    private readonly Channel<TransactionRequest> _channel;
-    private readonly IBalanceService _balanceService;
-    
-    public TransactionBackgroundService(Channel<TransactionRequest> channel,
-        IServiceScopeFactory serviceScopeFactory
-        )
-    {
-        _channel = channel;
-        var scope = serviceScopeFactory.CreateScope();
-        _balanceService = scope.ServiceProvider.GetRequiredService<IBalanceService>();
-    }
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (await _channel.Reader.WaitToReadAsync(stoppingToken))
+        await foreach (var request in channel.Reader.ReadAllAsync(stoppingToken))
         {
-            var request = await _channel.Reader.ReadAsync(stoppingToken);
-            await _balanceService.CalculateGroupBalances(request.groupId);
+            using var scope = serviceScopeFactory.CreateScope();
+            var balanceService = scope.ServiceProvider.GetRequiredService<IBalanceService>();
+            await balanceService.CalculateGroupBalances(request.groupId);
         }
     }
 }
