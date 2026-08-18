@@ -64,15 +64,14 @@ public class ExpenseService(
 
         await EnsureMemberAsync(expense.GroupId, userId);
 
-        if (dto.PaidBy is not null)
-        {
-            await EnsureMemberAsync(expense.GroupId, dto.PaidBy.Value);
-        }
-
-        if (dto.ExpenseSplits is not null)
-        {
-            await EnsureMembersAsync(expense.GroupId, dto.ExpenseSplits.Select(s => s.UserId));
-        }
+        // Validate the resulting state, not just the supplied fields: an
+        // amount-only update must not leave a nonmember payer or split behind.
+        await EnsureMemberAsync(expense.GroupId, dto.PaidBy ?? expense.PaidBy);
+        await EnsureMembersAsync(
+            expense.GroupId,
+            dto.ExpenseSplits is not null
+                ? dto.ExpenseSplits.Select(s => s.UserId)
+                : expense.Splits.Select(s => s.UserId));
 
         expense.Amount = dto.Amount ?? expense.Amount;
         expense.Description = dto.Description ?? expense.Description;
