@@ -1,8 +1,13 @@
+using System.Globalization;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
+using Splitty.API;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Splitty.API.Middleware;
@@ -68,18 +73,55 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
     
 
+// Rate limiting: guards invite-code guessing. Partitioned on the JWT subject claim,
+// not User.Identity.Name, which holds the display name here and is not unique.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy(RateLimitPolicies.InviteRedemption, context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter =
+                ((int)retryAfter.TotalSeconds).ToString(NumberFormatInfo.InvariantInfo);
+        }
+
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        context.HttpContext.Response.ContentType = "application/json";
+
+        await context.HttpContext.Response.WriteAsJsonAsync(new ErrorResponse
+        {
+            StatusCode = StatusCodes.Status429TooManyRequests,
+            Message = "Too many attempts. Try again later."
+        }, cancellationToken);
+    };
+});
+
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<IGroupMembershipRepository, GroupMembershipRepository>();
 builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
 builder.Services.AddScoped<IBalanceRepository, BalanceRepository>();
+builder.Services.AddScoped<IInviteRepository, InviteRepository>();
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGroupService, GroupService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IBalanceService, BalanceService>();
+builder.Services.AddScoped<IInviteService, InviteService>();
 
 // Utils
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
@@ -108,6 +150,8 @@ if (app.Environment.IsDevelopment())
 app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
+// Must run after UseAuthentication, otherwise the partition key claim is null.
+app.UseRateLimiter();
 
 // app.UseHttpsRedirection();
 

@@ -7,4 +7,6 @@ public interface IGroupMembershipRepository
     Task<GroupMembership> CreateAsync(GroupMembership groupMembership);
     Task<GroupMembership?> GetGroupMembershipByUserIdAndGroupId(int userId, int groupId);
     Task<List<GroupMembership>> GetGroupMembershipsAsync(int groupId);
+    Task DeleteAsync(GroupMembership groupMembership);
+    Task<int> CountByGroupIdAsync(int groupId);
 }

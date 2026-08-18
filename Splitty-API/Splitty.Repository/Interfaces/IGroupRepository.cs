@@ -8,4 +8,5 @@ public interface IGroupRepository
     Task<Group?> GetGroupByIdAsync(int groupId);
     Task<List<Group>> GetGroupsByUserId(int userId);
     Task UpdateAsync(Group group);
+    Task DeleteAsync(Group group);
 }

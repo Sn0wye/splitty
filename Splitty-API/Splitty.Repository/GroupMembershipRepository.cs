@@ -21,6 +21,17 @@ public class GroupMembershipRepository(ApplicationDbContext context): IGroupMemb
             .FirstOrDefaultAsync(gm => gm.UserId == userId && gm.GroupId == groupId);
     }
 
+    public async Task DeleteAsync(GroupMembership groupMembership)
+    {
+        context.GroupMembership.Remove(groupMembership);
+        await context.SaveChangesAsync();
+    }
+
+    public async Task<int> CountByGroupIdAsync(int groupId)
+    {
+        return await context.GroupMembership.CountAsync(gm => gm.GroupId == groupId);
+    }
+
     public async Task<List<GroupMembership>> GetGroupMembershipsAsync(int groupId)
     {
         return await context.GroupMembership

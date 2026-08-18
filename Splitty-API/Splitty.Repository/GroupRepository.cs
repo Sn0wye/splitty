@@ -44,4 +44,10 @@ public class GroupRepository(ApplicationDbContext context): IGroupRepository
         context.Group.Update(group);
         await context.SaveChangesAsync();
     }
+
+    public async Task DeleteAsync(Group group)
+    {
+        context.Group.Remove(group);
+        await context.SaveChangesAsync();
+    }
 }
