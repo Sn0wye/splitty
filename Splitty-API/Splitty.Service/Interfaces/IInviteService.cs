@@ -8,7 +8,8 @@ public enum CreateInviteStatus
     GroupNotFound,
     NotAMember,
     InvalidExpiry,
-    InvalidMaxUses
+    InvalidMaxUses,
+    CodeUnavailable
 }
 
 public enum RedeemInviteStatus

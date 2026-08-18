@@ -7,10 +7,22 @@ namespace Splitty.Repository;
 
 public class InviteRepository(ApplicationDbContext context) : IInviteRepository
 {
-    public async Task<Invite> CreateAsync(Invite invite)
+    /// Persists the invite. Returns null when its code collided with an existing one.
+    public async Task<Invite?> TryCreateAsync(Invite invite)
     {
-        await context.Invite.AddAsync(invite);
-        await context.SaveChangesAsync();
+        var entry = await context.Invite.AddAsync(invite);
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.IsUniqueViolation())
+        {
+            // Leaving the failed insert tracked would replay it on the next save.
+            entry.State = EntityState.Detached;
+
+            return null;
+        }
 
         return invite;
     }

@@ -88,6 +88,8 @@ public class GroupController(
 
         if (userId is null) return Unauthorized();
 
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
         var result = await inviteService.CreateAsync(
             groupId,
             int.Parse(userId),
@@ -109,6 +111,7 @@ public class GroupController(
             CreateInviteStatus.NotAMember => StatusCode(403, Error(403, "You are not a member of this group")),
             CreateInviteStatus.InvalidExpiry => BadRequest(Error(400, "Expiration must be in the future")),
             CreateInviteStatus.InvalidMaxUses => BadRequest(Error(400, "MaxUses must be greater than zero")),
+            CreateInviteStatus.CodeUnavailable => StatusCode(500, Error(500, "Could not allocate an invite code")),
             _ => StatusCode(500)
         };
     }
@@ -120,6 +123,8 @@ public class GroupController(
 
         if (userId is null) return Unauthorized();
 
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
         return MapRemoval(await groupService.LeaveAsync(groupId, int.Parse(userId)), self: true);
     }
 
@@ -129,6 +134,8 @@ public class GroupController(
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         if (userId is null) return Unauthorized();
+
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
 
         var result = await groupService.RemoveMemberAsync(groupId, int.Parse(userId), memberUserId);
 

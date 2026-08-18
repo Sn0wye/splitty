@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using Microsoft.EntityFrameworkCore;
 using Splitty.Domain.Entities;
 using Splitty.Repository.Interfaces;
 using Splitty.Service.Interfaces;
@@ -14,7 +13,7 @@ public class InviteService(
 {
     private const string CodeAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private const int CodeLength = 6;
-    private const int MaxCodeAttempts = 5;
+    private const int MaxCodeAttempts = 10;
 
     private static readonly TimeSpan DefaultLifetime = TimeSpan.FromDays(7);
     private static readonly TimeSpan MaxLifetime = TimeSpan.FromDays(30);
@@ -41,7 +40,8 @@ public class InviteService(
 
         for (var attempt = 0; attempt < MaxCodeAttempts; attempt++)
         {
-            var invite = new Invite
+            // A collision is ours to resolve: draw another code, never fail the caller for it.
+            var created = await inviteRepository.TryCreateAsync(new Invite
             {
                 GroupId = groupId,
                 Code = GenerateCode(),
@@ -49,19 +49,12 @@ public class InviteService(
                 CreatedAt = now,
                 ExpiresAt = capped,
                 MaxUses = maxUses
-            };
+            });
 
-            try
-            {
-                return new CreateInviteResult(CreateInviteStatus.Success, await inviteRepository.CreateAsync(invite));
-            }
-            catch (DbUpdateException) when (attempt < MaxCodeAttempts - 1)
-            {
-                // Code collided with an existing invite; draw another one.
-            }
+            if (created is not null) return new CreateInviteResult(CreateInviteStatus.Success, created);
         }
 
-        throw new InvalidOperationException("Could not allocate a unique invite code");
+        return new CreateInviteResult(CreateInviteStatus.CodeUnavailable);
     }
 
     public async Task<RedeemInviteResult> RedeemAsync(string code, int userId)
@@ -82,21 +75,16 @@ public class InviteService(
             return new RedeemInviteResult(RedeemInviteStatus.Exhausted);
         }
 
-        try
+        var created = await groupMembershipRepository.TryCreateAsync(new GroupMembership
         {
-            await groupMembershipRepository.CreateAsync(new GroupMembership
-            {
-                UserId = userId,
-                GroupId = invite.GroupId
-            });
-        }
-        catch (DbUpdateException)
-        {
-            // Lost a race against a concurrent redemption by the same user.
-            return new RedeemInviteResult(RedeemInviteStatus.AlreadyMember, invite.GroupId);
-        }
+            UserId = userId,
+            GroupId = invite.GroupId
+        });
 
-        return new RedeemInviteResult(RedeemInviteStatus.Success, invite.GroupId);
+        // Not created means we lost a race against a concurrent redemption by the same user.
+        return new RedeemInviteResult(
+            created ? RedeemInviteStatus.Success : RedeemInviteStatus.AlreadyMember,
+            invite.GroupId);
     }
 
     private static string GenerateCode() => RandomNumberGenerator.GetString(CodeAlphabet, CodeLength);
