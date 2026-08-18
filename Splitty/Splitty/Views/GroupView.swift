@@ -107,17 +107,17 @@ struct GroupView: View {
     }
     
     private var actionButtonsSection: some View {
-        HStack(spacing: 12) {
-            ActionButton(title: "Settle", color: Color("foreground"), textColor: Color("background")) {
+        LazyHStack(spacing: 12) {
+            ActionButton(title: "Settle up", color: Color("foreground"), textColor: Color("background")) {
                 // TODO: Settle up action
-            }
-            
-            ActionButton(title: "Remind...", color: Color("muted"), textColor: Color("foreground")) {
-                // TODO: Remind action
             }
             
             ActionButton(title: "Charts", color: Color("muted"), textColor: Color("foreground")) {
                 // TODO: Charts action
+            }
+            
+            ActionButton(title: "Balances", color: Color("muted"), textColor: Color("foreground")) {
+                // TODO: Balances action
             }
             
             ActionButton(title: "Export", color: Color("muted"), textColor: Color("foreground")) {
