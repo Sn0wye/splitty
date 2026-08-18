@@ -15,6 +15,7 @@ using Splitty.Repository.Interfaces;
 using Splitty.Seeder;
 using Splitty.Service;
 using Splitty.Service.Interfaces;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddConsole();
@@ -100,6 +101,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 // Middleware
