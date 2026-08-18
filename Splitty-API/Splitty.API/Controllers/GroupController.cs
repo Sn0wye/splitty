@@ -6,6 +6,7 @@ using Splitty.Background;
 using Splitty.Domain.Entities;
 using Splitty.DTO.Internal;
 using Splitty.DTO.Request;
+using Splitty.DTO.Response;
 using Splitty.Service.Interfaces;
 
 namespace Splitty.API.Controllers;
@@ -17,6 +18,7 @@ public class GroupController(
     IGroupService groupService,
     IExpenseService expenseService,
     IBalanceService balanceService,
+    IInviteService inviteService,
     Channel<TransactionRequest> balanceChannel
 ) : ControllerBase
 {
@@ -79,17 +81,77 @@ public class GroupController(
         return Ok(group);
     }
 
-    [HttpPost("{groupId}/join")]
-    public async Task<ActionResult<Group>> JoinGroup(int groupId)
+    [HttpPost("{groupId}/invites")]
+    public async Task<ActionResult<InviteResponse>> CreateInvite(int groupId, [FromBody] CreateInviteRequest? request)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         if (userId is null) return Unauthorized();
 
-        var group = await groupService.JoinGroupAsync(groupId, int.Parse(userId));
+        var result = await inviteService.CreateAsync(
+            groupId,
+            int.Parse(userId),
+            request?.MaxUses,
+            request?.ExpiresAt);
 
-        return Ok(group);
+        return result.Status switch
+        {
+            CreateInviteStatus.Success => Ok(new InviteResponse
+            {
+                Code = result.Invite!.Code,
+                GroupId = result.Invite.GroupId,
+                CreatedAt = result.Invite.CreatedAt,
+                ExpiresAt = result.Invite.ExpiresAt,
+                MaxUses = result.Invite.MaxUses,
+                UsedCount = result.Invite.UsedCount
+            }),
+            CreateInviteStatus.GroupNotFound => NotFound(Error(404, "Group not found")),
+            CreateInviteStatus.NotAMember => StatusCode(403, Error(403, "You are not a member of this group")),
+            CreateInviteStatus.InvalidExpiry => BadRequest(Error(400, "Expiration must be in the future")),
+            CreateInviteStatus.InvalidMaxUses => BadRequest(Error(400, "MaxUses must be greater than zero")),
+            _ => StatusCode(500)
+        };
     }
+
+    [HttpPost("{groupId}/leave")]
+    public async Task<ActionResult> LeaveGroup(int groupId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        return MapRemoval(await groupService.LeaveAsync(groupId, int.Parse(userId)), self: true);
+    }
+
+    [HttpDelete("{groupId}/members/{memberUserId}")]
+    public async Task<ActionResult> RemoveMember(int groupId, int memberUserId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        var result = await groupService.RemoveMemberAsync(groupId, int.Parse(userId), memberUserId);
+
+        return MapRemoval(result, self: memberUserId == int.Parse(userId));
+    }
+
+    private ActionResult MapRemoval(MembershipRemovalStatus status, bool self) => status switch
+    {
+        MembershipRemovalStatus.Success => NoContent(),
+        MembershipRemovalStatus.GroupNotFound => NotFound(Error(404, "Group not found")),
+        MembershipRemovalStatus.NotAMember => StatusCode(403, Error(403, "You are not a member of this group")),
+        MembershipRemovalStatus.TargetNotAMember => NotFound(Error(404, "User is not a member of this group")),
+        MembershipRemovalStatus.OutstandingBalance => Conflict(Error(409, self
+            ? "Settle your balance before leaving the group"
+            : "This member has an outstanding balance")),
+        _ => StatusCode(500)
+    };
+
+    private static ErrorResponse Error(int statusCode, string message) => new()
+    {
+        StatusCode = statusCode,
+        Message = message
+    };
 
     [HttpGet("{groupId}/expenses")]
     public async Task<ActionResult<List<Expense>>> GetExpensesByGroupId(int groupId)

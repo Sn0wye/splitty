@@ -26,6 +26,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Domain.Entities.Expense> Expense { get; set; }
     public DbSet<Domain.Entities.ExpenseSplit> ExpenseSplit { get; set; }
     public DbSet<Domain.Entities.Balance> Balance { get; set; }
+    public DbSet<Domain.Entities.Invite> Invite { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -71,6 +72,7 @@ public class ApplicationDbContext : DbContext
             
             entity.HasIndex(gm => gm.GroupId);
             entity.HasIndex(gm => gm.UserId);
+            entity.HasIndex(gm => new { gm.UserId, gm.GroupId }).IsUnique();
 
             entity.HasOne(gm => gm.User)
                 .WithMany()
@@ -81,6 +83,27 @@ public class ApplicationDbContext : DbContext
                 .WithMany(g => g.Members)
                 .HasForeignKey(gm => gm.GroupId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Domain.Entities.Invite>(entity =>
+        {
+            entity.HasKey(i => i.Id);
+            entity.Property(i => i.Code).IsRequired().HasMaxLength(6);
+            entity.Property(i => i.CreatedAt).IsRequired();
+            entity.Property(i => i.ExpiresAt).IsRequired();
+            entity.Property(i => i.UsedCount).IsRequired().HasDefaultValue(0);
+
+            entity.HasIndex(i => i.Code).IsUnique();
+
+            entity.HasOne(i => i.Group)
+                .WithMany()
+                .HasForeignKey(i => i.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(i => i.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(i => i.CreatedBy)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Domain.Entities.Expense>(entity =>

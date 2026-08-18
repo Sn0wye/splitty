@@ -53,9 +53,9 @@ public class GroupService(
                 {
                     Id = gm.Id,
                     UserId = gm.UserId,
-                    Name = gm.User.Name,
-                    Email = gm.User.Email,
-                    AvatarUrl = gm.User.AvatarUrl,
+                    Name = gm.User?.Name ?? "[removed]",
+                    Email = gm.User?.Email ?? string.Empty,
+                    AvatarUrl = gm.User?.AvatarUrl ?? string.Empty,
                 }).ToList(),
             }
             : null;
@@ -81,9 +81,9 @@ public class GroupService(
                 {
                     Id = gm.Id,
                     UserId = gm.UserId,
-                    Name = gm.User.Name,
-                    Email = gm.User.Email,
-                    AvatarUrl = gm.User.AvatarUrl,
+                    Name = gm.User?.Name ?? "[removed]",
+                    Email = gm.User?.Email ?? string.Empty,
+                    AvatarUrl = gm.User?.AvatarUrl ?? string.Empty,
                 }).ToList(),
             });
         }
@@ -120,29 +120,36 @@ public class GroupService(
         return group;
     }
 
-    public async Task<Group> JoinGroupAsync(int groupId, int userId)
+    public async Task<MembershipRemovalStatus> LeaveAsync(int groupId, int userId)
+    {
+        return await RemoveMemberAsync(groupId, userId, userId);
+    }
+
+    public async Task<MembershipRemovalStatus> RemoveMemberAsync(int groupId, int actorId, int targetUserId)
     {
         var group = await groupRepository.GetGroupByIdAsync(groupId);
 
-        if (group is null)
+        if (group is null) return MembershipRemovalStatus.GroupNotFound;
+
+        if (group.Members.All(gm => gm.UserId != actorId)) return MembershipRemovalStatus.NotAMember;
+
+        var membership = group.Members.FirstOrDefault(gm => gm.UserId == targetUserId);
+
+        if (membership is null) return MembershipRemovalStatus.TargetNotAMember;
+
+        // Flat permissions: any member may remove any settled member, including themselves.
+        var balances = await balanceRepository.GetUserGroupBalances(targetUserId, groupId);
+
+        if (balances.Sum(b => b.Amount) != 0) return MembershipRemovalStatus.OutstandingBalance;
+
+        await groupMembershipRepository.DeleteAsync(membership);
+
+        if (await groupMembershipRepository.CountByGroupIdAsync(groupId) == 0)
         {
-            throw new ArgumentException("Group not found");
+            await groupRepository.DeleteAsync(group);
         }
 
-        if (group.Members.Any(gm => gm.UserId == userId))
-        {
-            throw new InvalidOperationException("User is already a member of the group");
-        }
-
-        var groupMembership = new GroupMembership
-        {
-            UserId = userId,
-            GroupId = groupId,
-        };
-
-        await groupMembershipRepository.CreateAsync(groupMembership);
-
-        return group;
+        return MembershipRemovalStatus.Success;
     }
 
     public async Task<bool> IsMemberAsync(int groupId, int userId)
