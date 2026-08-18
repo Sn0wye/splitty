@@ -55,6 +55,8 @@ public class GroupController(
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
+        if (userId is null) return Unauthorized();
+
         var group = await groupService.GetGroupAsync(groupId, int.Parse(userId));
 
         return Ok(group);
@@ -96,6 +98,8 @@ public class GroupController(
 
         if (userId is null) return Unauthorized();
 
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
         var expenses = await expenseService.FindExpensesByGroupId(groupId, int.Parse(userId));
 
         return Ok(expenses);
@@ -116,6 +120,8 @@ public class GroupController(
 
         if (userId is null) return Unauthorized();
 
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
         var dto = new CreateExpenseDTO
         {
             Amount = request.Amount,
@@ -125,7 +131,7 @@ public class GroupController(
             ExpenseSplits = request.Splits
         };
 
-        var expense = await expenseService.CreateAsync(dto);
+        var expense = await expenseService.CreateAsync(dto, int.Parse(userId));
         
         await balanceChannel.Writer.WriteAsync(new TransactionRequest(groupId));
 
@@ -149,6 +155,8 @@ public class GroupController(
 
         if (userId is null) return Unauthorized();
 
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
         var dto = new UpdateExpenseDTO
         {
             Id = expenseId,
@@ -159,7 +167,7 @@ public class GroupController(
             ExpenseSplits = request.Splits
         };
 
-        var expense = await expenseService.UpdateAsync(dto);
+        var expense = await expenseService.UpdateAsync(dto, int.Parse(userId));
         
         await balanceChannel.Writer.WriteAsync(new TransactionRequest(groupId));
         
@@ -173,6 +181,8 @@ public class GroupController(
 
         if (userId is null) return Unauthorized();
 
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
         var balances = await balanceService.CalculateGroupBalances(groupId);
 
         return Ok(balances);
@@ -184,6 +194,8 @@ public class GroupController(
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         if (userId is null) return Unauthorized();
+
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
 
         var balances = await balanceService.GetGroupUserBalance(groupId, int.Parse(userId));
 
@@ -197,6 +209,8 @@ public class GroupController(
 
         if (userId is null) return Unauthorized();
         
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
         await balanceService.SettleUp(groupId, int.Parse(userId), request.WithUserId, request.Amount);
 
         await balanceChannel.Writer.WriteAsync(new TransactionRequest(groupId));

@@ -7,7 +7,8 @@ namespace Splitty.Service;
 public class BalanceService(
     IBalanceRepository balanceRepository,
     IExpenseRepository expenseRepository,
-    IUserRepository userRepository
+    IUserRepository userRepository,
+    IGroupMembershipRepository groupMembershipRepository
 ) : IBalanceService
 {
     public async Task<List<Balance>> CalculateGroupBalances(int groupId)
@@ -65,11 +66,16 @@ public class BalanceService(
 
     public async Task<List<Balance>> GetGroupUserBalance(int groupId, int userId)
     {
+        await EnsureMemberAsync(groupId, userId);
+
         return await balanceRepository.GetUserGroupBalances(userId, groupId);
     }
 
     public async Task SettleUp(int groupId, int userId, int peerId, decimal amount)
     {
+        await EnsureMemberAsync(groupId, userId);
+        await EnsureMemberAsync(groupId, peerId);
+
         var payee = await userRepository.GetByIdAsync(peerId);
 
         if (payee is null)
@@ -100,5 +106,15 @@ public class BalanceService(
         };
 
         await expenseRepository.CreateAsync(settleExpense);
+    }
+
+    private async Task EnsureMemberAsync(int groupId, int userId)
+    {
+        var membership = await groupMembershipRepository.GetGroupMembershipByUserIdAndGroupId(userId, groupId);
+
+        if (membership is null)
+        {
+            throw new UnauthorizedAccessException("User is not a member of the group");
+        }
     }
 }

@@ -6,11 +6,16 @@ using Splitty.Service.Interfaces;
 namespace Splitty.Service;
 
 public class ExpenseService(
-    IExpenseRepository expenseRepository
+    IExpenseRepository expenseRepository,
+    IGroupMembershipRepository groupMembershipRepository
     ): IExpenseService
 {
-    public async Task<Expense> CreateAsync(CreateExpenseDTO dto)
+    public async Task<Expense> CreateAsync(CreateExpenseDTO dto, int userId)
     {
+        await EnsureMemberAsync(dto.GroupId, userId);
+        await EnsureMemberAsync(dto.GroupId, dto.PaidBy);
+        await EnsureMembersAsync(dto.GroupId, dto.ExpenseSplits.Select(s => s.UserId));
+
         var expense = new Expense
         {
             Amount = dto.Amount,
@@ -36,28 +41,40 @@ public class ExpenseService(
     
     public async Task<List<Expense>> FindExpensesByGroupId(int groupId, int userId)
     {
+        await EnsureMemberAsync(groupId, userId);
+
         return await expenseRepository.FindExpensesByGroupId(groupId);
     }
     
-    public async Task<Expense> UpdateAsync(UpdateExpenseDTO dto)
+    public async Task<Expense> UpdateAsync(UpdateExpenseDTO dto, int userId)
     {
         var expense = await expenseRepository.FindByIdAsync(dto.Id);
 
         if (expense is null)
         {
-            Console.WriteLine("Expense not found");
             throw new ArgumentException("Expense not found");
         }
-        
-        // if (expense.Group.Members.All(m => m.UserId != dto.PaidBy))
-        // {
-        //     Console.WriteLine("User is not a member of the group");
-        //     throw new UnauthorizedAccessException("User is not a member of the group");
-        // }
-        
+
+        // The expense must belong to the group the request was made against,
+        // otherwise a member of group A could edit an expense of group B.
+        if (dto.GroupId is not null && dto.GroupId != expense.GroupId)
+        {
+            throw new UnauthorizedAccessException("Expense does not belong to the group");
+        }
+
+        await EnsureMemberAsync(expense.GroupId, userId);
+
+        // Validate the resulting state, not just the supplied fields: an
+        // amount-only update must not leave a nonmember payer or split behind.
+        await EnsureMemberAsync(expense.GroupId, dto.PaidBy ?? expense.PaidBy);
+        await EnsureMembersAsync(
+            expense.GroupId,
+            dto.ExpenseSplits is not null
+                ? dto.ExpenseSplits.Select(s => s.UserId)
+                : expense.Splits.Select(s => s.UserId));
+
         expense.Amount = dto.Amount ?? expense.Amount;
         expense.Description = dto.Description ?? expense.Description;
-        expense.GroupId = dto.GroupId ?? expense.GroupId;
         expense.PaidBy = dto.PaidBy ?? expense.PaidBy;
         
         if (dto.ExpenseSplits is not null)
@@ -72,5 +89,23 @@ public class ExpenseService(
         
         await expenseRepository.UpdateAsync(expense);
         return expense;
+    }
+
+    private async Task EnsureMemberAsync(int groupId, int userId)
+    {
+        var membership = await groupMembershipRepository.GetGroupMembershipByUserIdAndGroupId(userId, groupId);
+
+        if (membership is null)
+        {
+            throw new UnauthorizedAccessException("User is not a member of the group");
+        }
+    }
+
+    private async Task EnsureMembersAsync(int groupId, IEnumerable<int> userIds)
+    {
+        foreach (var userId in userIds.Distinct())
+        {
+            await EnsureMemberAsync(groupId, userId);
+        }
     }
 }
