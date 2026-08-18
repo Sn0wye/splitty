@@ -5,9 +5,9 @@ namespace Splitty.Service.Interfaces;
 
 public interface IExpenseService
 {
-    Task<Expense> CreateAsync(CreateExpenseDTO dto);
+    Task<Expense> CreateAsync(CreateExpenseDTO dto, int userId);
     Task<Expense?> FindByIdAsync(int id);
     // Task<Expense> UpdateAsync(Expense expense); 
     Task<List<Expense>> FindExpensesByGroupId(int groupId, int userId);
-    Task<Expense> UpdateAsync(UpdateExpenseDTO dto);
+    Task<Expense> UpdateAsync(UpdateExpenseDTO dto, int userId);
 }

@@ -10,4 +10,5 @@ public interface IGroupService
     Task<List<GroupDTO>> GetGroupsByUserId(int userId);
     Task<Group> UpdateAsync(int groupId, int userId, string name, string? description);
     Task<Group> JoinGroupAsync(int groupId, int userId);
+    Task<bool> IsMemberAsync(int groupId, int userId);
 }

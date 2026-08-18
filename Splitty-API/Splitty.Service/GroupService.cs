@@ -144,4 +144,9 @@ public class GroupService(
 
         return group;
     }
+
+    public async Task<bool> IsMemberAsync(int groupId, int userId)
+    {
+        return await groupMembershipRepository.GetGroupMembershipByUserIdAndGroupId(userId, groupId) is not null;
+    }
 }
