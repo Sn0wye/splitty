@@ -80,7 +80,7 @@ public class BalanceService(
 
         if (payee is null)
         {
-            throw new ArgumentException("User not found");
+            throw new KeyNotFoundException("User not found");
         }
 
         var settleExpense = new Expense

@@ -49,14 +49,7 @@ public class GroupService(
                 Description = group.Description,
                 CreatedAt = group.CreatedAt,
                 NetBalance = netBalance,
-                Members = group.Members.Select(gm => new MemberDTO
-                {
-                    Id = gm.Id,
-                    UserId = gm.UserId,
-                    Name = gm.User?.Name ?? "[removed]",
-                    Email = gm.User?.Email ?? string.Empty,
-                    AvatarUrl = gm.User?.AvatarUrl ?? string.Empty,
-                }).ToList(),
+                Members = group.Members.Select(ToMemberDTO).ToList(),
             }
             : null;
     }
@@ -77,14 +70,7 @@ public class GroupService(
                 Description = group.Description,
                 CreatedAt = group.CreatedAt,
                 NetBalance = netBalance,
-                Members = group.Members.Select(gm => new MemberDTO
-                {
-                    Id = gm.Id,
-                    UserId = gm.UserId,
-                    Name = gm.User?.Name ?? "[removed]",
-                    Email = gm.User?.Email ?? string.Empty,
-                    AvatarUrl = gm.User?.AvatarUrl ?? string.Empty,
-                }).ToList(),
+                Members = group.Members.Select(ToMemberDTO).ToList(),
             });
         }
 
@@ -97,7 +83,7 @@ public class GroupService(
 
         if (group is null)
         {
-            throw new ArgumentException("Group not found");
+            throw new KeyNotFoundException("Group not found");
         }
 
         if (group.Members.All(gm => gm.UserId != userId))
@@ -151,6 +137,15 @@ public class GroupService(
 
         return MembershipRemovalStatus.Success;
     }
+
+    private static MemberDTO ToMemberDTO(GroupMembership membership) => new()
+    {
+        Id = membership.Id,
+        UserId = membership.UserId,
+        Name = membership.User.Name,
+        Email = membership.User.Email,
+        AvatarUrl = membership.User.AvatarUrl
+    };
 
     public async Task<bool> IsMemberAsync(int groupId, int userId)
     {

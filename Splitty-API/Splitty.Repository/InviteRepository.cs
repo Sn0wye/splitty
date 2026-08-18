@@ -34,15 +34,43 @@ public class InviteRepository(ApplicationDbContext context) : IInviteRepository
             .FirstOrDefaultAsync(i => i.Code == code);
     }
 
-    /// Atomically claims one use of the invite. Returns false when it is exhausted.
-    public async Task<bool> TryConsumeAsync(int inviteId)
+    /// Claims one use of the invite and creates the membership as a single unit:
+    /// a failed membership insert leaves the use count untouched.
+    public async Task<InviteRedemptionOutcome> TryRedeemAsync(int inviteId, GroupMembership membership)
     {
-        var affected = await context.Database.ExecuteSqlInterpolatedAsync(
+        await using var transaction = await context.Database.BeginTransactionAsync();
+
+        var claimed = await context.Database.ExecuteSqlInterpolatedAsync(
             $"""
              UPDATE "Invite" SET "UsedCount" = "UsedCount" + 1
              WHERE "Id" = {inviteId} AND ("MaxUses" IS NULL OR "UsedCount" < "MaxUses")
              """);
 
-        return affected > 0;
+        if (claimed == 0)
+        {
+            await transaction.RollbackAsync();
+
+            return InviteRedemptionOutcome.Exhausted;
+        }
+
+        var entry = await context.GroupMembership.AddAsync(membership);
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.IsUniqueViolation())
+        {
+            // Leaving the failed insert tracked would replay it on the next save.
+            entry.State = EntityState.Detached;
+
+            await transaction.RollbackAsync();
+
+            return InviteRedemptionOutcome.AlreadyMember;
+        }
+
+        await transaction.CommitAsync();
+
+        return InviteRedemptionOutcome.Success;
     }
 }

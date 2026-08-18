@@ -15,26 +15,6 @@ public class GroupMembershipRepository(ApplicationDbContext context): IGroupMemb
         return groupMembership;
     }
     
-    /// Persists the membership. Returns false when the (UserId, GroupId) pair already exists.
-    public async Task<bool> TryCreateAsync(GroupMembership groupMembership)
-    {
-        var entry = await context.GroupMembership.AddAsync(groupMembership);
-
-        try
-        {
-            await context.SaveChangesAsync();
-        }
-        catch (DbUpdateException ex) when (ex.IsUniqueViolation())
-        {
-            // Leaving the failed insert tracked would replay it on the next save.
-            entry.State = EntityState.Detached;
-
-            return false;
-        }
-
-        return true;
-    }
-
     public async Task<GroupMembership?> GetGroupMembershipByUserIdAndGroupId(int userId, int groupId)
     {
         return await context.GroupMembership

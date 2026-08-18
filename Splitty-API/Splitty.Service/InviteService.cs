@@ -70,21 +70,20 @@ public class InviteService(
             return new RedeemInviteResult(RedeemInviteStatus.AlreadyMember, invite.GroupId);
         }
 
-        if (!await inviteRepository.TryConsumeAsync(invite.Id))
-        {
-            return new RedeemInviteResult(RedeemInviteStatus.Exhausted);
-        }
-
-        var created = await groupMembershipRepository.TryCreateAsync(new GroupMembership
+        // Claiming the use and joining are one unit; a lost race must not burn a use.
+        var outcome = await inviteRepository.TryRedeemAsync(invite.Id, new GroupMembership
         {
             UserId = userId,
             GroupId = invite.GroupId
         });
 
-        // Not created means we lost a race against a concurrent redemption by the same user.
-        return new RedeemInviteResult(
-            created ? RedeemInviteStatus.Success : RedeemInviteStatus.AlreadyMember,
-            invite.GroupId);
+        return outcome switch
+        {
+            InviteRedemptionOutcome.Success => new RedeemInviteResult(RedeemInviteStatus.Success, invite.GroupId),
+            InviteRedemptionOutcome.Exhausted => new RedeemInviteResult(RedeemInviteStatus.Exhausted),
+            // Lost a race against a concurrent redemption by the same user.
+            _ => new RedeemInviteResult(RedeemInviteStatus.AlreadyMember, invite.GroupId)
+        };
     }
 
     private static string GenerateCode() => RandomNumberGenerator.GetString(CodeAlphabet, CodeLength);
