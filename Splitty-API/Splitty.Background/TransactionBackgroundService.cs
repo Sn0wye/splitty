@@ -7,7 +7,8 @@ namespace Splitty.Background;
 
 public class TransactionBackgroundService(
     Channel<TransactionRequest> channel,
-    IServiceScopeFactory serviceScopeFactory
+    IServiceScopeFactory serviceScopeFactory,
+    TransactionProcessedSignal processed
 ) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -17,6 +18,7 @@ public class TransactionBackgroundService(
             using var scope = serviceScopeFactory.CreateScope();
             var balanceService = scope.ServiceProvider.GetRequiredService<IBalanceService>();
             await balanceService.CalculateGroupBalances(request.groupId);
+            processed.Notify();
         }
     }
 }

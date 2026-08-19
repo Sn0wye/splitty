@@ -61,6 +61,8 @@ public class GroupController(
 
         var group = await groupService.GetGroupAsync(groupId, int.Parse(userId));
 
+        if (group is null) return NotFound(Error(404, "Group not found"));
+
         return Ok(group);
     }
 

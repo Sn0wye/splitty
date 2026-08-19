@@ -8,7 +8,7 @@ public class CreateExpenseDTO
     public int PaidBy { get; set; }
     public Decimal Amount { get; set; }
     public string Description { get; set; }
-    public required List<ExpenseSplitDTO> ExpenseSplits { get; set; }
+    public List<ExpenseSplitDTO>? ExpenseSplits { get; set; }
 }
 
 public partial class ExpenseSplitDTO

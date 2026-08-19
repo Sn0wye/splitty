@@ -12,9 +12,13 @@ public class ExpenseService(
 {
     public async Task<Expense> CreateAsync(CreateExpenseDTO dto, int userId)
     {
+        EnsureExpenseSplitInvariants(ExpenseType.Expense, dto.Amount, dto.ExpenseSplits?.Select(s => s.Amount));
+
+        var splits = dto.ExpenseSplits!;
+
         await EnsureMemberAsync(dto.GroupId, userId);
         await EnsureMemberAsync(dto.GroupId, dto.PaidBy);
-        await EnsureMembersAsync(dto.GroupId, dto.ExpenseSplits.Select(s => s.UserId));
+        await EnsureMembersAsync(dto.GroupId, splits.Select(s => s.UserId));
 
         var expense = new Expense
         {
@@ -22,7 +26,7 @@ public class ExpenseService(
             Description = dto.Description,
             GroupId = dto.GroupId,
             PaidBy = dto.PaidBy,
-            Splits = dto.ExpenseSplits.Select(s => new ExpenseSplit
+            Splits = splits.Select(s => new ExpenseSplit
             {
                 Amount = s.Amount,
                 UserId = s.UserId,
@@ -73,7 +77,14 @@ public class ExpenseService(
                 ? dto.ExpenseSplits.Select(s => s.UserId)
                 : expense.Splits.Select(s => s.UserId));
 
-        expense.Amount = dto.Amount ?? expense.Amount;
+        var resultingAmount = dto.Amount ?? expense.Amount;
+        IEnumerable<decimal> resultingSplits = dto.ExpenseSplits is not null
+            ? dto.ExpenseSplits.Select(s => s.Amount)
+            : expense.Splits.Select(s => s.Amount);
+
+        EnsureExpenseSplitInvariants(expense.Type, resultingAmount, resultingSplits);
+
+        expense.Amount = resultingAmount;
         expense.Description = dto.Description ?? expense.Description;
         expense.PaidBy = dto.PaidBy ?? expense.PaidBy;
         
@@ -106,6 +117,33 @@ public class ExpenseService(
         foreach (var userId in userIds.Distinct())
         {
             await EnsureMemberAsync(groupId, userId);
+        }
+    }
+
+    private static void EnsureExpenseSplitInvariants(ExpenseType type, decimal amount, IEnumerable<decimal>? splitAmounts)
+    {
+        if (type != ExpenseType.Expense) return;
+
+        var splits = splitAmounts?.ToList();
+
+        if (splits is null || splits.Count == 0)
+        {
+            throw new ArgumentException("An expense must have at least one split.");
+        }
+
+        if (amount <= 0)
+        {
+            throw new ArgumentException("Expense amount must be greater than zero.");
+        }
+
+        if (splits.Any(split => split <= 0))
+        {
+            throw new ArgumentException("Expense splits must be greater than zero.");
+        }
+
+        if (splits.Sum() != amount)
+        {
+            throw new ArgumentException("Expense splits must sum to the total.");
         }
     }
 }

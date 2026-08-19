@@ -7,13 +7,6 @@ namespace Splitty.Repository;
 
 public class BalanceRepository(ApplicationDbContext context) : IBalanceRepository
 {
-    public async Task<Balance> CreateAsync(Balance balance)
-    {
-        await context.Balance.AddAsync(balance);
-        await context.SaveChangesAsync();
-        return balance;
-    }
-
     public async Task<List<Balance>> GetGroupBalancesAsync(int groupId)
     {
         return await context.Balance
@@ -30,13 +23,6 @@ public class BalanceRepository(ApplicationDbContext context) : IBalanceRepositor
             .Include(b => b.Peer)
             .Where(b => b.UserId == userId && b.GroupId == groupId)
             .ToListAsync();
-    }
-
-    public async Task<Balance> UpdateAsync(Balance balance)
-    {
-        context.Balance.Update(balance);
-        await context.SaveChangesAsync();
-        return balance;
     }
     
     public async Task<List<Balance>> UpdateBalancesAsync(List<Balance> balances)
