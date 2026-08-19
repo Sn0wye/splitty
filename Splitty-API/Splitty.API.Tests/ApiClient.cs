@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Splitty.API.Tests;
 
@@ -18,7 +19,7 @@ public sealed class ApiClient
         _http = http;
     }
 
-    public static ApiClient Create(ApiFactory factory, string? token = null)
+    public static ApiClient Create(WebApplicationFactory<Program> factory, string? token = null)
     {
         var http = factory.CreateClient();
         if (token is not null)
