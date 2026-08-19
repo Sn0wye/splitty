@@ -127,6 +127,7 @@ builder.Services.AddScoped<IInviteService, InviteService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 
 // Background
+builder.Services.AddSingleton<TransactionProcessedSignal>();
 builder.Services.AddHostedService<TransactionBackgroundService>();
 
 builder.Services.AddSingleton<Channel<TransactionRequest>>(
@@ -166,3 +167,5 @@ if (args.Contains("seed"))
 }
 
 app.Run();
+
+public partial class Program;

@@ -30,7 +30,15 @@ public class InviteController(
         {
             case RedeemInviteStatus.Success:
             case RedeemInviteStatus.AlreadyMember:
-                return Ok(await groupService.GetGroupAsync(result.GroupId, int.Parse(userId)));
+            {
+                var group = await groupService.GetGroupAsync(result.GroupId, int.Parse(userId));
+                if (group is null)
+                {
+                    return NotFound(new ErrorResponse { StatusCode = 404, Message = "Group not found" });
+                }
+
+                return Ok(group);
+            }
             case RedeemInviteStatus.NotFound:
                 return NotFound(new ErrorResponse { StatusCode = 404, Message = "Invite not found" });
             case RedeemInviteStatus.Expired:
