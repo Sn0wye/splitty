@@ -35,6 +35,7 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(u => u.Id);
             entity.Property(u => u.Name).IsRequired().HasMaxLength(255);
             entity.Property(u => u.Email).IsRequired().HasMaxLength(255);
+            entity.HasIndex(u => u.Email).IsUnique();
             entity.Property(u => u.Password).IsRequired();
             entity.Property(u => u.AvatarUrl).HasMaxLength(255);
             entity.Property(u => u.CreatedAt).IsRequired();
