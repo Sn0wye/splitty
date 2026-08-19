@@ -9,8 +9,19 @@ public class UserRepository(ApplicationDbContext context): IUserRepository
 {
     public async Task CreateAsync(User user)
     {
-        await context.User.AddAsync(user);
-        await context.SaveChangesAsync();
+        var entry = await context.User.AddAsync(user);
+
+        try
+        {
+            await context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.IsUniqueViolation())
+        {
+            // Leaving the failed insert tracked would replay it on the next save.
+            entry.State = EntityState.Detached;
+
+            throw new InvalidOperationException("User with this email already exists.");
+        }
     }
 
     public async Task<User?> GetByEmailAsync(string email)
