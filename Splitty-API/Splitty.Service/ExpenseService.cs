@@ -12,9 +12,9 @@ public class ExpenseService(
 {
     public async Task<Expense> CreateAsync(CreateExpenseDTO dto, int userId)
     {
-        EnsureExpenseSplitInvariants(ExpenseType.Expense, dto.Amount, dto.ExpenseSplits?.Select(s => s.Amount));
+        EnsureExpenseSplitInvariants(ExpenseType.Expense, dto.Amount, dto.ExpenseSplits.Select(s => s.Amount));
 
-        var splits = dto.ExpenseSplits!;
+        var splits = dto.ExpenseSplits;
 
         await EnsureMemberAsync(dto.GroupId, userId);
         await EnsureMemberAsync(dto.GroupId, dto.PaidBy);
