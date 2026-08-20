@@ -12,7 +12,6 @@ class ExpenseService {
     
     private init() {}
     
-    // MARK: - Modern async/await methods
     func getExpenses(groupId: Int) async throws -> [Expense] {
         return try await APIClient.shared.getExpenses(groupId: groupId)
     }
@@ -55,17 +54,5 @@ class ExpenseService {
     
     func deleteExpense(groupId: Int, expenseId: Int) async throws {
         return try await APIClient.shared.deleteExpense(groupId: groupId, expenseId: expenseId)
-    }
-    
-    // MARK: - Legacy callback methods for existing code
-    static func fetchGroupExpenses(groupId: Int, completion: @escaping (Result<[Expense], Error>) -> Void) {
-        Task {
-            do {
-                let expenses = try await shared.getExpenses(groupId: groupId)
-                completion(.success(expenses))
-            } catch {
-                completion(.failure(error))
-            }
-        }
     }
 }

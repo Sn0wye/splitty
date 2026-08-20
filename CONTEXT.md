@@ -155,12 +155,23 @@ SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
   `Bearer` token, posts `.unauthorizedError` on 401.
 - `TokenManager` — Keychain storage (`kSecClassGenericPassword`, service
   `com.splitty.app`).
-- `Services/*Service.swift` — thin wrappers over `APIClient`, async/await with legacy
-  completion-handler variants kept for older call sites.
+- `Services/*Service.swift` — thin wrappers over `APIClient`, async/await only. There are
+  no completion-handler variants; views call the async methods from `.task` / `Task`.
 
-`APIClient.baseURL` is hardcoded to `http://127.0.0.1:8080`, and `Info.plist` sets
-`NSAllowsArbitraryLoads` to permit cleartext. Both are local-dev shortcuts that need
-replacing before any real deployment.
+**The API base URL comes from the build configuration, not a literal.** The
+`SPLITTY_API_BASE_URL` build setting is substituted into the `SplittyAPIBaseURL` key of
+`Info.plist`; `APIConfiguration` validates it (http/https, host present, trailing slash
+stripped) and `APIClient` resolves it once at init. Debug points at
+`http://localhost:8080`. **Release is deliberately empty**, so a Release build throws
+`APIError.missingBaseURL` on the first request rather than silently talking to a
+developer's machine — set the setting when there is a real host to point at.
+
+Cleartext is permitted only through `NSExceptionDomains` for `localhost` and `127.0.0.1`.
+There is no `NSAllowsArbitraryLoads`, so a Release build cannot reach an arbitrary
+cleartext host.
+
+There is no client method for deleting a group, and no route to call: a group is destroyed
+when its last member leaves (`POST /group/{groupId}/leave`).
 
 ## Local development
 
@@ -180,7 +191,6 @@ Live problems, not style preferences:
 
 - **Secrets are committed.** `appsettings.json` contains the JWT signing key
   (`SplittySuperReallySecureSecretKey`) and the database password in plaintext.
-- **`APIClient.swift` calls `DELETE /group/{id}`**, which no controller implements — 405s.
 - **`GenerateJwtToken` uses `DateTime.Now`** for `expires`; it's interpreted as UTC, so
   token lifetime is shifted by the host's UTC offset.
 

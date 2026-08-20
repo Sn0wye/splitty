@@ -38,10 +38,10 @@ struct GroupsView: View {
                     }
                 }
                 .refreshable {
-                    await viewModel.loadGroupsAsync()
+                    await viewModel.loadGroups()
                 }
-                .onAppear {
-                    viewModel.loadGroups()
+                .task {
+                    await viewModel.loadGroups()
                 }
                 
                 Spacer()

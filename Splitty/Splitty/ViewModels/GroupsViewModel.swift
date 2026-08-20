@@ -13,44 +13,20 @@ class GroupsViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var isLoading = false
     
-    func loadGroups() {
+    func loadGroups() async {
         isLoading = true
-        GroupService.fetchGroups { [weak self] result in
-            DispatchQueue.main.async {
-                self?.isLoading = false
-                switch result {
-                case .success(let fetchedGroups):
-                    print("✅ Loaded \(fetchedGroups.count) groups from /groups endpoint")
-                    for (index, group) in fetchedGroups.enumerated() {
-                        print("📋 Group \(index + 1): id=\(group.id), name='\(group.name)', netBalance=\(group.netBalance), members=\(group.members.count)")
-                    }
-                    self?.groups = fetchedGroups
-                case .failure(let error):
-                    print("❌ Failed to load groups: \(error.localizedDescription)")
-                    self?.errorMessage = error.localizedDescription
-                }
-            }
-        }
-    }
-    
-    func loadGroupsAsync() async {
-        isLoading = true
+        defer { isLoading = false }
+        
         do {
             let fetchedGroups = try await GroupService.shared.getGroups()
-            await MainActor.run {
-                print("✅ Loaded \(fetchedGroups.count) groups from /groups endpoint (async)")
-                for (index, group) in fetchedGroups.enumerated() {
-                    print("📋 Group \(index + 1): id=\(group.id), name='\(group.name)', netBalance=\(group.netBalance), members=\(group.members.count)")
-                }
-                self.groups = fetchedGroups
-                self.isLoading = false
+            print("✅ Loaded \(fetchedGroups.count) groups from /groups endpoint")
+            for (index, group) in fetchedGroups.enumerated() {
+                print("📋 Group \(index + 1): id=\(group.id), name='\(group.name)', netBalance=\(group.netBalance), members=\(group.members.count)")
             }
+            groups = fetchedGroups
         } catch {
-            await MainActor.run {
-                print("❌ Failed to load groups (async): \(error.localizedDescription)")
-                self.errorMessage = error.localizedDescription
-                self.isLoading = false
-            }
+            print("❌ Failed to load groups: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
         }
     }
 }

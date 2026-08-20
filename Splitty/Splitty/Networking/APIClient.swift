@@ -15,10 +15,14 @@ extension Notification.Name {
 class APIClient {
     static let shared = APIClient()
     
-    private let baseURL = "http://127.0.0.1:8080"
+    /// Resolved once at startup; a misconfigured build fails on every request rather
+    /// than falling back to a hardcoded host.
+    private let baseURL: Result<String, Error>
     private let session = URLSession.shared
     
-    private init() {}
+    private init() {
+        baseURL = Result { try APIConfiguration.baseURL() }
+    }
     
     // MARK: - Generic Request Method
     private func request<T: Codable>(
@@ -28,7 +32,7 @@ class APIClient {
         requiresAuth: Bool = true
     ) async throws -> T {
         
-        guard let url = URL(string: baseURL + endpoint) else {
+        guard let url = URL(string: try baseURL.get() + endpoint) else {
             throw APIError.invalidURL
         }
         
@@ -125,10 +129,6 @@ class APIClient {
         return try await request(endpoint: "/group/\(id)", method: .PUT, body: body)
     }
     
-    func deleteGroup(id: Int) async throws {
-        let _: EmptyResponse = try await request(endpoint: "/group/\(id)", method: .DELETE)
-    }
-    
     // MARK: - Expenses
     func getExpenses(groupId: Int) async throws -> [Expense] {
         return try await request(endpoint: "/group/\(groupId)/expenses")
@@ -189,6 +189,8 @@ class APIClient {
 }
 
 enum APIError: Error, LocalizedError {
+    case missingBaseURL
+    case invalidBaseURL(String)
     case invalidURL
     case noAuthToken
     case invalidRequestBody
@@ -199,6 +201,10 @@ enum APIError: Error, LocalizedError {
     
     var errorDescription: String? {
         switch self {
+        case .missingBaseURL:
+            return "No API base URL is configured for this build"
+        case .invalidBaseURL(let value):
+            return "Invalid API base URL: \(value)"
         case .invalidURL:
             return "Invalid URL"
         case .noAuthToken:

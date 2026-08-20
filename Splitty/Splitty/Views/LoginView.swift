@@ -62,7 +62,9 @@ struct LoginView: View {
                     }
                     
                     // Login Button
-                    Button(action: login) {
+                    Button {
+                        Task { await login() }
+                    } label: {
                         HStack {
                             if isLoading {
                                 ProgressView()
@@ -85,7 +87,9 @@ struct LoginView: View {
                     .padding(.top, 10)
                     
                     // Mock User Button (Temporary)
-                    Button(action: loginWithMockUser) {
+                    Button {
+                        Task { await loginWithMockUser() }
+                    } label: {
                         HStack {
                             Image(systemName: "person.circle")
                             Text("Login as John")
@@ -109,30 +113,26 @@ struct LoginView: View {
         }
     }
     
-    private func login() {
+    @MainActor
+    private func login() async {
         isLoading = true
         errorMessage = ""
+        defer { isLoading = false }
         
-        AuthService.shared.login(email: email, password: password) { result in
-            DispatchQueue.main.async {
-                isLoading = false
-                
-                switch result {
-                case .success(let user):
-                    print("✅ Login successful for user: \(user.name)")
-                    authManager.login()
-                    
-                case .failure(let error):
-                    errorMessage = "Login failed: \(error.localizedDescription)"
-                }
-            }
+        do {
+            let user = try await AuthService.shared.login(email: email, password: password)
+            print("✅ Login successful for user: \(user.name)")
+            authManager.login()
+        } catch {
+            errorMessage = "Login failed: \(error.localizedDescription)"
         }
     }
     
-    private func loginWithMockUser() {
+    @MainActor
+    private func loginWithMockUser() async {
         email = "john@example.com"
         password = "Test@123"
-        login()
+        await login()
     }
 }
 
