@@ -118,7 +118,7 @@ public sealed class BalanceRecomputationTests(ApiFactory factory)
     public async Task A_failed_recomputation_is_logged_with_its_group_id_and_the_worker_keeps_serving()
     {
         var logs = new CapturingLoggerProvider();
-        int poisonedGroupId = 0;
+        var poisonedGroup = new PoisonedGroup();
 
         await using var host = factory.WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
@@ -126,12 +126,12 @@ public sealed class BalanceRecomputationTests(ApiFactory factory)
                 services.AddSingleton<ILoggerProvider>(logs);
                 services.AddScoped<IBalanceService>(provider => new PoisonedBalanceService(
                     ActivatorUtilities.CreateInstance<BalanceService>(provider),
-                    () => poisonedGroupId));
+                    poisonedGroup));
             }));
 
         var poisoned = await GroupFixture.CreateAsync(host);
         var healthy = await GroupFixture.CreateAsync(host);
-        poisonedGroupId = poisoned.Id;
+        poisonedGroup.Id = poisoned.Id;
         await host.DrainProcessedAsync();
 
         await poisoned.CreateExpenseAsync(amount: 20m, share: 10m);
@@ -193,17 +193,27 @@ public sealed class BalanceRecomputationTests(ApiFactory factory)
             callers.Select(Path.GetFileName).Order().ToList());
     }
 
-    private sealed class PoisonedBalanceService(IBalanceService inner, Func<int> poisonedGroupId) : IBalanceService
+    /// <summary>
+    /// The group under test is chosen after the host is built, so the worker thread reads
+    /// what the test thread wrote.
+    /// </summary>
+    private sealed class PoisonedGroup
     {
-        public Task<List<Balance>> CalculateGroupBalances(int groupId) =>
-            groupId == poisonedGroupId()
+        private int _id;
+
+        public int Id
+        {
+            get => Volatile.Read(ref _id);
+            set => Volatile.Write(ref _id, value);
+        }
+    }
+
+    private sealed class PoisonedBalanceService(IBalanceService inner, PoisonedGroup poisoned)
+        : BalanceServiceDecorator(inner)
+    {
+        public override Task<List<Balance>> CalculateGroupBalances(int groupId) =>
+            groupId == poisoned.Id
                 ? throw new InvalidOperationException("recompute failed")
-                : inner.CalculateGroupBalances(groupId);
-
-        public Task<List<Balance>> GetGroupUserBalance(int groupId, int userId) =>
-            inner.GetGroupUserBalance(groupId, userId);
-
-        public Task SettleUp(int groupId, int userId, int peerId, decimal amount) =>
-            inner.SettleUp(groupId, userId, peerId, amount);
+                : base.CalculateGroupBalances(groupId);
     }
 }

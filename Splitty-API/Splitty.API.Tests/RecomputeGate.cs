@@ -41,19 +41,14 @@ public static class RecomputeGateExtensions
                     ActivatorUtilities.CreateInstance<BalanceService>(provider),
                     gate))));
 
-    private sealed class GatedBalanceService(IBalanceService inner, RecomputeGate gate) : IBalanceService
+    private sealed class GatedBalanceService(IBalanceService inner, RecomputeGate gate)
+        : BalanceServiceDecorator(inner)
     {
-        public async Task<List<Balance>> CalculateGroupBalances(int groupId)
+        public override async Task<List<Balance>> CalculateGroupBalances(int groupId)
         {
             gate.SignalEntered();
             await gate.WaitForReleaseAsync();
-            return await inner.CalculateGroupBalances(groupId);
+            return await base.CalculateGroupBalances(groupId);
         }
-
-        public Task<List<Balance>> GetGroupUserBalance(int groupId, int userId) =>
-            inner.GetGroupUserBalance(groupId, userId);
-
-        public Task SettleUp(int groupId, int userId, int peerId, decimal amount) =>
-            inner.SettleUp(groupId, userId, peerId, amount);
     }
 }

@@ -271,12 +271,14 @@ public class GroupController(
 
         if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
 
-        var balances = await balanceService.GetGroupUserBalance(groupId, int.Parse(userId));
+        // Read before the balances: a drain landing between the two reads then reports
+        // fresh balances as pending, rather than stale balances as settled.
+        var balancesPending = await groupService.AreBalancesPendingAsync(groupId);
 
         return Ok(new GroupBalanceSummaryResponse
         {
-            Balances = balances,
-            BalancesPending = await groupService.AreBalancesPendingAsync(groupId)
+            Balances = await balanceService.GetGroupUserBalance(groupId, int.Parse(userId)),
+            BalancesPending = balancesPending
         });
     }
     

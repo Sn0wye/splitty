@@ -51,7 +51,15 @@ public class GroupRepository(ApplicationDbContext context): IGroupRepository
         await context.SaveChangesAsync();
     }
 
-    public async Task SetBalancesPendingAsync(int groupId, bool pending)
+    public Task MarkBalancesPendingAsync(int groupId) => SetBalancesPendingAsync(groupId, true);
+
+    public Task MarkBalancesRecomputedAsync(int groupId) => SetBalancesPendingAsync(groupId, false);
+
+    // Updated in the database rather than through a tracked entity, so the flag can be written
+    // without loading the group's members and balances. The tracker is left untouched: a Group
+    // already loaded in this scope keeps its old flag value, so callers must not save one back
+    // after flipping the flag.
+    private async Task SetBalancesPendingAsync(int groupId, bool pending)
     {
         await context.Group
             .Where(g => g.Id == groupId)

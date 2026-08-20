@@ -9,6 +9,7 @@ public interface IGroupRepository
     Task<List<Group>> GetGroupsByUserId(int userId);
     Task UpdateAsync(Group group);
     Task DeleteAsync(Group group);
-    Task SetBalancesPendingAsync(int groupId, bool pending);
+    Task MarkBalancesPendingAsync(int groupId);
+    Task MarkBalancesRecomputedAsync(int groupId);
     Task<bool> GetBalancesPendingAsync(int groupId);
 }
