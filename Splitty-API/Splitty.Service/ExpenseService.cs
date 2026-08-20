@@ -12,7 +12,7 @@ public class ExpenseService(
 {
     public async Task<Expense> CreateAsync(CreateExpenseDTO dto, int userId)
     {
-        EnsureExpenseSplitInvariants(ExpenseType.Expense, dto.Amount, dto.ExpenseSplits.Select(s => s.Amount));
+        ExpenseSplitInvariants.Ensure(ExpenseType.Expense, dto.Amount, dto.ExpenseSplits.Select(s => s.Amount));
 
         var splits = dto.ExpenseSplits;
 
@@ -82,7 +82,7 @@ public class ExpenseService(
             ? dto.ExpenseSplits.Select(s => s.Amount)
             : expense.Splits.Select(s => s.Amount);
 
-        EnsureExpenseSplitInvariants(expense.Type, resultingAmount, resultingSplits);
+        ExpenseSplitInvariants.Ensure(expense.Type, resultingAmount, resultingSplits);
 
         expense.Amount = resultingAmount;
         expense.Description = dto.Description ?? expense.Description;
@@ -117,33 +117,6 @@ public class ExpenseService(
         foreach (var userId in userIds.Distinct())
         {
             await EnsureMemberAsync(groupId, userId);
-        }
-    }
-
-    private static void EnsureExpenseSplitInvariants(ExpenseType type, decimal amount, IEnumerable<decimal>? splitAmounts)
-    {
-        if (type != ExpenseType.Expense) return;
-
-        var splits = splitAmounts?.ToList();
-
-        if (splits is null || splits.Count == 0)
-        {
-            throw new ArgumentException("An expense must have at least one split.");
-        }
-
-        if (amount <= 0)
-        {
-            throw new ArgumentException("Expense amount must be greater than zero.");
-        }
-
-        if (splits.Any(split => split <= 0))
-        {
-            throw new ArgumentException("Expense splits must be greater than zero.");
-        }
-
-        if (splits.Sum() != amount)
-        {
-            throw new ArgumentException("Expense splits must sum to the total.");
         }
     }
 }
