@@ -24,7 +24,7 @@ public sealed class BalanceRecomputeQueue(
 {
     public async Task EnqueueAsync(int groupId, CancellationToken cancellationToken = default)
     {
-        await groupRepository.SetBalancesPendingAsync(groupId, true);
+        await groupRepository.MarkBalancesPendingAsync(groupId);
         await channel.Writer.WriteAsync(new TransactionRequest(groupId), cancellationToken);
     }
 }

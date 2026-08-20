@@ -25,7 +25,7 @@ public class TransactionBackgroundService(
                 await balanceService.CalculateGroupBalances(request.groupId);
 
                 var groupRepository = scope.ServiceProvider.GetRequiredService<IGroupRepository>();
-                await groupRepository.SetBalancesPendingAsync(request.groupId, false);
+                await groupRepository.MarkBalancesRecomputedAsync(request.groupId);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
