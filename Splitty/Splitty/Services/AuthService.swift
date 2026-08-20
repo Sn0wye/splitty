@@ -54,28 +54,3 @@ class AuthService {
         return try await APIClient.shared.getProfile()
     }
 }
-
-// MARK: - Convenience methods for existing callback-based code
-extension AuthService {
-    func login(email: String, password: String, completion: @escaping (Result<User, Error>) -> Void) {
-        Task {
-            do {
-                let user = try await login(email: email, password: password)
-                completion(.success(user))
-            } catch {
-                completion(.failure(error))
-            }
-        }
-    }
-    
-    func register(name: String, email: String, password: String, completion: @escaping (Result<User, Error>) -> Void) {
-        Task {
-            do {
-                let user = try await register(name: name, email: email, password: password)
-                completion(.success(user))
-            } catch {
-                completion(.failure(error))
-            }
-        }
-    }
-}

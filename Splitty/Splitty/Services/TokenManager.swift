@@ -102,12 +102,4 @@ class TokenManager {
         // For now, we'll just check the format
         return true
     }
-    
-    // MARK: - Get Bearer Token for API calls
-    func getBearerToken() -> String? {
-        guard let token = getToken(), isTokenValid() else {
-            return nil
-        }
-        return "Bearer \(token)"
-    }
 }

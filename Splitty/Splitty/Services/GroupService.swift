@@ -28,10 +28,6 @@ class GroupService {
         return try await APIClient.shared.updateGroup(id: id, name: name, description: description)
     }
     
-    func deleteGroup(id: Int) async throws {
-        return try await APIClient.shared.deleteGroup(id: id)
-    }
-    
     /// Redeems an invite code. The response identifies the group — the caller never
     /// supplies a group id. Redeeming a code for a group you already belong to
     /// succeeds and returns that group.

@@ -26,6 +26,8 @@ class GroupViewModel: ObservableObject {
         async let groupResult = GroupService.shared.getGroup(id: groupId)
         async let expensesResult = ExpenseService.shared.getExpenses(groupId: groupId)
         
+        // Both loads run to completion even if one fails; the later failure wins the
+        // single errorMessage slot.
         do {
             group = try await groupResult
         } catch {
