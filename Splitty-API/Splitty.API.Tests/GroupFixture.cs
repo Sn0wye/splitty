@@ -17,19 +17,35 @@ public sealed class GroupFixture
 
     private readonly WebApplicationFactory<Program> _factory;
 
-    private GroupFixture(WebApplicationFactory<Program> factory, int id, ApiClient owner, int ownerId, int guestId)
+    private GroupFixture(
+        WebApplicationFactory<Program> factory,
+        int id,
+        ApiClient owner,
+        int ownerId,
+        ApiClient guest,
+        int guestId,
+        string guestToken)
     {
         _factory = factory;
         Id = id;
         Owner = owner;
         OwnerId = ownerId;
+        Guest = guest;
         GuestId = guestId;
+        GuestToken = guestToken;
     }
 
     public int Id { get; }
     public ApiClient Owner { get; }
     public int OwnerId { get; }
+    public ApiClient Guest { get; }
     public int GuestId { get; }
+
+    /// <summary>
+    /// Lets a test reach the same guest through a differently configured host, which is how
+    /// an assertion about the gated worker still acts as a real member.
+    /// </summary>
+    public string GuestToken { get; }
 
     public static async Task<GroupFixture> CreateAsync(WebApplicationFactory<Program> factory)
     {
@@ -42,7 +58,7 @@ public sealed class GroupFixture
         var guest = ApiClient.Create(factory, guestUser.Token);
         (await guest.AcceptInviteAsync(code)).EnsureSuccessStatusCode();
 
-        return new GroupFixture(factory, groupId, owner, ownerUser.Id, guestUser.Id);
+        return new GroupFixture(factory, groupId, owner, ownerUser.Id, guest, guestUser.Id, guestUser.Token);
     }
 
     public async Task<int> CreateExpenseAsync(decimal amount, decimal share)

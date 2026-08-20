@@ -73,6 +73,16 @@ public class BalanceService(
 
     public async Task SettleUp(int groupId, int userId, int peerId, decimal amount)
     {
+        if (userId == peerId)
+        {
+            throw new ArgumentException("A settlement must be recorded against another member.");
+        }
+
+        if (amount <= 0)
+        {
+            throw new ArgumentException("Settlement amount must be greater than zero.");
+        }
+
         await EnsureMemberAsync(groupId, userId);
         await EnsureMemberAsync(groupId, peerId);
 
@@ -81,6 +91,14 @@ public class BalanceService(
         if (payee is null)
         {
             throw new KeyNotFoundException("User not found");
+        }
+
+        var owed = await AmountOwedAsync(groupId, userId, peerId);
+
+        if (amount > owed)
+        {
+            throw new ArgumentException(
+                $"Settlement amount exceeds the {owed} owed to {payee.Name}.");
         }
 
         var settleExpense = new Expense
@@ -105,7 +123,25 @@ public class BalanceService(
             }
         };
 
+        ExpenseSplitInvariants.Ensure(
+            settleExpense.Type,
+            settleExpense.Amount,
+            settleExpense.Splits.Select(s => s.Amount));
+
         await expenseRepository.CreateAsync(settleExpense);
+    }
+
+    /// <summary>
+    /// What the caller may still settle with this peer, read from the stored pairwise row
+    /// rather than recomputed. The replay credits the payer, so a negative amount on the
+    /// caller's row is what the caller owes; anything else, including a group whose balances
+    /// the worker has not written yet, leaves nothing to settle.
+    /// </summary>
+    private async Task<decimal> AmountOwedAsync(int groupId, int userId, int peerId)
+    {
+        var balance = await balanceRepository.GetPairwiseBalanceAsync(userId, peerId, groupId);
+
+        return balance is { Amount: < 0 } ? -balance.Amount : 0;
     }
 
     private async Task EnsureMemberAsync(int groupId, int userId)

@@ -98,13 +98,19 @@ public sealed class BalanceRecomputationTests(ApiFactory factory)
     [Fact]
     public async Task Settling_up_marks_balances_pending()
     {
+        // The settle cap reads balances the worker wrote, so the expense has to be replayed
+        // before the gate goes up: a gated group has no balances and nothing to settle.
+        var group = await GroupFixture.CreateAsync(factory);
+        await factory.DrainProcessedAsync();
+        await group.CreateExpenseAsync(amount: 20m, share: 10m);
+        await factory.WaitForProcessedAsync();
+
         using var gate = new RecomputeGate();
         await using var gated = factory.WithGate(gate);
-
-        var group = await GroupFixture.CreateAsync(gated);
         await gated.DrainProcessedAsync();
 
-        (await group.Owner.SettleUpAsync(group.Id, new { withUserId = group.GuestId, amount = 5m }))
+        var guest = ApiClient.Create(gated, group.GuestToken);
+        (await guest.SettleUpAsync(group.Id, new { withUserId = group.OwnerId, amount = 5m }))
             .EnsureSuccessStatusCode();
 
         await gate.WaitForEntryAsync();

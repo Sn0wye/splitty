@@ -149,6 +149,10 @@ public class ApplicationDbContext : DbContext
             entity.HasKey(b => b.Id);
             entity.Property(b => b.Amount).IsRequired().HasColumnType("decimal(18,2)");
 
+            // The settle cap reads one row by this triple. Not unique: the replay is the
+            // sole writer and uniqueness there is enforced by that, not by the schema.
+            entity.HasIndex(b => new { b.GroupId, b.UserId, b.PeerId });
+
             entity.HasOne(b => b.User)
                 .WithMany()
                 .HasForeignKey(b => b.UserId)
