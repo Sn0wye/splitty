@@ -21,6 +21,7 @@ class GroupViewModel: ObservableObject {
     func loadGroupData(groupId: Int) async {
         isLoading = true
         errorMessage = ""
+        defer { isLoading = false }
         
         print("🔄 Loading group data for groupId: \(groupId)")
         
@@ -28,7 +29,8 @@ class GroupViewModel: ObservableObject {
         async let groupDetail = GroupService.shared.getGroup(id: groupId)
         async let groupExpenses = ExpenseService.shared.getExpenses(groupId: groupId)
         
-        // Each load reports its own failure, so one failing does not hide the other.
+        // Both loads run to completion even if one fails; the later failure wins the
+        // single errorMessage slot.
         do {
             let group = try await groupDetail
             print("✅ Group details loaded: \(group.name)")
@@ -55,7 +57,6 @@ class GroupViewModel: ObservableObject {
             errorMessage = "Failed to load expenses: \(error.localizedDescription)"
         }
         
-        isLoading = false
         print("🏁 Finished loading group data")
     }
 }

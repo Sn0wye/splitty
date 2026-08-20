@@ -58,10 +58,13 @@ struct APIConfigurationTests {
         }
     }
 
-    // The app itself must resolve a base URL from its own bundle, or every request fails.
-    @Test func theAppBundleCarriesABaseURL() throws {
+    // A Debug build must resolve a base URL from its own bundle, or every request fails.
+    // Release deliberately ships an empty setting, so this only holds for Debug.
+    #if DEBUG
+    @Test func theDebugAppBundleCarriesABaseURL() throws {
         // The test target is hosted by the app, so `.main` is the app bundle.
         let resolved = try APIConfiguration.baseURL()
         #expect(!resolved.isEmpty)
     }
+    #endif
 }

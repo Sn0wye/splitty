@@ -161,14 +161,15 @@ SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
 **The API base URL comes from the build configuration, not a literal.** The
 `SPLITTY_API_BASE_URL` build setting is substituted into the `SplittyAPIBaseURL` key of
 `Info.plist`; `APIConfiguration` validates it (http/https, host present, trailing slash
-stripped) and `APIClient` resolves it once at init. Debug points at
+stripped) and `APIClient` resolves it once at init, then rethrows on every request. Debug points at
 `http://localhost:8080`. **Release is deliberately empty**, so a Release build throws
 `APIError.missingBaseURL` on the first request rather than silently talking to a
 developer's machine — set the setting when there is a real host to point at.
 
-Cleartext is permitted only through `NSExceptionDomains` for `localhost` and `127.0.0.1`.
-There is no `NSAllowsArbitraryLoads`, so a Release build cannot reach an arbitrary
-cleartext host.
+Cleartext is permitted only through an `NSExceptionDomains` entry for `localhost` — ATS
+matches domain names, not IP literals, so point the base URL at `localhost` rather than
+`127.0.0.1`. There is no `NSAllowsArbitraryLoads`, so a Release build cannot reach an
+arbitrary cleartext host.
 
 There is no client method for deleting a group, and no route to call: a group is destroyed
 when its last member leaves (`POST /group/{groupId}/leave`).

@@ -57,8 +57,8 @@ struct GroupView: View {
                 }
             }
         }
-        .task {
-            await viewModel.loadGroupData(groupId: groupId)
+        .onAppear {
+            Task { await viewModel.loadGroupData(groupId: groupId) }
         }
     }
     
