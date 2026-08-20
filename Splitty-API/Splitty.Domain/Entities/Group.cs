@@ -16,6 +16,12 @@ public class Group
     public int CreatedBy { get; set; }
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Set whenever a balance recomputation is enqueued, cleared by the worker once it replays.
+    /// A display hint only: nothing branches on it for correctness.
+    /// </summary>
+    public bool BalancesPending { get; set; }
     
     public virtual User CreatedByUser { get; set; }
     

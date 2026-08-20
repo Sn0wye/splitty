@@ -79,6 +79,40 @@ public sealed class ApiClient
 
     public Task<HttpResponseMessage> UpdateExpenseAsync(int groupId, int expenseId, object body) =>
         _http.PutAsJsonAsync($"/group/{groupId}/expenses/{expenseId}", body);
+
+    public Task<HttpResponseMessage> RequestSummaryRefreshAsync(int groupId) =>
+        _http.PostAsync($"/group/{groupId}/expenses/summary", null);
+
+    public Task<HttpResponseMessage> GetSummaryAsync(int groupId) =>
+        _http.GetAsync($"/group/{groupId}/expenses/summary");
+
+    public Task<HttpResponseMessage> SettleUpAsync(int groupId, object body) =>
+        _http.PostAsJsonAsync($"/group/{groupId}/settle", body);
+
+    public async Task<BalanceSummary> ReadSummaryAsync(int groupId)
+    {
+        var response = await GetSummaryAsync(groupId);
+        response.EnsureSuccessStatusCode();
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(Json);
+        var balances = body.GetProperty("balances")
+            .EnumerateArray()
+            .Select(b => new BalanceEntry(
+                b.GetProperty("userId").GetInt32(),
+                b.GetProperty("peerId").GetInt32(),
+                b.GetProperty("amount").GetDecimal()))
+            .ToList();
+
+        return new BalanceSummary(balances, body.GetProperty("balancesPending").GetBoolean());
+    }
 }
 
 public readonly record struct RegisteredUser(int Id, string Name, string Email, string Token);
+
+public sealed record BalanceSummary(IReadOnlyList<BalanceEntry> Balances, bool BalancesPending)
+{
+    public decimal AmountOwedBy(int userId, int peerId) =>
+        Balances.Single(b => b.UserId == userId && b.PeerId == peerId).Amount;
+}
+
+public readonly record struct BalanceEntry(int UserId, int PeerId, decimal Amount);

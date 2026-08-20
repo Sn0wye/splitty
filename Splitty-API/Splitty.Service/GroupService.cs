@@ -151,4 +151,9 @@ public class GroupService(
     {
         return await groupMembershipRepository.GetGroupMembershipByUserIdAndGroupId(userId, groupId) is not null;
     }
+
+    public async Task<bool> AreBalancesPendingAsync(int groupId)
+    {
+        return await groupRepository.GetBalancesPendingAsync(groupId);
+    }
 }

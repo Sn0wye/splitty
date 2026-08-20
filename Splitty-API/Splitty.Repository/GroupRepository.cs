@@ -50,4 +50,19 @@ public class GroupRepository(ApplicationDbContext context): IGroupRepository
         context.Group.Remove(group);
         await context.SaveChangesAsync();
     }
+
+    public async Task SetBalancesPendingAsync(int groupId, bool pending)
+    {
+        await context.Group
+            .Where(g => g.Id == groupId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(g => g.BalancesPending, pending));
+    }
+
+    public async Task<bool> GetBalancesPendingAsync(int groupId)
+    {
+        return await context.Group
+            .Where(g => g.Id == groupId)
+            .Select(g => g.BalancesPending)
+            .FirstOrDefaultAsync();
+    }
 }
