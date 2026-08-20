@@ -12,5 +12,9 @@ public class CreateExpenseRequest
     [Required(ErrorMessage = "Description is required")]
     public required string Description { get; set; }
     
-    public List<ExpenseSplitDTO>? Splits { get; set; }
+    /// <summary>
+    /// Required rather than nullable so a payload omitting it is rejected by the JSON
+    /// deserializer, before any handler has to treat "absent" and "empty" the same way.
+    /// </summary>
+    public required List<ExpenseSplitDTO> Splits { get; set; }
 }

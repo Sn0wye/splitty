@@ -198,7 +198,7 @@ public class GroupController(
             Description = request.Description,
             GroupId = groupId,
             PaidBy = request.PaidBy,
-            ExpenseSplits = request.Splits ?? []
+            ExpenseSplits = request.Splits
         };
 
         var expense = await expenseService.CreateAsync(dto, int.Parse(userId));
