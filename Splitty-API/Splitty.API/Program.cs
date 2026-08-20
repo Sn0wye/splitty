@@ -127,6 +127,7 @@ builder.Services.AddScoped<IInviteService, InviteService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 
 // Background
+builder.Services.AddScoped<IBalanceRecomputeQueue, BalanceRecomputeQueue>();
 builder.Services.AddSingleton<TransactionProcessedSignal>();
 builder.Services.AddHostedService<TransactionBackgroundService>();
 

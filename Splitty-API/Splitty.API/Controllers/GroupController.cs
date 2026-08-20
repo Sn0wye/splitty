@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using System.Threading.Channels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Splitty.Background;
@@ -19,7 +18,7 @@ public class GroupController(
     IExpenseService expenseService,
     IBalanceService balanceService,
     IInviteService inviteService,
-    Channel<TransactionRequest> balanceChannel
+    IBalanceRecomputeQueue balanceRecomputeQueue
 ) : ControllerBase
 {
     [HttpPost]
@@ -204,7 +203,7 @@ public class GroupController(
 
         var expense = await expenseService.CreateAsync(dto, int.Parse(userId));
         
-        await balanceChannel.Writer.WriteAsync(new TransactionRequest(groupId));
+        await balanceRecomputeQueue.EnqueueAsync(groupId);
 
         return Ok(expense);
     }
@@ -240,13 +239,17 @@ public class GroupController(
 
         var expense = await expenseService.UpdateAsync(dto, int.Parse(userId));
         
-        await balanceChannel.Writer.WriteAsync(new TransactionRequest(groupId));
+        await balanceRecomputeQueue.EnqueueAsync(groupId);
         
         return Ok(expense);
     }
     
+    /// <summary>
+    /// Requests a recomputation rather than performing one. Replaying inline would race the
+    /// worker replaying the same group, and both would insert the pairwise row neither found.
+    /// </summary>
     [HttpPost("{groupId}/expenses/summary")]
-    public async Task<ActionResult<List<Balance>>> CalculateExpenseSummary(int groupId)
+    public async Task<ActionResult> RequestExpenseSummaryRefresh(int groupId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -254,13 +257,13 @@ public class GroupController(
 
         if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
 
-        var balances = await balanceService.CalculateGroupBalances(groupId);
+        await balanceRecomputeQueue.EnqueueAsync(groupId);
 
-        return Ok(balances);
+        return Accepted();
     }
     
     [HttpGet("{groupId}/expenses/summary")]
-    public async Task<ActionResult<List<Balance>>> GetExpenseSummary(int groupId)
+    public async Task<ActionResult<GroupBalanceSummaryResponse>> GetExpenseSummary(int groupId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -270,7 +273,11 @@ public class GroupController(
 
         var balances = await balanceService.GetGroupUserBalance(groupId, int.Parse(userId));
 
-        return Ok(balances);
+        return Ok(new GroupBalanceSummaryResponse
+        {
+            Balances = balances,
+            BalancesPending = await groupService.AreBalancesPendingAsync(groupId)
+        });
     }
     
     [HttpPost("{groupId}/settle")]
@@ -284,7 +291,7 @@ public class GroupController(
 
         await balanceService.SettleUp(groupId, int.Parse(userId), request.WithUserId, request.Amount);
 
-        await balanceChannel.Writer.WriteAsync(new TransactionRequest(groupId));
+        await balanceRecomputeQueue.EnqueueAsync(groupId);
 
         return Ok();
     }

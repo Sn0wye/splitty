@@ -21,4 +21,5 @@ public interface IGroupService
     Task<MembershipRemovalStatus> LeaveAsync(int groupId, int userId);
     Task<MembershipRemovalStatus> RemoveMemberAsync(int groupId, int actorId, int targetUserId);
     Task<bool> IsMemberAsync(int groupId, int userId);
+    Task<bool> AreBalancesPendingAsync(int groupId);
 }

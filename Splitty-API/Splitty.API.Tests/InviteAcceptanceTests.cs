@@ -88,6 +88,9 @@ public sealed class InviteAcceptanceTests
         public Task<MembershipRemovalStatus> RemoveMemberAsync(int groupId, int actorId, int targetUserId) =>
             inner.RemoveMemberAsync(groupId, actorId, targetUserId);
 
+        public Task<bool> AreBalancesPendingAsync(int groupId) =>
+            inner.AreBalancesPendingAsync(groupId);
+
         public Task<bool> IsMemberAsync(int groupId, int userId) =>
             inner.IsMemberAsync(groupId, userId);
     }

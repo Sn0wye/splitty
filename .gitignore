@@ -8,3 +8,4 @@ riderModule.iml
 # XCode
 *.xcuserstate
 xcuserdata/
+.DS_Store

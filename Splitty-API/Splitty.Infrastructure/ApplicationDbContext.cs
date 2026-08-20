@@ -49,6 +49,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(g => g.Description).HasMaxLength(500);
             entity.Property(g => g.CreatedAt).IsRequired();
             entity.Property(g => g.CreatedBy).IsRequired();
+            entity.Property(g => g.BalancesPending).IsRequired().HasDefaultValue(false);
 
             entity.HasOne(g => g.CreatedByUser)
                 .WithMany()

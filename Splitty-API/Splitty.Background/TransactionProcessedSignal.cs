@@ -8,4 +8,7 @@ public sealed class TransactionProcessedSignal
 
     public Task WaitAsync(CancellationToken cancellationToken = default) =>
         _processed.WaitAsync(cancellationToken);
+
+    public Task<bool> WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default) =>
+        _processed.WaitAsync(timeout, cancellationToken);
 }

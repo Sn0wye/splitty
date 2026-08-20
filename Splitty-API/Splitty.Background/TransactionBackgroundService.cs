@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Splitty.Repository.Interfaces;
 using Splitty.Service.Interfaces;
 
 namespace Splitty.Background;
@@ -22,6 +23,9 @@ public class TransactionBackgroundService(
                 using var scope = serviceScopeFactory.CreateScope();
                 var balanceService = scope.ServiceProvider.GetRequiredService<IBalanceService>();
                 await balanceService.CalculateGroupBalances(request.groupId);
+
+                var groupRepository = scope.ServiceProvider.GetRequiredService<IGroupRepository>();
+                await groupRepository.SetBalancesPendingAsync(request.groupId, false);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
