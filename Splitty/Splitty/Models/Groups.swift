@@ -11,7 +11,7 @@ import Foundation
 struct Group: Codable, Identifiable {
     let id: Int
     let name: String
-    let description: String
+    let description: String?
     let netBalance: Double
     let createdAt: String
     let members: [GroupMember]
