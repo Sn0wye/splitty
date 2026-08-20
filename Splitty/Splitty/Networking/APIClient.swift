@@ -117,16 +117,22 @@ class APIClient {
         return try await request(endpoint: "/group/\(id)")
     }
     
-    func createGroup(name: String, description: String) async throws -> Group {
-        let body = ["name": name, "description": description]
+    func createGroup(name: String, description: String?) async throws -> GroupMutationResponse {
+        var body: [String: Any] = ["name": name]
+        if let description = description { body["description"] = description }
         return try await request(endpoint: "/group", method: .POST, body: body)
     }
     
-    func updateGroup(id: Int, name: String?, description: String?) async throws -> Group {
+    func updateGroup(id: Int, name: String?, description: String?) async throws -> GroupMutationResponse {
         var body: [String: Any] = [:]
         if let name = name { body["name"] = name }
         if let description = description { body["description"] = description }
         return try await request(endpoint: "/group/\(id)", method: .PUT, body: body)
+    }
+    
+    // MARK: - Invites
+    func redeemInvite(code: String) async throws -> GroupDetail {
+        return try await request(endpoint: "/invite/\(code)/accept", method: .POST)
     }
     
     // MARK: - Expenses
@@ -235,10 +241,18 @@ struct LoginResponse: Codable {
     let user: User
 }
 
+// POST /group and PUT /group/{id} return the Group entity, which carries neither
+// netBalance nor MemberDTO rows. Only these fields are safe to decode.
+struct GroupMutationResponse: Codable, Identifiable {
+    let id: Int
+    let name: String
+    let description: String?
+}
+
 struct GroupDetail: Codable, Identifiable {
     let id: Int
     let name: String
-    let description: String
+    let description: String?
     let netBalance: Double
     let createdAt: String
     let members: [GroupMember]

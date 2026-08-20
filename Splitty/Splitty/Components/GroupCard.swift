@@ -15,7 +15,7 @@ struct GroupCard: View {
     }
     
     var body: some View {
-        NavigationLink(destination: GroupView(groupId: group.id)) {
+        NavigationLink(value: group.id) {
             VStack {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading) {

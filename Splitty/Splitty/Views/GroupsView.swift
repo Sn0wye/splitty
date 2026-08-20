@@ -9,9 +9,12 @@ import SwiftUI
 
 struct GroupsView: View {
     @StateObject private var viewModel = GroupsViewModel()
+    @State private var path: [Int] = []
+    @State private var showingCreateSheet = false
+    @State private var showingJoinSheet = false
     
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             VStack(alignment: .leading) {
 
                 HStack {
@@ -24,6 +27,16 @@ struct GroupsView: View {
                     }
                     
                     Spacer()
+                    
+                    Menu {
+                        Button("New group") { showingCreateSheet = true }
+                        Button("Join with code") { showingJoinSheet = true }
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .foregroundColor(Color("foreground"))
+                    }
+                    .padding(.trailing, 12)
                     
                     Avatar()
                 }
@@ -40,13 +53,38 @@ struct GroupsView: View {
                 .refreshable {
                     await viewModel.loadGroups()
                 }
-                .onAppear {
-                    Task { await viewModel.loadGroups() }
-                }
                 
                 Spacer()
             }
             .background(Color("background").ignoresSafeArea())
+            .navigationDestination(for: Int.self) { groupId in
+                GroupView(groupId: groupId)
+            }
+            .task {
+                await viewModel.loadGroups()
+            }
+            .onChange(of: path) { _, newPath in
+                // Coming back from a group picks up any edit made in there.
+                if newPath.isEmpty {
+                    Task { await viewModel.loadGroups() }
+                }
+            }
+            .sheet(isPresented: $showingCreateSheet) {
+                GroupFormSheet { groupId in
+                    Task {
+                        await viewModel.loadGroups()
+                        path.append(groupId)
+                    }
+                }
+            }
+            .sheet(isPresented: $showingJoinSheet) {
+                JoinGroupSheet { group in
+                    Task {
+                        await viewModel.loadGroups()
+                        path.append(group.id)
+                    }
+                }
+            }
         }
     }
 }

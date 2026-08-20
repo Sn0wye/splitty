@@ -11,54 +11,59 @@ struct GroupView: View {
     let groupId: Int
     @StateObject private var viewModel = GroupViewModel()
     @Environment(\.dismiss) private var dismiss
+    @State private var showingEditSheet = false
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color("background")
-                    .ignoresSafeArea()
-                
-                if viewModel.isLoading {
-                    ProgressView("Loading...")
-                        .foregroundColor(Color("foreground"))
-                } else {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            // Header Section
-                            headerSection
-                            
-                            // Action Buttons
-                            actionButtonsSection
-                            
-                            // Expenses List
-                            expensesList
-                        }
+        ZStack {
+            Color("background")
+                .ignoresSafeArea()
+            
+            if viewModel.isLoading {
+                ProgressView("Loading...")
+                    .foregroundColor(Color("foreground"))
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Header Section
+                        headerSection
+                        
+                        // Action Buttons
+                        actionButtonsSection
+                        
+                        // Expenses List
+                        expensesList
                     }
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { dismiss() }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "chevron.left")
-                            Text("Groups")
-                        }
-                        .foregroundColor(Color("foreground"))
-                    }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Edit") {
-                        // TODO: Edit action
+        }
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: { dismiss() }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("Groups")
                     }
                     .foregroundColor(Color("foreground"))
                 }
             }
+            
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Edit") {
+                    showingEditSheet = true
+                }
+                .foregroundColor(Color("foreground"))
+                .disabled(viewModel.group == nil)
+            }
         }
-        .onAppear {
-            Task { await viewModel.loadGroupData(groupId: groupId) }
+        .sheet(isPresented: $showingEditSheet) {
+            GroupFormSheet(group: viewModel.group) { _ in
+                Task { await viewModel.loadGroupData(groupId: groupId) }
+            }
+        }
+        .task {
+            await viewModel.loadGroupData(groupId: groupId)
         }
     }
     

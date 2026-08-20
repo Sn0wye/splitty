@@ -23,40 +23,23 @@ class GroupViewModel: ObservableObject {
         errorMessage = ""
         defer { isLoading = false }
         
-        print("🔄 Loading group data for groupId: \(groupId)")
-        
-        // Load group details and expenses concurrently
-        async let groupDetail = GroupService.shared.getGroup(id: groupId)
-        async let groupExpenses = ExpenseService.shared.getExpenses(groupId: groupId)
+        async let groupResult = GroupService.shared.getGroup(id: groupId)
+        async let expensesResult = ExpenseService.shared.getExpenses(groupId: groupId)
         
         // Both loads run to completion even if one fails; the later failure wins the
         // single errorMessage slot.
         do {
-            let group = try await groupDetail
-            print("✅ Group details loaded: \(group.name)")
-            self.group = group
+            group = try await groupResult
         } catch {
-            print("❌ Failed to load group: \(error)")
             errorMessage = "Failed to load group: \(error.localizedDescription)"
         }
         
         do {
-            let expenses = try await groupExpenses
-            print("✅ Expenses loaded: \(expenses.count) expenses")
-            for expense in expenses {
-                print("📝 Expense: \(expense.id) - \(expense.description) - \(expense.amount)")
-            }
-            self.expenses = expenses
-            groupedExpenses = Expense.groupExpensesByDate(expenses)
-            print("📅 Grouped expenses: \(groupedExpenses.count) groups")
-            for group in groupedExpenses {
-                print("📅 Group: \(group.dateString) - \(group.expenses.count) expenses")
-            }
+            let loadedExpenses = try await expensesResult
+            expenses = loadedExpenses
+            groupedExpenses = Expense.groupExpensesByDate(loadedExpenses)
         } catch {
-            print("❌ Failed to load expenses: \(error)")
             errorMessage = "Failed to load expenses: \(error.localizedDescription)"
         }
-        
-        print("🏁 Finished loading group data")
     }
 }
