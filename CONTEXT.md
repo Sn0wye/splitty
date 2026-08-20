@@ -66,6 +66,17 @@ These are the rules the domain actually depends on:
 3. **Every group sub-resource checks membership.** Controller actions under
    `/group/{groupId}/...` call `groupService.IsMemberAsync(...)` and return `Forbid()`.
    Adding an endpoint without that check is the failure mode to watch for.
+4. **The balance replay has exactly one caller: the background worker.** Nothing in the
+   code enforces this — no visibility modifier, no analyzer, no constraint. It is what makes
+   duplicate pairwise rows impossible without a unique index on `(UserId, PeerId, GroupId)`,
+   so a second call site reintroduces the duplicates silently. A test pins the caller list;
+   this entry is why it exists. Request a recomputation, never perform one.
+5. **Settlements are capped at what the caller currently owes the peer.** Recording a
+   settlement stays unilateral — one member, one request, no counterparty confirmation — but
+   it cannot exceed the debt. The cap reads the eventually-consistent balance table rather
+   than a live aggregate, which is deliberate: an over-tight cap is a retryable `400`, not a
+   wrong number. The consequence is that a group whose balances the worker has not written
+   yet caps at zero and rejects every settlement.
 
 ## Balance recomputation
 
@@ -74,17 +85,29 @@ Balances are **derived state, recomputed wholesale** — never incrementally pat
 `BalanceService.CalculateGroupBalances` zeroes every balance for the group, replays all
 expenses and splits, and writes the result back. It's idempotent by construction.
 
-It runs asynchronously. Controllers that mutate money write to a channel instead of
-recomputing inline:
+It runs asynchronously. Controllers that mutate money enqueue instead of recomputing
+inline:
 
 ```csharp
-await balanceChannel.Writer.WriteAsync(new TransactionRequest(groupId));
+await balanceRecomputeQueue.EnqueueAsync(groupId);
 ```
 
-`Channel<TransactionRequest>` is an unbounded singleton with `SingleReader = true`;
-`TransactionBackgroundService` drains it. So **balances are eventually consistent** —
-right after creating an expense, a read may still return pre-expense numbers. The client
-must not assume a write is immediately reflected.
+`IBalanceRecomputeQueue` is the only supported way to ask for a recomputation — it marks
+the group pending and then writes to the channel, in that order, since queueing first lets
+the worker clear a flag the caller has not set yet. `Channel<TransactionRequest>` is an
+unbounded singleton with `SingleReader = true`; `TransactionBackgroundService` drains it,
+resolving a fresh scope per message.
+
+So **balances are eventually consistent** — right after creating an expense, a read may
+still return pre-expense numbers. The client must not assume a write is immediately
+reflected.
+
+`Group.BalancesPending`, surfaced as `balancesPending` on the summary response, says a
+recomputation is outstanding. It is a **display hint only**: it exists so a client can show
+a spinner instead of presenting stale numbers as final. Nothing branches on it for
+correctness, and nothing should — it is written and cleared by the queue and the worker, so
+treating it as a lock or a read barrier would be trusting a flag that is itself eventually
+consistent.
 
 ## Auth
 
@@ -148,10 +171,6 @@ Live problems, not style preferences:
 
 - **Secrets are committed.** `appsettings.json` contains the JWT signing key
   (`SplittySuperReallySecureSecretKey`) and the database password in plaintext.
-- **Captive dependency.** `TransactionBackgroundService` resolves `IBalanceService` from a
-  scope created once in its constructor and never disposed, so a scoped `DbContext` lives
-  for the process lifetime and accumulates tracked entities.
-- **`GetGroupById` returns `Ok(null)`** for non-members instead of 403/404.
 - **`APIClient.swift` calls `DELETE /group/{id}`**, which no controller implements — 405s.
 - **`GenerateJwtToken` uses `DateTime.Now`** for `expires`; it's interpreted as UTC, so
   token lifetime is shifted by the host's UTC offset.
