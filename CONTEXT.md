@@ -46,6 +46,15 @@ repositories use **primary constructors** for injection — match that style.
 - `Balance` is a **pairwise, per-group** row: `(UserId, PeerId, GroupId, Amount)`. Each
   debt is stored twice, once from each side, with opposite signs.
 
+**Split mode** — "equal", "exact", "percentage" — is a **client-only** concept. The API
+accepts and stores absolute per-user amounts and nothing else, so a mode exists only for as
+long as it takes the client to turn it into numbers. Reopening an expense cannot recover how
+it was originally split, and searching the backend for the term finds nothing by design.
+
+**Settle direction** is always caller-as-debtor. `POST /settle` records *the caller* paying
+the peer, so "who can settle a debt" has exactly one answer: the person who owes it. There is
+no route for recording that someone paid *you*, and no counterparty confirmation.
+
 Entities use `[Table("Name")]` (singular, PascalCase — so do the Postgres tables),
 `[DatabaseGenerated(Identity)]` int keys, and `[JsonIgnore]` on back-references to stop
 serialization cycles. `User.Password` is `[JsonIgnore]` — entities are returned directly
