@@ -32,25 +32,27 @@ public sealed class ApiClient
 
     public HttpClient Http => _http;
 
-    public async Task<RegisteredUser> RegisterAsync(string? email = null, string name = "Ada")
+    /// Signs in through the real `/oauth/google` route against the fake exchanger, so
+    /// tests exercise the same path the app does.
+    public async Task<SignedInUser> SignInAsync(string? email = null, string name = "Ada", string? subject = null)
     {
         email ??= $"{Guid.NewGuid():N}@splitty.test";
+        subject ??= Guid.NewGuid().ToString("N");
 
-        var response = await _http.PostAsJsonAsync("/auth/register", new
-        {
-            name,
-            email,
-            password = "secret1"
-        });
+        var response = await SignInResponseAsync(
+            FakeGoogleTokenExchanger.Encode(subject, email, emailVerified: true, name));
         response.EnsureSuccessStatusCode();
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(Json);
-        return new RegisteredUser(
+        return new SignedInUser(
             body.GetProperty("user").GetProperty("id").GetInt32(),
             name,
             email,
             body.GetProperty("token").GetString()!);
     }
+
+    public Task<HttpResponseMessage> SignInResponseAsync(string authCode) =>
+        _http.PostAsJsonAsync("/oauth/google", new { authCode });
 
     public async Task<int> CreateGroupAsync(string name = "Trip")
     {
@@ -107,7 +109,7 @@ public sealed class ApiClient
     }
 }
 
-public readonly record struct RegisteredUser(int Id, string Name, string Email, string Token);
+public readonly record struct SignedInUser(int Id, string Name, string Email, string Token);
 
 public sealed record BalanceSummary(IReadOnlyList<BalanceEntry> Balances, bool BalancesPending)
 {

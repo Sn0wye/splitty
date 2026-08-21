@@ -115,13 +115,13 @@ public sealed class ExpenseSplitTests
     private async Task<(ApiClient Owner, int GroupId, int PayerId, int PeerId)> SeedGroupWithTwoMembersAsync()
     {
         var owner = ApiClient.Create(_factory);
-        var ownerUser = await owner.RegisterAsync();
+        var ownerUser = await owner.SignInAsync();
         owner = ApiClient.Create(_factory, ownerUser.Token);
         var groupId = await owner.CreateGroupAsync();
         var code = await owner.CreateInviteAsync(groupId);
 
         var guest = ApiClient.Create(_factory);
-        var guestUser = await guest.RegisterAsync();
+        var guestUser = await guest.SignInAsync();
         guest = ApiClient.Create(_factory, guestUser.Token);
         var accept = await guest.AcceptInviteAsync(code);
         accept.EnsureSuccessStatusCode();

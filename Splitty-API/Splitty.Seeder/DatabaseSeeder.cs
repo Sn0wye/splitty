@@ -1,4 +1,3 @@
-﻿using Isopoh.Cryptography.Argon2;
 using Splitty.Domain.Entities;
 using Splitty.Infrastructure;
 
@@ -10,16 +9,14 @@ public class DatabaseSeeder
     
     public static void Seed(ApplicationDbContext context)
     {
-        var password = Argon2.Hash("Test@123");
-        
         var users = new List<User>
         {
-            new() { Name = "John Doe", Email = "john@example.com", Password = password, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new() { Name = "Jane Smith", Email = "jane@example.com", Password = password, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new() { Name = "Bob Wilson", Email = "bob@example.com", Password = password, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new() { Name = "Alice Brown", Email = "alice@example.com", Password = password, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new() { Name = "Charlie Davis", Email = "charlie@example.com", Password = password, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new() { Name = "Eva Johnson", Email = "eva@example.com", Password = password, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
+            new() { Name = "John Doe", Email = "john@example.com", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+            new() { Name = "Jane Smith", Email = "jane@example.com", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+            new() { Name = "Bob Wilson", Email = "bob@example.com", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+            new() { Name = "Alice Brown", Email = "alice@example.com", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+            new() { Name = "Charlie Davis", Email = "charlie@example.com", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
+            new() { Name = "Eva Johnson", Email = "eva@example.com", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
         };
         context.User.AddRange(users);
         context.SaveChanges();

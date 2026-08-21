@@ -29,13 +29,13 @@ public sealed class TransactionDrainTests
         });
 
         var owner = ApiClient.Create(factory);
-        var ownerUser = await owner.RegisterAsync();
+        var ownerUser = await owner.SignInAsync();
         owner = ApiClient.Create(factory, ownerUser.Token);
         var groupId = await owner.CreateGroupAsync();
         var code = await owner.CreateInviteAsync(groupId);
 
         var guest = ApiClient.Create(factory);
-        var guestUser = await guest.RegisterAsync();
+        var guestUser = await guest.SignInAsync();
         guest = ApiClient.Create(factory, guestUser.Token);
         (await guest.AcceptInviteAsync(code)).EnsureSuccessStatusCode();
 

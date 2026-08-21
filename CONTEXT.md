@@ -26,7 +26,7 @@ API ──> Service ──> Repository ──> Infrastructure (DbContext)
 | `Splitty.API` | Controllers, `Program.cs` wiring, middleware |
 | `Splitty.Service` | Business rules, authorization decisions |
 | `Splitty.Repository` | EF Core queries, one repository per aggregate |
-| `Splitty.Infrastructure` | `ApplicationDbContext`, migrations, `PasswordHasher` |
+| `Splitty.Infrastructure` | `ApplicationDbContext`, migrations |
 | `Splitty.Domain` | Entities only, no behavior |
 | `Splitty.DTO` | `Request/`, `Response/`, `Internal/` |
 | `Splitty.Background` | `TransactionBackgroundService` — balance recomputation |
@@ -57,8 +57,8 @@ no route for recording that someone paid *you*, and no counterparty confirmation
 
 Entities use `[Table("Name")]` (singular, PascalCase — so do the Postgres tables),
 `[DatabaseGenerated(Identity)]` int keys, and `[JsonIgnore]` on back-references to stop
-serialization cycles. `User.Password` is `[JsonIgnore]` — entities are returned directly
-from some endpoints, so anything secret needs that attribute.
+serialization cycles. Entities are returned directly from some endpoints, so anything
+that must not reach a client needs `[JsonIgnore]`.
 
 ### Invariants
 
@@ -120,7 +120,40 @@ consistent.
 
 ## Auth
 
-JWT bearer, HMAC-SHA256, 7-day expiry, issued by `AuthService.GenerateJwtToken`.
+Sign-in is OAuth only. There is no password anywhere in the system: no `User.Password`
+column, no hasher, no `/auth/register` and no `/auth/login`.
+
+```
+iOS gets result.serverAuthCode from the Google Sign-In SDK
+  → POST /oauth/google { authCode }
+API exchanges it at oauth2.googleapis.com/token with the *Web* client id + secret
+  → validates the returned id_token
+  → upserts User + OAuthAccount
+  → 200 { token, user }
+```
+
+The app never holds the client secret and never sees a Google access or refresh token —
+only a one-time code, then a Splitty JWT. `IGoogleTokenExchanger` is the only component
+that talks to Google over the network, which is what makes `OAuthService` testable.
+
+`OAuthAccount` holds one provider identity: `(Provider, Subject)` unique, plus the email
+**as the provider sent it**, denormalized so linking bugs are answerable. `User.Email`
+stays canonical. `Subject` is the identity, not the email.
+
+**Linking rule.** An unseen subject whose email matches an existing user links to that
+user *only when the provider reports `email_verified`*. An unverified match is rejected
+outright — it is an account-takeover path, not a nicety. (`User.Email` is uniquely
+indexed, so an unverified collision cannot fall back to a second user either.)
+
+`Name` and `AvatarUrl` come from the Google payload **once, at user creation**. They are
+never overwritten on later sign-ins, or an in-app rename would silently revert.
+
+`POST /auth/dev-login { email }` mints a token for a seeded user with no credential. It
+exists only when the host is Development — `Program.cs` strips `DevAuthController` from
+the application model otherwise, so the route 404s rather than 401s.
+
+JWT bearer, HMAC-SHA256, issued by `JwtTokenIssuer.Issue`. Expiry is `Jwt:ExpiryDays`,
+default 30. Refresh tokens are out of scope.
 
 Claims: `NameIdentifier` = user id, `Name` = display name, `Email`, `Sub` = email.
 
@@ -132,8 +165,24 @@ var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 if (userId is null) return Unauthorized();
 ```
 
-Passwords are Argon2 via `Isopoh.Cryptography.Argon2` (`PasswordHasher`). Controllers are
-`[Authorize]` at class level; anonymous endpoints must opt out explicitly.
+Controllers are `[Authorize]` at class level; anonymous endpoints must opt out explicitly.
+
+### Secrets
+
+`Jwt__SecretKey`, `Google__ClientId` and `Google__ClientSecret` come from `Splitty-API/.env`
+(gitignored; `.env.example` is the template). ASP.NET maps the double underscore to a
+config section. `appsettings.json` keeps `""` placeholders and is a schema, not a config.
+`Program.cs` throws at startup if any of the three is empty outside Development.
+
+Compose passes the file through `env_file:`. Running the API directly:
+
+```bash
+set -a; source Splitty-API/.env; set +a
+dotnet run --project Splitty-API/Splitty.API
+```
+
+The connection string stays in `appsettings.json` — `splitty/splitty` against a local
+container is not a secret.
 
 ## Errors
 
@@ -190,10 +239,9 @@ OpenAPI is at `/openapi/v1.json` with Scalar UI at `/scalar`.
 
 Live problems, not style preferences:
 
-- **Secrets are committed.** `appsettings.json` contains the JWT signing key
-  (`SplittySuperReallySecureSecretKey`) and the database password in plaintext.
-- **`GenerateJwtToken` uses `DateTime.Now`** for `expires`; it's interpreted as UTC, so
-  token lifetime is shifted by the host's UTC offset.
+- **The database password is committed.** `appsettings.json` carries the connection
+  string in plaintext. Deliberate for the local container; it needs to move before any
+  deployment that isn't localhost.
 
 ## Invites
 

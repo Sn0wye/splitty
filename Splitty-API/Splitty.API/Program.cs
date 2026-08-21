@@ -8,13 +8,13 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using Splitty.API;
+using Splitty.API.Controllers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Splitty.API.Middleware;
 using Splitty.Background;
 using Splitty.DTO.Response;
 using Splitty.Infrastructure;
-using Splitty.Infrastructure.Interfaces;
 using Splitty.Repository;
 using Splitty.Repository.Interfaces;
 using Splitty.Seeder;
@@ -28,12 +28,31 @@ builder.Logging.AddConsole();
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-builder.Services.AddControllers()
+builder.Services.AddControllers(options =>
+    {
+        if (!builder.Environment.IsDevelopment())
+        {
+            options.Conventions.Add(new RemoveControllerConvention<DevAuthController>());
+        }
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(
             new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
     });
+// Secrets arrive as Jwt__SecretKey / Google__ClientId / Google__ClientSecret from .env.
+// Failing here beats minting tokens signed with "" or exchanging codes as an empty client.
+if (!builder.Environment.IsDevelopment())
+{
+    foreach (var key in new[] { "Jwt:SecretKey", "Google:ClientId", "Google:ClientSecret" })
+    {
+        if (string.IsNullOrWhiteSpace(builder.Configuration[key]))
+        {
+            throw new InvalidOperationException($"Configuration '{key}' is required outside Development.");
+        }
+    }
+}
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -115,6 +134,7 @@ builder.Services.AddScoped<IGroupMembershipRepository, GroupMembershipRepository
 builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
 builder.Services.AddScoped<IBalanceRepository, BalanceRepository>();
 builder.Services.AddScoped<IInviteRepository, InviteRepository>();
+builder.Services.AddScoped<IOAuthAccountRepository, OAuthAccountRepository>();
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -122,9 +142,12 @@ builder.Services.AddScoped<IGroupService, GroupService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IBalanceService, BalanceService>();
 builder.Services.AddScoped<IInviteService, InviteService>();
+builder.Services.AddScoped<IOAuthService, OAuthService>();
 
 // Utils
-builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<IJwtTokenIssuer, JwtTokenIssuer>();
+builder.Services.AddScoped<IGoogleTokenExchanger, GoogleTokenExchanger>();
+builder.Services.AddHttpClient(nameof(GoogleTokenExchanger));
 
 // Background
 builder.Services.AddScoped<IBalanceRecomputeQueue, BalanceRecomputeQueue>();
