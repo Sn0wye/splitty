@@ -50,6 +50,22 @@ repositories use **primary constructors** for injection — match that style.
 accepts and stores absolute per-user amounts and nothing else, so a mode exists only for as
 long as it takes the client to turn it into numbers. Reopening an expense cannot recover how
 it was originally split, and searching the backend for the term finds nothing by design.
+This was re-examined when the expense sheet was designed and deliberately kept: the client
+infers *equal* when every stored amount matches within a cent, and *custom* otherwise.
+Persisting the mode is a follow-up, and would reverse this.
+
+**Expense date** is `Expense.Date`, nullable, client-supplied, and may be in the future.
+`CreatedAt` next to it is the audit timestamp — server-set, never accepted from a client.
+Rows predating the column have no `Date`, so every reader that orders or groups expenses uses
+`Date ?? CreatedAt`, newest first.
+
+**Settlements are mutated through `/group/{groupId}/settlements/{expenseId}`**, never through
+the expense routes, even though a settlement is an `Expense` row. The expense `PUT`/`DELETE`
+refuse `Payment` rows rather than branching on `Type`. The settlement edit rebuilds both
+splits from the new amount and re-applies the cap of invariant 5 with the settlement's *own*
+contribution excluded — the stored balance already counts it, so a cap read raw would reject
+even re-saving the amount already there. See
+`docs/adr/0001-settlements-have-their-own-routes.md`.
 
 **Settle direction** is always caller-as-debtor. `POST /settle` records *the caller* paying
 the peer, so "who can settle a debt" has exactly one answer: the person who owes it. There is
@@ -86,6 +102,30 @@ These are the rules the domain actually depends on:
    than a live aggregate, which is deliberate: an over-tight cap is a retryable `400`, not a
    wrong number. The consequence is that a group whose balances the worker has not written
    yet caps at zero and rejects every settlement.
+
+## Language
+
+Terms that mean something specific here, and the words to avoid for them.
+
+**Settlement**:
+A repayment recorded between two members, stored as an `Expense` with `Type = Payment`.
+_Avoid_: refund, transfer, payback
+
+**Participant**:
+A member carrying a split row on an expense. Distinct from the payer, who need not be one.
+_Avoid_: member (when talking about a single expense)
+
+**Split mode**:
+How the client derived the per-user amounts: *equal* or *custom*. Never leaves the client.
+_Avoid_: split type, division method
+
+**Preset**:
+A named starting point on the split screen that fills in payer and mode in one tap.
+_Avoid_: template, shortcut
+
+**Custom split**:
+Per-person amounts typed by hand, which must sum exactly to the total.
+_Avoid_: exact split, manual mode
 
 ## Balance recomputation
 

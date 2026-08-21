@@ -67,5 +67,11 @@ public sealed class TransactionDrainTests
 
         public Task SettleUp(int groupId, int userId, int peerId, decimal amount) =>
             throw new NotSupportedException();
+
+        public Task UpdateSettlement(int groupId, int expenseId, int userId, decimal amount, DateTime? date) =>
+            throw new NotSupportedException();
+
+        public Task DeleteSettlement(int groupId, int expenseId, int userId) =>
+            throw new NotSupportedException();
     }
 }

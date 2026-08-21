@@ -40,6 +40,14 @@ public class ExpenseRepository(ApplicationDbContext context): IExpenseRepository
         return expense;
     }
     
+    public async Task DeleteAsync(Expense expense)
+    {
+        context.Expense.Remove(expense);
+        await context.SaveChangesAsync();
+    }
+
+    /// Newest first by the date the user gave, falling back to the audit timestamp for rows
+    /// written before the column existed. The client groups by the same expression.
     public async Task<List<Expense>> FindExpensesByGroupId(int groupId)
     {
         return await context.Expense
@@ -47,6 +55,8 @@ public class ExpenseRepository(ApplicationDbContext context): IExpenseRepository
             .ThenInclude(es => es.User)
             .Include(e => e.PaidByUser)
             .Where(e => e.GroupId == groupId)
+            .OrderByDescending(e => e.Date ?? e.CreatedAt)
+            .ThenByDescending(e => e.Id)
             .ToListAsync();
     }
 }

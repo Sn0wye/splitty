@@ -8,5 +8,6 @@ public interface IExpenseRepository
     Task<List<Expense>> CreateExpenses(List<Expense> expenses);
     Task<Expense?> FindByIdAsync(int id);
     Task<Expense> UpdateAsync(Expense expense);
+    Task DeleteAsync(Expense expense);
     Task<List<Expense>> FindExpensesByGroupId(int groupId);
 }

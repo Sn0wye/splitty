@@ -20,7 +20,7 @@ internal static class ExpenseSplitInvariants
                 EnsureExpense(amount, splits);
                 break;
             case ExpenseType.Payment:
-                EnsurePayment(splits);
+                EnsurePayment(amount, splits);
                 break;
         }
     }
@@ -49,21 +49,35 @@ internal static class ExpenseSplitInvariants
     }
 
     /// <summary>
-    /// A payment moves one amount between exactly two people, so its splits are equal in
-    /// magnitude and opposite in sign. Violating this means the settle path built the
-    /// expense wrong, which is why it throws rather than reporting a validation failure.
+    /// A payment moves one amount between exactly two people, so its splits are exactly
+    /// <c>[+Amount, -Amount]</c>. Checking them against <see cref="Expense.Amount"/> and not
+    /// only against each other is what stops an amount-only edit from changing the number
+    /// users read while moving no money: the balance replay reads the splits and never
+    /// reads <c>Amount</c>. Violating this means the settle path built the expense wrong,
+    /// which is why it throws rather than reporting a validation failure.
     /// </summary>
-    private static void EnsurePayment(List<decimal>? splits)
+    private static void EnsurePayment(decimal amount, List<decimal>? splits)
     {
         if (splits is null || splits.Count != 2)
         {
             throw new InvalidOperationException("A payment must have exactly two splits.");
         }
 
-        if (splits[0] != -splits[1] || splits[0] == 0)
+        if (amount <= 0)
+        {
+            throw new InvalidOperationException("A payment's amount must be greater than zero.");
+        }
+
+        if (splits[0] + splits[1] != 0)
         {
             throw new InvalidOperationException(
                 "A payment's splits must be equal in magnitude and opposite in sign.");
+        }
+
+        if (Math.Abs(splits[0]) != amount)
+        {
+            throw new InvalidOperationException(
+                "A payment's splits must match its amount.");
         }
     }
 }

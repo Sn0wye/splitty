@@ -24,7 +24,15 @@ public class Expense
     public string Description { get; set; }
 
     public ExpenseType Type { get; set; } = ExpenseType.Expense;
-    
+
+    /// <summary>
+    /// When the expense happened, as the user says it did. Nullable because rows written
+    /// before the column existed have no user-supplied date; readers fall back to
+    /// <see cref="CreatedAt"/>. Future dates are allowed.
+    /// </summary>
+    public DateTime? Date { get; set; }
+
+    /// <summary>Audit timestamp, server-set, never client-supplied.</summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

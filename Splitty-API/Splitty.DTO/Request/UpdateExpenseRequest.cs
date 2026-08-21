@@ -11,5 +11,7 @@ public class UpdateExpenseRequest
     
     public string? Description { get; set; }
     
+    public DateTime? Date { get; set; }
+    
     public List<UpdateExpenseSplitDTO>? Splits { get; set; }
 }
