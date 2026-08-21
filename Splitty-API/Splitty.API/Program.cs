@@ -22,6 +22,10 @@ using Splitty.Service;
 using Splitty.Service.Interfaces;
 using Scalar.AspNetCore;
 
+// Before CreateBuilder, so the file lands in the environment ahead of the configuration
+// providers reading it. `docker compose` supplies the same values through `env_file`.
+DotEnvFile.Load(Directory.GetCurrentDirectory());
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddConsole();
 
@@ -42,9 +46,20 @@ builder.Services.AddControllers(options =>
     });
 // Secrets arrive as Jwt__SecretKey / Google__ClientId / Google__ClientSecret from .env.
 // Failing here beats minting tokens signed with "" or exchanging codes as an empty client.
+//
+// The signing key is checked in every environment, Development included: an empty key
+// throws inside the JwtBearer handler, which runs per request, so skipping the check
+// turns a config fault into a 400 on every route rather than a startup crash.
+if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:SecretKey"]))
+{
+    throw new InvalidOperationException("Configuration 'Jwt:SecretKey' is required.");
+}
+
+// Google credentials only matter to the real token exchanger, which the test suite
+// replaces with a fake, so these stay scoped to non-Development hosts.
 if (!builder.Environment.IsDevelopment())
 {
-    foreach (var key in new[] { "Jwt:SecretKey", "Google:ClientId", "Google:ClientSecret" })
+    foreach (var key in new[] { "Google:ClientId", "Google:ClientSecret" })
     {
         if (string.IsNullOrWhiteSpace(builder.Configuration[key]))
         {
