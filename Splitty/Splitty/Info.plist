@@ -4,6 +4,23 @@
 <dict>
 	<key>SplittyAPIBaseURL</key>
 	<string>$(SPLITTY_API_BASE_URL)</string>
+	<!-- A Google client id is a public identifier, not a secret: it ships inside every
+	     App Store binary. Security comes from the bundle id plus the server-side code
+	     exchange, so these stay in plaintext and a fresh clone builds. -->
+	<key>GIDClientID</key>
+	<string>REPLACE_WITH_IOS_CLIENT_ID.apps.googleusercontent.com</string>
+	<!-- The Web client id, not the iOS one: this is the audience the API validates. -->
+	<key>GIDServerClientID</key>
+	<string>REPLACE_WITH_WEB_CLIENT_ID.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.REPLACE_WITH_IOS_CLIENT_ID</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSExceptionDomains</key>
