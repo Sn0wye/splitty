@@ -27,6 +27,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Domain.Entities.ExpenseSplit> ExpenseSplit { get; set; }
     public DbSet<Domain.Entities.Balance> Balance { get; set; }
     public DbSet<Domain.Entities.Invite> Invite { get; set; }
+    public DbSet<Domain.Entities.OAuthAccount> OAuthAccount { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,10 +37,27 @@ public class ApplicationDbContext : DbContext
             entity.Property(u => u.Name).IsRequired().HasMaxLength(255);
             entity.Property(u => u.Email).IsRequired().HasMaxLength(255);
             entity.HasIndex(u => u.Email).IsUnique();
-            entity.Property(u => u.Password).IsRequired();
             entity.Property(u => u.AvatarUrl).HasMaxLength(255);
             entity.Property(u => u.CreatedAt).IsRequired();
             entity.Property(u => u.UpdatedAt).IsRequired();
+        });
+
+        modelBuilder.Entity<Domain.Entities.OAuthAccount>(entity =>
+        {
+            entity.HasKey(a => a.Id);
+            entity.Property(a => a.Provider).IsRequired();
+            entity.Property(a => a.Subject).IsRequired().HasMaxLength(255);
+            entity.Property(a => a.Email).IsRequired().HasMaxLength(255);
+            entity.Property(a => a.CreatedAt).IsRequired();
+
+            // The lookup every sign-in performs, and the guarantee that one provider
+            // identity cannot be attached to two users.
+            entity.HasIndex(a => new { a.Provider, a.Subject }).IsUnique();
+
+            entity.HasOne(a => a.User)
+                .WithMany()
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Domain.Entities.Group>(entity =>

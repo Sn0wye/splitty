@@ -49,12 +49,12 @@ public sealed class GroupFixture
 
     public static async Task<GroupFixture> CreateAsync(WebApplicationFactory<Program> factory)
     {
-        var ownerUser = await ApiClient.Create(factory).RegisterAsync(name: "Owner");
+        var ownerUser = await ApiClient.Create(factory).SignInAsync(name: "Owner");
         var owner = ApiClient.Create(factory, ownerUser.Token);
         var groupId = await owner.CreateGroupAsync();
         var code = await owner.CreateInviteAsync(groupId);
 
-        var guestUser = await ApiClient.Create(factory).RegisterAsync(name: "Guest");
+        var guestUser = await ApiClient.Create(factory).SignInAsync(name: "Guest");
         var guest = ApiClient.Create(factory, guestUser.Token);
         (await guest.AcceptInviteAsync(code)).EnsureSuccessStatusCode();
 

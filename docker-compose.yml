@@ -18,6 +18,8 @@ services:
       context: ./Splitty-API
       dockerfile: Splitty.API/Dockerfile
     container_name: splitty-api
+    env_file:
+      - ./Splitty-API/.env
     ports:
       - '8080:8080'
     depends_on:

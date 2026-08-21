@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net9.0</TargetFramework>
@@ -19,7 +19,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Isopoh.Cryptography.Argon2" Version="2.0.0" />
+      <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
+      <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />
       <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.3.0" />
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.3.0" />
     </ItemGroup>

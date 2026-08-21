@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
 
 namespace Splitty.Domain.Entities;
 
@@ -12,9 +11,6 @@ public class User
     public string Name { get; set; }
     
     public string Email { get; set; }
-    
-    [JsonIgnore]
-    public string Password { get; set; }
     
     public string AvatarUrl { get; set; } = string.Empty;
     

@@ -23,13 +23,13 @@ public sealed class InviteAcceptanceTests
     public async Task Accepting_an_invite_returns_the_joined_group()
     {
         var owner = ApiClient.Create(_factory);
-        var ownerUser = await owner.RegisterAsync();
+        var ownerUser = await owner.SignInAsync();
         owner = ApiClient.Create(_factory, ownerUser.Token);
         var groupId = await owner.CreateGroupAsync("Dinner");
         var code = await owner.CreateInviteAsync(groupId);
 
         var guest = ApiClient.Create(_factory);
-        var guestUser = await guest.RegisterAsync();
+        var guestUser = await guest.SignInAsync();
         guest = ApiClient.Create(_factory, guestUser.Token);
 
         var response = await guest.AcceptInviteAsync(code);
@@ -54,13 +54,13 @@ public sealed class InviteAcceptanceTests
         });
 
         var owner = ApiClient.Create(factory);
-        var ownerUser = await owner.RegisterAsync();
+        var ownerUser = await owner.SignInAsync();
         owner = ApiClient.Create(factory, ownerUser.Token);
         var groupId = await owner.CreateGroupAsync("Dinner");
         var code = await owner.CreateInviteAsync(groupId);
 
         var guest = ApiClient.Create(factory);
-        var guestUser = await guest.RegisterAsync();
+        var guestUser = await guest.SignInAsync();
         guest = ApiClient.Create(factory, guestUser.Token);
 
         var response = await guest.AcceptInviteAsync(code);
