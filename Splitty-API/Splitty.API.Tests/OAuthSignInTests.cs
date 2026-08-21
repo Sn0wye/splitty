@@ -3,7 +3,6 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Splitty.Domain.Entities;
 using Splitty.Infrastructure;
 
 namespace Splitty.API.Tests;
@@ -105,7 +104,13 @@ public sealed class OAuthSignInTests
             FakeGoogleTokenExchanger.Encode("sub-attacker", email, emailVerified: false, "Mallory"));
 
         Assert.NotEqual(HttpStatusCode.OK, attacker.StatusCode);
+
+        // The attacker's subject must not exist at all: not against the victim, and not
+        // against any other user either. Asserting only "did not return 200" would pass
+        // even if the row had been written.
+        Assert.Equal(0, await CountBySubjectAsync("sub-attacker"));
         Assert.Equal(1, await CountAccountsAsync(userId));
+        Assert.Equal(1, await CountUsersAsync(email));
     }
 
     [Fact]
@@ -125,6 +130,14 @@ public sealed class OAuthSignInTests
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         return await db.OAuthAccount.CountAsync(a => a.UserId == userId);
+    }
+
+    private async Task<int> CountBySubjectAsync(string subject)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        return await db.OAuthAccount.CountAsync(a => a.Subject == subject);
     }
 
     private async Task<int> CountUsersAsync(string email)

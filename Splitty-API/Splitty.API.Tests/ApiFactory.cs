@@ -41,7 +41,6 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         // DevAuthController and the startup secret checks both key off this.
         builder.UseEnvironment("Development");
-        builder.UseSetting("ConnectionStrings:DefaultConnection", _postgres.GetConnectionString());
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>

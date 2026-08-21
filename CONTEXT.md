@@ -191,8 +191,8 @@ Two coexisting styles:
 - **Return `ActionResult` directly** for expected outcomes — `BadRequest`, `Unauthorized`,
   `Forbid`, `NotFound`, `Conflict`. Preferred for new code; the status code is explicit.
 - **Throw and let middleware map it.** `GlobalExceptionHandlingMiddleware` maps
-  `InvalidOperationException` → 400, `ArgumentException` → 400, `UnauthorizedAccessException`
-  → 403, everything else → 500, all as `ErrorResponse`.
+  `InvalidOperationException` → 400, `ArgumentException` → 400, `KeyNotFoundException`
+  → 404, `UnauthorizedAccessException` → 403, everything else → 500, all as `ErrorResponse`.
 
 Enums serialize as snake_case strings (`JsonStringEnumConverter` in `Program.cs`).
 
