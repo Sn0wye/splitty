@@ -12,27 +12,31 @@ class AuthService {
     
     private init() {}
     
-    // MARK: - Login
-    func login(email: String, password: String) async throws -> User {
-        let response = try await APIClient.shared.login(email: email, password: password)
+    // MARK: - Sign in with Google
+    /// Throws `GoogleSignInError.cancelled` when the user dismisses the account picker.
+    func signInWithGoogle() async throws -> User {
+        let authCode = try await GoogleSignInService.shared.signIn()
+        let response = try await APIClient.shared.oauthGoogle(authCode: authCode)
         
         // Save token to keychain
         TokenManager.shared.saveToken(response.token)
         
-        print("✅ User logged in successfully: \(response.user.name)")
+        print("✅ User signed in with Google: \(response.user.name)")
         return response.user
     }
     
-    // MARK: - Register
-    func register(name: String, email: String, password: String) async throws -> User {
-        let response = try await APIClient.shared.register(name: name, email: email, password: password)
+    #if DEBUG
+    // MARK: - Dev sign in
+    func devSignIn(email: String) async throws -> User {
+        let response = try await APIClient.shared.devLogin(email: email)
         
         // Save token to keychain
         TokenManager.shared.saveToken(response.token)
         
-        print("✅ User registered successfully: \(response.user.name)")
+        print("✅ Dev sign-in as: \(response.user.name)")
         return response.user
     }
+    #endif
     
     // MARK: - Logout
     func logout() {

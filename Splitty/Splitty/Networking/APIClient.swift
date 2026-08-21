@@ -95,15 +95,21 @@ class APIClient {
     }
     
     // MARK: - Authentication
-    func login(email: String, password: String) async throws -> LoginResponse {
-        let body = ["email": email, "password": password]
-        return try await request(endpoint: "/auth/login", method: .POST, body: body, requiresAuth: false)
+    /// Redeems a one-time Google auth code for a Splitty token. The exchange with Google
+    /// happens server-side, so no client secret is needed here.
+    func oauthGoogle(authCode: String) async throws -> LoginResponse {
+        let body = ["authCode": authCode]
+        return try await request(endpoint: "/oauth/google", method: .POST, body: body, requiresAuth: false)
     }
     
-    func register(name: String, email: String, password: String) async throws -> LoginResponse {
-        let body = ["name": name, "email": email, "password": password]
-        return try await request(endpoint: "/auth/register", method: .POST, body: body, requiresAuth: false)
+    #if DEBUG
+    /// Signs in as a seeded user with no credential. The route only exists on a
+    /// Development host, so this cannot reach a deployed API.
+    func devLogin(email: String) async throws -> LoginResponse {
+        let body = ["email": email]
+        return try await request(endpoint: "/auth/dev-login", method: .POST, body: body, requiresAuth: false)
     }
+    #endif
     
     // MARK: - Groups
     func getGroups() async throws -> [Group] {

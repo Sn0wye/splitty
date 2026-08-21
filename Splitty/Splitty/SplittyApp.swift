@@ -12,6 +12,10 @@ struct SplittyApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                // The Google SDK completes sign-in through the reversed-client-id scheme.
+                .onOpenURL { url in
+                    GoogleSignInService.handle(url)
+                }
         }
     }
 }
