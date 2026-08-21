@@ -8,7 +8,7 @@
 	     App Store binary. Security comes from the bundle id plus the server-side code
 	     exchange, so these stay in plaintext and a fresh clone builds. -->
 	<key>GIDClientID</key>
-	<string>978511957932-9pj6toiu4cmo9842u73jbp3bgepp96h1.apps.googleusercontent.com</string>
+	<string>978511957932-8f4eqisf6kb01dr8d4ev8s1sgk8ntle5.apps.googleusercontent.com</string>
 	<!-- The Web client id, not the iOS one: this is the audience the API validates. -->
 	<key>GIDServerClientID</key>
 	<string>978511957932-q42ajkjue9hbn86t4caaogr7fda8ap6n.apps.googleusercontent.com</string>
@@ -17,7 +17,7 @@
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.978511957932-9pj6toiu4cmo9842u73jbp3bgepp96h1</string>
+				<string>com.googleusercontent.apps.978511957932-8f4eqisf6kb01dr8d4ev8s1sgk8ntle5</string>
 			</array>
 		</dict>
 	</array>
