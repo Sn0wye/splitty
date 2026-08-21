@@ -8,6 +8,7 @@ public class CreateExpenseDTO
     public int PaidBy { get; set; }
     public Decimal Amount { get; set; }
     public string Description { get; set; }
+    public DateTime? Date { get; set; }
     public required List<ExpenseSplitDTO> ExpenseSplits { get; set; }
 }
 

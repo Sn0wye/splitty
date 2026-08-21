@@ -175,6 +175,18 @@ public class GroupController(
         return Ok(expenses);
     }
 
+    [HttpGet("{groupId}/expenses/{expenseId:int}")]
+    public async Task<ActionResult<Expense>> GetExpenseById(int groupId, int expenseId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
+        return Ok(await expenseService.FindByIdAsync(groupId, expenseId, int.Parse(userId)));
+    }
+
     [HttpPost("{groupId}/expenses")]
     public async Task<ActionResult<Expense>> CreateExpense(
         [FromBody] CreateExpenseRequest request,
@@ -198,6 +210,7 @@ public class GroupController(
             Description = request.Description,
             GroupId = groupId,
             PaidBy = request.PaidBy,
+            Date = request.Date,
             ExpenseSplits = request.Splits
         };
 
@@ -208,7 +221,7 @@ public class GroupController(
         return Ok(expense);
     }
 
-    [HttpPut("{groupId}/expenses/{expenseId}")]
+    [HttpPut("{groupId}/expenses/{expenseId:int}")]
     public async Task<ActionResult<Expense>> UpdateExpense(
         [FromBody] UpdateExpenseRequest request,
         int groupId,
@@ -234,6 +247,7 @@ public class GroupController(
             Amount = request.Amount,
             Description = request.Description,
             PaidBy = request.PaidBy,
+            Date = request.Date,
             ExpenseSplits = request.Splits
         };
 
@@ -244,6 +258,62 @@ public class GroupController(
         return Ok(expense);
     }
     
+    /// <summary>
+    /// Deleting removes splits, so the group's balances no longer follow from the rows that
+    /// remain. Skipping the recomputation would leave the deleted expense's money in the
+    /// balance table with nothing backing it — invariant 1.
+    /// </summary>
+    [HttpDelete("{groupId}/expenses/{expenseId:int}")]
+    public async Task<ActionResult> DeleteExpense(int groupId, int expenseId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
+        await expenseService.DeleteAsync(groupId, expenseId, int.Parse(userId));
+
+        await balanceRecomputeQueue.EnqueueAsync(groupId);
+
+        return NoContent();
+    }
+
+    [HttpPut("{groupId}/settlements/{expenseId:int}")]
+    public async Task<ActionResult> UpdateSettlement(
+        int groupId,
+        int expenseId,
+        [FromBody] UpdateSettlementRequest request)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
+        await balanceService.UpdateSettlement(groupId, expenseId, int.Parse(userId), request.Amount, request.Date);
+
+        await balanceRecomputeQueue.EnqueueAsync(groupId);
+
+        return NoContent();
+    }
+
+    [HttpDelete("{groupId}/settlements/{expenseId:int}")]
+    public async Task<ActionResult> DeleteSettlement(int groupId, int expenseId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
+        await balanceService.DeleteSettlement(groupId, expenseId, int.Parse(userId));
+
+        await balanceRecomputeQueue.EnqueueAsync(groupId);
+
+        return NoContent();
+    }
+
     /// <summary>
     /// Requests a recomputation rather than performing one. Replaying inline would race the
     /// worker replaying the same group, and both would insert the pairwise row neither found.

@@ -26,6 +26,7 @@ public class ExpenseService(
             Description = dto.Description,
             GroupId = dto.GroupId,
             PaidBy = dto.PaidBy,
+            Date = ExpenseDate.Normalize(dto.Date),
             Splits = splits.Select(s => new ExpenseSplit
             {
                 Amount = s.Amount,
@@ -41,6 +42,33 @@ public class ExpenseService(
     public async Task<Expense?> FindByIdAsync(int id)
     {
         return await expenseRepository.FindByIdAsync(id);
+    }
+
+    public async Task<Expense> FindByIdAsync(int groupId, int expenseId, int userId)
+    {
+        await EnsureMemberAsync(groupId, userId);
+
+        return await FindInGroupAsync(groupId, expenseId);
+    }
+
+    /// <summary>
+    /// Refuses settlements: they are deleted through their own route, which re-reads the
+    /// cap and keeps one delete path per row type. See
+    /// docs/adr/0001-settlements-have-their-own-routes.md.
+    /// </summary>
+    public async Task DeleteAsync(int groupId, int expenseId, int userId)
+    {
+        await EnsureMemberAsync(groupId, userId);
+
+        var expense = await FindInGroupAsync(groupId, expenseId);
+
+        if (expense.Type == ExpenseType.Payment)
+        {
+            throw new InvalidOperationException(
+                "This is a settlement. Delete it through /group/{groupId}/settlements/{expenseId}.");
+        }
+
+        await expenseRepository.DeleteAsync(expense);
     }
     
     public async Task<List<Expense>> FindExpensesByGroupId(int groupId, int userId)
@@ -68,6 +96,14 @@ public class ExpenseService(
 
         await EnsureMemberAsync(expense.GroupId, userId);
 
+        // Same reason the delete route refuses them: a settlement's amount is capped and its
+        // splits are rebuilt rather than accepted, neither of which this path does.
+        if (expense.Type == ExpenseType.Payment)
+        {
+            throw new InvalidOperationException(
+                "This is a settlement. Edit it through /group/{groupId}/settlements/{expenseId}.");
+        }
+
         // Validate the resulting state, not just the supplied fields: an
         // amount-only update must not leave a nonmember payer or split behind.
         await EnsureMemberAsync(expense.GroupId, dto.PaidBy ?? expense.PaidBy);
@@ -87,6 +123,8 @@ public class ExpenseService(
         expense.Amount = resultingAmount;
         expense.Description = dto.Description ?? expense.Description;
         expense.PaidBy = dto.PaidBy ?? expense.PaidBy;
+        expense.Date = ExpenseDate.Normalize(dto.Date) ?? expense.Date;
+        expense.UpdatedAt = DateTime.UtcNow;
         
         if (dto.ExpenseSplits is not null)
         {
@@ -99,6 +137,20 @@ public class ExpenseService(
         }
         
         await expenseRepository.UpdateAsync(expense);
+        return expense;
+    }
+
+    /// The expense must belong to the group the request was made against, otherwise a
+    /// member of group A could read or delete an expense of group B.
+    private async Task<Expense> FindInGroupAsync(int groupId, int expenseId)
+    {
+        var expense = await expenseRepository.FindByIdAsync(expenseId);
+
+        if (expense is null || expense.GroupId != groupId)
+        {
+            throw new KeyNotFoundException("Expense not found");
+        }
+
         return expense;
     }
 

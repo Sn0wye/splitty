@@ -9,6 +9,7 @@ public class UpdateExpenseDTO
     public int? PaidBy { get; set; }
     public Decimal? Amount { get; set; }
     public string? Description { get; set; }
+    public DateTime? Date { get; set; }
     public List<UpdateExpenseSplitDTO>? ExpenseSplits { get; set; }
 }
 

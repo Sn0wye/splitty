@@ -82,6 +82,27 @@ public sealed class ApiClient
     public Task<HttpResponseMessage> UpdateExpenseAsync(int groupId, int expenseId, object body) =>
         _http.PutAsJsonAsync($"/group/{groupId}/expenses/{expenseId}", body);
 
+    public Task<HttpResponseMessage> GetExpenseAsync(int groupId, int expenseId) =>
+        _http.GetAsync($"/group/{groupId}/expenses/{expenseId}");
+
+    public Task<HttpResponseMessage> GetExpensesAsync(int groupId) =>
+        _http.GetAsync($"/group/{groupId}/expenses");
+
+    public Task<HttpResponseMessage> DeleteExpenseAsync(int groupId, int expenseId) =>
+        _http.DeleteAsync($"/group/{groupId}/expenses/{expenseId}");
+
+    public Task<HttpResponseMessage> UpdateSettlementAsync(int groupId, int expenseId, object body) =>
+        _http.PutAsJsonAsync($"/group/{groupId}/settlements/{expenseId}", body);
+
+    public Task<HttpResponseMessage> DeleteSettlementAsync(int groupId, int expenseId) =>
+        _http.DeleteAsync($"/group/{groupId}/settlements/{expenseId}");
+
+    public async Task<JsonElement> ReadJsonAsync(HttpResponseMessage response)
+    {
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<JsonElement>(Json);
+    }
+
     public Task<HttpResponseMessage> RequestSummaryRefreshAsync(int groupId) =>
         _http.PostAsync($"/group/{groupId}/expenses/summary", null);
 

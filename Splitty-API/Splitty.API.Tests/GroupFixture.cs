@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Splitty.Domain.Entities;
 using Splitty.Infrastructure;
@@ -61,13 +62,14 @@ public sealed class GroupFixture
         return new GroupFixture(factory, groupId, owner, ownerUser.Id, guest, guestUser.Id, guestUser.Token);
     }
 
-    public async Task<int> CreateExpenseAsync(decimal amount, decimal share)
+    public async Task<int> CreateExpenseAsync(decimal amount, decimal share, DateTime? date = null)
     {
         var response = await Owner.CreateExpenseAsync(Id, new
         {
             paidBy = OwnerId,
             amount,
             description = "Dinner",
+            date,
             splits = new[]
             {
                 new { userId = OwnerId, amount = share },
@@ -78,6 +80,21 @@ public sealed class GroupFixture
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(Json);
         return body.GetProperty("id").GetInt32();
+    }
+
+    /// <summary>
+    /// The id of the settlement the guest just recorded — the settle route answers with no
+    /// body, and every settlement assertion needs a row to point at.
+    /// </summary>
+    public async Task<int> SettleAsync(decimal amount)
+    {
+        (await Guest.SettleUpAsync(Id, new { withUserId = OwnerId, amount })).EnsureSuccessStatusCode();
+
+        return await _factory.UseDbAsync(db => db.Expense
+            .Where(e => e.GroupId == Id && e.Type == ExpenseType.Payment)
+            .OrderByDescending(e => e.Id)
+            .Select(e => e.Id)
+            .FirstAsync());
     }
 
     /// <summary>
