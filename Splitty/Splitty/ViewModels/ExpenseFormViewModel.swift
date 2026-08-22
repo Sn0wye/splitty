@@ -176,7 +176,7 @@ class ExpenseFormViewModel: ObservableObject {
                     groupId: groupId,
                     expenseId: expenseId,
                     description: trimmedDescription,
-                    amount: Money.amount(cents: total),
+                    amountCents: total,
                     paidBy: configuration.payerId,
                     date: date,
                     splits: splits()
@@ -186,7 +186,7 @@ class ExpenseFormViewModel: ObservableObject {
             return try await ExpenseService.shared.createExpense(
                 groupId: groupId,
                 description: trimmedDescription,
-                amount: Money.amount(cents: total),
+                amountCents: total,
                 paidBy: configuration.payerId,
                 date: date,
                 splits: splits()

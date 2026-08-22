@@ -80,7 +80,7 @@ struct ExpenseSheet: View {
                     showsDigits: !descriptionFocused,
                     onKey: handle(key:)
                 )
-                .padding(.bottom, keyboardInset)
+                .padding(.bottom, padBottomInset)
             }
             .padding(.horizontal, 12)
             .padding(.top, 12)
@@ -218,7 +218,17 @@ struct ExpenseSheet: View {
     /// One action row and four digit rows, plus the padding under them. Reserved in the
     /// layout at all times: the pad shrinks to the action row when the keyboard takes over,
     /// and nothing above it is allowed to notice.
-    private static let padHeight: CGFloat = 60 + 4 * 68 + 8
+    private static let digitsHeight: CGFloat = 4 * 68 + 2 * 3
+    private static let padHeight: CGFloat = 60 + digitsHeight + 8
+
+    /// The keyboard covers the digit grid, which is hidden under it anyway, so only the
+    /// part of it that reaches past the grid moves the pad. Ignored unless the description
+    /// is what the keyboard belongs to: the split screen raises one of its own, and acting
+    /// on that left the pad hoisted over the sheet on the way back.
+    private var padBottomInset: CGFloat {
+        guard descriptionFocused else { return 0 }
+        return max(0, keyboardInset - Self.digitsHeight)
+    }
 
     /// How far the keyboard reaches into the sheet, past the home indicator the sheet
     /// already clears.

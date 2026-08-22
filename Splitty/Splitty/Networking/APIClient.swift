@@ -238,7 +238,7 @@ extension Error {
 // MARK: - Request Types
 struct ExpenseSplitRequest {
     let userId: Int
-    let amount: Double
+    let amountCents: Int
 }
 
 // MARK: - Response Types

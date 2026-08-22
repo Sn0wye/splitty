@@ -23,7 +23,7 @@ class ExpenseService {
     func createExpense(
         groupId: Int,
         description: String,
-        amount: Double,
+        amountCents: Int,
         paidBy: Int,
         date: Date?,
         splits: [ExpenseSplitRequest]
@@ -31,9 +31,11 @@ class ExpenseService {
         var body: [String: Any] = [
             "groupId": groupId,
             "description": description,
-            "amount": amount,
+            "amount": Money.requestValue(cents: amountCents),
             "paidBy": paidBy,
-            "splits": splits.map { ["userId": $0.userId, "amount": $0.amount] }
+            "splits": splits.map {
+                ["userId": $0.userId, "amount": Money.requestValue(cents: $0.amountCents)]
+            }
         ]
         if let date { body["date"] = Self.timestamp(from: date) }
 
@@ -48,18 +50,20 @@ class ExpenseService {
         groupId: Int,
         expenseId: Int,
         description: String? = nil,
-        amount: Double? = nil,
+        amountCents: Int? = nil,
         paidBy: Int? = nil,
         date: Date? = nil,
         splits: [ExpenseSplitRequest]? = nil
     ) async throws -> Expense {
         var body: [String: Any] = [:]
         if let description { body["description"] = description }
-        if let amount { body["amount"] = amount }
+        if let amountCents { body["amount"] = Money.requestValue(cents: amountCents) }
         if let paidBy { body["paidBy"] = paidBy }
         if let date { body["date"] = Self.timestamp(from: date) }
         if let splits {
-            body["splits"] = splits.map { ["userId": $0.userId, "amount": $0.amount] }
+            body["splits"] = splits.map {
+                ["userId": $0.userId, "amount": Money.requestValue(cents: $0.amountCents)]
+            }
         }
 
         return try await APIClient.shared.request(

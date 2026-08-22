@@ -44,7 +44,7 @@ struct SplitConfigurationTests {
         let configuration = SplitConfiguration(payerId: 1, mode: .equal(participants: [1, 2]))
         let splits = configuration.splits(totalCents: 1000)
         #expect(splits.map(\.userId) == [1, 2])
-        #expect(splits.map(\.amount) == [5.0, 5.0])
+        #expect(splits.map(\.amountCents) == [500, 500])
     }
 
     // The payer need not be a participant: "I paid, you all owe me" is a real expense, and
@@ -61,7 +61,7 @@ struct SplitConfigurationTests {
         let configuration = SplitConfiguration(payerId: 1, mode: .equal(participants: [1, 2, 3, 4, 5]))
         let splits = configuration.splits(totalCents: 3)
         #expect(splits.map(\.userId) == [1, 2, 3])
-        #expect(splits.map(\.amount) == [0.01, 0.01, 0.01])
+        #expect(splits.map(\.amountCents) == [1, 1, 1])
     }
 
     @Test func omitsCustomAmountsLeftAtZero() {

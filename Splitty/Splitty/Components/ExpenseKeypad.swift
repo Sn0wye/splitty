@@ -25,7 +25,9 @@ struct ExpenseKeypad: View {
     let isNextEnabled: Bool
     var isSaving: Bool = false
     /// The digits hide while the system keyboard is up; the action row stays, so the
-    /// forward arrow keeps its place instead of moving to the other end of the sheet.
+    /// forward arrow keeps its place instead of moving to the other end of the sheet. The
+    /// grid keeps its space either way — collapsing it moved the arrow down at the same
+    /// moment the keyboard moved it up.
     var showsDigits: Bool = true
     let onKey: (KeypadKey) -> Void
 
@@ -35,7 +37,7 @@ struct ExpenseKeypad: View {
         VStack(spacing: 2) {
             actionRow
 
-            if showsDigits {
+            VStack(spacing: 2) {
                 ForEach(digitRows, id: \.first) { row in
                     HStack(spacing: 0) {
                         ForEach(row, id: \.self) { digit in
@@ -50,6 +52,8 @@ struct ExpenseKeypad: View {
                     key(systemImage: "chevron.left", label: "delete") { onKey(.backspace) }
                 }
             }
+            .opacity(showsDigits ? 1 : 0)
+            .allowsHitTesting(showsDigits)
         }
         .padding(.bottom, 8)
     }
