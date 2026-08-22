@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 /// Creates or edits an expense. The sheet opens on the amount, with the pad up; everything
 /// else is one row below it.
@@ -12,8 +13,8 @@ struct ExpenseSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @FocusState private var descriptionFocused: Bool
-    @State private var pasteableCents: Int?
     @State private var showingDatePicker = false
+    @State private var keyboardInset: CGFloat = 0
 
     private let onSaved: (Expense) -> Void
 
@@ -74,17 +75,21 @@ struct ExpenseSheet: View {
                 // owned by the sheet it simply travels with it. Its action row survives
                 // the system keyboard and rides above it, so the arrow stays put.
                 ExpenseKeypad(
-                    pasteableCents: pasteableCents,
                     isNextEnabled: isNextEnabled,
                     isSaving: viewModel.isSaving,
                     showsDigits: !descriptionFocused,
                     onKey: handle(key:)
                 )
+                .padding(.bottom, keyboardInset)
             }
             .padding(.horizontal, 12)
             .padding(.top, 12)
             .padding(.bottom, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            // The keyboard is answered by hand, below: letting SwiftUI lift the sheet moved
+            // the pad outside the bounds it is hit-tested against, so the arrow drew in the
+            // right place and answered to nothing.
+            .ignoresSafeArea(.keyboard, edges: .bottom)
             // The same colour the pad paints itself, so the two meet without a seam.
             .background(Color.expenseBackground)
             // No bar: the sheet's own header carries what it needs, and an empty bar over
@@ -92,8 +97,15 @@ struct ExpenseSheet: View {
             .toolbar(.hidden, for: .navigationBar)
             .presentationCornerRadius(28)
             .presentationBackground(Color.expenseBackground)
-            .task {
-                pasteableCents = await ClipboardPrice.detect()
+            .onReceive(NotificationCenter.default.publisher(
+                for: UIResponder.keyboardWillChangeFrameNotification
+            )) { note in
+                setKeyboardInset(from: note)
+            }
+            .onReceive(NotificationCenter.default.publisher(
+                for: UIResponder.keyboardWillHideNotification
+            )) { _ in
+                withAnimation(.easeOut(duration: 0.25)) { keyboardInset = 0 }
             }
             .sheet(isPresented: $showingDatePicker) {
                 ExpenseDatePicker(date: $viewModel.date)
@@ -116,10 +128,18 @@ struct ExpenseSheet: View {
     @ViewBuilder
     private var dateButton: some View {
         if #available(iOS 26.0, *) {
-            Button(dateLabel) { showingDatePicker = true }
-                .buttonStyle(.glass)
-                .tint(Color.expenseForeground)
-                .accessibilityIdentifier("expense.date")
+            Button {
+                showingDatePicker = true
+            } label: {
+                Text(dateLabel)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.expenseForeground)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .glassEffect(.regular, in: .capsule)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("expense.date")
         } else {
             Button {
                 showingDatePicker = true
@@ -200,6 +220,19 @@ struct ExpenseSheet: View {
     /// and nothing above it is allowed to notice.
     private static let padHeight: CGFloat = 60 + 4 * 68 + 8
 
+    /// How far the keyboard reaches into the sheet, past the home indicator the sheet
+    /// already clears.
+    private func setKeyboardInset(from note: Notification) {
+        guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
+              let window = UIApplication.shared.connectedScenes
+                  .compactMap({ ($0 as? UIWindowScene)?.keyWindow })
+                  .first
+        else { return }
+
+        let overlap = max(0, window.bounds.maxY - frame.minY - window.safeAreaInsets.bottom)
+        withAnimation(.easeOut(duration: 0.25)) { keyboardInset = overlap }
+    }
+
     /// One arrow, two jobs: leaving the amount only needs an amount, but once the
     /// description has focus the arrow is the save and answers to the whole sheet.
     private var isNextEnabled: Bool {
@@ -211,7 +244,6 @@ struct ExpenseSheet: View {
         case .digit(let digit): viewModel.amount.type(digit: digit)
         case .decimalPoint: viewModel.amount.typeDecimalPoint()
         case .backspace: viewModel.amount.backspace()
-        case .pasteAmount(let cents): viewModel.amount.replaceEntry(cents: cents)
         case .next:
             if descriptionFocused {
                 save()
