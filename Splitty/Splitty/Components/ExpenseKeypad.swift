@@ -3,7 +3,6 @@
 //  Splitty
 //
 
-import DataDetection
 import SwiftUI
 import UIKit
 
@@ -12,7 +11,6 @@ enum KeypadKey: Equatable {
     case digit(Int)
     case decimalPoint
     case backspace
-    case pasteAmount(cents: Int)
     case next
 }
 
@@ -24,7 +22,6 @@ enum KeypadKey: Equatable {
 /// Digits only. The arithmetic keys are gone: they turned a two-tap amount into a mode the
 /// user had to reason about, and the expression model still resolves whatever is typed.
 struct ExpenseKeypad: View {
-    let pasteableCents: Int?
     let isNextEnabled: Bool
     var isSaving: Bool = false
     /// The digits hide while the system keyboard is up; the action row stays, so the
@@ -57,24 +54,9 @@ struct ExpenseKeypad: View {
         .padding(.bottom, 8)
     }
 
-    /// The pad's only non-digit: the clipboard price on the left, and the forward action
-    /// sitting above the column it belongs to.
+    /// The pad's only non-digit: the forward action, over the column it belongs to.
     private var actionRow: some View {
         HStack(spacing: 12) {
-            if let pasteableCents {
-                Button {
-                    onKey(.pasteAmount(cents: pasteableCents))
-                } label: {
-                    Label("Paste \(Money.formatted(cents: pasteableCents))", systemImage: "doc.on.clipboard")
-                        .font(.subheadline.weight(.medium))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Color.expenseForeground.opacity(0.07), in: Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("keypad.paste")
-            }
-
             Spacer(minLength: 0)
 
             if isSaving {
@@ -146,13 +128,17 @@ struct ForwardButton: View {
 
     var body: some View {
         if #available(iOS 26.0, *) {
+            // The material, not the button style: `.glassProminent` morphs and rescales the
+            // capsule under the finger, which on a 44pt disc reads as the button wobbling.
             Button(action: action) {
                 glyph
                     .frame(width: diameter, height: diameter)
+                    .glassEffect(
+                        .regular.tint(Color.expenseAccent.opacity(isEnabled ? 1 : 0.3)),
+                        in: .circle
+                    )
             }
-            .buttonStyle(.glassProminent)
-            .buttonBorderShape(.circle)
-            .tint(Color.expenseAccent)
+            .buttonStyle(.plain)
             .disabled(!isEnabled)
         } else {
             Button(action: action) {
@@ -196,24 +182,5 @@ struct ExpenseDatePicker: View {
         .presentationDetents([.height(460)])
         .presentationCornerRadius(28)
         .presentationBackground(Color.expenseBackground)
-    }
-}
-
-// MARK: - Clipboard
-
-/// The price on the clipboard, if there is one.
-///
-/// The deployment target is 18.2, so there is no pre-detection fallback to write: either
-/// the system finds a money amount or the chip does not appear.
-enum ClipboardPrice {
-    static func detect() async -> Int? {
-        guard let match = try? await UIPasteboard.general
-            .detectedValues(for: [\.moneyAmounts])
-            .moneyAmounts
-            .first
-        else { return nil }
-
-        let cents = Money.cents(from: match.amount)
-        return cents > 0 ? cents : nil
     }
 }
