@@ -34,7 +34,7 @@ struct AmountDisplay: View {
         }
         .font(.system(size: size, weight: .semibold))
         .monospacedDigit()
-        .foregroundStyle(Color.primary)
+        .foregroundStyle(Color.expenseForeground)
         .lineLimit(1)
         .minimumScaleFactor(0.4)
         .animation(.spring(response: 0.34, dampingFraction: 0.72), value: text)
