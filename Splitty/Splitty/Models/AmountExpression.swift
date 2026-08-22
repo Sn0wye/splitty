@@ -77,9 +77,9 @@ struct AmountExpression: Equatable {
     }
 
     private var entryValue: Decimal? {
-        guard let entry else { return nil }
-        // A trailing point ("7.") is a display state, not a number; Decimal parses it anyway.
-        return Decimal(string: entry, locale: Locale(identifier: "en_US_POSIX"))
+        // A trailing point ("7.") is a display state, not a number; parsing reads it as 7.
+        guard let entry, let cents = Money.cents(fromTypedText: entry) else { return nil }
+        return Decimal(cents) / 100
     }
 
     // MARK: - Entry

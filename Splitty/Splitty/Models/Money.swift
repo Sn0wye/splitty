@@ -22,6 +22,15 @@ enum Money {
         cents(from: Decimal(value))
     }
 
+    /// Reads what someone typed into an amount field. Always `en_US_POSIX`: the pad and the
+    /// keyboard both produce a `.` regardless of locale.
+    static func cents(fromTypedText text: String) -> Int? {
+        guard let value = Decimal(string: text, locale: Locale(identifier: "en_US_POSIX")) else {
+            return nil
+        }
+        return cents(from: value)
+    }
+
     static func amount(cents: Int) -> Double {
         Double(cents) / 100
     }

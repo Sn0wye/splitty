@@ -25,8 +25,8 @@ struct SplitConfigurationView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
+                // Save is what an unfinished split blocks; leaving this screen is not.
                 Button("Done") { dismiss() }
-                    .disabled(viewModel.blockingMessage != nil)
             }
         }
         .onAppear {
@@ -132,7 +132,7 @@ struct SplitConfigurationView: View {
                 get: { drafts[member.userId] ?? "" },
                 set: { newValue in
                     drafts[member.userId] = newValue
-                    viewModel.setCustomAmount(cents(from: newValue), for: member.userId)
+                    viewModel.setCustomAmount(max(0, Money.cents(fromTypedText: newValue) ?? 0), for: member.userId)
                 }
             ))
             .keyboardType(.decimalPad)
@@ -155,10 +155,5 @@ struct SplitConfigurationView: View {
         drafts = viewModel.perParticipantAmounts.reduce(into: [:]) { drafts, entry in
             drafts[entry.key] = entry.value > 0 ? Money.plainString(cents: entry.value) : ""
         }
-    }
-
-    private func cents(from text: String) -> Int {
-        guard let value = Decimal(string: text, locale: Locale(identifier: "en_US_POSIX")) else { return 0 }
-        return max(0, Money.cents(from: value))
     }
 }

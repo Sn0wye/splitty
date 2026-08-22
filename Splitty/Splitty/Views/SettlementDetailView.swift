@@ -78,23 +78,15 @@ struct SettlementDetailView: View {
         }
     }
 
-    /// The counterparty is the split that is not the payer's — the shape every settlement
-    /// is built with.
-    private var peerId: Int? {
-        settlement.splits.first { $0.userId != settlement.paidBy }?.userId
-    }
-
     private var payerName: String {
         settlement.paidBy == currentUserId ? "You" : settlement.paidByUser.name
     }
 
     private var payeeName: String {
-        guard let peerId else { return "someone who has left" }
-        return peerId == currentUserId
+        guard let peer = settlement.peer else { return "someone who has left" }
+        return peer.id == currentUserId
             ? "you"
-            : members.first { $0.userId == peerId }?.name
-                ?? settlement.splits.first { $0.userId == peerId }?.user.name
-                ?? "someone who has left"
+            : members.first { $0.userId == peer.id }?.name ?? peer.name
     }
 
     private var dateText: String {
@@ -116,7 +108,7 @@ struct SettlementDetailView: View {
                 onDeleted()
                 dismiss()
             } catch {
-                errorMessage = ExpenseFormViewModel.message(for: error)
+                errorMessage = error.displayMessage
             }
         }
     }

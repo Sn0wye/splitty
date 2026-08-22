@@ -132,7 +132,7 @@ struct ExpenseDetailView: View {
                 onDeleted()
                 dismiss()
             } catch {
-                errorMessage = ExpenseFormViewModel.message(for: error)
+                errorMessage = error.displayMessage
             }
         }
     }

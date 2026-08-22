@@ -67,7 +67,9 @@ struct GroupView: View {
                     groupId: groupId,
                     members: viewModel.members,
                     currentUserId: currentUserId
-                ) { _ in }
+                ) { saved in
+                    viewModel.insert(saved)
+                }
             }
         }
         // A money write enqueues a recomputation, so the header balance is stale on return.
@@ -112,6 +114,14 @@ struct GroupView: View {
                 .listRowSeparator(.hidden)
             }
 
+            if let actionErrorMessage = viewModel.actionErrorMessage {
+                Section {
+                    Text(actionErrorMessage)
+                        .foregroundColor(.red)
+                        .listRowBackground(Color("card"))
+                }
+            }
+
             if !viewModel.errorMessage.isEmpty {
                 Section {
                     Text("Error: \(viewModel.errorMessage)")
@@ -150,8 +160,14 @@ struct GroupView: View {
 
     @ViewBuilder
     private func expenseRow(_ expense: Expense) -> some View {
+        if let currentUserId {
+            expenseRow(expense, currentUserId: currentUserId)
+        }
+    }
+
+    private func expenseRow(_ expense: Expense, currentUserId: Int) -> some View {
         NavigationLink {
-            if let currentUserId {
+            SwiftUI.Group {
                 switch expense.type {
                 case .expense:
                     ExpenseDetailView(
@@ -171,7 +187,7 @@ struct GroupView: View {
                 }
             }
         } label: {
-            ExpenseRow(expense: expense, currentUserId: currentUserId ?? 0)
+            ExpenseRow(expense: expense, currentUserId: currentUserId)
         }
         .listRowInsets(EdgeInsets())
         .listRowBackground(Color("card"))
@@ -297,6 +313,14 @@ struct GroupView: View {
                 .foregroundColor(Color("card-foreground"))
             
             Spacer()
+            
+            Text("Latest")
+                .font(.subheadline)
+                .foregroundColor(Color("muted-foreground"))
+            
+            Image(systemName: "chevron.down")
+                .font(.caption)
+                .foregroundColor(Color("muted-foreground"))
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
@@ -388,10 +412,8 @@ struct ExpenseRow: View {
 
     private var isUserPaid: Bool { expense.paidBy == currentUserId }
 
-    /// A settlement's splits are `[+amount, -amount]`, so the counterparty is the split
-    /// that is not the payer's.
     private var peerName: String {
-        expense.splits.first { $0.userId != expense.paidBy }?.user.name ?? "someone"
+        expense.peer?.name ?? "someone"
     }
     
     private var paymentText: some View {
@@ -411,8 +433,7 @@ struct ExpenseRow: View {
     }
 
     private var payeeLabel: String {
-        let peerId = expense.splits.first { $0.userId != expense.paidBy }?.userId
-        return peerId == currentUserId ? "you" : peerName
+        expense.peer?.id == currentUserId ? "you" : peerName
     }
     
     @ViewBuilder
@@ -436,8 +457,9 @@ struct ExpenseRow: View {
                 .fontWeight(.semibold)
                 .foregroundColor(Color("card-foreground"))
         } else {
-            let share = expense.getDisplayInfo(currentUserId: currentUserId)
-            Text(Money.formatted(amount: isUserPaid ? expense.amount - share.userSplit : share.userSplit))
+            // Signed: what the payer lent is the total less their own share, and what
+            // anyone else borrowed is their share.
+            Text(Money.formatted(amount: abs(expense.getUserSplit(currentUserId: currentUserId))))
                 .font(.headline)
                 .fontWeight(.semibold)
                 .foregroundColor(isUserPaid ? Color.green : Color.red)
