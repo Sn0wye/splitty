@@ -146,31 +146,30 @@ struct ForwardButton: View {
     }
 }
 
-/// The bar above the system keyboard while the description has focus: the expense's date,
-/// and the same forward arrow the pad ends on — which saves, since the description is the
-/// last thing the sheet asks for.
-struct ExpenseDateAccessory: View {
+/// The date, presented rather than parked in an accessory bar: a bar above the keyboard
+/// came with a border the sheet does not otherwise have and sat flush against the keys.
+/// Full size and from the bottom, it is the same gesture as everything else here.
+struct ExpenseDatePicker: View {
     @Binding var date: Date
-    let isSubmitEnabled: Bool
-    let isSaving: Bool
-    let onSubmit: () -> Void
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        DatePicker("Date", selection: $date, displayedComponents: .date)
-            .labelsHidden()
-            .datePickerStyle(.compact)
-            .accessibilityIdentifier("expense.date")
+        VStack(spacing: 16) {
+            DatePicker("Date", selection: $date, displayedComponents: .date)
+                .labelsHidden()
+                .datePickerStyle(.graphical)
+                .tint(Color.expenseAccent)
+                .accessibilityIdentifier("expense.datePicker")
 
-        Spacer()
-
-        if isSaving {
-            ProgressView()
-                .frame(width: 36, height: 36)
-        } else {
-            ForwardButton(isEnabled: isSubmitEnabled, diameter: 36, action: onSubmit)
-                .accessibilityLabel("save")
-                .accessibilityIdentifier("expense.save")
+            ForwardButton(isEnabled: true, diameter: 44) { dismiss() }
+                .accessibilityLabel("done")
         }
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(Color.expenseBackground)
+        .presentationDetents([.height(460)])
+        .presentationCornerRadius(28)
+        .presentationBackground(Color.expenseBackground)
     }
 }
 
