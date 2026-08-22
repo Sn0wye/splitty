@@ -15,6 +15,7 @@ struct GroupView: View {
     @State private var showingEditSheet = false
     @State private var showingExpenseSheet = false
     @State private var pendingDeletion: Expense?
+    @State private var selectedExpenseId: Int?
 
     /// The floating button clears the last row rather than covering it.
     private let listBottomInset: CGFloat = 88
@@ -156,6 +157,11 @@ struct GroupView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Color("background"))
+        .navigationDestination(item: $selectedExpenseId) { expenseId in
+            if let currentUserId {
+                detail(for: expenseId, currentUserId: currentUserId)
+            }
+        }
     }
 
     @ViewBuilder
@@ -165,40 +171,45 @@ struct GroupView: View {
         }
     }
 
+    /// A button rather than a `NavigationLink`: a link in a list draws a disclosure
+    /// chevron, and these rows already say where they go. Any member may delete anything,
+    /// including a settlement someone else recorded — membership is the only authorization
+    /// boundary in the system.
     private func expenseRow(_ expense: Expense, currentUserId: Int) -> some View {
-        NavigationLink {
-            SwiftUI.Group {
-                switch expense.type {
-                case .expense:
-                    ExpenseDetailView(
-                        expense: expense,
-                        members: viewModel.members,
-                        currentUserId: currentUserId,
-                        onChanged: { Task { await viewModel.refresh(groupId: groupId) } },
-                        onDeleted: { Task { await viewModel.refresh(groupId: groupId) } }
-                    )
-                case .payment:
-                    SettlementDetailView(
-                        settlement: expense,
-                        members: viewModel.members,
-                        currentUserId: currentUserId,
-                        onDeleted: { Task { await viewModel.refresh(groupId: groupId) } }
-                    )
-                }
+        SwipeToDeleteRow {
+            pendingDeletion = expense
+        } content: {
+            Button {
+                selectedExpenseId = expense.id
+            } label: {
+                ExpenseRow(expense: expense, currentUserId: currentUserId)
             }
-        } label: {
-            ExpenseRow(expense: expense, currentUserId: currentUserId)
+            .buttonStyle(.plain)
         }
         .listRowInsets(EdgeInsets())
         .listRowBackground(Color("card"))
         .listRowSeparator(.hidden)
-        // Any member may delete anything, including a settlement someone else recorded —
-        // membership is the only authorization boundary in the system.
-        .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
-                pendingDeletion = expense
-            } label: {
-                Label("Delete", systemImage: "trash")
+    }
+
+    @ViewBuilder
+    private func detail(for expenseId: Int, currentUserId: Int) -> some View {
+        if let expense = viewModel.expenses.first(where: { $0.id == expenseId }) {
+            switch expense.type {
+            case .expense:
+                ExpenseDetailView(
+                    expense: expense,
+                    members: viewModel.members,
+                    currentUserId: currentUserId,
+                    onChanged: { Task { await viewModel.refresh(groupId: groupId) } },
+                    onDeleted: { Task { await viewModel.refresh(groupId: groupId) } }
+                )
+            case .payment:
+                SettlementDetailView(
+                    settlement: expense,
+                    members: viewModel.members,
+                    currentUserId: currentUserId,
+                    onDeleted: { Task { await viewModel.refresh(groupId: groupId) } }
+                )
             }
         }
     }
