@@ -64,7 +64,7 @@ struct ExpenseKeypad: View {
                         .font(.subheadline.weight(.medium))
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .background(Color.primary.opacity(0.07), in: Capsule())
+                        .background(Color.expenseForeground.opacity(0.07), in: Capsule())
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("keypad.paste")
@@ -112,12 +112,12 @@ private struct KeypadKeyStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 32, weight: .regular))
-            .foregroundStyle(Color.primary)
+            .foregroundStyle(Color.expenseForeground)
             .frame(maxWidth: .infinity)
             .frame(height: 68)
             .background {
                 Circle()
-                    .fill(Color.primary.opacity(configuration.isPressed ? 0.07 : 0))
+                    .fill(Color.expenseForeground.opacity(configuration.isPressed ? 0.07 : 0))
                     .frame(width: 72, height: 72)
                     .scaleEffect(configuration.isPressed ? 1 : 0.6)
             }
@@ -137,9 +137,9 @@ struct ForwardButton: View {
         Button(action: action) {
             Image(systemName: "arrow.right")
                 .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(Color(.systemBackground))
+                .foregroundStyle(Color.expenseBackground)
                 .frame(width: 52, height: 52)
-                .background(Color.primary.opacity(isEnabled ? 1 : 0.25), in: Circle())
+                .background(Color.expenseAccent.opacity(isEnabled ? 1 : 0.25), in: Circle())
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
@@ -177,7 +177,7 @@ struct AmountInputField: UIViewRepresentable {
         // A plain view, not `UIInputView`: the keyboard style paints its own material and
         // hairline, and the pad has to be indistinguishable from the sheet above it.
         let container = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: Coordinator.keypadHeight))
-        container.backgroundColor = .systemBackground
+        container.backgroundColor = ExpenseTheme.background
         container.autoresizingMask = .flexibleWidth
         hosting.view.frame = container.bounds
         hosting.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -261,6 +261,7 @@ struct DescriptionInputField: UIViewRepresentable {
         let field = UITextField()
         field.delegate = context.coordinator
         field.font = .preferredFont(forTextStyle: .body)
+        field.textColor = ExpenseTheme.foreground
         field.placeholder = placeholder
         field.returnKeyType = .done
         field.autocapitalizationType = .sentences
@@ -272,7 +273,7 @@ struct DescriptionInputField: UIViewRepresentable {
         context.coordinator.hosting = hosting
 
         let container = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: Coordinator.accessoryHeight))
-        container.backgroundColor = .systemBackground
+        container.backgroundColor = ExpenseTheme.background
         container.autoresizingMask = .flexibleWidth
         hosting.view.frame = container.bounds
         hosting.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]

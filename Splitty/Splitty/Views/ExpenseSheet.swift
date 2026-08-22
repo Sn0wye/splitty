@@ -64,11 +64,11 @@ struct ExpenseSheet: View {
             .padding(.bottom, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             // The same colour the pad paints itself, so the two meet without a seam.
-            .background(Color(.systemBackground))
+            .background(Color.expenseBackground)
             .navigationTitle(viewModel.title)
             .navigationBarTitleDisplayMode(.inline)
             .presentationCornerRadius(28)
-            .presentationBackground(Color(.systemBackground))
+            .presentationBackground(Color.expenseBackground)
             .task {
                 amountFocused = true
                 pasteableCents = await ClipboardPrice.detect()
@@ -103,7 +103,7 @@ struct ExpenseSheet: View {
                 .font(.system(size: 18))
                 .foregroundStyle(.secondary)
                 .frame(width: 48, height: 48)
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+                .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
 
             VStack(alignment: .leading, spacing: 2) {
                 DescriptionInputField(
@@ -131,7 +131,7 @@ struct ExpenseSheet: View {
             HStack {
                 Text(viewModel.splitSummary)
                     .font(.subheadline)
-                    .foregroundStyle(Color.primary)
+                    .foregroundStyle(Color.expenseForeground)
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.caption)
@@ -139,7 +139,7 @@ struct ExpenseSheet: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+            .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
         }
         .accessibilityIdentifier("expense.split")
     }
