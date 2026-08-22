@@ -5,14 +5,13 @@
 
 import SwiftUI
 
-/// Creates or edits an expense. The sheet opens on the amount, with the calculator pad up;
-/// everything else is one row below it.
+/// Creates or edits an expense. The sheet opens on the amount, with the pad up; everything
+/// else is one row below it.
 struct ExpenseSheet: View {
     @StateObject private var viewModel: ExpenseFormViewModel
     @Environment(\.dismiss) private var dismiss
 
-    @State private var amountFocused = false
-    @State private var descriptionFocused = false
+    @FocusState private var descriptionFocused: Bool
     @State private var pasteableCents: Int?
 
     private let onSaved: (Expense) -> Void
@@ -58,6 +57,18 @@ struct ExpenseSheet: View {
                         .multilineTextAlignment(.center)
                 }
 
+                Spacer(minLength: 8)
+
+                // The pad is content, not a keyboard. As a keyboard it dismissed on its
+                // own clock, sliding out from under a sheet that was still on screen;
+                // owned by the sheet it simply travels with it.
+                if !descriptionFocused {
+                    ExpenseKeypad(
+                        pasteableCents: pasteableCents,
+                        isNextEnabled: isNextEnabled,
+                        onKey: handle(key:)
+                    )
+                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 12)
@@ -70,7 +81,6 @@ struct ExpenseSheet: View {
             .presentationCornerRadius(28)
             .presentationBackground(Color.expenseBackground)
             .task {
-                amountFocused = true
                 pasteableCents = await ClipboardPrice.detect()
             }
         }
@@ -78,23 +88,13 @@ struct ExpenseSheet: View {
 
     // MARK: - Rows
 
-    /// The number is drawn by `AmountDisplay`; the field underneath it is an invisible
-    /// responder that owns the pad. Tapping anywhere on the number focuses it.
+    /// Tapping the number puts the pad back, whichever field had focus.
     private var amountRow: some View {
         AmountDisplay(text: viewModel.amount.displayText)
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
-            .onTapGesture { amountFocused = true }
-            .background(alignment: .center) {
-                AmountInputField(
-                    pasteableCents: pasteableCents,
-                    isNextEnabled: isNextEnabled,
-                    isFocused: $amountFocused,
-                    onKey: handle(key:)
-                )
-                .frame(width: 1, height: 1)
-                .allowsHitTesting(false)
-            }
+            .onTapGesture { descriptionFocused = false }
+            .accessibilityIdentifier("expense.amount")
     }
 
     private var descriptionRow: some View {
@@ -106,16 +106,22 @@ struct ExpenseSheet: View {
                 .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
 
             VStack(alignment: .leading, spacing: 2) {
-                DescriptionInputField(
-                    text: $viewModel.description,
-                    date: $viewModel.date,
-                    isFocused: $descriptionFocused,
-                    placeholder: "What was it for?",
-                    isSubmitEnabled: viewModel.canSave,
-                    isSaving: viewModel.isSaving,
-                    onSubmit: save
-                )
-                .frame(height: 30)
+                TextField("What was it for?", text: $viewModel.description)
+                    .focused($descriptionFocused)
+                    .submitLabel(.done)
+                    .foregroundStyle(Color.expenseForeground)
+                    .accessibilityIdentifier("expense.description")
+                    .frame(height: 30)
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            ExpenseDateAccessory(
+                                date: $viewModel.date,
+                                isSubmitEnabled: viewModel.canSave,
+                                isSaving: viewModel.isSaving,
+                                onSubmit: save
+                            )
+                        }
+                    }
 
                 Text(viewModel.date, format: .dateTime.weekday(.abbreviated).day().month().year())
                     .font(.caption)
