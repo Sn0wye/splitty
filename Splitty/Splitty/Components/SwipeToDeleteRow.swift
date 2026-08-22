@@ -18,26 +18,32 @@ struct SwipeToDeleteRow<Content: View>: View {
     @GestureState private var translation: CGFloat = 0
 
     private static var actionWidth: CGFloat { 88 }
-    /// Past this the row commits on release, the way a full swipe does in a system list.
-    private static var commitWidth: CGFloat { 260 }
+    /// Past this, releasing asks. Short of it the row snaps back and nothing happens.
+    private static var commitWidth: CGFloat { 44 }
 
     var body: some View {
         ZStack(alignment: .trailing) {
+            // Tied to the card's edge rather than parked at the row's: the button arrives
+            // with the drag the way a system swipe action does, and stretches to fill
+            // anything dragged past its width.
             Button(action: delete) {
                 Image(systemName: "trash")
                     .font(.system(size: 20))
                     .foregroundStyle(.white)
                     .frame(width: Self.actionWidth)
-                    .frame(maxHeight: .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                     .background(Color.red)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Delete")
+            .frame(width: max(Self.actionWidth, -shownOffset))
+            .offset(x: max(0, Self.actionWidth + shownOffset))
 
             content
                 .background(Color("card"))
                 .offset(x: shownOffset)
         }
+        .clipped()
         .animation(.snappy(duration: 0.25), value: offset)
         // Simultaneous, not exclusive: a plain `.gesture` loses the drag to the list's own
         // pan recogniser, which is why the row stopped swiping at all. Both see the drag,
@@ -66,16 +72,16 @@ struct SwipeToDeleteRow<Content: View>: View {
             : raw
     }
 
+    /// The row does not stay open. Releasing past the threshold asks the question and
+    /// closes; the drag is the gesture, and the alert is where the decision is made.
     private func settle(_ value: DragGesture.Value) {
         guard abs(value.translation.width) > abs(value.translation.height) else { return }
 
         let travelled = offset + value.translation.width
+        offset = 0
 
         if travelled < -Self.commitWidth {
-            offset = 0
             onDelete()
-        } else {
-            offset = travelled < -Self.actionWidth / 2 ? -Self.actionWidth : 0
         }
     }
 

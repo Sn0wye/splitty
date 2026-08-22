@@ -80,21 +80,23 @@ struct GroupView: View {
                 Task { await viewModel.refresh(groupId: groupId) }
             }
         }
-        .confirmationDialog(
+        // An alert, not a confirmation dialog: deleting is destructive and irreversible,
+        // and the question is worth a modal that names what it is about.
+        .alert(
             deletionTitle,
             isPresented: Binding(
                 get: { pendingDeletion != nil },
                 set: { if !$0 { pendingDeletion = nil } }
             ),
-            titleVisibility: .visible
-        ) {
+            presenting: pendingDeletion
+        ) { expense in
             Button("Delete", role: .destructive) {
-                if let expense = pendingDeletion {
-                    pendingDeletion = nil
-                    Task { await viewModel.delete(expense, groupId: groupId) }
-                }
+                pendingDeletion = nil
+                Task { await viewModel.delete(expense, groupId: groupId) }
             }
             Button("Cancel", role: .cancel) { pendingDeletion = nil }
+        } message: { _ in
+            Text("This cannot be undone.")
         }
         .task {
             await viewModel.loadGroupData(groupId: groupId)
