@@ -13,6 +13,7 @@ struct ExpenseSheet: View {
 
     @FocusState private var descriptionFocused: Bool
     @State private var pasteableCents: Int?
+    @State private var showingDatePicker = false
 
     private let onSaved: (Expense) -> Void
 
@@ -35,6 +36,8 @@ struct ExpenseSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
+                headerRow
+
                 Spacer(minLength: 12)
 
                 amountRow
@@ -70,23 +73,67 @@ struct ExpenseSheet: View {
                     )
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 12)
             .padding(.top, 12)
             .padding(.bottom, 12)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             // The same colour the pad paints itself, so the two meet without a seam.
             .background(Color.expenseBackground)
-            .navigationTitle(viewModel.title)
-            .navigationBarTitleDisplayMode(.inline)
+            // No bar: the sheet's own header carries what it needs, and an empty bar over
+            // the amount was only there to hold buttons that are gone.
+            .toolbar(.hidden, for: .navigationBar)
             .presentationCornerRadius(28)
             .presentationBackground(Color.expenseBackground)
             .task {
                 pasteableCents = await ClipboardPrice.detect()
             }
+            .sheet(isPresented: $showingDatePicker) {
+                ExpenseDatePicker(date: $viewModel.date)
+            }
         }
     }
 
     // MARK: - Rows
+
+    /// The date on the left, and — while the system keyboard is up and the pad's own arrow
+    /// is off screen — the save action on the right, so there is never a moment with no way
+    /// forward and never two arrows at once.
+    private var headerRow: some View {
+        HStack {
+            Button {
+                showingDatePicker = true
+            } label: {
+                Text(dateLabel)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Color.expenseForeground)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.expenseForeground.opacity(0.07), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("expense.date")
+
+            Spacer()
+
+            if descriptionFocused {
+                if viewModel.isSaving {
+                    ProgressView().frame(width: 40, height: 40)
+                } else {
+                    ForwardButton(isEnabled: viewModel.canSave, diameter: 40, action: save)
+                        .accessibilityLabel("save")
+                        .accessibilityIdentifier("expense.save")
+                }
+            }
+        }
+        .padding(.horizontal, 8)
+    }
+
+    private var dateLabel: String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(viewModel.date) { return "Today" }
+        if calendar.isDateInYesterday(viewModel.date) { return "Yesterday" }
+        return viewModel.date.formatted(.dateTime.day().month(.abbreviated).year())
+    }
 
     /// Tapping the number puts the pad back, whichever field had focus.
     private var amountRow: some View {
@@ -112,22 +159,9 @@ struct ExpenseSheet: View {
                     .foregroundStyle(Color.expenseForeground)
                     .accessibilityIdentifier("expense.description")
                     .frame(height: 30)
-                    .toolbar {
-                        ToolbarItemGroup(placement: .keyboard) {
-                            ExpenseDateAccessory(
-                                date: $viewModel.date,
-                                isSubmitEnabled: viewModel.canSave,
-                                isSaving: viewModel.isSaving,
-                                onSubmit: save
-                            )
-                        }
-                    }
-
-                Text(viewModel.date, format: .dateTime.weekday(.abbreviated).day().month().year())
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
+        .padding(.horizontal, 8)
     }
 
     private var splitRow: some View {
@@ -146,6 +180,7 @@ struct ExpenseSheet: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
             .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, 8)
         }
         .accessibilityIdentifier("expense.split")
     }
