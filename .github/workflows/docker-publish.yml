@@ -54,5 +54,5 @@ jobs:
 
       - name: Deploy to Coolify
         run: |
-          curl --fail-with-body --request GET '${{ secrets.COOLIFY_WEBHOOK }}' \
+          curl --fail-with-body --request POST '${{ secrets.COOLIFY_WEBHOOK }}' \
             --header 'Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}'
