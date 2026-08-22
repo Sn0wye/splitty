@@ -179,6 +179,14 @@ builder.Services.AddSingleton<Channel<TransactionRequest>>(
 
 var app = builder.Build();
 
+// Apply pending migrations on boot so a deploy against a fresh or lagging database
+// self-heals; MigrateAsync is a no-op once the schema is current.
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await db.Database.MigrateAsync();
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
