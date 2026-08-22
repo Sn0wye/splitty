@@ -32,7 +32,7 @@ struct AmountDisplay: View {
             Text(currencySymbol)
                 .padding(.leading, size * 0.12)
         }
-        .font(.system(size: size, weight: .semibold))
+        .font(.system(size: size, weight: .semibold, design: .rounded))
         .monospacedDigit()
         .foregroundStyle(Color.expenseForeground)
         .lineLimit(1)

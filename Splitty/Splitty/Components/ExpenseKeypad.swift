@@ -105,12 +105,13 @@ struct ExpenseKeypad: View {
     }
 }
 
-/// No key cap: a grey circle grows behind the glyph while the finger is down and fades out
-/// after it lifts, which is the whole of the key's chrome.
+/// No key cap: a grey circle fades in behind the glyph while the finger is down and fades
+/// out after it lifts, which is the whole of the key's chrome. It does not grow — the disc
+/// is always full size, so the only thing moving under the finger is opacity.
 private struct KeypadKeyStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 32, weight: .regular))
+            .font(.system(size: 32, weight: .medium, design: .rounded))
             .foregroundStyle(Color.expenseForeground)
             .frame(maxWidth: .infinity)
             .frame(height: 68)
@@ -118,7 +119,6 @@ private struct KeypadKeyStyle: ButtonStyle {
                 Circle()
                     .fill(Color.expenseForeground.opacity(configuration.isPressed ? 0.07 : 0))
                     .frame(width: 72, height: 72)
-                    .scaleEffect(configuration.isPressed ? 1 : 0.6)
             }
             .contentShape(Rectangle())
             .animation(.easeOut(duration: configuration.isPressed ? 0.08 : 0.2), value: configuration.isPressed)
@@ -130,7 +130,7 @@ private struct KeypadKeyStyle: ButtonStyle {
 /// black-on-white without a second asset.
 struct ForwardButton: View {
     let isEnabled: Bool
-    var diameter: CGFloat = 52
+    var diameter: CGFloat = 44
     let action: () -> Void
 
     var body: some View {
