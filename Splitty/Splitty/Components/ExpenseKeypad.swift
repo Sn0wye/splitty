@@ -21,8 +21,9 @@ enum KeypadKey: Equatable {
 
 // MARK: - The pad
 
-/// The amount field's keyboard: a calculator row above a numeric pad, plus a clipboard
-/// price chip when there is one to offer.
+/// The amount field's keyboard: borderless glyphs on the sheet's own background, with a
+/// circular press halo instead of a key cap. A calculator row sits above the digits,
+/// styled the same way so it reads as part of the pad rather than a toolbar bolted to it.
 struct ExpenseKeypad: View {
     let pendingOperator: CalculatorOperator?
     let pasteableCents: Int?
@@ -31,7 +32,7 @@ struct ExpenseKeypad: View {
     private let digitRows = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 4) {
             if let pasteableCents {
                 Button {
                     onKey(.pasteAmount(cents: pasteableCents))
@@ -44,105 +45,105 @@ struct ExpenseKeypad: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("keypad.paste")
+                .padding(.bottom, 4)
             }
 
             calculatorRow
 
-            HStack(spacing: 8) {
-                VStack(spacing: 8) {
-                    ForEach(digitRows, id: \.first) { row in
-                        HStack(spacing: 8) {
-                            ForEach(row, id: \.self) { digit in
-                                key("\(digit)") { onKey(.digit(digit)) }
-                            }
-                        }
-                    }
-                    HStack(spacing: 8) {
-                        key(".") { onKey(.decimalPoint) }
-                        key("0") { onKey(.digit(0)) }
-                        key(systemImage: "delete.left") { onKey(.backspace) }
+            ForEach(digitRows, id: \.first) { row in
+                HStack(spacing: 0) {
+                    ForEach(row, id: \.self) { digit in
+                        key(title: "\(digit)") { onKey(.digit(digit)) }
                     }
                 }
+            }
 
-                VStack(spacing: 8) {
-                    key("C", tint: .secondary) { onKey(.clear) }
-                    key("=", tint: .accentColor) { onKey(.equals) }
-                    Button {
-                        onKey(.next)
-                    } label: {
-                        Text("Next")
-                            .font(.body.weight(.semibold))
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 10))
-                            .foregroundStyle(Color.white)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("keypad.next")
-                }
-                .frame(width: 88)
+            HStack(spacing: 0) {
+                key(title: ".") { onKey(.decimalPoint) }
+                key(title: "0") { onKey(.digit(0)) }
+                key(systemImage: "chevron.left", label: "delete") { onKey(.backspace) }
             }
         }
         .padding(.horizontal, 12)
-        .padding(.top, 10)
-        .padding(.bottom, 16)
+        .padding(.top, 6)
+        .padding(.bottom, 8)
     }
 
+    /// The pending operator stays lit, so a half-typed expression is legible from the pad
+    /// itself rather than only from the amount.
     private var calculatorRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 0) {
             ForEach(CalculatorOperator.allCases, id: \.self) { operation in
-                Button {
+                key(title: operation.symbol, isOn: pendingOperator == operation) {
                     onKey(.operation(operation))
-                } label: {
-                    Text(operation.symbol)
-                        .font(.title3.weight(.medium))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 36)
-                        .background(
-                            pendingOperator == operation ? Color.accentColor : Color(.tertiarySystemFill),
-                            in: RoundedRectangle(cornerRadius: 10)
-                        )
-                        .foregroundStyle(pendingOperator == operation ? Color.white : Color.primary)
                 }
-                .buttonStyle(.plain)
                 .accessibilityIdentifier("keypad.operator.\(operation.symbol)")
             }
+            key(title: "=") { onKey(.equals) }
+            key(systemImage: "arrow.forward", label: "next") { onKey(.next) }
+                .accessibilityIdentifier("keypad.next")
         }
+        .font(.system(size: 24, weight: .regular))
     }
 
-    private func key(_ title: String, tint: Color = .primary, action: @escaping () -> Void) -> some View {
+    private func key(
+        title: String,
+        isOn: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.title2)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
-                .foregroundStyle(tint)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(KeypadKeyStyle(isOn: isOn))
         .accessibilityIdentifier("keypad.key.\(title)")
     }
 
-    private func key(systemImage: String, action: @escaping () -> Void) -> some View {
+    private func key(
+        systemImage: String,
+        label: String,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.title3)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
-                .foregroundStyle(Color.primary)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(KeypadKeyStyle(isOn: false))
+        .accessibilityLabel(label)
         .accessibilityIdentifier("keypad.key.\(systemImage)")
+    }
+}
+
+/// No key cap: a grey circle grows behind the glyph while the finger is down and fades out
+/// after it lifts, which is the whole of the key's chrome.
+private struct KeypadKeyStyle: ButtonStyle {
+    let isOn: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 34, weight: .regular))
+            .foregroundStyle(Color.primary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 64)
+            .background {
+                Circle()
+                    .fill(Color.primary.opacity(configuration.isPressed || isOn ? 0.07 : 0))
+                    .frame(width: 72, height: 72)
+                    .scaleEffect(configuration.isPressed || isOn ? 1 : 0.6)
+            }
+            .contentShape(Rectangle())
+            .animation(.easeOut(duration: configuration.isPressed ? 0.08 : 0.2), value: configuration.isPressed)
     }
 }
 
 // MARK: - The amount field
 
-/// The amount field is a real `UITextField` whose `inputView` is the pad above.
+/// The responder behind the amount: a real `UITextField` whose `inputView` is the pad
+/// above, kept invisible because `AmountDisplay` draws the number.
 ///
 /// Not a SwiftUI `TextField` with `.decimalPad` and an accessory bar: a real responder is
-/// what gives the field a caret and makes moving focus to the description swap the pad for
-/// the system keyboard, both without any code.
+/// what makes moving focus to the description swap the pad for the system keyboard,
+/// without any code. It renders nothing itself — a text field draws its text as one opaque
+/// run, and the digits have to animate one at a time.
 struct AmountInputField: UIViewRepresentable {
-    let text: String
     let pendingOperator: CalculatorOperator?
     let pasteableCents: Int?
     @Binding var isFocused: Bool
@@ -151,10 +152,10 @@ struct AmountInputField: UIViewRepresentable {
     func makeUIView(context: Context) -> UITextField {
         let field = UITextField()
         field.delegate = context.coordinator
-        field.font = .systemFont(ofSize: 40, weight: .semibold)
-        field.textColor = .label
-        field.adjustsFontSizeToFitWidth = true
-        field.minimumFontSize = 22
+        field.tintColor = .clear
+        field.textColor = .clear
+        field.backgroundColor = .clear
+        field.isAccessibilityElement = false
         field.accessibilityIdentifier = "expense.amount"
 
         let hosting = UIHostingController(rootView: keypad(context: context))
@@ -178,10 +179,6 @@ struct AmountInputField: UIViewRepresentable {
         context.coordinator.parent = self
         context.coordinator.hosting?.rootView = keypad(context: context)
 
-        if uiView.text != text {
-            uiView.text = text
-        }
-
         // Deferred: changing the first responder inside a SwiftUI update is a change the
         // system may drop, and the handoff to the description is exactly that case.
         if isFocused, !uiView.isFirstResponder {
@@ -202,7 +199,8 @@ struct AmountInputField: UIViewRepresentable {
     }
 
     final class Coordinator: NSObject, UITextFieldDelegate {
-        static let keypadHeight: CGFloat = 300
+        /// Five borderless rows, each 64pt, plus the padding around them.
+        static let keypadHeight: CGFloat = 360
 
         var parent: AmountInputField
         var hosting: UIHostingController<ExpenseKeypad>?
