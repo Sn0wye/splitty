@@ -11,10 +11,12 @@ import SwiftUI
 /// rows are square and edge to edge. The gesture is the same one — drag to reveal, tap to
 /// act, full swipe to act directly — so what changes is the shape, not the behaviour.
 struct SwipeToDeleteRow<Content: View>: View {
+    let onTap: () -> Void
     let onDelete: () -> Void
     @ViewBuilder var content: Content
 
     @State private var offset: CGFloat = 0
+    @State private var isSwiping = false
     @GestureState private var translation: CGFloat = 0
 
     private static var actionWidth: CGFloat { 88 }
@@ -39,8 +41,16 @@ struct SwipeToDeleteRow<Content: View>: View {
             .frame(width: max(Self.actionWidth, -shownOffset))
             .offset(x: max(0, Self.actionWidth + shownOffset))
 
+            // A tap gesture the swipe can veto, rather than a `Button`: the row is the
+            // button's whole area, so a finger that swipes never leaves it, and releasing
+            // counted as a tap and opened the expense.
             content
                 .background(Color("card"))
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    guard !isSwiping else { return }
+                    onTap()
+                }
                 .offset(x: shownOffset)
         }
         .clipped()
@@ -58,7 +68,19 @@ struct SwipeToDeleteRow<Content: View>: View {
                     }
                     state = value.translation.width
                 }
-                .onEnded(settle)
+                .onChanged { value in
+                    if abs(value.translation.width) > abs(value.translation.height) {
+                        isSwiping = true
+                    }
+                }
+                .onEnded { value in
+                    settle(value)
+                    // Cleared late: the tap lands on the same release as the drag's end.
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(150))
+                        isSwiping = false
+                    }
+                }
         )
     }
 
