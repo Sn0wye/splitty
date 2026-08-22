@@ -74,7 +74,7 @@ class APIClient {
                         NotificationCenter.default.post(name: .unauthorizedError, object: nil)
                     }
                 }
-                throw APIError.httpError(httpResponse.statusCode)
+                throw APIError.httpError(httpResponse.statusCode, message: Self.serverMessage(from: data))
             }
             
             // A 204 carries no body; decoding one is a failure that has nothing to report.
@@ -101,6 +101,25 @@ class APIClient {
         }
     }
     
+    /// The server's explanation for a rejection, from either error shape the API produces:
+    /// its own `ErrorResponse`, or the validation dictionary `ModelState` returns.
+    private static func serverMessage(from data: Data) -> String? {
+        guard !data.isEmpty,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+
+        if let message = json["message"] as? String, !message.isEmpty {
+            return message
+        }
+
+        if let errors = json["errors"] as? [String: Any] {
+            let messages = errors.values.compactMap { $0 as? [String] }.flatMap { $0 }
+            if !messages.isEmpty { return messages.joined(separator: " ") }
+        }
+
+        return nil
+    }
+
     // MARK: - Authentication
     /// Redeems a one-time Google auth code for a Splitty token. The exchange with Google
     /// happens server-side, so no client secret is needed here.
@@ -163,10 +182,28 @@ enum APIError: Error, LocalizedError {
     case noAuthToken
     case invalidRequestBody
     case invalidResponse
-    case httpError(Int)
+    /// `message` is the server's own explanation, when it sent one. A rejected split is the
+    /// case that needs it: only the server knows why a request the client believed in was
+    /// refused.
+    case httpError(Int, message: String?)
     case networkError(Error)
     case decodingError(Error)
     
+    /// What to put on screen. The server's own `400` is the only thing that knows why a
+    /// request the client believed in was refused, so it gets its own line rather than a
+    /// raw `localizedDescription`.
+    var displayMessage: String {
+        switch self {
+        case .httpError(_, .some(let message)): return message
+        case .httpError(400, _): return "The server rejected this. Check the amounts and try again."
+        case .httpError(403, _): return "You are not a member of this group."
+        case .httpError(404, _): return "This no longer exists."
+        case .httpError(let status, _): return "Something went wrong (\(status)). Try again."
+        case .networkError: return "Couldn't reach Splitty. Check your connection and try again."
+        default: return errorDescription ?? "Something went wrong. Try again."
+        }
+    }
+
     var errorDescription: String? {
         switch self {
         case .missingBaseURL:
@@ -181,13 +218,20 @@ enum APIError: Error, LocalizedError {
             return "Invalid request body"
         case .invalidResponse:
             return "Invalid response"
-        case .httpError(let code):
+        case .httpError(let code, _):
             return "HTTP error: \(code)"
         case .networkError(let error):
             return "Network error: \(error.localizedDescription)"
         case .decodingError(let error):
             return "Decoding error: \(error.localizedDescription)"
         }
+    }
+}
+
+extension Error {
+    /// Non-`APIError` failures have no copy of their own to offer.
+    var displayMessage: String {
+        (self as? APIError)?.displayMessage ?? localizedDescription
     }
 }
 

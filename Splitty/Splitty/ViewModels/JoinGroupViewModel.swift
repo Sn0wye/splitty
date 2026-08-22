@@ -45,7 +45,7 @@ class JoinGroupViewModel: ObservableObject {
     }
     
     private static func message(for error: Error) -> String {
-        guard case APIError.httpError(let status) = error else {
+        guard case APIError.httpError(let status, _) = error else {
             return error.localizedDescription
         }
         switch status {

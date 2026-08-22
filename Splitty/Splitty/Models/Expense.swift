@@ -99,6 +99,12 @@ extension Expense {
         }
     }
     
+    /// The counterparty on a settlement: the split that is not the payer's, which is the
+    /// shape every settlement is built with (`[+amount, -amount]`).
+    var peer: User? {
+        splits.first { $0.userId != paidBy }?.user
+    }
+
     // Calculate the expense split for the current user
     func getUserSplit(currentUserId: Int) -> Double {
         // Find the current user's split

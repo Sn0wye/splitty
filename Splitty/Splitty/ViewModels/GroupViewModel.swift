@@ -15,6 +15,11 @@ class GroupViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage = ""
 
+    /// A failed delete belongs next to the list, not in place of it: `errorMessage` blanks
+    /// the timeline, which is the right shape for a load that failed and the wrong one for
+    /// an action that did.
+    @Published var actionErrorMessage: String?
+
     /// True while the balance worker still owes this group a recomputation, so the header
     /// number is known to predate the last write.
     @Published var balancesPending = false
@@ -32,6 +37,15 @@ class GroupViewModel: ObservableObject {
     /// polling, and the worker usually finishes inside the dismiss animation.
     func refresh(groupId: Int) async {
         await load(groupId: groupId)
+    }
+
+    /// Shows a just-saved expense without waiting for the refetch. The row is real — the
+    /// server returned it — while the *balance* it feeds is not, which is what
+    /// `balancesPending` says.
+    func insert(_ expense: Expense) {
+        expenses.removeAll { $0.id == expense.id }
+        expenses.append(expense)
+        groupedExpenses = Expense.groupExpensesByDate(expenses)
     }
 
     private func load(groupId: Int) async {
@@ -66,6 +80,8 @@ class GroupViewModel: ObservableObject {
     /// the expense route refuses payment rows rather than branching on a type the client
     /// never sent.
     func delete(_ expense: Expense, groupId: Int) async {
+        actionErrorMessage = nil
+
         do {
             switch expense.type {
             case .expense:
@@ -75,7 +91,7 @@ class GroupViewModel: ObservableObject {
             }
             await refresh(groupId: groupId)
         } catch {
-            errorMessage = ExpenseFormViewModel.message(for: error)
+            actionErrorMessage = error.displayMessage
         }
     }
 }

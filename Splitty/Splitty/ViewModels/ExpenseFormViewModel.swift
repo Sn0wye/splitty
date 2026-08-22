@@ -192,22 +192,8 @@ class ExpenseFormViewModel: ObservableObject {
                 splits: splits()
             )
         } catch {
-            errorMessage = Self.message(for: error)
+            errorMessage = error.displayMessage
             return nil
-        }
-    }
-
-    /// The server's `400` is the client's message: it is the only thing that knows why a
-    /// split the client believes in was refused.
-    static func message(for error: Error) -> String {
-        guard case APIError.httpError(let status) = error else {
-            return error.localizedDescription
-        }
-        switch status {
-        case 400: return "The server rejected this expense. Check the amounts and try again."
-        case 403: return "You are not a member of this group."
-        case 404: return "This expense no longer exists."
-        default: return "Something went wrong (\(status)). Try again."
         }
     }
 }

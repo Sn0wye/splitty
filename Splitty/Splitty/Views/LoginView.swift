@@ -145,7 +145,7 @@ struct LoginView: View {
 
         if let apiError = error as? APIError {
             switch apiError {
-            case .httpError(401):
+            case .httpError(401, _):
                 return "Google couldn't verify that account. Try again."
             case .httpError, .decodingError, .invalidResponse:
                 return "Something went wrong signing you in. Try again in a moment."
