@@ -173,20 +173,17 @@ struct GroupView: View {
         }
     }
 
-    /// A button rather than a `NavigationLink`: a link in a list draws a disclosure
-    /// chevron, and these rows already say where they go. Any member may delete anything,
+    /// A tap rather than a `NavigationLink`: a link in a list draws a disclosure chevron,
+    /// and these rows already say where they go. Any member may delete anything,
     /// including a settlement someone else recorded — membership is the only authorization
     /// boundary in the system.
     private func expenseRow(_ expense: Expense, currentUserId: Int) -> some View {
         SwipeToDeleteRow {
+            selectedExpenseId = expense.id
+        } onDelete: {
             pendingDeletion = expense
         } content: {
-            Button {
-                selectedExpenseId = expense.id
-            } label: {
-                ExpenseRow(expense: expense, currentUserId: currentUserId)
-            }
-            .buttonStyle(.plain)
+            ExpenseRow(expense: expense, currentUserId: currentUserId)
         }
         .listRowInsets(EdgeInsets())
         .listRowBackground(Color("card"))
