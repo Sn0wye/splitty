@@ -64,7 +64,7 @@ struct ExpenseSheet: View {
 
                     // Held open whether the pad is showing its digits or not, so opening
                     // the keyboard moves nothing above it.
-                    Color.clear.frame(height: Self.padHeight)
+                    Color.clear.frame(height: bottomReserve)
                 }
                 // The content above the pad is anchored to the sheet, not to the keyboard:
                 // letting the system lift it as well produced two shifts at once.
@@ -218,8 +218,18 @@ struct ExpenseSheet: View {
     /// One action row and four digit rows, plus the padding under them. Reserved in the
     /// layout at all times: the pad shrinks to the action row when the keyboard takes over,
     /// and nothing above it is allowed to notice.
+    private static let actionRowHeight: CGFloat = 60
     private static let digitsHeight: CGFloat = 4 * 68 + 2 * 3
-    private static let padHeight: CGFloat = 60 + digitsHeight + 8
+    private static let padHeight: CGFloat = actionRowHeight + digitsHeight + 8
+
+    /// What the rows above have to keep clear. The pad's own height while the pad is up;
+    /// while the keyboard is up it is the keyboard plus the action row riding on it, which
+    /// is taller — so the description and the split move up towards the amount rather than
+    /// letting the arrow land on top of them.
+    private var bottomReserve: CGFloat {
+        guard descriptionFocused else { return Self.padHeight }
+        return keyboardInset + Self.actionRowHeight + 24
+    }
 
     /// The keyboard covers the digit grid, which is hidden under it anyway, so only the
     /// part of it that reaches past the grid moves the pad. Ignored unless the description
