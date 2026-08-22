@@ -35,6 +35,17 @@ enum Money {
         Double(cents) / 100
     }
 
+    /// The value to put in a request body.
+    ///
+    /// Not `Double`: `JSONSerialization` prints a double to 17 significant digits, so 8.33
+    /// goes out as `8.3300000000000001`, and the API parses that into a `decimal` that
+    /// keeps every one of those digits. Three of them no longer sum to 25 and the request
+    /// is rejected for splits that are, in cents, exact. `NSDecimalNumber` prints the
+    /// decimal it holds.
+    static func requestValue(cents: Int) -> NSDecimalNumber {
+        NSDecimalNumber(decimal: Decimal(cents) / 100)
+    }
+
     /// `42`, `42.50` — for a field being typed into, where trailing zeros are noise.
     static func plainString(cents: Int) -> String {
         let sign = cents < 0 ? "-" : ""

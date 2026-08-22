@@ -88,7 +88,7 @@ struct ExpenseFormViewModelTests {
         viewModel.amount.type(digit: 0)
         let splits = viewModel.splits()
         #expect(splits.map(\.userId) == [1, 2, 3])
-        #expect(splits.map(\.amount) == [3.34, 3.33, 3.33])
+        #expect(splits.map(\.amountCents) == [334, 333, 333])
     }
 
     // MARK: - Editing
@@ -130,7 +130,7 @@ struct ExpenseFormViewModelTests {
         viewModel.amount.type(digit: 6)
         viewModel.amount.type(digit: 6)
 
-        #expect(viewModel.splits().map(\.amount) == [22.0, 22.0, 22.0])
+        #expect(viewModel.splits().map(\.amountCents) == [2200, 2200, 2200])
     }
 
     // A custom split keeps the numbers a person typed and reports the shortfall instead.

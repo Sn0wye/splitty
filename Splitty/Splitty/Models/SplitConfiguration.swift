@@ -68,7 +68,7 @@ struct SplitConfiguration: Equatable {
         amounts(totalCents: totalCents)
             .filter { $0.value > 0 }
             .sorted { $0.key < $1.key }
-            .map { ExpenseSplitRequest(userId: $0.key, amount: Money.amount(cents: $0.value)) }
+            .map { ExpenseSplitRequest(userId: $0.key, amountCents: $0.value) }
     }
 
     /// What is left to assign on a custom split — the exact-sum invariant rendered as a
