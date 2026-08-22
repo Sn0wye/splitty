@@ -13,11 +13,11 @@ class ExpenseService {
     private init() {}
     
     func getExpenses(groupId: Int) async throws -> [Expense] {
-        return try await APIClient.shared.getExpenses(groupId: groupId)
+        try await APIClient.shared.request(endpoint: "/group/\(groupId)/expenses")
     }
     
     func getExpense(groupId: Int, expenseId: Int) async throws -> Expense {
-        return try await APIClient.shared.getExpense(groupId: groupId, expenseId: expenseId)
+        try await APIClient.shared.request(endpoint: "/group/\(groupId)/expenses/\(expenseId)")
     }
     
     func createExpense(
@@ -25,14 +25,22 @@ class ExpenseService {
         description: String,
         amount: Double,
         paidBy: Int,
+        date: Date?,
         splits: [ExpenseSplitRequest]
     ) async throws -> Expense {
-        return try await APIClient.shared.createExpense(
-            groupId: groupId,
-            description: description,
-            amount: amount,
-            paidBy: paidBy,
-            splits: splits
+        var body: [String: Any] = [
+            "groupId": groupId,
+            "description": description,
+            "amount": amount,
+            "paidBy": paidBy,
+            "splits": splits.map { ["userId": $0.userId, "amount": $0.amount] }
+        ]
+        if let date { body["date"] = Self.timestamp(from: date) }
+
+        return try await APIClient.shared.request(
+            endpoint: "/group/\(groupId)/expenses",
+            method: .POST,
+            body: body
         )
     }
     
@@ -41,18 +49,41 @@ class ExpenseService {
         expenseId: Int,
         description: String? = nil,
         amount: Double? = nil,
+        paidBy: Int? = nil,
+        date: Date? = nil,
         splits: [ExpenseSplitRequest]? = nil
     ) async throws -> Expense {
-        return try await APIClient.shared.updateExpense(
-            groupId: groupId,
-            expenseId: expenseId,
-            description: description,
-            amount: amount,
-            splits: splits
+        var body: [String: Any] = [:]
+        if let description { body["description"] = description }
+        if let amount { body["amount"] = amount }
+        if let paidBy { body["paidBy"] = paidBy }
+        if let date { body["date"] = Self.timestamp(from: date) }
+        if let splits {
+            body["splits"] = splits.map { ["userId": $0.userId, "amount": $0.amount] }
+        }
+
+        return try await APIClient.shared.request(
+            endpoint: "/group/\(groupId)/expenses/\(expenseId)",
+            method: .PUT,
+            body: body
         )
     }
     
+    /// The expense routes refuse `payment` rows; a settlement is deleted through
+    /// `SettlementService`.
     func deleteExpense(groupId: Int, expenseId: Int) async throws {
-        return try await APIClient.shared.deleteExpense(groupId: groupId, expenseId: expenseId)
+        let _: EmptyResponse = try await APIClient.shared.request(
+            endpoint: "/group/\(groupId)/expenses/\(expenseId)",
+            method: .DELETE
+        )
+    }
+
+    /// UTC, no fractional seconds. The API reads a timestamp without an offset as already
+    /// UTC, so sending one with an offset is what keeps the stored instant unambiguous.
+    static func timestamp(from date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        return formatter.string(from: date)
     }
 }

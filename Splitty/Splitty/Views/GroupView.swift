@@ -10,11 +10,17 @@ import SwiftUI
 struct GroupView: View {
     let groupId: Int
     @StateObject private var viewModel = GroupViewModel()
+    @StateObject private var authManager = AuthenticationManager.shared
     @Environment(\.dismiss) private var dismiss
     @State private var showingEditSheet = false
-    
+    @State private var showingExpenseSheet = false
+    @State private var pendingDeletion: Expense?
+
+    /// The floating button clears the last row rather than covering it.
+    private let listBottomInset: CGFloat = 88
+
     var body: some View {
-        ZStack {
+        ZStack(alignment: .bottomTrailing) {
             Color("background")
                 .ignoresSafeArea()
             
@@ -22,19 +28,12 @@ struct GroupView: View {
                 ProgressView("Loading...")
                     .foregroundColor(Color("foreground"))
             } else {
-                ScrollView {
-                    VStack(spacing: 0) {
-                        // Header Section
-                        headerSection
-                        
-                        // Action Buttons
-                        actionButtonsSection
-                        
-                        // Expenses List
-                        expensesList
-                    }
-                }
+                content
             }
+
+            // The screen's primary action does not belong in a toolbar already carrying
+            // Back and Edit, and a floating button survives the list scrolling.
+            addExpenseButton
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
@@ -62,9 +61,156 @@ struct GroupView: View {
                 Task { await viewModel.loadGroupData(groupId: groupId) }
             }
         }
+        .sheet(isPresented: $showingExpenseSheet) {
+            if let currentUserId {
+                ExpenseSheet(
+                    groupId: groupId,
+                    members: viewModel.members,
+                    currentUserId: currentUserId
+                ) { _ in }
+            }
+        }
+        // A money write enqueues a recomputation, so the header balance is stale on return.
+        // One refetch, no polling: the flag it reads exists for exactly this.
+        .onChange(of: showingExpenseSheet) { _, isPresented in
+            if !isPresented {
+                Task { await viewModel.refresh(groupId: groupId) }
+            }
+        }
+        .confirmationDialog(
+            deletionTitle,
+            isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                if let expense = pendingDeletion {
+                    pendingDeletion = nil
+                    Task { await viewModel.delete(expense, groupId: groupId) }
+                }
+            }
+            Button("Cancel", role: .cancel) { pendingDeletion = nil }
+        }
         .task {
             await viewModel.loadGroupData(groupId: groupId)
         }
+    }
+
+    private var currentUserId: Int? { authManager.currentUser?.id }
+
+    private var content: some View {
+        List {
+            Section {
+                VStack(spacing: 0) {
+                    headerSection
+                    actionButtonsSection
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color("background"))
+                .listRowSeparator(.hidden)
+            }
+
+            if !viewModel.errorMessage.isEmpty {
+                Section {
+                    Text("Error: \(viewModel.errorMessage)")
+                        .foregroundColor(.red)
+                        .listRowBackground(Color("card"))
+                }
+            } else if viewModel.expenses.isEmpty {
+                Section {
+                    Text("No expenses yet. Add the first one.")
+                        .foregroundColor(Color("muted-foreground"))
+                        .listRowBackground(Color("card"))
+                        .listRowSeparator(.hidden)
+                }
+            } else {
+                ForEach(viewModel.groupedExpenses, id: \.dateString) { groupedExpense in
+                    Section {
+                        ForEach(groupedExpense.expenses) { expense in
+                            expenseRow(expense)
+                        }
+                    } header: {
+                        dateHeader(for: groupedExpense)
+                    }
+                }
+            }
+
+            Color.clear
+                .frame(height: listBottomInset)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color("card"))
+                .listRowSeparator(.hidden)
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color("background"))
+    }
+
+    @ViewBuilder
+    private func expenseRow(_ expense: Expense) -> some View {
+        NavigationLink {
+            if let currentUserId {
+                switch expense.type {
+                case .expense:
+                    ExpenseDetailView(
+                        expense: expense,
+                        members: viewModel.members,
+                        currentUserId: currentUserId,
+                        onChanged: { Task { await viewModel.refresh(groupId: groupId) } },
+                        onDeleted: { Task { await viewModel.refresh(groupId: groupId) } }
+                    )
+                case .payment:
+                    SettlementDetailView(
+                        settlement: expense,
+                        members: viewModel.members,
+                        currentUserId: currentUserId,
+                        onDeleted: { Task { await viewModel.refresh(groupId: groupId) } }
+                    )
+                }
+            }
+        } label: {
+            ExpenseRow(expense: expense, currentUserId: currentUserId ?? 0)
+        }
+        .listRowInsets(EdgeInsets())
+        .listRowBackground(Color("card"))
+        .listRowSeparator(.hidden)
+        // Any member may delete anything, including a settlement someone else recorded —
+        // membership is the only authorization boundary in the system.
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                pendingDeletion = expense
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+    }
+
+    private var deletionTitle: String {
+        guard let expense = pendingDeletion else { return "Delete?" }
+        return expense.type == .payment
+            ? "Delete the \(Money.formatted(amount: expense.amount)) payment?"
+            : "Delete \"\(expense.description)\"?"
+    }
+
+    private var addExpenseButton: some View {
+        Button {
+            showingExpenseSheet = true
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundColor(Color("background"))
+                .frame(width: 56, height: 56)
+                .background(Color("foreground"))
+                .clipShape(Circle())
+                .shadow(radius: 8, y: 4)
+        }
+        .padding(.trailing, 20)
+        .padding(.bottom, 24)
+        .disabled(currentUserId == nil || viewModel.group == nil)
+        .accessibilityIdentifier("group.addExpense")
+        .accessibilityLabel("Add expense")
     }
     
     private var headerSection: some View {
@@ -95,15 +241,25 @@ struct GroupView: View {
     @ViewBuilder
     private var balanceText: some View {
         if let balance = viewModel.group?.netBalance {
-            if balance > 0 {
-                Text("You are owed $\(String(format: "%.2f", balance)) overall")
-                    .foregroundColor(Color("muted-foreground"))
-            } else if balance < 0 {
-                Text("You owe $\(String(format: "%.2f", abs(balance))) overall")
-                    .foregroundColor(Color("muted-foreground"))
-            } else {
-                Text("You are all settled up")
-                    .foregroundColor(Color("muted-foreground"))
+            HStack(spacing: 6) {
+                SwiftUI.Group {
+                    if balance > 0 {
+                        Text("You are owed \(Money.formatted(amount: balance)) overall")
+                    } else if balance < 0 {
+                        Text("You owe \(Money.formatted(amount: abs(balance))) overall")
+                    } else {
+                        Text("You are all settled up")
+                    }
+                }
+                // A recomputation is outstanding, so this number predates the last write.
+                // Greyed with a spinner rather than presented as final.
+                .foregroundColor(Color("muted-foreground"))
+                .opacity(viewModel.balancesPending ? 0.5 : 1)
+
+                if viewModel.balancesPending {
+                    ProgressView()
+                        .controlSize(.mini)
+                }
             }
         } else {
             Text("Loading balance...")
@@ -133,37 +289,6 @@ struct GroupView: View {
         .padding(.vertical, 20)
     }
     
-    private var expensesList: some View {
-        VStack {
-            if !viewModel.errorMessage.isEmpty {
-                Text("Error: \(viewModel.errorMessage)")
-                    .foregroundColor(.red)
-                    .padding()
-            } else if viewModel.expenses.isEmpty {
-                Text("No expenses found (\(viewModel.expenses.count) total, \(viewModel.groupedExpenses.count) grouped)")
-                    .foregroundColor(Color("muted-foreground"))
-                    .padding()
-            } else {
-                LazyVStack(spacing: 0) {
-                    ForEach(viewModel.groupedExpenses, id: \.dateString) { groupedExpense in
-                        VStack(spacing: 0) {
-                            // Date header
-                            dateHeader(for: groupedExpense)
-                            
-                            // Expenses for this date
-                            ForEach(groupedExpense.expenses) { expense in
-                                ExpenseRow(expense: expense)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        .background(Color("card"))
-        .cornerRadius(20, corners: [.topLeft, .topRight])
-        .padding(.top, 0)
-    }
-    
     private func dateHeader(for groupedExpense: GroupedExpense) -> some View {
         HStack {
             Text(groupedExpense.dateString)
@@ -172,18 +297,11 @@ struct GroupView: View {
                 .foregroundColor(Color("card-foreground"))
             
             Spacer()
-            
-            Text("Latest")
-                .font(.subheadline)
-                .foregroundColor(Color("muted-foreground"))
-            
-            Image(systemName: "chevron.down")
-                .font(.caption)
-                .foregroundColor(Color("muted-foreground"))
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 16)
         .background(Color("card"))
+        .listRowInsets(EdgeInsets())
     }
 }
 
@@ -203,12 +321,13 @@ struct ActionButton: View {
                 .background(color)
                 .cornerRadius(20)
         }
+        .buttonStyle(.plain)
     }
 }
 
 struct ExpenseRow: View {
     let expense: Expense
-    private let currentUserId = 4 // TODO: Get from AuthService
+    let currentUserId: Int
     
     var body: some View {
         HStack(spacing: 16) {
@@ -263,30 +382,66 @@ struct ExpenseRow: View {
     private var categoryIconName: String {
         switch expense.type {
         case .expense: return "dollarsign.circle.fill"
-        case .payment: return "arrow.down.circle.fill"
+        case .payment: return "arrow.left.arrow.right"
         }
+    }
+
+    private var isUserPaid: Bool { expense.paidBy == currentUserId }
+
+    /// A settlement's splits are `[+amount, -amount]`, so the counterparty is the split
+    /// that is not the payer's.
+    private var peerName: String {
+        expense.splits.first { $0.userId != expense.paidBy }?.user.name ?? "someone"
     }
     
     private var paymentText: some View {
-        let displayInfo = expense.getDisplayInfo(currentUserId: currentUserId)
-        return Text(displayInfo.isUserPaid ? "You paid $\(String(format: "%.2f", expense.amount))" : "\(expense.paidByUser.name) paid $\(String(format: "%.2f", expense.amount))")
-            .font(.subheadline)
-            .foregroundColor(Color("muted-foreground"))
+        SwiftUI.Group {
+            // Settlements live in the same timeline as expenses, in their own row style
+            // rather than a separate feed.
+            if expense.type == .payment {
+                Text(isUserPaid ? "You paid \(peerName)" : "\(expense.paidByUser.name) paid \(payeeLabel)")
+            } else {
+                Text(isUserPaid
+                     ? "You paid \(Money.formatted(amount: expense.amount))"
+                     : "\(expense.paidByUser.name) paid \(Money.formatted(amount: expense.amount))")
+            }
+        }
+        .font(.subheadline)
+        .foregroundColor(Color("muted-foreground"))
+    }
+
+    private var payeeLabel: String {
+        let peerId = expense.splits.first { $0.userId != expense.paidBy }?.userId
+        return peerId == currentUserId ? "you" : peerName
     }
     
+    @ViewBuilder
     private var balanceLabel: some View {
-        let displayInfo = expense.getDisplayInfo(currentUserId: currentUserId)
-        return Text(displayInfo.isUserPaid ? "you lent" : "you borrowed")
-            .font(.caption)
-            .foregroundColor(displayInfo.isUserPaid ? Color.green : Color.red)
+        if expense.type == .payment {
+            Text("payment")
+                .font(.caption)
+                .foregroundColor(Color("muted-foreground"))
+        } else {
+            Text(isUserPaid ? "you lent" : "you borrowed")
+                .font(.caption)
+                .foregroundColor(isUserPaid ? Color.green : Color.red)
+        }
     }
     
+    @ViewBuilder
     private var balanceAmount: some View {
-        let displayInfo = expense.getDisplayInfo(currentUserId: currentUserId)
-        return Text("$\(String(format: "%.2f", abs(displayInfo.userSplit)))")
-            .font(.headline)
-            .fontWeight(.semibold)
-            .foregroundColor(displayInfo.isUserPaid ? Color.green : Color.red)
+        if expense.type == .payment {
+            Text(Money.formatted(amount: expense.amount))
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(Color("card-foreground"))
+        } else {
+            let share = expense.getDisplayInfo(currentUserId: currentUserId)
+            Text(Money.formatted(amount: isUserPaid ? expense.amount - share.userSplit : share.userSplit))
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(isUserPaid ? Color.green : Color.red)
+        }
     }
 }
 

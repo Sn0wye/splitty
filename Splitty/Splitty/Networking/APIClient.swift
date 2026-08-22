@@ -25,7 +25,9 @@ class APIClient {
     }
     
     // MARK: - Generic Request Method
-    private func request<T: Codable>(
+    /// Not private: a service owns its own endpoints and calls this directly rather than
+    /// adding another pass-through method here.
+    func request<T: Codable>(
         endpoint: String,
         method: HTTPMethod = .GET,
         body: [String: Any]? = nil,
@@ -75,6 +77,11 @@ class APIClient {
                 throw APIError.httpError(httpResponse.statusCode)
             }
             
+            // A 204 carries no body; decoding one is a failure that has nothing to report.
+            if data.isEmpty, let empty = EmptyResponse() as? T {
+                return empty
+            }
+
             let decoder = JSONDecoder()
             do {
                 return try decoder.decode(T.self, from: data)
@@ -141,62 +148,11 @@ class APIClient {
         return try await request(endpoint: "/invite/\(code)/accept", method: .POST)
     }
     
-    // MARK: - Expenses
-    func getExpenses(groupId: Int) async throws -> [Expense] {
-        return try await request(endpoint: "/group/\(groupId)/expenses")
-    }
-    
-    func getExpense(groupId: Int, expenseId: Int) async throws -> Expense {
-        return try await request(endpoint: "/group/\(groupId)/expenses/\(expenseId)")
-    }
-    
-    func createExpense(
-        groupId: Int,
-        description: String,
-        amount: Double,
-        paidBy: Int,
-        splits: [ExpenseSplitRequest]
-    ) async throws -> Expense {
-        let body: [String: Any] = [
-            "groupId": groupId,
-            "description": description,
-            "amount": amount,
-            "paidBy": paidBy,
-            "splits": splits.map { ["userId": $0.userId, "amount": $0.amount] }
-        ]
-        return try await request(endpoint: "/group/\(groupId)/expenses", method: .POST, body: body)
-    }
-    
-    func updateExpense(
-        groupId: Int,
-        expenseId: Int,
-        description: String?,
-        amount: Double?,
-        splits: [ExpenseSplitRequest]?
-    ) async throws -> Expense {
-        var body: [String: Any] = [:]
-        if let description = description { body["description"] = description }
-        if let amount = amount { body["amount"] = amount }
-        if let splits = splits {
-            body["splits"] = splits.map { ["userId": $0.userId, "amount": $0.amount] }
-        }
-        return try await request(endpoint: "/group/\(groupId)/expenses/\(expenseId)", method: .PUT, body: body)
-    }
-    
-    func deleteExpense(groupId: Int, expenseId: Int) async throws {
-        let _: EmptyResponse = try await request(endpoint: "/group/\(groupId)/expenses/\(expenseId)", method: .DELETE)
-    }
-    
     // MARK: - Users/Profile
+    /// The profile route is `GET /auth`, not `/profile` — there has never been a
+    /// `/profile` route to call.
     func getProfile() async throws -> User {
-        return try await request(endpoint: "/profile")
-    }
-    
-    func updateProfile(name: String?, email: String?) async throws -> User {
-        var body: [String: Any] = [:]
-        if let name = name { body["name"] = name }
-        if let email = email { body["email"] = email }
-        return try await request(endpoint: "/profile", method: .PUT, body: body)
+        return try await request(endpoint: "/auth")
     }
 }
 
@@ -270,6 +226,13 @@ struct GroupMembership: Codable, Identifiable {
     let groupId: Int
     let joinedAt: String
     let user: User
+}
+
+/// `GET /group/{id}/expenses/summary`. Only the flag is decoded: the header reads its
+/// number from the group itself, and the pairwise rows have no screen yet.
+struct GroupBalanceSummary: Codable {
+    /// A display hint only: true while a recomputation is queued or in flight.
+    let balancesPending: Bool
 }
 
 struct Balance: Codable {

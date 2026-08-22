@@ -21,6 +21,10 @@ struct Expense: Codable, Identifiable {
     let amount: Double
     let description: String
     let type: ExpenseType
+    /// When the expense happened, as the user says it did. Nullable: rows written before
+    /// the column existed have no user-supplied date, so every reader falls back to
+    /// `createdAt`.
+    let date: String?
     let createdAt: String
     let updatedAt: String
     let paidByUser: User
@@ -45,42 +49,43 @@ struct GroupedExpense {
 
 // MARK: - Extensions for Date Formatting and Calculations
 extension Expense {
-    var formattedDate: Date? {
-        // Use ISO8601DateFormatter for robust parsing
+    /// The date the expense is filed under: the user-supplied one when there is one, the
+    /// audit timestamp otherwise.
+    var effectiveDate: Date? {
+        Self.parseTimestamp(date ?? createdAt)
+    }
+
+    /// Parses the API's ISO-8601 timestamps, with and without fractional seconds.
+    static func parseTimestamp(_ value: String) -> Date? {
         let iso8601Formatter = ISO8601DateFormatter()
         iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        
-        if let date = iso8601Formatter.date(from: createdAt) {
+
+        if let date = iso8601Formatter.date(from: value) {
             return date
         }
-        
-        // Fallback to without fractional seconds
+
         iso8601Formatter.formatOptions = [.withInternetDateTime]
-        if let date = iso8601Formatter.date(from: createdAt) {
+        if let date = iso8601Formatter.date(from: value) {
             return date
         }
-        
-        // Last resort: try manual DateFormatter
+
+        // Timestamps serialized without a zone marker are UTC, like every other one.
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(identifier: "UTC")
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
-        
-        // Strip fractional seconds if present
-        var cleanedDate = createdAt
-        if let dotRange = createdAt.range(of: "\\.\\d+Z", options: .regularExpression) {
-            cleanedDate = createdAt.replacingCharacters(in: dotRange, with: "Z")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+
+        var cleaned = value
+        if let fractionRange = value.range(of: "\\.\\d+", options: .regularExpression) {
+            cleaned = value.replacingCharacters(in: fractionRange, with: "")
         }
-        
-        if let date = formatter.date(from: cleanedDate) {
-            return date
-        }
-        
-        print("❌ Failed to parse date: \(createdAt)")
-        return nil
+        cleaned = cleaned.replacingOccurrences(of: "Z", with: "")
+
+        return formatter.date(from: cleaned)
     }
-    
+
     var dayString: String {
-        guard let date = formattedDate else { return "Unknown" }
+        guard let date = effectiveDate else { return "Unknown" }
         
         let calendar = Calendar.current
         if calendar.isDateInToday(date) {
@@ -119,14 +124,14 @@ extension Expense {
         let calendar = Calendar.current
         
         let grouped = Dictionary(grouping: expenses) { expense in
-            guard let date = expense.formattedDate else { return Date.distantPast }
+            guard let date = expense.effectiveDate else { return Date.distantPast }
             return calendar.startOfDay(for: date)
         }
         
         return grouped.compactMap { (date, expenses) in
             let sortedExpenses = expenses.sorted { expense1, expense2 in
-                guard let date1 = expense1.formattedDate,
-                      let date2 = expense2.formattedDate else { return false }
+                guard let date1 = expense1.effectiveDate,
+                      let date2 = expense2.effectiveDate else { return false }
                 return date1 > date2
             }
             

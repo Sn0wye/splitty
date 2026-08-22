@@ -245,7 +245,27 @@ SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
 - `TokenManager` — Keychain storage (`kSecClassGenericPassword`, service
   `com.splitty.app`).
 - `Services/*Service.swift` — thin wrappers over `APIClient`, async/await only. There are
-  no completion-handler variants; views call the async methods from `.task` / `Task`.
+  no completion-handler variants; views call the async methods from `.task` / `Task`. New
+  endpoints go in a service and call `APIClient.request` directly rather than adding another
+  pass-through method to the client.
+- `AuthenticationManager.currentUser` is the signed-in `User`: set from the sign-in response,
+  and fetched once on a cold launch that restored a Keychain token. Everything that says
+  "you" reads it. Not cached in UserDefaults — a second copy of the profile can go stale, a
+  Keychain token cannot. The profile route is `GET /auth`; there is no `/profile`.
+
+**Money is integer cents everywhere on the client**, converted to `Double` once at the
+request boundary (`Money`). The API validates that splits sum *exactly* to the total against
+a `decimal` column, so deriving them in floating point makes that a coin flip. The expense
+sheet is built from three pieces: `AmountExpression` (the amount field's state machine, with
+chained left-to-right arithmetic and no precedence), `SplitConfiguration` (payer plus an
+equal or custom mode, and the only place remainder cents are distributed — to the lowest user
+ids), and `ExpenseFormViewModel`, which holds the two together and decides when Save is
+available. A member who would land on zero is *omitted* from the payload, never sent as `0`.
+
+The amount field is a real `UITextField` whose `inputView` is the SwiftUI calculator pad
+(`AmountInputField`), not a `.decimalPad` with an accessory bar: a real responder is what
+gives the field a caret and makes moving focus to the description swap the pad for the system
+keyboard. The description field's `inputAccessoryView` carries the expense date picker.
 
 **The API base URL comes from the build configuration, not a literal.** The
 `SPLITTY_API_BASE_URL` build setting is substituted into the `SplittyAPIBaseURL` key of
