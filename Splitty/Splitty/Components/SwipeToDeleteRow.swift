@@ -39,8 +39,11 @@ struct SwipeToDeleteRow<Content: View>: View {
                 .offset(x: shownOffset)
         }
         .animation(.snappy(duration: 0.25), value: offset)
-        .gesture(
-            DragGesture(minimumDistance: 12)
+        // Simultaneous, not exclusive: a plain `.gesture` loses the drag to the list's own
+        // pan recogniser, which is why the row stopped swiping at all. Both see the drag,
+        // and the horizontal-dominance check below is what keeps a scroll a scroll.
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 18)
                 .updating($translation) { value, state, _ in
                     // Vertical intent belongs to the list, so only the horizontal part of a
                     // drag that is mostly horizontal is taken.
