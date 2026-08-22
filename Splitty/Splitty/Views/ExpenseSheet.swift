@@ -35,43 +35,51 @@ struct ExpenseSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                headerRow
+            ZStack(alignment: .bottom) {
+                VStack(spacing: 24) {
+                    headerRow
 
-                Spacer(minLength: 12)
+                    Spacer(minLength: 12)
 
-                amountRow
+                    amountRow
 
-                Spacer(minLength: 12)
+                    Spacer(minLength: 12)
 
-                descriptionRow
-                splitRow
+                    descriptionRow
+                    splitRow
 
-                if let message = viewModel.blockingMessage {
-                    Text(message)
-                        .font(.subheadline)
-                        .foregroundStyle(.orange)
+                    if let message = viewModel.blockingMessage {
+                        Text(message)
+                            .font(.subheadline)
+                            .foregroundStyle(.orange)
+                    }
+
+                    if let errorMessage = viewModel.errorMessage {
+                        Text(errorMessage)
+                            .font(.subheadline)
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
+                    }
+
+                    // Held open whether the pad is showing its digits or not, so opening
+                    // the keyboard moves nothing above it.
+                    Color.clear.frame(height: Self.padHeight)
                 }
-
-                if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                        .font(.subheadline)
-                        .foregroundStyle(.red)
-                        .multilineTextAlignment(.center)
-                }
-
-                Spacer(minLength: 8)
+                // The content above the pad is anchored to the sheet, not to the keyboard:
+                // letting the system lift it as well produced two shifts at once.
+                .ignoresSafeArea(.keyboard, edges: .bottom)
 
                 // The pad is content, not a keyboard. As a keyboard it dismissed on its
                 // own clock, sliding out from under a sheet that was still on screen;
-                // owned by the sheet it simply travels with it.
-                if !descriptionFocused {
-                    ExpenseKeypad(
-                        pasteableCents: pasteableCents,
-                        isNextEnabled: isNextEnabled,
-                        onKey: handle(key:)
-                    )
-                }
+                // owned by the sheet it simply travels with it. Its action row survives
+                // the system keyboard and rides above it, so the arrow stays put.
+                ExpenseKeypad(
+                    pasteableCents: pasteableCents,
+                    isNextEnabled: isNextEnabled,
+                    isSaving: viewModel.isSaving,
+                    showsDigits: !descriptionFocused,
+                    onKey: handle(key:)
+                )
             }
             .padding(.horizontal, 12)
             .padding(.top, 12)
@@ -95,11 +103,24 @@ struct ExpenseSheet: View {
 
     // MARK: - Rows
 
-    /// The date on the left, and — while the system keyboard is up and the pad's own arrow
-    /// is off screen — the save action on the right, so there is never a moment with no way
-    /// forward and never two arrows at once.
+    /// The date, and nothing else: the forward action stays with the pad at the bottom of
+    /// the sheet whether the pad or the keyboard is up.
     private var headerRow: some View {
         HStack {
+            dateButton
+            Spacer()
+        }
+        .padding(.horizontal, 8)
+    }
+
+    @ViewBuilder
+    private var dateButton: some View {
+        if #available(iOS 26.0, *) {
+            Button(dateLabel) { showingDatePicker = true }
+                .buttonStyle(.glass)
+                .tint(Color.expenseForeground)
+                .accessibilityIdentifier("expense.date")
+        } else {
             Button {
                 showingDatePicker = true
             } label: {
@@ -112,20 +133,7 @@ struct ExpenseSheet: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("expense.date")
-
-            Spacer()
-
-            if descriptionFocused {
-                if viewModel.isSaving {
-                    ProgressView().frame(width: 40, height: 40)
-                } else {
-                    ForwardButton(isEnabled: viewModel.canSave, diameter: 40, action: save)
-                        .accessibilityLabel("save")
-                        .accessibilityIdentifier("expense.save")
-                }
-            }
         }
-        .padding(.horizontal, 8)
     }
 
     private var dateLabel: String {
@@ -187,9 +195,16 @@ struct ExpenseSheet: View {
 
     // MARK: - Behaviour
 
-    /// The pad's arrow only has to get you off the amount, so it lights up as soon as
-    /// there is one. Saving is gated on the sheet as a whole, from the description's bar.
-    private var isNextEnabled: Bool { viewModel.totalCents > 0 }
+    /// One action row and four digit rows, plus the padding under them. Reserved in the
+    /// layout at all times: the pad shrinks to the action row when the keyboard takes over,
+    /// and nothing above it is allowed to notice.
+    private static let padHeight: CGFloat = 60 + 4 * 68 + 8
+
+    /// One arrow, two jobs: leaving the amount only needs an amount, but once the
+    /// description has focus the arrow is the save and answers to the whole sheet.
+    private var isNextEnabled: Bool {
+        descriptionFocused ? viewModel.canSave : viewModel.totalCents > 0
+    }
 
     private func handle(key: KeypadKey) {
         switch key {
@@ -198,9 +213,11 @@ struct ExpenseSheet: View {
         case .backspace: viewModel.amount.backspace()
         case .pasteAmount(let cents): viewModel.amount.replaceEntry(cents: cents)
         case .next:
-            // Only the destination is set: making the description first responder resigns
-            // the amount by itself, and resigning both in one pass races the handoff.
-            descriptionFocused = true
+            if descriptionFocused {
+                save()
+            } else {
+                descriptionFocused = true
+            }
         }
     }
 

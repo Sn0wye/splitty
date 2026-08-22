@@ -26,6 +26,10 @@ enum KeypadKey: Equatable {
 struct ExpenseKeypad: View {
     let pasteableCents: Int?
     let isNextEnabled: Bool
+    var isSaving: Bool = false
+    /// The digits hide while the system keyboard is up; the action row stays, so the
+    /// forward arrow keeps its place instead of moving to the other end of the sheet.
+    var showsDigits: Bool = true
     let onKey: (KeypadKey) -> Void
 
     private let digitRows = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
@@ -34,18 +38,20 @@ struct ExpenseKeypad: View {
         VStack(spacing: 2) {
             actionRow
 
-            ForEach(digitRows, id: \.first) { row in
-                HStack(spacing: 0) {
-                    ForEach(row, id: \.self) { digit in
-                        key(title: "\(digit)") { onKey(.digit(digit)) }
+            if showsDigits {
+                ForEach(digitRows, id: \.first) { row in
+                    HStack(spacing: 0) {
+                        ForEach(row, id: \.self) { digit in
+                            key(title: "\(digit)") { onKey(.digit(digit)) }
+                        }
                     }
                 }
-            }
 
-            HStack(spacing: 0) {
-                key(title: ".") { onKey(.decimalPoint) }
-                key(title: "0") { onKey(.digit(0)) }
-                key(systemImage: "chevron.left", label: "delete") { onKey(.backspace) }
+                HStack(spacing: 0) {
+                    key(title: ".") { onKey(.decimalPoint) }
+                    key(title: "0") { onKey(.digit(0)) }
+                    key(systemImage: "chevron.left", label: "delete") { onKey(.backspace) }
+                }
             }
         }
         .padding(.bottom, 8)
@@ -71,13 +77,18 @@ struct ExpenseKeypad: View {
 
             Spacer(minLength: 0)
 
-            ForwardButton(isEnabled: isNextEnabled) { onKey(.next) }
-                .accessibilityLabel("next")
-                .accessibilityIdentifier("keypad.next")
-                .frame(width: 76)
+            if isSaving {
+                ProgressView()
+                    .frame(width: 44, height: 44)
+            } else {
+                ForwardButton(isEnabled: isNextEnabled) { onKey(.next) }
+                    .accessibilityLabel("next")
+                    .accessibilityIdentifier("keypad.next")
+            }
         }
         .frame(height: 60)
-        .padding(.horizontal, 8)
+        .padding(.leading, 8)
+        .padding(.trailing, 12)
     }
 
     private func key(
@@ -125,24 +136,39 @@ private struct KeypadKeyStyle: ButtonStyle {
     }
 }
 
-/// The sheet's primary action, and the only filled control on it: a solid disc in the
-/// foreground colour with the arrow punched out of it, so it reads white-on-black or
-/// black-on-white without a second asset.
+/// The sheet's primary action. Glass where the system has it, so it picks up the material
+/// and the press behaviour of every other prominent control on the OS; a flat disc in the
+/// accent colour before that.
 struct ForwardButton: View {
     let isEnabled: Bool
     var diameter: CGFloat = 44
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            Image(systemName: "arrow.right")
-                .font(.system(size: diameter * 0.38, weight: .semibold))
-                .foregroundStyle(Color.expenseBackground)
-                .frame(width: diameter, height: diameter)
-                .background(Color.expenseAccent.opacity(isEnabled ? 1 : 0.25), in: Circle())
+        if #available(iOS 26.0, *) {
+            Button(action: action) {
+                glyph
+                    .frame(width: diameter, height: diameter)
+            }
+            .buttonStyle(.glassProminent)
+            .buttonBorderShape(.circle)
+            .tint(Color.expenseAccent)
+            .disabled(!isEnabled)
+        } else {
+            Button(action: action) {
+                glyph
+                    .frame(width: diameter, height: diameter)
+                    .background(Color.expenseAccent.opacity(isEnabled ? 1 : 0.25), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!isEnabled)
         }
-        .buttonStyle(.plain)
-        .disabled(!isEnabled)
+    }
+
+    private var glyph: some View {
+        Image(systemName: "arrow.right")
+            .font(.system(size: diameter * 0.38, weight: .semibold))
+            .foregroundStyle(Color.expenseBackground)
     }
 }
 
