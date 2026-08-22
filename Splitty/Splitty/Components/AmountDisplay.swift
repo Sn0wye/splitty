@@ -19,19 +19,20 @@ struct AmountDisplay: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 0) {
-            Text(currencySymbol)
-                .font(.system(size: size * 0.7, weight: .semibold))
-                .baselineOffset(0)
-
             ForEach(glyphs, id: \.id) { glyph in
                 Text(glyph.character)
-                    .font(.system(size: size, weight: .semibold))
                     .transition(.asymmetric(
                         insertion: AnyTransition(BlurPushTransition(from: .below)),
                         removal: AnyTransition(BlurPushTransition(from: .above))
                     ))
             }
+
+            // Trailing, and the same size as the digits: the symbol is part of the number
+            // the way it is written, not a superscript hung off the front of it.
+            Text(currencySymbol)
+                .padding(.leading, size * 0.12)
         }
+        .font(.system(size: size, weight: .semibold))
         .monospacedDigit()
         .foregroundStyle(Color.primary)
         .lineLimit(1)
