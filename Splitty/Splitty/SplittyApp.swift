@@ -44,6 +44,10 @@ struct RootView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             authManager.checkAuthenticationStatus()
             isCheckingAuth = false
+
+            // A launch that restores a Keychain token skips the sign-in screen, so this is
+            // the only place the profile gets loaded.
+            Task { await authManager.hydrateCurrentUser() }
         }
     }
 }

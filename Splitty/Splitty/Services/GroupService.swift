@@ -28,6 +28,12 @@ class GroupService {
         return try await APIClient.shared.updateGroup(id: id, name: name, description: description)
     }
     
+    /// Balances plus the pending flag. Recomputation is asynchronous, so right after a
+    /// money write the numbers are stale and `balancesPending` says so.
+    func getBalanceSummary(groupId: Int) async throws -> GroupBalanceSummary {
+        try await APIClient.shared.request(endpoint: "/group/\(groupId)/expenses/summary")
+    }
+
     /// Redeems an invite code. The response identifies the group — the caller never
     /// supplies a group id. Redeeming a code for a group you already belong to
     /// succeeds and returns that group.

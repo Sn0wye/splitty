@@ -124,7 +124,7 @@ struct LoginView: View {
         do {
             let user = try await AuthService.shared.signInWithGoogle()
             print("✅ Sign-in successful for user: \(user.name)")
-            authManager.login()
+            authManager.login(user: user)
         } catch GoogleSignInError.cancelled {
             // Dismissing the sheet is deliberate; nothing to report.
         } catch {
@@ -247,7 +247,7 @@ private struct DevSignInPicker: View {
         do {
             let user = try await AuthService.shared.devSignIn(email: email)
             print("✅ Dev sign-in successful for user: \(user.name)")
-            authManager.login()
+            authManager.login(user: user)
         } catch {
             errorMessage = LoginView.message(for: error)
         }
