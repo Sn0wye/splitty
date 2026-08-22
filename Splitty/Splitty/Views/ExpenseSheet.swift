@@ -36,7 +36,12 @@ struct ExpenseSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
+                Spacer(minLength: 12)
+
                 amountRow
+
+                Spacer(minLength: 12)
+
                 descriptionRow
                 splitRow
 
@@ -53,10 +58,11 @@ struct ExpenseSheet: View {
                         .multilineTextAlignment(.center)
                 }
 
-                Spacer()
             }
             .padding(.horizontal, 20)
-            .padding(.top, 24)
+            .padding(.top, 12)
+            .padding(.bottom, 12)
+            .frame(maxHeight: .infinity, alignment: .top)
             .navigationTitle(viewModel.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -73,6 +79,7 @@ struct ExpenseSheet: View {
                     }
                 }
             }
+            .presentationCornerRadius(28)
             .task {
                 amountFocused = true
                 pasteableCents = await ClipboardPrice.detect()
@@ -82,24 +89,23 @@ struct ExpenseSheet: View {
 
     // MARK: - Rows
 
+    /// The number is drawn by `AmountDisplay`; the field underneath it is an invisible
+    /// responder that owns the pad. Tapping anywhere on the number focuses it.
     private var amountRow: some View {
-        HStack(spacing: 14) {
-            // Currency is a static glyph: there is no currency field and no conversion.
-            Text("$")
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(.secondary)
-                .frame(width: 48, height: 48)
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
-
-            AmountInputField(
-                text: viewModel.amount.displayText,
-                pendingOperator: pendingOperator,
-                pasteableCents: pasteableCents,
-                isFocused: $amountFocused,
-                onKey: handle(key:)
-            )
-            .frame(height: 52)
-        }
+        AmountDisplay(text: viewModel.amount.displayText)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture { amountFocused = true }
+            .background(alignment: .center) {
+                AmountInputField(
+                    pendingOperator: pendingOperator,
+                    pasteableCents: pasteableCents,
+                    isFocused: $amountFocused,
+                    onKey: handle(key:)
+                )
+                .frame(width: 1, height: 1)
+                .allowsHitTesting(false)
+            }
     }
 
     private var descriptionRow: some View {
