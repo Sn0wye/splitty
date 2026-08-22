@@ -62,24 +62,13 @@ struct ExpenseSheet: View {
             .padding(.horizontal, 20)
             .padding(.top, 12)
             .padding(.bottom, 12)
-            .frame(maxHeight: .infinity, alignment: .top)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            // The same colour the pad paints itself, so the two meet without a seam.
+            .background(Color(.systemBackground))
             .navigationTitle(viewModel.title)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
-                }
-
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if viewModel.isSaving {
-                        ProgressView()
-                    } else {
-                        Button("Save", action: save)
-                            .disabled(!saveable)
-                    }
-                }
-            }
             .presentationCornerRadius(28)
+            .presentationBackground(Color(.systemBackground))
             .task {
                 amountFocused = true
                 pasteableCents = await ClipboardPrice.detect()
@@ -98,8 +87,8 @@ struct ExpenseSheet: View {
             .onTapGesture { amountFocused = true }
             .background(alignment: .center) {
                 AmountInputField(
-                    pendingOperator: pendingOperator,
                     pasteableCents: pasteableCents,
+                    isNextEnabled: isNextEnabled,
                     isFocused: $amountFocused,
                     onKey: handle(key:)
                 )
@@ -121,7 +110,10 @@ struct ExpenseSheet: View {
                     text: $viewModel.description,
                     date: $viewModel.date,
                     isFocused: $descriptionFocused,
-                    placeholder: "What was it for?"
+                    placeholder: "What was it for?",
+                    isSubmitEnabled: viewModel.canSave,
+                    isSaving: viewModel.isSaving,
+                    onSubmit: save
                 )
                 .frame(height: 30)
 
@@ -154,22 +146,15 @@ struct ExpenseSheet: View {
 
     // MARK: - Behaviour
 
-    private var pendingOperator: CalculatorOperator? {
-        viewModel.amount.hasPendingExpression ? viewModel.amount.pendingOperator : nil
-    }
-
-    /// Save is available on the resolved value of the expression, pending operation and
-    /// all: refusing to save a number the app can compute is a puzzle, not a safeguard.
-    private var saveable: Bool { viewModel.canSave }
+    /// The pad's arrow only has to get you off the amount, so it lights up as soon as
+    /// there is one. Saving is gated on the sheet as a whole, from the description's bar.
+    private var isNextEnabled: Bool { viewModel.totalCents > 0 }
 
     private func handle(key: KeypadKey) {
         switch key {
         case .digit(let digit): viewModel.amount.type(digit: digit)
         case .decimalPoint: viewModel.amount.typeDecimalPoint()
         case .backspace: viewModel.amount.backspace()
-        case .clear: viewModel.amount.clear()
-        case .operation(let operation): viewModel.amount.apply(operation)
-        case .equals: viewModel.amount.evaluate()
         case .pasteAmount(let cents): viewModel.amount.replaceEntry(cents: cents)
         case .next:
             // Only the destination is set: making the description first responder resigns
@@ -179,8 +164,7 @@ struct ExpenseSheet: View {
     }
 
     private func save() {
-        // Auto-evaluate: a pending expression is an amount the user typed, not an error.
-        viewModel.amount.evaluate()
+        guard viewModel.canSave else { return }
 
         Task {
             if let expense = await viewModel.save() {

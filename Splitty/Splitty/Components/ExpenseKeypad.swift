@@ -12,9 +12,6 @@ enum KeypadKey: Equatable {
     case digit(Int)
     case decimalPoint
     case backspace
-    case clear
-    case operation(CalculatorOperator)
-    case equals
     case pasteAmount(cents: Int)
     case next
 }
@@ -22,33 +19,20 @@ enum KeypadKey: Equatable {
 // MARK: - The pad
 
 /// The amount field's keyboard: borderless glyphs on the sheet's own background, with a
-/// circular press halo instead of a key cap. A calculator row sits above the digits,
-/// styled the same way so it reads as part of the pad rather than a toolbar bolted to it.
+/// circular press halo instead of a key cap.
+///
+/// Digits only. The arithmetic keys are gone: they turned a two-tap amount into a mode the
+/// user had to reason about, and the expression model still resolves whatever is typed.
 struct ExpenseKeypad: View {
-    let pendingOperator: CalculatorOperator?
     let pasteableCents: Int?
+    let isNextEnabled: Bool
     let onKey: (KeypadKey) -> Void
 
     private let digitRows = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
 
     var body: some View {
-        VStack(spacing: 4) {
-            if let pasteableCents {
-                Button {
-                    onKey(.pasteAmount(cents: pasteableCents))
-                } label: {
-                    Label("Paste \(Money.formatted(cents: pasteableCents))", systemImage: "doc.on.clipboard")
-                        .font(.subheadline.weight(.medium))
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Color(.tertiarySystemFill), in: Capsule())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("keypad.paste")
-                .padding(.bottom, 4)
-            }
-
-            calculatorRow
+        VStack(spacing: 2) {
+            actionRow
 
             ForEach(digitRows, id: \.first) { row in
                 HStack(spacing: 0) {
@@ -65,36 +49,46 @@ struct ExpenseKeypad: View {
             }
         }
         .padding(.horizontal, 12)
-        .padding(.top, 6)
         .padding(.bottom, 8)
     }
 
-    /// The pending operator stays lit, so a half-typed expression is legible from the pad
-    /// itself rather than only from the amount.
-    private var calculatorRow: some View {
-        HStack(spacing: 0) {
-            ForEach(CalculatorOperator.allCases, id: \.self) { operation in
-                key(title: operation.symbol, isOn: pendingOperator == operation) {
-                    onKey(.operation(operation))
+    /// The pad's only non-digit: the clipboard price on the left, and the forward action
+    /// sitting above the column it belongs to.
+    private var actionRow: some View {
+        HStack(spacing: 12) {
+            if let pasteableCents {
+                Button {
+                    onKey(.pasteAmount(cents: pasteableCents))
+                } label: {
+                    Label("Paste \(Money.formatted(cents: pasteableCents))", systemImage: "doc.on.clipboard")
+                        .font(.subheadline.weight(.medium))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color.primary.opacity(0.07), in: Capsule())
                 }
-                .accessibilityIdentifier("keypad.operator.\(operation.symbol)")
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("keypad.paste")
             }
-            key(title: "=") { onKey(.equals) }
-            key(systemImage: "arrow.forward", label: "next") { onKey(.next) }
+
+            Spacer(minLength: 0)
+
+            ForwardButton(isEnabled: isNextEnabled) { onKey(.next) }
+                .accessibilityLabel("next")
                 .accessibilityIdentifier("keypad.next")
+                .frame(width: 76)
         }
-        .font(.system(size: 24, weight: .regular))
+        .frame(height: 60)
+        .padding(.horizontal, 8)
     }
 
     private func key(
         title: String,
-        isOn: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Text(title)
         }
-        .buttonStyle(KeypadKeyStyle(isOn: isOn))
+        .buttonStyle(KeypadKeyStyle())
         .accessibilityIdentifier("keypad.key.\(title)")
     }
 
@@ -106,7 +100,7 @@ struct ExpenseKeypad: View {
         Button(action: action) {
             Image(systemName: systemImage)
         }
-        .buttonStyle(KeypadKeyStyle(isOn: false))
+        .buttonStyle(KeypadKeyStyle())
         .accessibilityLabel(label)
         .accessibilityIdentifier("keypad.key.\(systemImage)")
     }
@@ -115,22 +109,40 @@ struct ExpenseKeypad: View {
 /// No key cap: a grey circle grows behind the glyph while the finger is down and fades out
 /// after it lifts, which is the whole of the key's chrome.
 private struct KeypadKeyStyle: ButtonStyle {
-    let isOn: Bool
-
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 34, weight: .regular))
+            .font(.system(size: 32, weight: .regular))
             .foregroundStyle(Color.primary)
             .frame(maxWidth: .infinity)
-            .frame(height: 64)
+            .frame(height: 68)
             .background {
                 Circle()
-                    .fill(Color.primary.opacity(configuration.isPressed || isOn ? 0.07 : 0))
+                    .fill(Color.primary.opacity(configuration.isPressed ? 0.07 : 0))
                     .frame(width: 72, height: 72)
-                    .scaleEffect(configuration.isPressed || isOn ? 1 : 0.6)
+                    .scaleEffect(configuration.isPressed ? 1 : 0.6)
             }
             .contentShape(Rectangle())
             .animation(.easeOut(duration: configuration.isPressed ? 0.08 : 0.2), value: configuration.isPressed)
+    }
+}
+
+/// The sheet's primary action, and the only filled control on it: a solid disc in the
+/// foreground colour with the arrow punched out of it, so it reads white-on-black or
+/// black-on-white without a second asset.
+struct ForwardButton: View {
+    let isEnabled: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "arrow.right")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(Color(.systemBackground))
+                .frame(width: 52, height: 52)
+                .background(Color.primary.opacity(isEnabled ? 1 : 0.25), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
     }
 }
 
@@ -144,8 +156,8 @@ private struct KeypadKeyStyle: ButtonStyle {
 /// without any code. It renders nothing itself — a text field draws its text as one opaque
 /// run, and the digits have to animate one at a time.
 struct AmountInputField: UIViewRepresentable {
-    let pendingOperator: CalculatorOperator?
     let pasteableCents: Int?
+    let isNextEnabled: Bool
     @Binding var isFocused: Bool
     let onKey: (KeypadKey) -> Void
 
@@ -162,10 +174,10 @@ struct AmountInputField: UIViewRepresentable {
         hosting.view.backgroundColor = .clear
         context.coordinator.hosting = hosting
 
-        let container = UIInputView(
-            frame: CGRect(x: 0, y: 0, width: 320, height: Coordinator.keypadHeight),
-            inputViewStyle: .keyboard
-        )
+        // A plain view, not `UIInputView`: the keyboard style paints its own material and
+        // hairline, and the pad has to be indistinguishable from the sheet above it.
+        let container = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: Coordinator.keypadHeight))
+        container.backgroundColor = .systemBackground
         container.autoresizingMask = .flexibleWidth
         hosting.view.frame = container.bounds
         hosting.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -192,15 +204,15 @@ struct AmountInputField: UIViewRepresentable {
 
     private func keypad(context: Context) -> ExpenseKeypad {
         ExpenseKeypad(
-            pendingOperator: pendingOperator,
             pasteableCents: pasteableCents,
+            isNextEnabled: isNextEnabled,
             onKey: { key in context.coordinator.parent.onKey(key) }
         )
     }
 
     final class Coordinator: NSObject, UITextFieldDelegate {
-        /// Five borderless rows, each 64pt, plus the padding around them.
-        static let keypadHeight: CGFloat = 360
+        /// One action row and four digit rows, plus the padding around them.
+        static let keypadHeight: CGFloat = 356
 
         var parent: AmountInputField
         var hosting: UIHostingController<ExpenseKeypad>?
@@ -233,14 +245,17 @@ struct AmountInputField: UIViewRepresentable {
 
 // MARK: - The description field
 
-/// The description field, whose accessory bar carries the expense's date. A real date
-/// picker rather than a "Today/Yesterday" shortcut: the column accepts any date, including
-/// future ones.
+/// The description field, whose accessory bar carries the expense's date and the same
+/// forward action the pad ends on. A real date picker rather than a "Today/Yesterday"
+/// shortcut: the column accepts any date, including future ones.
 struct DescriptionInputField: UIViewRepresentable {
     @Binding var text: String
     @Binding var date: Date
     @Binding var isFocused: Bool
     let placeholder: String
+    let isSubmitEnabled: Bool
+    let isSaving: Bool
+    let onSubmit: () -> Void
 
     func makeUIView(context: Context) -> UITextField {
         let field = UITextField()
@@ -256,10 +271,8 @@ struct DescriptionInputField: UIViewRepresentable {
         hosting.view.backgroundColor = .clear
         context.coordinator.hosting = hosting
 
-        let container = UIInputView(
-            frame: CGRect(x: 0, y: 0, width: 320, height: Coordinator.accessoryHeight),
-            inputViewStyle: .keyboard
-        )
+        let container = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: Coordinator.accessoryHeight))
+        container.backgroundColor = .systemBackground
         container.autoresizingMask = .flexibleWidth
         hosting.view.frame = container.bounds
         hosting.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
@@ -294,12 +307,14 @@ struct DescriptionInputField: UIViewRepresentable {
                 get: { context.coordinator.parent.date },
                 set: { context.coordinator.parent.date = $0 }
             ),
-            onDone: { context.coordinator.parent.isFocused = false }
+            isSubmitEnabled: isSubmitEnabled,
+            isSaving: isSaving,
+            onSubmit: { context.coordinator.parent.onSubmit() }
         )
     }
 
     final class Coordinator: NSObject, UITextFieldDelegate {
-        static let accessoryHeight: CGFloat = 48
+        static let accessoryHeight: CGFloat = 64
 
         var parent: DescriptionInputField
         var hosting: UIHostingController<ExpenseDateAccessory>?
@@ -331,7 +346,9 @@ struct DescriptionInputField: UIViewRepresentable {
 
 struct ExpenseDateAccessory: View {
     @Binding var date: Date
-    let onDone: () -> Void
+    let isSubmitEnabled: Bool
+    let isSaving: Bool
+    let onSubmit: () -> Void
 
     var body: some View {
         HStack {
@@ -342,8 +359,14 @@ struct ExpenseDateAccessory: View {
 
             Spacer()
 
-            Button("Done", action: onDone)
-                .font(.body.weight(.semibold))
+            if isSaving {
+                ProgressView()
+                    .frame(width: 52, height: 52)
+            } else {
+                ForwardButton(isEnabled: isSubmitEnabled, action: onSubmit)
+                    .accessibilityLabel("save")
+                    .accessibilityIdentifier("expense.save")
+            }
         }
         .padding(.horizontal, 16)
         .frame(maxHeight: .infinity)
