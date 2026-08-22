@@ -48,7 +48,6 @@ struct ExpenseKeypad: View {
                 key(systemImage: "chevron.left", label: "delete") { onKey(.backspace) }
             }
         }
-        .padding(.horizontal, 12)
         .padding(.bottom, 8)
     }
 
@@ -131,14 +130,15 @@ private struct KeypadKeyStyle: ButtonStyle {
 /// black-on-white without a second asset.
 struct ForwardButton: View {
     let isEnabled: Bool
+    var diameter: CGFloat = 52
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: "arrow.right")
-                .font(.system(size: 20, weight: .semibold))
+                .font(.system(size: diameter * 0.38, weight: .semibold))
                 .foregroundStyle(Color.expenseBackground)
-                .frame(width: 52, height: 52)
+                .frame(width: diameter, height: diameter)
                 .background(Color.expenseAccent.opacity(isEnabled ? 1 : 0.25), in: Circle())
         }
         .buttonStyle(.plain)
@@ -146,205 +146,9 @@ struct ForwardButton: View {
     }
 }
 
-// MARK: - The amount field
-
-/// The responder behind the amount: a real `UITextField` whose `inputView` is the pad
-/// above, kept invisible because `AmountDisplay` draws the number.
-///
-/// Not a SwiftUI `TextField` with `.decimalPad` and an accessory bar: a real responder is
-/// what makes moving focus to the description swap the pad for the system keyboard,
-/// without any code. It renders nothing itself — a text field draws its text as one opaque
-/// run, and the digits have to animate one at a time.
-struct AmountInputField: UIViewRepresentable {
-    let pasteableCents: Int?
-    let isNextEnabled: Bool
-    @Binding var isFocused: Bool
-    let onKey: (KeypadKey) -> Void
-
-    func makeUIView(context: Context) -> UITextField {
-        let field = UITextField()
-        field.delegate = context.coordinator
-        field.tintColor = .clear
-        field.textColor = .clear
-        field.backgroundColor = .clear
-        field.isAccessibilityElement = false
-        field.accessibilityIdentifier = "expense.amount"
-
-        let hosting = UIHostingController(rootView: keypad(context: context))
-        hosting.view.backgroundColor = .clear
-        context.coordinator.hosting = hosting
-
-        // A plain view, not `UIInputView`: the keyboard style paints its own material and
-        // hairline, and the pad has to be indistinguishable from the sheet above it.
-        let container = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: Coordinator.keypadHeight))
-        container.backgroundColor = ExpenseTheme.background
-        container.autoresizingMask = .flexibleWidth
-        hosting.view.frame = container.bounds
-        hosting.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        container.addSubview(hosting.view)
-        field.inputView = container
-
-        return field
-    }
-
-    func updateUIView(_ uiView: UITextField, context: Context) {
-        context.coordinator.parent = self
-        context.coordinator.hosting?.rootView = keypad(context: context)
-
-        // Deferred: changing the first responder inside a SwiftUI update is a change the
-        // system may drop, and the handoff to the description is exactly that case.
-        if isFocused, !uiView.isFirstResponder {
-            DispatchQueue.main.async { uiView.becomeFirstResponder() }
-        } else if !isFocused, uiView.isFirstResponder {
-            DispatchQueue.main.async { uiView.resignFirstResponder() }
-        }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
-
-    private func keypad(context: Context) -> ExpenseKeypad {
-        ExpenseKeypad(
-            pasteableCents: pasteableCents,
-            isNextEnabled: isNextEnabled,
-            onKey: { key in context.coordinator.parent.onKey(key) }
-        )
-    }
-
-    final class Coordinator: NSObject, UITextFieldDelegate {
-        /// One action row and four digit rows, plus the padding around them.
-        static let keypadHeight: CGFloat = 356
-
-        var parent: AmountInputField
-        var hosting: UIHostingController<ExpenseKeypad>?
-
-        init(parent: AmountInputField) {
-            self.parent = parent
-        }
-
-        /// Every character arrives through the pad. Hardware keyboards and dictation would
-        /// otherwise write text the expression knows nothing about.
-        func textField(
-            _ textField: UITextField,
-            shouldChangeCharactersIn range: NSRange,
-            replacementString string: String
-        ) -> Bool {
-            false
-        }
-
-        func textFieldDidBeginEditing(_ textField: UITextField) {
-            let isFocused = parent.$isFocused
-            DispatchQueue.main.async { isFocused.wrappedValue = true }
-        }
-
-        func textFieldDidEndEditing(_ textField: UITextField) {
-            let isFocused = parent.$isFocused
-            DispatchQueue.main.async { isFocused.wrappedValue = false }
-        }
-    }
-}
-
-// MARK: - The description field
-
-/// The description field, whose accessory bar carries the expense's date and the same
-/// forward action the pad ends on. A real date picker rather than a "Today/Yesterday"
-/// shortcut: the column accepts any date, including future ones.
-struct DescriptionInputField: UIViewRepresentable {
-    @Binding var text: String
-    @Binding var date: Date
-    @Binding var isFocused: Bool
-    let placeholder: String
-    let isSubmitEnabled: Bool
-    let isSaving: Bool
-    let onSubmit: () -> Void
-
-    func makeUIView(context: Context) -> UITextField {
-        let field = UITextField()
-        field.delegate = context.coordinator
-        field.font = .preferredFont(forTextStyle: .body)
-        field.textColor = ExpenseTheme.foreground
-        field.placeholder = placeholder
-        field.returnKeyType = .done
-        field.autocapitalizationType = .sentences
-        field.accessibilityIdentifier = "expense.description"
-        field.addTarget(context.coordinator, action: #selector(Coordinator.editingChanged(_:)), for: .editingChanged)
-
-        let hosting = UIHostingController(rootView: accessory(context: context))
-        hosting.view.backgroundColor = .clear
-        context.coordinator.hosting = hosting
-
-        let container = UIView(frame: CGRect(x: 0, y: 0, width: 320, height: Coordinator.accessoryHeight))
-        container.backgroundColor = ExpenseTheme.background
-        container.autoresizingMask = .flexibleWidth
-        hosting.view.frame = container.bounds
-        hosting.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        container.addSubview(hosting.view)
-        field.inputAccessoryView = container
-
-        return field
-    }
-
-    func updateUIView(_ uiView: UITextField, context: Context) {
-        context.coordinator.parent = self
-        context.coordinator.hosting?.rootView = accessory(context: context)
-
-        if uiView.text != text {
-            uiView.text = text
-        }
-
-        // Deferred: changing the first responder inside a SwiftUI update is a change the
-        // system may drop, and the handoff to the description is exactly that case.
-        if isFocused, !uiView.isFirstResponder {
-            DispatchQueue.main.async { uiView.becomeFirstResponder() }
-        } else if !isFocused, uiView.isFirstResponder {
-            DispatchQueue.main.async { uiView.resignFirstResponder() }
-        }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
-
-    private func accessory(context: Context) -> ExpenseDateAccessory {
-        ExpenseDateAccessory(
-            date: Binding(
-                get: { context.coordinator.parent.date },
-                set: { context.coordinator.parent.date = $0 }
-            ),
-            isSubmitEnabled: isSubmitEnabled,
-            isSaving: isSaving,
-            onSubmit: { context.coordinator.parent.onSubmit() }
-        )
-    }
-
-    final class Coordinator: NSObject, UITextFieldDelegate {
-        static let accessoryHeight: CGFloat = 64
-
-        var parent: DescriptionInputField
-        var hosting: UIHostingController<ExpenseDateAccessory>?
-
-        init(parent: DescriptionInputField) {
-            self.parent = parent
-        }
-
-        @objc func editingChanged(_ textField: UITextField) {
-            parent.text = textField.text ?? ""
-        }
-
-        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-            textField.resignFirstResponder()
-            return true
-        }
-
-        func textFieldDidBeginEditing(_ textField: UITextField) {
-            let isFocused = parent.$isFocused
-            DispatchQueue.main.async { isFocused.wrappedValue = true }
-        }
-
-        func textFieldDidEndEditing(_ textField: UITextField) {
-            let isFocused = parent.$isFocused
-            DispatchQueue.main.async { isFocused.wrappedValue = false }
-        }
-    }
-}
-
+/// The bar above the system keyboard while the description has focus: the expense's date,
+/// and the same forward arrow the pad ends on — which saves, since the description is the
+/// last thing the sheet asks for.
 struct ExpenseDateAccessory: View {
     @Binding var date: Date
     let isSubmitEnabled: Bool
@@ -352,25 +156,21 @@ struct ExpenseDateAccessory: View {
     let onSubmit: () -> Void
 
     var body: some View {
-        HStack {
-            DatePicker("Date", selection: $date, displayedComponents: .date)
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                .accessibilityIdentifier("expense.date")
+        DatePicker("Date", selection: $date, displayedComponents: .date)
+            .labelsHidden()
+            .datePickerStyle(.compact)
+            .accessibilityIdentifier("expense.date")
 
-            Spacer()
+        Spacer()
 
-            if isSaving {
-                ProgressView()
-                    .frame(width: 52, height: 52)
-            } else {
-                ForwardButton(isEnabled: isSubmitEnabled, action: onSubmit)
-                    .accessibilityLabel("save")
-                    .accessibilityIdentifier("expense.save")
-            }
+        if isSaving {
+            ProgressView()
+                .frame(width: 36, height: 36)
+        } else {
+            ForwardButton(isEnabled: isSubmitEnabled, diameter: 36, action: onSubmit)
+                .accessibilityLabel("save")
+                .accessibilityIdentifier("expense.save")
         }
-        .padding(.horizontal, 16)
-        .frame(maxHeight: .infinity)
     }
 }
 
