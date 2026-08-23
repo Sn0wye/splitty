@@ -9,13 +9,14 @@ import SwiftUI
 
 struct GroupCard: View {
     let group: Group
+    let onTap: () -> Void
     
     var positiveBalance: Bool {
         return (group.netBalance) > 0;
     }
     
     var body: some View {
-        NavigationLink(value: group.id) {
+        Button(action: onTap) {
             VStack {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading) {
@@ -67,7 +68,7 @@ struct GroupCard: View {
                 avatarUrl: "https://github.com/Sn0wye.png"
             )
         ]
-    ))
+    ), onTap: {})
     
     GroupCard(group: Group(
         id: 1,
@@ -84,6 +85,6 @@ struct GroupCard: View {
                 avatarUrl: "https://github.com/ruymon.png"
             )
         ]
-    ))
+    ), onTap: {})
 
 }

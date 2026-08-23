@@ -9,12 +9,12 @@ import SwiftUI
 
 struct GroupsView: View {
     @StateObject private var viewModel = GroupsViewModel()
-    @State private var path: [Int] = []
+    @EnvironmentObject private var appState: AppState
     @State private var showingCreateSheet = false
     @State private var showingJoinSheet = false
     
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack {
             VStack(alignment: .leading) {
 
                 HStack {
@@ -46,7 +46,9 @@ struct GroupsView: View {
                 ScrollView {
                     VStack(spacing: 10) {
                         ForEach(viewModel.groups) { group in
-                            GroupCard(group: group)
+                            GroupCard(group: group) {
+                                appState.openGroup(group.id)
+                            }
                         }
                     }
                 }
@@ -57,15 +59,12 @@ struct GroupsView: View {
                 Spacer()
             }
             .background(Color("background").ignoresSafeArea())
-            .navigationDestination(for: Int.self) { groupId in
-                GroupView(groupId: groupId)
-            }
             .task {
                 await viewModel.loadGroups()
             }
-            .onChange(of: path) { _, newPath in
+            .onChange(of: appState.selectedTab) { _, newTab in
                 // Coming back from a group picks up any edit made in there.
-                if newPath.isEmpty {
+                if newTab == .groups {
                     Task { await viewModel.loadGroups() }
                 }
             }
@@ -73,7 +72,7 @@ struct GroupsView: View {
                 GroupFormSheet { groupId in
                     Task {
                         await viewModel.loadGroups()
-                        path.append(groupId)
+                        appState.openGroup(groupId)
                     }
                 }
             }
@@ -81,7 +80,7 @@ struct GroupsView: View {
                 JoinGroupSheet { group in
                     Task {
                         await viewModel.loadGroups()
-                        path.append(group.id)
+                        appState.openGroup(group.id)
                     }
                 }
             }
@@ -91,4 +90,5 @@ struct GroupsView: View {
 
 #Preview {
     GroupsView()
+        .environmentObject(AppState())
 }

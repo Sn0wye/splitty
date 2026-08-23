@@ -9,52 +9,74 @@ import SwiftUI
 
 struct GroupView: View {
     let groupId: Int
+    @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = GroupViewModel()
     @StateObject private var authManager = AuthenticationManager.shared
-    @Environment(\.dismiss) private var dismiss
+    @State private var isTitleCollapsed = false
     @State private var showingEditSheet = false
     @State private var showingExpenseSheet = false
     @State private var pendingDeletion: Expense?
     @State private var selectedExpenseId: Int?
 
-    /// The floating button clears the last row rather than covering it.
-    private let listBottomInset: CGFloat = 88
+    private let addButtonSize: CGFloat = 56
+
+    /// Roughly the height of the in-list title, so the toolbar picks the name up
+    /// as the header leaves rather than while it is still readable.
+    private let titleCollapseOffset: CGFloat = 52
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            Color("background")
-                .ignoresSafeArea()
-            
+        NavigationStack {
+            groupScreen
+        }
+    }
+
+    private var groupScreen: some View {
+        ZStack {
             if viewModel.isLoading {
                 ProgressView("Loading...")
                     .foregroundColor(Color("foreground"))
             } else {
                 content
             }
-
-            // The screen's primary action does not belong in a toolbar already carrying
-            // Back and Edit, and a floating button survives the list scrolling.
-            addExpenseButton
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // The background ignores the safe area, the stack does not: otherwise the
+        // floating button anchors below the tab bar instead of above it.
+        .background(Color("background").ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
+        // Without this the bar is a material: rows scrolling under it stay visible
+        // as a smear behind the status bar.
+        .toolbarBackground(Color("background"), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: { dismiss() }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chevron.left")
-                        Text("Groups")
-                    }
-                    .foregroundColor(Color("foreground"))
+                Button {
+                    appState.selectedTab = .groups
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundColor(Color("foreground"))
                 }
+                .accessibilityLabel("Back to groups")
             }
-            
+
+            ToolbarItem(placement: .principal) {
+                Text(viewModel.group?.name ?? "")
+                    .font(.headline)
+                    .foregroundColor(Color("foreground"))
+                    .opacity(isTitleCollapsed ? 1 : 0)
+            }
+
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Edit") {
+                Button {
                     showingEditSheet = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 17, weight: .regular))
+                        .foregroundColor(Color("foreground"))
                 }
-                .foregroundColor(Color("foreground"))
                 .disabled(viewModel.group == nil)
+                .accessibilityLabel("Edit group")
             }
         }
         .sheet(isPresented: $showingEditSheet) {
@@ -150,15 +172,24 @@ struct GroupView: View {
                 }
             }
 
-            Color.clear
-                .frame(height: listBottomInset)
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color("card"))
-                .listRowSeparator(.hidden)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Color("background"))
+        // A list draws itself under the safe area, so a button stacked on top of one
+        // anchors under the tab bar. As an inset it sits inside the safe area instead,
+        // and the space it reserves is exactly what keeps the last row uncovered.
+        .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {
+            addExpenseButton
+        }
+        // The title lives in the list, not in a large-title bar, so the handoff to the
+        // toolbar is driven off the scroll position.
+        .onScrollGeometryChange(for: Bool.self) { geometry in
+            geometry.contentOffset.y + geometry.contentInsets.top > titleCollapseOffset
+        } action: { _, collapsed in
+            guard collapsed != isTitleCollapsed else { return }
+            withAnimation(.easeInOut(duration: 0.2)) { isTitleCollapsed = collapsed }
+        }
         .navigationDestination(item: $selectedExpenseId) { expenseId in
             if let currentUserId {
                 detail(for: expenseId, currentUserId: currentUserId)
@@ -227,13 +258,13 @@ struct GroupView: View {
             Image(systemName: "plus")
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundColor(Color("background"))
-                .frame(width: 56, height: 56)
+                .frame(width: addButtonSize, height: addButtonSize)
                 .background(Color("foreground"))
                 .clipShape(Circle())
                 .shadow(radius: 8, y: 4)
         }
         .padding(.trailing, 20)
-        .padding(.bottom, 24)
+        .padding(.vertical, 16)
         .disabled(currentUserId == nil || viewModel.group == nil)
         .accessibilityIdentifier("group.addExpense")
         .accessibilityLabel("Add expense")
@@ -500,4 +531,5 @@ struct RoundedCorner: Shape {
 
 #Preview {
     GroupView(groupId: 1)
+        .environmentObject(AppState())
 }
