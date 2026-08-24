@@ -63,6 +63,10 @@ public class DatabaseSeeder
                 // Random payer from group members
                 var payer = groupMemberships[_random.Next(groupMemberships.Count)].User;
 
+                // One percentage expense per group, so a client opening the seed data has
+                // a real percentage split to read rather than only equal ones.
+                var mode = i == 0 ? SplitMode.Percentage : SplitMode.Equal;
+
                 var expense = new Expense
                 {
                     GroupId = group.Id,
@@ -70,6 +74,7 @@ public class DatabaseSeeder
                     Amount = amount,
                     Description = GetRandomExpenseDescription(),
                     Type = ExpenseType.Expense,
+                    SplitMode = mode,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                     Group = group,
@@ -79,11 +84,21 @@ public class DatabaseSeeder
                 context.SaveChanges();
 
                 var splitAmount = Math.Round(amount / groupMemberships.Count, 2);
-                var splits = groupMemberships.Select(m => new ExpenseSplit
+
+                // Amounts stay evenly divided either way: the mode describes how the split
+                // was chosen, it is never what the amounts are computed from. The last
+                // member absorbs the percentage remainder for the same reason.
+                var evenPercentage = Math.Round(100m / groupMemberships.Count, 2);
+                var splits = groupMemberships.Select((m, index) => new ExpenseSplit
                 {
                     ExpenseId = expense.Id,
                     UserId = m.UserId,
                     Amount = splitAmount,
+                    Percentage = mode == SplitMode.Percentage
+                        ? index == groupMemberships.Count - 1
+                            ? 100m - evenPercentage * (groupMemberships.Count - 1)
+                            : evenPercentage
+                        : null,
                     Expense = expense,
                     User = m.User
                 }).ToList();

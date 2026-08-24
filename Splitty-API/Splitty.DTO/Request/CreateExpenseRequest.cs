@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Splitty.Domain.Entities;
 using Splitty.DTO.Internal;
 
 namespace Splitty.DTO.Request;
@@ -18,6 +19,13 @@ public class CreateExpenseRequest
     /// </summary>
     public DateTime? Date { get; set; }
     
+    /// <summary>
+    /// Required for the same reason <see cref="Splits"/> is: a stored <c>null</c> then
+    /// means exactly one thing — a settlement — rather than "an expense whose client
+    /// forgot to say".
+    /// </summary>
+    public required SplitMode SplitMode { get; set; }
+
     /// <summary>
     /// Required rather than nullable so a payload omitting it is rejected by the JSON
     /// deserializer, before any handler has to treat "absent" and "empty" the same way.

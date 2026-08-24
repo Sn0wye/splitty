@@ -62,7 +62,11 @@ public sealed class GroupFixture
         return new GroupFixture(factory, groupId, owner, ownerUser.Id, guest, guestUser.Id, guestUser.Token);
     }
 
-    public async Task<int> CreateExpenseAsync(decimal amount, decimal share, DateTime? date = null)
+    public async Task<int> CreateExpenseAsync(
+        decimal amount,
+        decimal share,
+        DateTime? date = null,
+        string splitMode = "equal")
     {
         var response = await Owner.CreateExpenseAsync(Id, new
         {
@@ -70,6 +74,7 @@ public sealed class GroupFixture
             amount,
             description = "Dinner",
             date,
+            splitMode,
             splits = new[]
             {
                 new { userId = OwnerId, amount = share },
@@ -113,6 +118,7 @@ public sealed class GroupFixture
             Amount = amount,
             PaidBy = OwnerId,
             Type = ExpenseType.Expense,
+            SplitMode = SplitMode.Equal,
             Splits =
             [
                 new ExpenseSplit { UserId = OwnerId, Amount = share },

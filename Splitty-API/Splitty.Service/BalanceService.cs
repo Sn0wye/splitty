@@ -125,8 +125,9 @@ public class BalanceService(
 
         ExpenseSplitInvariants.Ensure(
             settleExpense.Type,
+            settleExpense.SplitMode,
             settleExpense.Amount,
-            settleExpense.Splits.Select(s => s.Amount));
+            settleExpense.Splits.Select(s => new SplitShape(s.Amount, s.Percentage)));
 
         await expenseRepository.CreateAsync(settleExpense);
     }
@@ -186,8 +187,9 @@ public class BalanceService(
 
         ExpenseSplitInvariants.Ensure(
             settlement.Type,
+            settlement.SplitMode,
             settlement.Amount,
-            settlement.Splits.Select(s => s.Amount));
+            settlement.Splits.Select(s => new SplitShape(s.Amount, s.Percentage)));
 
         await expenseRepository.UpdateAsync(settlement);
     }

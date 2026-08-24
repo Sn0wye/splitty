@@ -132,6 +132,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Amount).IsRequired().HasColumnType("decimal(18,2)");
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.Type).IsRequired().HasDefaultValue(Domain.Entities.ExpenseType.Expense);
+
+            // Nullable so a settlement can store no mode; see Expense.SplitMode.
+            entity.Property(e => e.SplitMode);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
 
@@ -150,6 +153,7 @@ public class ApplicationDbContext : DbContext
         {
             entity.HasKey(es => es.Id);
             entity.Property(es => es.Amount).IsRequired().HasColumnType("decimal(18,2)");
+            entity.Property(es => es.Percentage).HasColumnType("decimal(5,2)");
 
             entity.HasOne(es => es.Expense)
                 .WithMany(e => e.Splits)
