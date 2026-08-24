@@ -46,13 +46,24 @@ repositories use **primary constructors** for injection — match that style.
 - `Balance` is a **pairwise, per-group** row: `(UserId, PeerId, GroupId, Amount)`. Each
   debt is stored twice, once from each side, with opposite signs.
 
-**Split mode** — "equal", "exact", "percentage" — is a **client-only** concept. The API
-accepts and stores absolute per-user amounts and nothing else, so a mode exists only for as
-long as it takes the client to turn it into numbers. Reopening an expense cannot recover how
-it was originally split, and searching the backend for the term finds nothing by design.
-This was re-examined when the expense sheet was designed and deliberately kept: the client
-infers *equal* when every stored amount matches within a cent, and *custom* otherwise.
-Persisting the mode is a follow-up, and would reverse this.
+**Split mode** — `equal`, `custom` or `percentage` — is **stored** on `Expense.SplitMode`,
+and a `percentage` expense carries a `Percentage` on every one of its `ExpenseSplit` rows.
+The mode is metadata for re-editing: **absolute amounts stay the only money truth**, the
+balance replay never reads the mode or the percentages, and the server does not check that a
+mode agrees with its amounts. It was client-only until percentage splits arrived — a 70/30
+ratio and a hand-typed $70/$30 are identical once stored, so no heuristic over the amounts
+can re-derive $77/$33 when the total moves to $110. See
+`docs/adr/0002-the-split-mode-is-stored.md`.
+
+The column is nullable in the schema but non-null for every `Type = Expense` row, enforced in
+the service: a settlement has no split mode, so its rows store `null`. Making the column
+`NOT NULL` breaks the settle path. Two invariants live in `ExpenseSplitInvariants`: a
+`percentage` expense needs a `Percentage` on every split, and those must sum to exactly 100.
+Percentages sent on a non-percentage expense are nulled on write rather than rejected.
+
+Percentages resolve to cents by the same rule an equal split uses — floor each share, then
+hand the leftover cents out one each by ascending `userId`. A percentage that is positive but
+floors to zero cents cannot be sent: splits must be `> 0`, so the client blocks Save on it.
 
 **Expense date** is `Expense.Date`, nullable, client-supplied, and may be in the future.
 `CreatedAt` next to it is the audit timestamp — server-set, never accepted from a client.
@@ -116,16 +127,18 @@ A member carrying a split row on an expense. Distinct from the payer, who need n
 _Avoid_: member (when talking about a single expense)
 
 **Split mode**:
-How the client derived the per-user amounts: *equal* or *custom*. Never leaves the client.
-_Avoid_: split type, division method
-
-**Preset**:
-A named starting point on the split screen that fills in payer and mode in one tap.
-_Avoid_: template, shortcut
+How the per-user amounts were derived: *equal*, *custom* or *percentage*. Stored on the
+expense; the amounts stay authoritative.
+_Avoid_: split type, division method, exact
 
 **Custom split**:
 Per-person amounts typed by hand, which must sum exactly to the total.
 _Avoid_: exact split, manual mode
+
+**Percentage split**:
+Per-person percentages typed by hand, which must sum to exactly 100. Stored alongside the
+amounts they resolved to, and re-resolved whenever the total changes.
+_Avoid_: ratio split, proportional split
 
 ## Balance recomputation
 
@@ -258,9 +271,21 @@ request boundary (`Money`). The API validates that splits sum *exactly* to the t
 a `decimal` column, so deriving them in floating point makes that a coin flip. The expense
 sheet is built from three pieces: `AmountExpression` (the amount field's state machine, with
 chained left-to-right arithmetic and no precedence), `SplitConfiguration` (payer plus an
-equal or custom mode, and the only place remainder cents are distributed — to the lowest user
-ids), and `ExpenseFormViewModel`, which holds the two together and decides when Save is
-available. A member who would land on zero is *omitted* from the payload, never sent as `0`.
+equal, custom or percentage mode, and the only place remainder cents are distributed — to the
+lowest user ids), and `ExpenseFormViewModel`, which holds the two together and decides when
+Save is available. A member who would land on zero is *omitted* from the payload, never sent
+as `0`.
+
+The split screen is a payer picker, a three-way mode selector, and the member list. There are
+no presets: picking the payer inside an equal split is the same two taps a preset saved.
+**Each mode keeps its own draft while the sheet is open** — checkbox set, typed amounts,
+typed percentages — so switching modes to look at one never discards another, and the mode in
+effect is whichever one is selected when the screen is left. Leaving with an incomplete split
+is allowed; Save is blocked and the summary line says what is missing. Percentage and amount
+fields use the system `.decimalPad`: the calculator pad exists for totals read off a receipt,
+and `AmountExpression` has one job. A row whose `splitMode` is missing or unrecognised falls
+back to the old inference — *equal* when every stored amount matches within a cent, *custom*
+otherwise — which keeps the stored amounts on screen instead of proposing to rewrite them.
 
 The amount field is a real `UITextField` whose `inputView` is the SwiftUI calculator pad
 (`AmountInputField`), not a `.decimalPad` with an accessory bar: a real responder is what
