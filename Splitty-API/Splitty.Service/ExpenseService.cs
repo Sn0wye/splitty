@@ -12,7 +12,16 @@ public class ExpenseService(
 {
     public async Task<Expense> CreateAsync(CreateExpenseDTO dto, int userId)
     {
-        ExpenseSplitInvariants.Ensure(ExpenseType.Expense, dto.Amount, dto.ExpenseSplits.Select(s => s.Amount));
+        // Percentages are meaningless off a percentage expense, so they are dropped rather
+        // than refused: a client that sends both a mode and leftover percentages is
+        // describing an equal split, and the stored rows should say only that.
+        var percentages = PercentagesFor(dto.SplitMode, dto.ExpenseSplits.Select(s => s.Percentage));
+
+        ExpenseSplitInvariants.Ensure(
+            ExpenseType.Expense,
+            dto.SplitMode,
+            dto.Amount,
+            dto.ExpenseSplits.Zip(percentages, (s, p) => new SplitShape(s.Amount, p)));
 
         var splits = dto.ExpenseSplits;
 
@@ -27,10 +36,12 @@ public class ExpenseService(
             GroupId = dto.GroupId,
             PaidBy = dto.PaidBy,
             Date = ExpenseDate.Normalize(dto.Date),
-            Splits = splits.Select(s => new ExpenseSplit
+            SplitMode = dto.SplitMode,
+            Splits = splits.Zip(percentages, (s, percentage) => new ExpenseSplit
             {
                 Amount = s.Amount,
                 UserId = s.UserId,
+                Percentage = percentage,
             }).ToList()
         };
 
@@ -80,6 +91,13 @@ public class ExpenseService(
     
     public async Task<Expense> UpdateAsync(UpdateExpenseDTO dto, int userId)
     {
+        // The rows and the mode naming them are one fact. Accepting new splits without a
+        // mode would leave the stored mode describing rows it has never seen.
+        if (dto.ExpenseSplits is not null && dto.SplitMode is null)
+        {
+            throw new ArgumentException("An update that changes the splits must also send the split mode.");
+        }
+
         var expense = await expenseRepository.FindByIdAsync(dto.Id);
 
         if (expense is null)
@@ -114,13 +132,28 @@ public class ExpenseService(
                 : expense.Splits.Select(s => s.UserId));
 
         var resultingAmount = dto.Amount ?? expense.Amount;
-        IEnumerable<decimal> resultingSplits = dto.ExpenseSplits is not null
-            ? dto.ExpenseSplits.Select(s => s.Amount)
-            : expense.Splits.Select(s => s.Amount);
+        var resultingMode = dto.SplitMode ?? expense.SplitMode;
 
-        ExpenseSplitInvariants.Ensure(expense.Type, resultingAmount, resultingSplits);
+        // Validate the mode against the rows it will actually name, which for a mode-only
+        // edit are the rows already stored. Leaving percentage mode nulls them here too,
+        // so an expense never carries percentages its mode does not claim.
+        var resultingAmounts = dto.ExpenseSplits is not null
+            ? dto.ExpenseSplits.Select(s => s.Amount).ToList()
+            : expense.Splits.Select(s => s.Amount).ToList();
+        var resultingPercentages = PercentagesFor(
+            resultingMode,
+            dto.ExpenseSplits is not null
+                ? dto.ExpenseSplits.Select(s => s.Percentage)
+                : expense.Splits.Select(s => s.Percentage));
+
+        ExpenseSplitInvariants.Ensure(
+            expense.Type,
+            resultingMode,
+            resultingAmount,
+            resultingAmounts.Zip(resultingPercentages, (amount, percentage) => new SplitShape(amount, percentage)));
 
         expense.Amount = resultingAmount;
+        expense.SplitMode = resultingMode;
         expense.Description = dto.Description ?? expense.Description;
         expense.PaidBy = dto.PaidBy ?? expense.PaidBy;
         expense.Date = ExpenseDate.Normalize(dto.Date) ?? expense.Date;
@@ -128,17 +161,36 @@ public class ExpenseService(
         
         if (dto.ExpenseSplits is not null)
         {
-            expense.Splits = dto.ExpenseSplits.Select(s => new ExpenseSplit
+            expense.Splits = dto.ExpenseSplits.Zip(resultingPercentages, (s, percentage) => new ExpenseSplit
             {
                 Id = s.Id,
                 Amount = s.Amount,
                 UserId = s.UserId,
+                Percentage = percentage,
             }).ToList();
+        }
+        else
+        {
+            foreach (var (split, percentage) in expense.Splits.Zip(resultingPercentages))
+            {
+                split.Percentage = percentage;
+            }
         }
         
         await expenseRepository.UpdateAsync(expense);
         return expense;
     }
+
+    /// <summary>
+    /// The percentage each split row should store under <paramref name="mode"/>: what was
+    /// supplied when the mode is <see cref="SplitMode.Percentage"/>, and <c>null</c>
+    /// otherwise. Nulling rather than rejecting is what lets a client switch an expense
+    /// back to an equal split without first stripping the fields it no longer means.
+    /// </summary>
+    private static List<decimal?> PercentagesFor(SplitMode? mode, IEnumerable<decimal?> supplied) =>
+        mode is SplitMode.Percentage
+            ? supplied.ToList()
+            : supplied.Select(_ => (decimal?)null).ToList();
 
     /// The expense must belong to the group the request was made against, otherwise a
     /// member of group A could read or delete an expense of group B.

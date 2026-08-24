@@ -44,6 +44,7 @@ public sealed class TransactionDrainTests
             paidBy = ownerUser.Id,
             amount = 20m,
             description = "Dinner",
+            splitMode = "equal",
             splits = new[]
             {
                 new { userId = ownerUser.Id, amount = 10m },

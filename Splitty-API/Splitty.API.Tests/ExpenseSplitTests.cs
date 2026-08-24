@@ -55,7 +55,7 @@ public sealed class ExpenseSplitTests
         var response = await owner.Http.PostAsync(
             $"/group/{groupId}/expenses",
             new StringContent(
-                JsonSerializer.Serialize(new { paidBy = payerId, amount = 10m, description = "Dinner" }),
+                JsonSerializer.Serialize(new { paidBy = payerId, amount = 10m, description = "Dinner", splitMode = "equal" }),
                 Encoding.UTF8,
                 "application/json"));
 
@@ -95,6 +95,7 @@ public sealed class ExpenseSplitTests
 
         var response = await owner.UpdateExpenseAsync(groupId, expenseId, new
         {
+            splitMode = "equal",
             splits = new[] { Split(payerId, 8m), Split(peerId, 8m) }
         });
 
@@ -144,6 +145,7 @@ public sealed class ExpenseSplitTests
         paidBy,
         amount,
         description = "Dinner",
+        splitMode = "equal",
         splits
     };
 

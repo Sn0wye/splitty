@@ -91,6 +91,7 @@ public sealed class ExpenseDateTests(ApiFactory factory)
             amount = 20m,
             description = "Dinner",
             createdAt = new DateTime(2001, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            splitMode = "equal",
             splits = new[]
             {
                 new { userId = group.OwnerId, amount = 10m },

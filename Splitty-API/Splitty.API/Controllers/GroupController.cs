@@ -211,6 +211,7 @@ public class GroupController(
             GroupId = groupId,
             PaidBy = request.PaidBy,
             Date = request.Date,
+            SplitMode = request.SplitMode,
             ExpenseSplits = request.Splits
         };
 
@@ -248,6 +249,7 @@ public class GroupController(
             Description = request.Description,
             PaidBy = request.PaidBy,
             Date = request.Date,
+            SplitMode = request.SplitMode,
             ExpenseSplits = request.Splits
         };
 

@@ -46,13 +46,16 @@ repositories use **primary constructors** for injection — match that style.
 - `Balance` is a **pairwise, per-group** row: `(UserId, PeerId, GroupId, Amount)`. Each
   debt is stored twice, once from each side, with opposite signs.
 
-**Split mode** — "equal", "exact", "percentage" — is a **client-only** concept. The API
-accepts and stores absolute per-user amounts and nothing else, so a mode exists only for as
-long as it takes the client to turn it into numbers. Reopening an expense cannot recover how
-it was originally split, and searching the backend for the term finds nothing by design.
-This was re-examined when the expense sheet was designed and deliberately kept: the client
-infers *equal* when every stored amount matches within a cent, and *custom* otherwise.
-Persisting the mode is a follow-up, and would reverse this.
+**Split mode** is `Expense.SplitMode` — `equal`, `custom`, or `percentage` — stored on the
+row so reopening an expense recovers how it was divided instead of inferring it from the
+amounts. It is **descriptive, not authoritative**: nothing server-side derives an amount
+from it, so a percentage expense whose shares do not divide evenly is still accepted and
+the client keeps ownership of where the remainder cent lands. Per-split shares live in
+`ExpenseSplit.Percentage`, in percent units, non-null on every row of a `percentage`
+expense and null everywhere else — percentages sent under any other mode are nulled on
+write rather than refused. The column is nullable because a settlement has no mode; the
+service is what keeps it non-null for every `Type = Expense` row. Splits and mode are one
+fact, so an update sending `Splits` must send `SplitMode` too.
 
 **Expense date** is `Expense.Date`, nullable, client-supplied, and may be in the future.
 `CreatedAt` next to it is the audit timestamp — server-set, never accepted from a client.

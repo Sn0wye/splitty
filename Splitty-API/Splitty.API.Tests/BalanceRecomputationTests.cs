@@ -30,6 +30,7 @@ public sealed class BalanceRecomputationTests(ApiFactory factory)
         (await group.Owner.UpdateExpenseAsync(group.Id, expenseId, new
         {
             amount = 50m,
+            splitMode = "equal",
             splits = new[]
             {
                 new { userId = group.OwnerId, amount = 25m },
