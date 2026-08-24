@@ -239,6 +239,9 @@ extension Error {
 struct ExpenseSplitRequest {
     let userId: Int
     let amountCents: Int
+    /// Percent units (`70`). Non-nil on every row of a percentage expense, nil elsewhere:
+    /// the API requires it under that mode and nulls it under any other.
+    let percentage: Decimal?
 }
 
 // MARK: - Response Types

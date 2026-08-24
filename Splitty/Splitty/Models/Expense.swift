@@ -13,6 +13,15 @@ enum ExpenseType: String, Codable {
     case payment = "payment"
 }
 
+// MARK: - Split Mode
+/// How the user said an expense was divided, as the API stores it. Descriptive: the
+/// amounts are the money truth and are never re-derived from this.
+enum ExpenseSplitMode: String, Codable {
+    case equal
+    case custom
+    case percentage
+}
+
 // MARK: - Expense Model
 struct Expense: Codable, Identifiable {
     let id: Int
@@ -21,6 +30,9 @@ struct Expense: Codable, Identifiable {
     let amount: Double
     let description: String
     let type: ExpenseType
+    /// How this was divided. `nil` on a settlement, on a row written before the column
+    /// existed, and on a mode this build does not recognise — see `init(from:)`.
+    let splitMode: ExpenseSplitMode?
     /// When the expense happened, as the user says it did. Nullable: rows written before
     /// the column existed have no user-supplied date, so every reader falls back to
     /// `createdAt`.
@@ -29,6 +41,32 @@ struct Expense: Codable, Identifiable {
     let updatedAt: String
     let paidByUser: User
     let splits: [ExpenseSplit]
+
+    enum CodingKeys: String, CodingKey {
+        case id, groupId, paidBy, amount, description, type, splitMode, date
+        case createdAt, updatedAt, paidByUser, splits
+    }
+}
+
+extension Expense {
+    /// Decoded by hand for one field: an unrecognised `splitMode` becomes `nil` rather
+    /// than throwing. A mode added by a newer client must not fail the whole group's
+    /// expense list over a value this build has no opinion about.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(Int.self, forKey: .id)
+        groupId = try container.decode(Int.self, forKey: .groupId)
+        paidBy = try container.decode(Int.self, forKey: .paidBy)
+        amount = try container.decode(Double.self, forKey: .amount)
+        description = try container.decode(String.self, forKey: .description)
+        type = try container.decode(ExpenseType.self, forKey: .type)
+        splitMode = try? container.decodeIfPresent(ExpenseSplitMode.self, forKey: .splitMode)
+        date = try container.decodeIfPresent(String.self, forKey: .date)
+        createdAt = try container.decode(String.self, forKey: .createdAt)
+        updatedAt = try container.decode(String.self, forKey: .updatedAt)
+        paidByUser = try container.decode(User.self, forKey: .paidByUser)
+        splits = try container.decode([ExpenseSplit].self, forKey: .splits)
+    }
 }
 
 // MARK: - Expense Split Model
@@ -37,6 +75,9 @@ struct ExpenseSplit: Codable, Identifiable {
     let expenseId: Int
     let userId: Int
     let amount: Double
+    /// The share this row was said to be, in percent units (`70`). Non-null on every row
+    /// of a percentage expense, null everywhere else. Never used to derive `amount`.
+    let percentage: Double?
     let user: User
 }
 

@@ -23,6 +23,19 @@ class ExpenseFormViewModel: ObservableObject {
     let members: [GroupMember]
     let currentUserId: Int
 
+    /// Each mode keeps its own draft for as long as the **sheet** is open. The split
+    /// screen is pushed and popped constantly while composing, so holding the drafts there
+    /// would lose a set of typed amounts to a back swipe.
+    ///
+    /// The text is kept, not only the parsed value: a half-typed `1.` survives the
+    /// keystroke that would otherwise round it away, and a field left blank stays blank
+    /// rather than reappearing as `0`.
+    @Published private(set) var customText: [Int: String] = [:]
+    @Published private(set) var percentageText: [Int: String] = [:]
+    private var equalParticipants: Set<Int>
+    private var customAmounts: [Int: Int] = [:]
+    private var percentages: [Int: Decimal] = [:]
+
     private let existingExpenseId: Int?
 
     init(groupId: Int, members: [GroupMember], currentUserId: Int, expense: Expense? = nil) {
@@ -35,7 +48,8 @@ class ExpenseFormViewModel: ObservableObject {
             amount = AmountExpression(cents: Money.cents(from: expense.amount))
             description = expense.description
             date = expense.effectiveDate ?? Date()
-            configuration = SplitConfiguration(inferredFrom: expense)
+            configuration = SplitConfiguration(restoredFrom: expense)
+            equalParticipants = Set(expense.splits.map(\.userId))
         } else {
             amount = AmountExpression()
             description = ""
@@ -44,6 +58,29 @@ class ExpenseFormViewModel: ObservableObject {
                 payerId: currentUserId,
                 mode: .equal(participants: Set(members.map(\.userId)))
             )
+            equalParticipants = Set(members.map(\.userId))
+        }
+
+        // Editing loads both typed modes from what is stored; a new expense starts them
+        // empty, since a blank field is what says "not participating".
+        if let expense {
+            seedTypedDrafts(from: expense)
+        }
+    }
+
+    /// The stored amounts fill the custom draft whatever the mode was — they are the
+    /// numbers on the row either way. Percentages only exist on a percentage expense, so
+    /// that draft stays empty unless the row carries them.
+    private func seedTypedDrafts(from expense: Expense) {
+        for split in expense.splits {
+            let cents = Money.cents(from: split.amount)
+            customAmounts[split.userId] = cents
+            customText[split.userId] = Money.plainString(cents: cents)
+        }
+
+        if case .percentage(let stored) = configuration.mode {
+            percentages = stored
+            percentageText = stored.mapValues(Percent.string)
         }
     }
 
@@ -63,9 +100,8 @@ class ExpenseFormViewModel: ObservableObject {
         configuration.summary(members: members, currentUserId: currentUserId)
     }
 
-    var selectedPreset: SplitPreset? {
-        SplitPreset.matching(configuration, memberIds: memberIds, currentUserId: currentUserId)
-    }
+    /// Which of the three the split screen's selector shows.
+    var selectedMode: ExpenseSplitMode { configuration.mode.wireValue }
 
     /// The per-person amounts as they stand, for the split screen's rows.
     var perParticipantAmounts: [Int: Int] { configuration.amounts(totalCents: totalCents) }
@@ -90,19 +126,29 @@ class ExpenseFormViewModel: ObservableObject {
             return cents > 0
                 ? "\(Money.formatted(cents: cents)) left to assign"
                 : "\(Money.formatted(cents: -cents)) over the total"
+        case .unassignedPercent(let percent):
+            return percent > 0
+                ? "\(Percent.string(percent))% left to assign"
+                : "\(Percent.string(-percent))% over 100%"
+        case .percentageRoundsToZero(let userId):
+            // The API rejects a split of zero, and the reason is invisible from the field:
+            // the share is a real number, it is the total that is too small for it.
+            return "\(name(for: userId))'s share rounds down to nothing"
         }
-    }
-
-    var isCustomSplit: Bool {
-        if case .custom = configuration.mode { return true }
-        return false
     }
 
     func isParticipant(_ userId: Int) -> Bool {
         switch configuration.mode {
         case .equal(let participants): return participants.contains(userId)
         case .custom(let amounts): return (amounts[userId] ?? 0) > 0
+        case .percentage(let percentages): return (percentages[userId] ?? 0) > 0
         }
+    }
+
+    func name(for userId: Int) -> String {
+        userId == currentUserId
+            ? "You"
+            : members.first { $0.userId == userId }?.name ?? "Unknown"
     }
 
     func splits() -> [ExpenseSplitRequest] {
@@ -111,46 +157,63 @@ class ExpenseFormViewModel: ObservableObject {
 
     // MARK: - Split configuration
 
-    func apply(preset: SplitPreset, payerId: Int?) {
-        switch preset {
+    /// Switching modes swaps in that mode's draft. Nothing is derived from the mode being
+    /// left: a percentage split is not seeded from the equal division it replaces, because
+    /// the whole reason to switch is that the equal division is wrong.
+    func selectMode(_ mode: ExpenseSplitMode) {
+        switch mode {
+        case .equal:
+            configuration.mode = .equal(participants: equalParticipants)
         case .custom:
-            // Seeded from whatever the split currently is: adjusting two numbers beats
-            // typing every one of them.
-            configuration = SplitConfiguration(
-                payerId: payerId ?? configuration.payerId,
-                mode: .custom(amounts: perParticipantAmounts)
-            )
-        default:
-            configuration = preset.configuration(
-                memberIds: memberIds,
-                currentUserId: currentUserId,
-                payerId: payerId
-            )
+            configuration.mode = .custom(amounts: customAmounts)
+        case .percentage:
+            configuration.mode = .percentage(percentages: percentages)
         }
     }
 
     /// Unchecking a member re-derives the split across the rest and drops them from the
-    /// payload; on a custom split it clears their row, which does the same thing.
+    /// payload. Equal splits only: the typed modes say the same thing with an empty field.
     func toggleParticipant(_ userId: Int) {
-        switch configuration.mode {
-        case .equal(var participants):
-            if participants.contains(userId) {
-                participants.remove(userId)
-            } else {
-                participants.insert(userId)
-            }
-            configuration.mode = .equal(participants: participants)
-        case .custom(var amounts):
-            amounts[userId] = amounts[userId, default: 0] > 0 ? 0 : nil
-            if amounts[userId] == nil { amounts.removeValue(forKey: userId) }
-            configuration.mode = .custom(amounts: amounts)
+        guard case .equal(var participants) = configuration.mode else { return }
+
+        if participants.contains(userId) {
+            participants.remove(userId)
+        } else {
+            participants.insert(userId)
+        }
+
+        equalParticipants = participants
+        configuration.mode = .equal(participants: participants)
+    }
+
+    /// A blank field is not a participant, which is why the row is removed rather than set
+    /// to zero: zero would be a share the API refuses, blank is someone left out.
+    func setCustomText(_ text: String, for userId: Int) {
+        customText[userId] = text
+
+        if let cents = Money.cents(fromTypedText: text), cents > 0 {
+            customAmounts[userId] = cents
+        } else {
+            customAmounts.removeValue(forKey: userId)
+        }
+
+        if case .custom = configuration.mode {
+            configuration.mode = .custom(amounts: customAmounts)
         }
     }
 
-    func setCustomAmount(_ cents: Int, for userId: Int) {
-        guard case .custom(var amounts) = configuration.mode else { return }
-        amounts[userId] = cents
-        configuration.mode = .custom(amounts: amounts)
+    func setPercentageText(_ text: String, for userId: Int) {
+        percentageText[userId] = text
+
+        if let percent = Percent.value(fromTypedText: text), percent > 0 {
+            percentages[userId] = percent
+        } else {
+            percentages.removeValue(forKey: userId)
+        }
+
+        if case .percentage = configuration.mode {
+            configuration.mode = .percentage(percentages: percentages)
+        }
     }
 
     func setPayer(_ userId: Int) {
@@ -179,6 +242,7 @@ class ExpenseFormViewModel: ObservableObject {
                     amountCents: total,
                     paidBy: configuration.payerId,
                     date: date,
+                    splitMode: configuration.mode.wireValue,
                     splits: splits()
                 )
             }
@@ -189,6 +253,7 @@ class ExpenseFormViewModel: ObservableObject {
                 amountCents: total,
                 paidBy: configuration.payerId,
                 date: date,
+                splitMode: configuration.mode.wireValue,
                 splits: splits()
             )
         } catch {
