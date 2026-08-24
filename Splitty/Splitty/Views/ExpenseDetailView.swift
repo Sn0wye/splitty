@@ -36,11 +36,20 @@ struct ExpenseDetailView: View {
                 .padding(.vertical, 4)
             }
 
-            Section("Split") {
+            Section(splitHeader) {
                 ForEach(expense.splits) { split in
                     HStack {
                         Text(name(for: split.userId))
                         Spacer()
+                        // A percentage split shows the share it was written as next to the
+                        // money it came to: the payoff for storing the mode is that
+                        // reopening an expense answers "how was this split?".
+                        if let percentage = split.percentage, expense.splitMode == .percentage {
+                            Text("\(Percent.string(Percent.value(from: percentage)))%")
+                                .font(.subheadline)
+                                .monospacedDigit()
+                                .foregroundStyle(.tertiary)
+                        }
                         Text(Money.formatted(amount: split.amount))
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
@@ -98,6 +107,16 @@ struct ExpenseDetailView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This removes the expense and everyone's share of it.")
+        }
+    }
+
+    /// The stored mode, said once above the rows rather than repeated on each of them.
+    private var splitHeader: String {
+        switch expense.splitMode {
+        case .equal: return "Split equally"
+        case .custom: return "Split by amounts"
+        case .percentage: return "Split by percentages"
+        case .none: return "Split"
         }
     }
 

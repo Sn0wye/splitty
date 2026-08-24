@@ -119,12 +119,9 @@ A member carrying a split row on an expense. Distinct from the payer, who need n
 _Avoid_: member (when talking about a single expense)
 
 **Split mode**:
-How the client derived the per-user amounts: *equal* or *custom*. Never leaves the client.
+How the per-user amounts were derived: *equal*, *custom*, or *percentage*. Stored on the
+expense, so reopening one recovers it rather than inferring it.
 _Avoid_: split type, division method
-
-**Preset**:
-A named starting point on the split screen that fills in payer and mode in one tap.
-_Avoid_: template, shortcut
 
 **Custom split**:
 Per-person amounts typed by hand, which must sum exactly to the total.
@@ -261,9 +258,24 @@ request boundary (`Money`). The API validates that splits sum *exactly* to the t
 a `decimal` column, so deriving them in floating point makes that a coin flip. The expense
 sheet is built from three pieces: `AmountExpression` (the amount field's state machine, with
 chained left-to-right arithmetic and no precedence), `SplitConfiguration` (payer plus an
-equal or custom mode, and the only place remainder cents are distributed — to the lowest user
-ids), and `ExpenseFormViewModel`, which holds the two together and decides when Save is
-available. A member who would land on zero is *omitted* from the payload, never sent as `0`.
+equal, custom or percentage mode, and the only place remainder cents are distributed — to
+the lowest user ids), and `ExpenseFormViewModel`, which holds the two together and decides
+when Save is available. A member who would land on zero is *omitted* from the payload, never
+sent as `0`.
+
+Equal and percentage splits **derive their amounts from the total on demand**, so moving the
+total re-divides them; a custom split keeps the typed amounts and reports the shortfall
+instead. `SplitConfiguration(restoredFrom:)` reads the stored mode; `init(inferredFrom:)`
+is the fallback for a row that has none — a settlement, a row older than the column, or a
+mode this build does not recognise, which decodes as `nil` rather than throwing.
+
+The split screen is a payer row, a mode selector and the member list — **there are no
+presets**: with the mode on screen, a preset row that only moves that selector is a second
+control for one action. Each mode keeps its own draft (checkbox set, typed amounts, typed
+percentages) on `ExpenseFormViewModel` for as long as the *sheet* is open, since the split
+screen itself is popped and pushed constantly while composing. A blank amount or percentage
+field means "not participating"; the percentage fields use the system `.decimalPad`, not the
+calculator pad, which exists for totals summed off a receipt.
 
 The amount field is a real `UITextField` whose `inputView` is the SwiftUI calculator pad
 (`AmountInputField`), not a `.decimalPad` with an accessory bar: a real responder is what
