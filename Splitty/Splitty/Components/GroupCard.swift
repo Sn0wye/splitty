@@ -48,7 +48,9 @@ struct GroupCard: View {
             .cornerRadius(10)
             .padding(.horizontal, 20)
         }
-        .buttonStyle(PlainButtonStyle())
+        // Shallow: the card is the width of the screen, so a small percentage is a lot of
+        // travel at its edges.
+        .buttonStyle(.pressable(scale: 0.98))
     }
 }
 

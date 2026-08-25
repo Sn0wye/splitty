@@ -119,6 +119,13 @@ private struct KeypadKeyStyle: ButtonStyle {
             }
             .contentShape(Rectangle())
             .animation(.easeOut(duration: configuration.isPressed ? 0.08 : 0.2), value: configuration.isPressed)
+            // On the press, with the halo, not on the release: the tap is the causal event
+            // and the two senses have to land on the same frame. Soft and half intensity —
+            // this fires several times per amount, and a full impact per digit is a drum.
+            .sensoryFeedback(
+                .impact(flexibility: .soft, intensity: 0.4),
+                trigger: configuration.isPressed
+            ) { _, isPressed in isPressed }
     }
 }
 
