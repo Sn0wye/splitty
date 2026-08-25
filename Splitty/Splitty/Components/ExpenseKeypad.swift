@@ -7,11 +7,15 @@ import SwiftUI
 import UIKit
 
 /// Everything the pad can send back to the amount field.
+///
+/// Digits and nothing else. The pad used to carry the screen's forward action in a row
+/// above the keys, which made it the one control that had to outlive the surface it sat
+/// on; the amount screen owns that button now, where it can be the shape a primary action
+/// should be.
 enum KeypadKey: Equatable {
     case digit(Int)
     case decimalPoint
     case backspace
-    case next
 }
 
 // MARK: - The pad
@@ -22,59 +26,27 @@ enum KeypadKey: Equatable {
 /// Digits only. The arithmetic keys are gone: they turned a two-tap amount into a mode the
 /// user had to reason about, and the expression model still resolves whatever is typed.
 struct ExpenseKeypad: View {
-    let isNextEnabled: Bool
-    var isSaving: Bool = false
-    /// The digits hide while the system keyboard is up; the action row stays, so the
-    /// forward arrow keeps its place instead of moving to the other end of the sheet. The
-    /// grid keeps its space either way — collapsing it moved the arrow down at the same
-    /// moment the keyboard moved it up.
-    var showsDigits: Bool = true
     let onKey: (KeypadKey) -> Void
 
     private let digitRows = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
 
     var body: some View {
         VStack(spacing: 2) {
-            actionRow
-
-            VStack(spacing: 2) {
-                ForEach(digitRows, id: \.first) { row in
-                    HStack(spacing: 0) {
-                        ForEach(row, id: \.self) { digit in
-                            key(title: "\(digit)") { onKey(.digit(digit)) }
-                        }
+            ForEach(digitRows, id: \.first) { row in
+                HStack(spacing: 0) {
+                    ForEach(row, id: \.self) { digit in
+                        key(title: "\(digit)") { onKey(.digit(digit)) }
                     }
                 }
-
-                HStack(spacing: 0) {
-                    key(title: ".") { onKey(.decimalPoint) }
-                    key(title: "0") { onKey(.digit(0)) }
-                    key(systemImage: "chevron.left", label: "delete") { onKey(.backspace) }
-                }
             }
-            .opacity(showsDigits ? 1 : 0)
-            .allowsHitTesting(showsDigits)
+
+            HStack(spacing: 0) {
+                key(title: ".") { onKey(.decimalPoint) }
+                key(title: "0") { onKey(.digit(0)) }
+                key(systemImage: "chevron.left", label: "delete") { onKey(.backspace) }
+            }
         }
         .padding(.bottom, 8)
-    }
-
-    /// The pad's only non-digit: the forward action, over the column it belongs to.
-    private var actionRow: some View {
-        HStack(spacing: 12) {
-            Spacer(minLength: 0)
-
-            if isSaving {
-                ProgressView()
-                    .frame(width: 44, height: 44)
-            } else {
-                ForwardButton(isEnabled: isNextEnabled) { onKey(.next) }
-                    .accessibilityLabel("next")
-                    .accessibilityIdentifier("keypad.next")
-            }
-        }
-        .frame(height: 60)
-        .padding(.leading, 8)
-        .padding(.trailing, 12)
     }
 
     private func key(

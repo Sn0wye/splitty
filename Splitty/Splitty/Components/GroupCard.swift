@@ -51,6 +51,9 @@ struct GroupCard: View {
         // Shallow: the card is the width of the screen, so a small percentage is a lot of
         // travel at its edges.
         .buttonStyle(.pressable(scale: 0.98))
+        // Shared across every card on purpose: a test wants "a group", not a particular
+        // one, and naming them individually would tie it to whatever the data happens to be.
+        .accessibilityIdentifier("groups.card")
     }
 }
 
