@@ -4,17 +4,25 @@
 //
 
 import SwiftUI
-import UIKit
 
-/// Creates or edits an expense. The sheet opens on the amount, with the pad up; everything
-/// else is one row below it.
+/// Creates or edits an expense, in two steps: the amount, then everything about it.
+///
+/// One screen, one input surface. The amount screen belongs to the pad and the details
+/// screen belongs to the system keyboard, and because they are different screens the two
+/// can never contend for the bottom of the sheet. Everything that used to be needed to
+/// arbitrate between them — reserved gaps, reconstructed keyboard heights, a forward button
+/// that had to survive both — stopped being needed when the contention did.
+///
+/// It is also how money apps are shaped: the amount is a decision worth its own screen, and
+/// what the money was for is a different decision.
 struct ExpenseSheet: View {
     @StateObject private var viewModel: ExpenseFormViewModel
     @Environment(\.dismiss) private var dismiss
 
-    @FocusState private var descriptionFocused: Bool
-    @State private var showingDatePicker = false
-    @State private var keyboardInset: CGFloat = 0
+    @State private var showingDetails = false
+    /// Bumped once the server has the expense, so the success texture fires on the save
+    /// landing rather than on the tap that asked for it.
+    @State private var savedCount = 0
 
     private let onSaved: (Expense) -> Void
 
@@ -36,240 +44,64 @@ struct ExpenseSheet: View {
 
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottom) {
-                VStack(spacing: 24) {
-                    headerRow
-
-                    Spacer(minLength: 12)
-
-                    amountRow
-
-                    Spacer(minLength: 12)
-
-                    descriptionRow
-                    splitRow
-
-                    if let message = viewModel.blockingMessage {
-                        Text(message)
-                            .font(.subheadline)
-                            .foregroundStyle(.orange)
-                    }
-
-                    if let errorMessage = viewModel.errorMessage {
-                        Text(errorMessage)
-                            .font(.subheadline)
-                            .foregroundStyle(.red)
-                            .multilineTextAlignment(.center)
-                    }
-
-                    // Held open whether the pad is showing its digits or not, so opening
-                    // the keyboard moves nothing above it.
-                    Color.clear.frame(height: bottomReserve)
+            amountStep
+                .navigationDestination(isPresented: $showingDetails) {
+                    ExpenseDetailsStep(viewModel: viewModel, onSave: save)
                 }
-                // The content above the pad is anchored to the sheet, not to the keyboard:
-                // letting the system lift it as well produced two shifts at once.
-                .ignoresSafeArea(.keyboard, edges: .bottom)
-
-                // The pad is content, not a keyboard. As a keyboard it dismissed on its
-                // own clock, sliding out from under a sheet that was still on screen;
-                // owned by the sheet it simply travels with it. Its action row survives
-                // the system keyboard and rides above it, so the arrow stays put.
-                ExpenseKeypad(
-                    isNextEnabled: isNextEnabled,
-                    isSaving: viewModel.isSaving,
-                    showsDigits: !descriptionFocused,
-                    onKey: handle(key:)
-                )
-                .padding(.bottom, padBottomInset)
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 12)
-            .padding(.bottom, 12)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            // The keyboard is answered by hand, below: letting SwiftUI lift the sheet moved
-            // the pad outside the bounds it is hit-tested against, so the arrow drew in the
-            // right place and answered to nothing.
-            .ignoresSafeArea(.keyboard, edges: .bottom)
-            // The same colour the pad paints itself, so the two meet without a seam.
-            .background(Color.expenseBackground)
-            // No bar: the sheet's own header carries what it needs, and an empty bar over
-            // the amount was only there to hold buttons that are gone.
-            .toolbar(.hidden, for: .navigationBar)
-            .presentationCornerRadius(28)
-            .presentationBackground(Color.expenseBackground)
-            .onReceive(NotificationCenter.default.publisher(
-                for: UIResponder.keyboardWillChangeFrameNotification
-            )) { note in
-                setKeyboardInset(from: note)
-            }
-            .onReceive(NotificationCenter.default.publisher(
-                for: UIResponder.keyboardWillHideNotification
-            )) { _ in
-                withAnimation(.easeOut(duration: 0.25)) { keyboardInset = 0 }
-            }
-            .sheet(isPresented: $showingDatePicker) {
-                ExpenseDatePicker(date: $viewModel.date)
-            }
         }
+        .presentationCornerRadius(28)
+        .presentationBackground(Color.expenseBackground)
+        .sensoryFeedback(.success, trigger: savedCount)
     }
 
-    // MARK: - Rows
+    // MARK: - Step one: the amount
 
-    /// The date, and nothing else: the forward action stays with the pad at the bottom of
-    /// the sheet whether the pad or the keyboard is up.
-    private var headerRow: some View {
-        HStack {
-            dateButton
-            Spacer()
+    /// Nothing but the number and the keys that change it.
+    ///
+    /// `Spacer`s are safe here in a way they were not before: this screen has no keyboard,
+    /// so the box the amount centres in never changes size and the number never moves.
+    private var amountStep: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
+
+            AmountDisplay(text: viewModel.amount.displayText)
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("expense.amount")
+
+            Spacer(minLength: 0)
+
+            PrimaryButton(title: "Next") {
+                showingDetails = true
+            }
+            .disabled(viewModel.totalCents == 0)
+            .accessibilityIdentifier("expense.next")
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
+
+            ExpenseKeypad(onKey: handle(key:))
         }
-        .padding(.horizontal, 8)
-    }
-
-    @ViewBuilder
-    private var dateButton: some View {
-        if #available(iOS 26.0, *) {
-            Button {
-                showingDatePicker = true
-            } label: {
-                Text(dateLabel)
-                    .font(.subheadline.weight(.medium))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.expenseBackground)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color.expenseBackground, for: .navigationBar)
+        .toolbar {
+            // The way out. A sheet with no visible dismiss leaves the drag gesture as the
+            // only exit, which is not something to have to discover.
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { dismiss() }
                     .foregroundStyle(Color.expenseForeground)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .glassEffect(.regular, in: .capsule)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("expense.date")
-        } else {
-            Button {
-                showingDatePicker = true
-            } label: {
-                Text(dateLabel)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(Color.expenseForeground)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.expenseForeground.opacity(0.07), in: Capsule())
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("expense.date")
-        }
-    }
-
-    private var dateLabel: String {
-        let calendar = Calendar.current
-        if calendar.isDateInToday(viewModel.date) { return "Today" }
-        if calendar.isDateInYesterday(viewModel.date) { return "Yesterday" }
-        return viewModel.date.formatted(.dateTime.day().month(.abbreviated).year())
-    }
-
-    /// Tapping the number puts the pad back, whichever field had focus.
-    private var amountRow: some View {
-        AmountDisplay(text: viewModel.amount.displayText)
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-            .onTapGesture { descriptionFocused = false }
-            .accessibilityIdentifier("expense.amount")
-    }
-
-    private var descriptionRow: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "text.alignleft")
-                .font(.system(size: 18))
-                .foregroundStyle(.secondary)
-                .frame(width: 48, height: 48)
-                .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
-
-            VStack(alignment: .leading, spacing: 2) {
-                TextField("What was it for?", text: $viewModel.description)
-                    .focused($descriptionFocused)
-                    .submitLabel(.done)
-                    .foregroundStyle(Color.expenseForeground)
-                    .accessibilityIdentifier("expense.description")
-                    .frame(height: 30)
+                    .accessibilityIdentifier("expense.cancel")
             }
         }
-        .padding(.horizontal, 8)
-    }
-
-    private var splitRow: some View {
-        NavigationLink {
-            SplitConfigurationView(viewModel: viewModel)
-        } label: {
-            HStack {
-                Text(viewModel.splitSummary)
-                    .font(.subheadline)
-                    .foregroundStyle(Color.expenseForeground)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
-            .padding(.horizontal, 8)
-        }
-        .accessibilityIdentifier("expense.split")
     }
 
     // MARK: - Behaviour
-
-    /// One action row and four digit rows, plus the padding under them. Reserved in the
-    /// layout at all times: the pad shrinks to the action row when the keyboard takes over,
-    /// and nothing above it is allowed to notice.
-    private static let actionRowHeight: CGFloat = 60
-    private static let digitsHeight: CGFloat = 4 * 68 + 2 * 3
-    private static let padHeight: CGFloat = actionRowHeight + digitsHeight + 8
-
-    /// What the rows above have to keep clear. The pad's own height while the pad is up;
-    /// while the keyboard is up it is the keyboard plus the action row riding on it, which
-    /// is taller — so the description and the split move up towards the amount rather than
-    /// letting the arrow land on top of them.
-    private var bottomReserve: CGFloat {
-        guard descriptionFocused else { return Self.padHeight }
-        return keyboardInset + Self.actionRowHeight + 24
-    }
-
-    /// The keyboard covers the digit grid, which is hidden under it anyway, so only the
-    /// part of it that reaches past the grid moves the pad. Ignored unless the description
-    /// is what the keyboard belongs to: the split screen raises one of its own, and acting
-    /// on that left the pad hoisted over the sheet on the way back.
-    private var padBottomInset: CGFloat {
-        guard descriptionFocused else { return 0 }
-        return max(0, keyboardInset - Self.digitsHeight)
-    }
-
-    /// How far the keyboard reaches into the sheet, past the home indicator the sheet
-    /// already clears.
-    private func setKeyboardInset(from note: Notification) {
-        guard let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
-              let window = UIApplication.shared.connectedScenes
-                  .compactMap({ ($0 as? UIWindowScene)?.keyWindow })
-                  .first
-        else { return }
-
-        let overlap = max(0, window.bounds.maxY - frame.minY - window.safeAreaInsets.bottom)
-        withAnimation(.easeOut(duration: 0.25)) { keyboardInset = overlap }
-    }
-
-    /// One arrow, two jobs: leaving the amount only needs an amount, but once the
-    /// description has focus the arrow is the save and answers to the whole sheet.
-    private var isNextEnabled: Bool {
-        descriptionFocused ? viewModel.canSave : viewModel.totalCents > 0
-    }
 
     private func handle(key: KeypadKey) {
         switch key {
         case .digit(let digit): viewModel.amount.type(digit: digit)
         case .decimalPoint: viewModel.amount.typeDecimalPoint()
         case .backspace: viewModel.amount.backspace()
-        case .next:
-            if descriptionFocused {
-                save()
-            } else {
-                descriptionFocused = true
-            }
         }
     }
 
@@ -278,6 +110,7 @@ struct ExpenseSheet: View {
 
         Task {
             if let expense = await viewModel.save() {
+                savedCount += 1
                 onSaved(expense)
                 dismiss()
             }
