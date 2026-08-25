@@ -15,9 +15,14 @@ struct SwipeToDeleteRow<Content: View>: View {
     let onDelete: () -> Void
     @ViewBuilder var content: Content
 
-    @State private var offset: CGFloat = 0
+    /// Where the finger has the row. Plain `@State`, not `@GestureState`: the gesture state
+    /// resets itself the instant the drag ends, which took the row home in a single frame
+    /// with nothing to animate. Owning the value means the release is ours to spring.
+    @State private var dragOffset: CGFloat = 0
     @State private var isSwiping = false
-    @GestureState private var translation: CGFloat = 0
+    /// Bumped when a release commits, so the haptic fires with the decision rather than
+    /// with the alert that reports it.
+    @State private var commitCount = 0
 
     private static var actionWidth: CGFloat { 88 }
     /// Past this, releasing asks. Short of it the row snaps back and nothing happens.
@@ -54,24 +59,25 @@ struct SwipeToDeleteRow<Content: View>: View {
                 .offset(x: shownOffset)
         }
         .clipped()
-        .animation(.snappy(duration: 0.25), value: offset)
+        .sensoryFeedback(.impact(flexibility: .rigid), trigger: commitCount)
         // Simultaneous, not exclusive: a plain `.gesture` loses the drag to the list's own
         // pan recogniser, which is why the row stopped swiping at all. Both see the drag,
         // and the horizontal-dominance check below is what keeps a scroll a scroll.
         .simultaneousGesture(
             DragGesture(minimumDistance: 18)
-                .updating($translation) { value, state, _ in
-                    // Vertical intent belongs to the list, so only the horizontal part of a
-                    // drag that is mostly horizontal is taken.
-                    guard abs(value.translation.width) > abs(value.translation.height) else {
-                        return
-                    }
-                    state = value.translation.width
-                }
                 .onChanged { value in
-                    if abs(value.translation.width) > abs(value.translation.height) {
+                    // Direction is decided once, on the first move past the threshold, and
+                    // then held for the rest of the drag. Re-deciding every frame let a
+                    // curving finger hand the row back to the list mid-swipe.
+                    if !isSwiping {
+                        guard abs(value.translation.width) > abs(value.translation.height) else {
+                            return
+                        }
                         isSwiping = true
                     }
+                    // No animation here on purpose: while the finger is down the row is
+                    // glued to it, and the only motion is the one the hand is making.
+                    dragOffset = value.translation.width
                 }
                 .onEnded { value in
                     settle(value)
@@ -87,7 +93,7 @@ struct SwipeToDeleteRow<Content: View>: View {
     /// Clamped: the row opens to the action's width and resists past it, and never drags
     /// right of its resting place.
     private var shownOffset: CGFloat {
-        let raw = offset + translation
+        let raw = dragOffset
         if raw > 0 { return 0 }
         return raw < -Self.actionWidth
             ? -Self.actionWidth + (raw + Self.actionWidth) / 3
@@ -96,19 +102,33 @@ struct SwipeToDeleteRow<Content: View>: View {
 
     /// The row does not stay open. Releasing past the threshold asks the question and
     /// closes; the drag is the gesture, and the alert is where the decision is made.
+    ///
+    /// The threshold is applied to where the flick is *going*, not to where the finger
+    /// happened to stop. A fast short swipe is a swipe — judging it on final position alone
+    /// meant a flick that never travelled 44pt did nothing at all.
     private func settle(_ value: DragGesture.Value) {
-        guard abs(value.translation.width) > abs(value.translation.height) else { return }
+        guard isSwiping else { return }
 
-        let travelled = offset + value.translation.width
-        offset = 0
+        let projected = value.predictedEndTranslation.width
+        let committed = projected < -Self.commitWidth
 
-        if travelled < -Self.commitWidth {
+        // Bounce, and only here: the row is coming home off a throw, and the overshoot is
+        // the momentum the hand put into it. Nothing else in the row animates with bounce.
+        withAnimation(.snappy(duration: 0.3, extraBounce: 0.1)) {
+            dragOffset = 0
+        }
+
+        if committed {
+            commitCount += 1
             onDelete()
         }
     }
 
     private func delete() {
-        offset = 0
+        withAnimation(.snappy(duration: 0.3, extraBounce: 0.1)) {
+            dragOffset = 0
+        }
+        commitCount += 1
         onDelete()
     }
 }

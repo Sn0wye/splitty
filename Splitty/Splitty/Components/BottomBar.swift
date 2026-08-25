@@ -29,6 +29,9 @@ struct BottomBar: View {
             }
             .ignoresSafeArea(edges: .bottom)
         }
+        // Selection, not impact: moving between tabs is a picker landing on a detent, and
+        // the system has a texture for exactly that.
+        .sensoryFeedback(.selection, trigger: selection)
     }
 }
 
@@ -46,7 +49,7 @@ private struct BottomBarItem: View {
                 .frame(height: 28)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable(scale: 0.88))
         .accessibilityLabel(tab.title)
         .animation(.easeOut(duration: 0.15), value: isSelected)
     }

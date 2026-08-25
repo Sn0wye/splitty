@@ -263,6 +263,9 @@ struct GroupView: View {
                 .clipShape(Circle())
                 .shadow(radius: 8, y: 4)
         }
+        // The deepest press in the app: a 56pt disc under a thumb has to move a visible
+        // amount before the dip reads, and the shadow compressing with it sells the push.
+        .buttonStyle(.pressable(scale: 0.9))
         .padding(.trailing, 20)
         .padding(.vertical, 16)
         .disabled(currentUserId == nil || viewModel.group == nil)
@@ -386,7 +389,7 @@ struct ActionButton: View {
                 .background(color)
                 .cornerRadius(20)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.pressable(scale: 0.94))
     }
 }
 
