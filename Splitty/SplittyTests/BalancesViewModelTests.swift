@@ -126,6 +126,15 @@ struct BalanceDecodingTests {
         #expect(decoded.balancesPending)
     }
 
+    @Test func anEmptyAvatarURLDoesNotRejectTheSummary() throws {
+        let payload = #"{"balances":[{"userId":1,"peerId":2,"amount":12.00,"user":{"id":1,"name":"You","email":"you@example.com","avatarUrl":"","createdAt":"2026-01-01","updatedAt":"2026-01-01"},"peer":{"id":2,"name":"Ana","email":"ana@example.com","avatarUrl":"","createdAt":"2026-01-01","updatedAt":"2026-01-01"}}],"balancesPending":false}"#
+
+        let decoded = try JSONDecoder().decode(GroupBalanceSummary.self, from: Data(payload.utf8))
+        let row = try #require(decoded.balances.first)
+        #expect(row.user.avatarURL == nil)
+        #expect(row.peer.avatarURL == nil)
+    }
+
     @Test func decodesGroupNetBalanceToCentsAtTheBoundary() throws {
         let payload = #"{"id":7,"name":"Trip","description":null,"netBalance":12.34,"createdAt":"2026-01-01","members":[]}"#
         let group = try JSONDecoder().decode(Group.self, from: Data(payload.utf8))
