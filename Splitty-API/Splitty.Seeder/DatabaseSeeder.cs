@@ -1,134 +1,175 @@
+using Microsoft.EntityFrameworkCore;
+using Splitty.Background;
 using Splitty.Domain.Entities;
 using Splitty.Infrastructure;
 
 namespace Splitty.Seeder;
 
-public class DatabaseSeeder
+/// <summary>
+/// Writes the development data set and asks for its balances.
+///
+/// It requests a recomputation per group through <see cref="IBalanceRecomputeQueue"/> and
+/// never replays balances itself: invariant 4 says the replay has exactly one caller, the
+/// background worker, and a test pins that caller list.
+/// </summary>
+public sealed class DatabaseSeeder(ApplicationDbContext context, IBalanceRecomputeQueue queue)
 {
-    private static readonly Random _random = new Random();
-    
-    public static void Seed(ApplicationDbContext context)
+    /// <summary>The seeded addresses, in seed order. `POST /auth/dev-login` takes any of them.</summary>
+    public static IReadOnlyList<string> UserEmails { get; } =
+        SeedData.Users.Select(user => user.Email).ToList();
+
+    /// <summary>
+    /// The user a developer signs in as by default. The data set is arranged around them:
+    /// they owe in one group and are owed in another.
+    /// </summary>
+    public static string PrimaryUserEmail => SeedData.John;
+
+    /// <summary>
+    /// Resets the tables the seeder owns, writes the data set, and enqueues one
+    /// recomputation per group. Returns the seeded group ids, in seed order.
+    /// </summary>
+    public async Task<IReadOnlyList<int>> SeedAsync(CancellationToken cancellationToken = default)
     {
-        var users = new List<User>
-        {
-            new() { Name = "John Doe", Email = "john@example.com", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new() { Name = "Jane Smith", Email = "jane@example.com", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new() { Name = "Bob Wilson", Email = "bob@example.com", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new() { Name = "Alice Brown", Email = "alice@example.com", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new() { Name = "Charlie Davis", Email = "charlie@example.com", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow },
-            new() { Name = "Eva Johnson", Email = "eva@example.com", CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
-        };
-        context.User.AddRange(users);
-        context.SaveChanges();
+        await ResetAsync(cancellationToken);
 
-        var groups = new List<Group>
-        {
-            new() { Name = "Vacation Trip", Description = "Summer vacation expenses", CreatedBy = users[0].Id, CreatedAt = DateTime.UtcNow, CreatedByUser = users[0] },
-            new() { Name = "Shared Apartment", Description = "Monthly apartment expenses", CreatedBy = users[1].Id, CreatedAt = DateTime.UtcNow, CreatedByUser = users[1] },
-            new() { Name = "Game Night", Description = "Weekly game night expenses", CreatedBy = users[2].Id, CreatedAt = DateTime.UtcNow, CreatedByUser = users[2] }
-        };
-        context.Group.AddRange(groups);
-        context.SaveChanges();
+        var users = SeedData.Users.ToDictionary(
+            seeded => seeded.Email,
+            seeded => new User { Name = seeded.Name, Email = seeded.Email });
 
-        var memberships = new List<GroupMembership>();
-        foreach (var group in groups)
+        context.User.AddRange(users.Values);
+        await context.SaveChangesAsync(cancellationToken);
+
+        var groupIds = new List<int>();
+
+        foreach (var seededGroup in SeedData.Groups)
         {
-            // Get 3 random users for each group
-            var groupUsers = users.OrderBy(x => _random.Next()).Take(3).ToList();
-            foreach (var user in groupUsers)
+            var group = new Group
             {
-                memberships.Add(new GroupMembership
+                Name = seededGroup.Name,
+                Description = seededGroup.Description,
+                CreatedBy = users[seededGroup.CreatedBy].Id,
+                Members = seededGroup.Members
+                    .Select(email => new GroupMembership { UserId = users[email].Id })
+                    .ToList()
+            };
+
+            context.Group.Add(group);
+            await context.SaveChangesAsync(cancellationToken);
+
+            foreach (var entry in seededGroup.Entries)
+            {
+                Validate(entry);
+
+                context.Expense.Add(new Expense
                 {
                     GroupId = group.Id,
-                    UserId = user.Id,
-                    JoinedAt = DateTime.UtcNow,
-                    User = user,
-                    Group = group
+                    Description = entry.Description,
+                    Amount = entry.Amount,
+                    PaidBy = users[entry.PaidBy].Id,
+                    Type = entry.Type,
+                    SplitMode = entry.Mode,
+                    Date = DateTime.UtcNow.Date.AddDays(-entry.DaysAgo),
+                    Splits = entry.Splits
+                        .Select(split => new ExpenseSplit
+                        {
+                            UserId = users[split.Email].Id,
+                            Amount = split.Amount,
+                            Percentage = split.Percentage
+                        })
+                        .ToList()
                 });
             }
-        }
-        context.GroupMembership.AddRange(memberships);
-        context.SaveChanges();
 
-        foreach (var group in groups)
+            await context.SaveChangesAsync(cancellationToken);
+            groupIds.Add(group.Id);
+        }
+
+        foreach (var groupId in groupIds)
         {
-            var groupMemberships = memberships.Where(m => m.GroupId == group.Id).ToList();
-            
-            // Create 10 expenses per group
-            for (int i = 0; i < 10; i++)
-            {
-                // Random amount between 10 and 200
-                var amount = Math.Round((decimal)(_random.NextDouble() * 190 + 10), 2);
-                
-                // Random payer from group members
-                var payer = groupMemberships[_random.Next(groupMemberships.Count)].User;
-
-                // One percentage expense per group, so a client opening the seed data has
-                // a real percentage split to read rather than only equal ones.
-                var mode = i == 0 ? SplitMode.Percentage : SplitMode.Equal;
-
-                var expense = new Expense
-                {
-                    GroupId = group.Id,
-                    PaidBy = payer.Id,
-                    Amount = amount,
-                    Description = GetRandomExpenseDescription(),
-                    Type = ExpenseType.Expense,
-                    SplitMode = mode,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow,
-                    Group = group,
-                    PaidByUser = payer
-                };
-                context.Expense.Add(expense);
-                context.SaveChanges();
-
-                var splitAmount = Math.Round(amount / groupMemberships.Count, 2);
-
-                // Amounts stay evenly divided either way: the mode describes how the split
-                // was chosen, it is never what the amounts are computed from. The last
-                // member absorbs the percentage remainder for the same reason.
-                var evenPercentage = Math.Round(100m / groupMemberships.Count, 2);
-                var splits = groupMemberships.Select((m, index) => new ExpenseSplit
-                {
-                    ExpenseId = expense.Id,
-                    UserId = m.UserId,
-                    Amount = splitAmount,
-                    Percentage = mode == SplitMode.Percentage
-                        ? index == groupMemberships.Count - 1
-                            ? 100m - evenPercentage * (groupMemberships.Count - 1)
-                            : evenPercentage
-                        : null,
-                    Expense = expense,
-                    User = m.User
-                }).ToList();
-                
-                context.ExpenseSplit.AddRange(splits);
-                context.SaveChanges();
-            }
+            await queue.EnqueueAsync(groupId, cancellationToken);
         }
+
+        return groupIds;
     }
 
-    private static string GetRandomExpenseDescription()
+    /// <summary>
+    /// Clearing first is what makes a second run safe. Appending a second "Game Night"
+    /// would be worse than refusing, and refusing would mean dropping the database by hand
+    /// to get back to a known state. Everything here is development-only data.
+    /// </summary>
+    private async Task ResetAsync(CancellationToken cancellationToken)
     {
-        var descriptions = new[]
+        // Child rows first: nothing relies on a cascade being configured.
+        await context.Balance.ExecuteDeleteAsync(cancellationToken);
+        await context.ExpenseSplit.ExecuteDeleteAsync(cancellationToken);
+        await context.Expense.ExecuteDeleteAsync(cancellationToken);
+        await context.Invite.ExecuteDeleteAsync(cancellationToken);
+        await context.GroupMembership.ExecuteDeleteAsync(cancellationToken);
+        await context.Group.ExecuteDeleteAsync(cancellationToken);
+        await context.OAuthAccount.ExecuteDeleteAsync(cancellationToken);
+        await context.User.ExecuteDeleteAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// The rules the API enforces on a client, checked against the data set so a seeded row
+    /// is never one the API would have refused — a row the app cannot re-save is a trap for
+    /// whoever edits it next. Deliberately duplicated rather than shared:
+    /// <c>ExpenseSplitInvariants</c> is internal to Splitty.Service, and this checks static
+    /// data at write time rather than a request. A stray percentage is refused here though
+    /// the API would null it, because seeded data should say what it means.
+    /// </summary>
+    private static void Validate(SeedEntry entry)
+    {
+        if (entry.Type is ExpenseType.Payment)
         {
-            "Groceries",
-            "Restaurant bill",
-            "Movie tickets",
-            "Utilities",
-            "Pizza night",
-            "Transportation",
-            "Coffee run",
-            "Office supplies",
-            "Snacks",
-            "Party supplies",
-            "Cleaning supplies",
-            "Take out food",
-            "Entertainment",
-            "Group activity"
-        };
-        
-        return descriptions[_random.Next(descriptions.Length)];
+            if (entry.Mode is not null
+                || entry.Splits.Count != 2
+                || entry.Splits.Sum(split => split.Amount) != 0m
+                || Math.Abs(entry.Splits[0].Amount) != entry.Amount)
+            {
+                throw new InvalidOperationException(
+                    $"Seeded settlement '{entry.Description}' is not a valid payment.");
+            }
+
+            return;
+        }
+
+        if (entry.Mode is null)
+        {
+            throw new InvalidOperationException($"Seeded expense '{entry.Description}' has no split mode.");
+        }
+
+        if (entry.Amount <= 0m || entry.Splits.Count == 0)
+        {
+            throw new InvalidOperationException($"Seeded expense '{entry.Description}' has nothing to split.");
+        }
+
+        if (entry.Splits.Any(split => split.Amount <= 0m))
+        {
+            throw new InvalidOperationException(
+                $"Seeded expense '{entry.Description}' has a split at or below zero. Omit the member instead.");
+        }
+
+        if (entry.Splits.Sum(split => split.Amount) != entry.Amount)
+        {
+            throw new InvalidOperationException(
+                $"Seeded expense '{entry.Description}' has splits that do not sum to its amount.");
+        }
+
+        var percentages = entry.Splits.Where(split => split.Percentage is not null).ToList();
+
+        if (entry.Mode is SplitMode.Percentage)
+        {
+            if (percentages.Count != entry.Splits.Count || percentages.Sum(split => split.Percentage!.Value) != 100m)
+            {
+                throw new InvalidOperationException(
+                    $"Seeded expense '{entry.Description}' must carry percentages on every split, summing to 100.");
+            }
+        }
+        else if (percentages.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Seeded expense '{entry.Description}' carries a percentage outside a percentage split.");
+        }
     }
 }

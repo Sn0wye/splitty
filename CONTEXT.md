@@ -30,7 +30,7 @@ API ──> Service ──> Repository ──> Infrastructure (DbContext)
 | `Splitty.Domain` | Entities only, no behavior |
 | `Splitty.DTO` | `Request/`, `Response/`, `Internal/` |
 | `Splitty.Background` | `TransactionBackgroundService` — balance recomputation |
-| `Splitty.Seeder` | `DatabaseSeeder`, run via `dotnet run seed` |
+| `Splitty.Seeder` | `DatabaseSeeder` and `SeedCommand`, run via `dotnet run seed` |
 
 Everything is registered scoped in `Program.cs`, interface-first. Services and
 repositories use **primary constructors** for injection — match that style.
@@ -303,12 +303,31 @@ when its last member leaves (`POST /group/{groupId}/leave`).
 ```bash
 docker compose up -d                      # Postgres :5432, API :8080
 dotnet run --project Splitty-API/Splitty.API
-dotnet run --project Splitty-API/Splitty.API seed   # seed, then exit
+dotnet run --project Splitty-API/Splitty.API seed   # reset, seed, wait for balances, exit
 dotnet ef migrations add <Name> --project Splitty-API/Splitty.Infrastructure
 ```
 
 API listens on `0.0.0.0:8080` (Kestrel config in `appsettings.json`). In Development,
 OpenAPI is at `/openapi/v1.json` with Scalar UI at `/scalar`.
+
+### Seeding
+
+The seed command **starts the host** rather than seeding and returning: balances are
+written by a hosted service, so a process that enqueued and exited would leave every group
+`balancesPending` with no worker to clear it. It seeds, requests one recomputation per
+group through `IBalanceRecomputeQueue`, waits until no seeded group is pending, stops the
+host, and exits non-zero if that wait times out. The seeder never calls
+`CalculateGroupBalances` itself — invariant 4.
+
+The data set is **fixed, not random**: six users, a six-member group with amounts from
+$4.20 to $1,240, a two-member group, one group where `john@example.com` owes and one where
+he is owed, a pair settled to exactly zero, and a `Payment` row. `SeedData` holds it, and
+`DatabaseSeeder.Validate` rejects a row the API would have refused from a client.
+
+Re-running is safe because the command **clears the tables it owns first** — every
+`User`, `Group`, `Expense`, `ExpenseSplit`, `GroupMembership`, `Invite`, `OAuthAccount` and
+`Balance` row. It is a local development reset, not an upsert: anything created by hand in
+the dev database goes with it.
 
 ## Known issues
 
