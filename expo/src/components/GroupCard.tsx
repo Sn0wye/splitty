@@ -28,7 +28,7 @@ export function GroupCard({ group, onPress }: { group: Group; onPress: () => voi
             <Text style={[styles.status, { color: tokens.foreground }]}>{groupCardOweLabel(cents)}</Text>
             <Text style={[styles.amount, { color: positive ? tokens.green : tokens.red }]}>{formatCents(Math.abs(cents))}</Text>
           </View>
-          <Symbol sf="ellipsis" ion="ellipsis-horizontal" size={18} color={tokens.foreground} />
+          <Symbol sf="ellipsis" ion="ellipsis-horizontal" size={17} color={tokens.foreground} />
         </View>
       </View>
     </PressableScale>

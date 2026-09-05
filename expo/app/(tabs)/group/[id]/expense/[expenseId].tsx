@@ -101,7 +101,7 @@ export default function ExpenseDetail(): React.JSX.Element {
               {expense.splitMode === 'percentage' && split.percentage != null ? (
                 <Text style={{ marginRight: 12, fontSize: 15, fontVariant: ['tabular-nums'], color: tokens.mutedForeground }}>{split.percentage}%</Text>
               ) : null}
-              <Text style={{ fontVariant: ['tabular-nums'], color: tokens.mutedForeground }}>{formatCents(centsFromApi(split.amount))}</Text>
+              <Text style={{ fontSize: 17, fontVariant: ['tabular-nums'], color: tokens.mutedForeground }}>{formatCents(centsFromApi(split.amount))}</Text>
             </GroupedRow>
           ))}
         </GroupedSection>

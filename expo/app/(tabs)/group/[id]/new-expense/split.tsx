@@ -29,7 +29,7 @@ export default function ExpenseSplit(): React.JSX.Element {
         <Pressable accessibilityRole="button" testID="split.payer" onPress={() => router.push(`/group/${form.group.id}/new-expense/payer`)}>
           <GroupedRow>
             <Text style={{ flex: 1, fontSize: 17, color: tokens.foreground }}>Paid by</Text>
-            <Text style={{ color: tokens.mutedForeground }}>{payerName}</Text>
+            <Text style={{ fontSize: 17, color: tokens.mutedForeground }}>{payerName}</Text>
             <Symbol sf="chevron.right" ion="chevron-forward" size={14} color={tokens.mutedForeground} />
           </GroupedRow>
         </Pressable>
@@ -65,7 +65,7 @@ export default function ExpenseSplit(): React.JSX.Element {
                     color={selected ? tokens.accent : tokens.mutedForeground}
                   />
                   <Text style={{ marginLeft: 12, flex: 1, fontSize: 17, color: tokens.foreground }}>{form.you(member.userId, member.name)}</Text>
-                  <Text style={{ fontVariant: ['tabular-nums'], color: tokens.mutedForeground }}>{formatCents(share)}</Text>
+                  <Text style={{ fontSize: 17, fontVariant: ['tabular-nums'], color: tokens.mutedForeground }}>{formatCents(share)}</Text>
                 </GroupedRow>
               </Pressable>
             );
@@ -74,7 +74,7 @@ export default function ExpenseSplit(): React.JSX.Element {
             return (
               <GroupedRow key={member.userId}>
                 <Text style={{ flex: 1, fontSize: 17, color: tokens.foreground }}>{form.you(member.userId, member.name)}</Text>
-                <Text style={{ color: tokens.mutedForeground }}>$</Text>
+                <Text style={{ fontSize: 17, color: tokens.mutedForeground }}>$</Text>
                 <TextInput
                   accessibilityLabel={`${member.name} amount`}
                   testID={`split.amount.${member.userId}`}
@@ -90,7 +90,7 @@ export default function ExpenseSplit(): React.JSX.Element {
           return (
             <GroupedRow key={member.userId}>
               <Text style={{ flex: 1, fontSize: 17, color: tokens.foreground }}>{form.you(member.userId, member.name)}</Text>
-              <Text style={{ marginRight: 8, fontVariant: ['tabular-nums'], color: tokens.mutedForeground }}>{formatCents(share)}</Text>
+              <Text style={{ marginRight: 8, fontSize: 17, fontVariant: ['tabular-nums'], color: tokens.mutedForeground }}>{formatCents(share)}</Text>
               <TextInput
                 accessibilityLabel={`${member.name} percentage`}
                 testID={`split.percentage.${member.userId}`}
@@ -100,7 +100,7 @@ export default function ExpenseSplit(): React.JSX.Element {
                 placeholder="0"
                 style={{ width: 60, textAlign: 'right', fontSize: 17, fontVariant: ['tabular-nums'], color: tokens.foreground }}
               />
-              <Text style={{ color: tokens.mutedForeground }}>%</Text>
+              <Text style={{ fontSize: 17, color: tokens.mutedForeground }}>%</Text>
             </GroupedRow>
           );
         })}

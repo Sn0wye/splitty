@@ -1,13 +1,13 @@
 import { Platform, type TextStyle } from 'react-native';
 
 /**
- * Closest SF Rounded treatment React Native exposes without bundling Apple font files.
- * iOS `Text` cannot select `UIFontDescriptorSystemDesignRounded`; the system UI face is used.
+ * SwiftUI's `.system(design: .rounded)` maps to the installed SF Pro Rounded family on iOS.
+ * Other platforms keep their system face rather than substituting an unrelated bundled font.
  */
 export function roundedTextStyle(extra?: TextStyle): TextStyle {
   return {
     ...Platform.select<TextStyle>({
-      ios: { fontFamily: 'System' },
+      ios: { fontFamily: 'SF Pro Rounded' },
       default: {}
     }),
     ...extra

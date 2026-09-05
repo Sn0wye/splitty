@@ -47,7 +47,7 @@ function Key({
         style={[styles.halo, { backgroundColor: tokens.expenseForeground }, halo]}
       />
       {item.key === 'back'
-        ? <Symbol sf="chevron.left" ion="chevron-back" size={28} color={tokens.expenseForeground} weight="medium" />
+        ? <Symbol sf="chevron.left" ion="chevron-back" size={32} color={tokens.expenseForeground} weight="medium" />
         : (
           <Text style={roundedTextStyle({ fontSize: 32, fontWeight: '500', color: tokens.expenseForeground })}>
             {item.label}

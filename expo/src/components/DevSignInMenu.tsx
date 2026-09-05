@@ -28,7 +28,7 @@ export function DevSignInMenu({
     >
       <View style={{ height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 25, borderWidth: 1, borderColor: 'rgba(142,142,147,0.3)', backgroundColor: 'rgba(142,142,147,0.2)', opacity: disabled ? 0.4 : 1 }}>
         <Symbol sf="hammer" ion="hammer-outline" size={16} color="#FFFFFF" />
-        <Text style={{ marginLeft: 8, fontWeight: '500', color: '#FFFFFF' }}>Dev sign in</Text>
+        <Text style={{ marginLeft: 8, fontSize: 17, fontWeight: '500', color: '#FFFFFF' }}>Dev sign in</Text>
       </View>
     </AnchorMenu>
   );

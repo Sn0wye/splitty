@@ -1,16 +1,16 @@
 import React from 'react';
 import { Stack } from 'expo-router';
-import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useNavigationColors } from '@/nav/theme';
 import { useTokens } from '@/theme/tokens';
 
 export default function GroupStack(): React.JSX.Element {
   const colors = useNavigationColors();
   const tokens = useTokens();
-  const reduced = useReducedMotion();
   return (
     <Stack screenOptions={{
+      headerBackButtonDisplayMode: 'minimal',
       headerTintColor: colors.tint,
+      headerTitleStyle: { color: tokens.foreground },
       headerShadowVisible: false,
       headerStyle: { backgroundColor: colors.background },
       contentStyle: { backgroundColor: colors.background }
@@ -26,10 +26,10 @@ export default function GroupStack(): React.JSX.Element {
       <Stack.Screen name="[id]/settle" options={{ title: 'Settle up', presentation: 'modal' }} />
       <Stack.Screen name="[id]/new-expense" options={{
         title: '',
-        presentation: 'modal',
-        animation: reduced ? 'fade' : 'slide_from_bottom',
-        animationDuration: reduced ? 200 : 250,
+        presentation: 'formSheet',
+        sheetAllowedDetents: [1],
         sheetCornerRadius: 28,
+        sheetGrabberVisible: false,
         headerShown: false,
         contentStyle: { backgroundColor: tokens.expenseBackground }
       }} />

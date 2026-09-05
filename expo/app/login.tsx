@@ -63,7 +63,7 @@ export default function Login(): React.JSX.Element {
               {busy ? <Spinner /> : (
                 <>
                   <GoogleMark size={18} />
-                  <Text style={{ marginLeft: 10, fontWeight: '500', color: '#000000' }}>Sign in with Google</Text>
+                  <Text style={{ marginLeft: 10, fontSize: 17, fontWeight: '500', color: '#000000' }}>Sign in with Google</Text>
                 </>
               )}
             </View>
@@ -71,7 +71,7 @@ export default function Login(): React.JSX.Element {
           <View style={{ marginTop: 16 }}>
             <View style={{ height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 25, backgroundColor: '#FFFFFF', opacity: 0.4 }}>
               <Symbol sf="apple.logo" ion="logo-apple" size={18} color="#000000" />
-              <Text style={{ marginLeft: 10, fontWeight: '500', color: '#000000' }}>Sign in with Apple</Text>
+              <Text style={{ marginLeft: 10, fontSize: 17, fontWeight: '500', color: '#000000' }}>Sign in with Apple</Text>
             </View>
             <Text style={{ marginTop: 6, textAlign: 'center', fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>Coming soon</Text>
           </View>

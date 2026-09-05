@@ -40,7 +40,7 @@ export default function Balances(): React.JSX.Element {
           <Pressable accessibilityRole="button" onPress={() => router.back()}><Text style={{ fontSize: 17, color: tokens.accent }}>Done</Text></Pressable>
         )
       }} />
-      <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load().finally(() => setRefreshing(false)); }} />}>
+      <ScrollView refreshControl={<RefreshControl tintColor={tokens.mutedForeground} refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load().finally(() => setRefreshing(false)); }} />}>
         <View style={{ paddingHorizontal: 20, paddingVertical: 20 }}>
           <Text style={{ fontSize: 15, fontWeight: '500', color: tokens.mutedForeground }}>Your balance</Text>
           <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
@@ -53,8 +53,8 @@ export default function Balances(): React.JSX.Element {
         <GroupedSection header="Open balances">
           {rows.length === 0 ? (
             <GroupedRow>
-              <Symbol sf="checkmark.circle.fill" ion="checkmark-circle" size={20} color={tokens.mutedForeground} />
-              <Text style={{ marginLeft: 8, color: tokens.mutedForeground }}>Everyone is settled up</Text>
+              <Symbol sf="checkmark.circle.fill" ion="checkmark-circle" size={17} color={tokens.mutedForeground} />
+              <Text style={{ marginLeft: 8, fontSize: 17, color: tokens.mutedForeground }}>Everyone is settled up</Text>
             </GroupedRow>
           ) : rows.map(row => {
             const amount = centsFromApi(row.amount);

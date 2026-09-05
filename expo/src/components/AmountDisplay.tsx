@@ -7,7 +7,7 @@ import { roundedTextStyle } from '@/theme/fonts';
 import { useTokens } from '@/theme/tokens';
 
 /** Maps Swift `.spring(response: 0.34, dampingFraction: 0.72)`. */
-const SPRING = { damping: 14.4, stiffness: 342, mass: 1 };
+const SPRING = { damping: 26.61, stiffness: 342, mass: 1 };
 
 function GlyphEntering() {
   'worklet';
@@ -46,7 +46,7 @@ export function AmountDisplay({ text }: { text: string }): React.JSX.Element {
     color: tokens.expenseForeground,
     fontVariant: ['tabular-nums']
   });
-  const layout = reduced ? undefined : LinearTransition.springify().damping(14.4).stiffness(342);
+  const layout = reduced ? undefined : LinearTransition.springify().mass(1).damping(26.61).stiffness(342);
   return (
     <View accessibilityLabel="Amount" style={styles.row}>
       {amountGlyphs(text).map(glyph => (

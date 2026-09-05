@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Symbol } from '@/components/Symbol';
+import { useTokens } from '@/theme/tokens';
 
 const SIZE = 40;
 
@@ -13,18 +14,29 @@ export function Avatar({
   name?: string;
   size?: number;
 }): React.JSX.Element {
-  if (uri) {
+  const tokens = useTokens();
+  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const failed = Boolean(uri && failedUri === uri);
+
+  if (uri && !failed) {
     return (
       <Image
         accessibilityLabel={name ? `${name} avatar` : 'Avatar'}
         source={{ uri }}
+        onError={() => setFailedUri(uri)}
         style={{ width: size, height: size, borderRadius: size / 2 }}
       />
     );
   }
+
   return (
-    <View style={{ width: size, height: size }} className="items-center justify-center">
-      <Ionicons name="person-circle" size={size} color="#9ca3af" />
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Symbol
+        sf={failed ? 'person.crop.circle.badge.exclamationmark' : 'person.crop.circle.fill'}
+        ion={failed ? 'person-circle-outline' : 'person-circle'}
+        size={size}
+        color={tokens.mutedForeground}
+      />
     </View>
   );
 }

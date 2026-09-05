@@ -35,8 +35,10 @@ export default function RootLayout(): React.JSX.Element {
           <ThemeProvider value={navigationTheme}>
             <StatusBar style={colors.dark ? 'light' : 'dark'} />
             <Stack screenOptions={{
+              headerBackButtonDisplayMode: 'minimal',
               headerBackTitle: 'Back',
               headerTintColor: colors.tint,
+              headerTitleStyle: { color: tokens.foreground },
               headerShadowVisible: false,
               headerStyle: { backgroundColor: colors.background },
               contentStyle: { backgroundColor: colors.background }

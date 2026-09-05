@@ -18,8 +18,10 @@ function ExpenseStack(): React.JSX.Element {
   }
   return (
     <Stack screenOptions={{
+      headerBackButtonDisplayMode: 'minimal',
       headerBackTitle: 'Back',
       headerTintColor: tokens.expenseForeground,
+      headerTitleStyle: { color: tokens.expenseForeground },
       headerShadowVisible: false,
       headerStyle: { backgroundColor: tokens.expenseBackground },
       contentStyle: { backgroundColor: tokens.expenseBackground },
