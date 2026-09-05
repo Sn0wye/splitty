@@ -205,14 +205,15 @@ app.UseRateLimiter();
 
 app.MapControllers();
 
+// The seed command runs the host: the recomputation it requests is performed by a hosted
+// service, so seeding and returning would queue work no worker is there to do.
 if (args.Contains("seed"))
 {
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    DatabaseSeeder.Seed(dbContext);
-    return;
+    return await SeedCommand.RunAsync(app);
 }
 
 app.Run();
+
+return 0;
 
 public partial class Program;
