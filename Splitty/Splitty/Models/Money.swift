@@ -10,6 +10,27 @@ import Foundation
 /// The API validates that splits sum **exactly** to the total against a `decimal` column.
 /// Deriving splits in `Double` makes that a coin flip; deriving them in cents makes it a
 /// property of the arithmetic. Conversion happens once, at the request boundary.
+/// Decodes a decimal JSON amount into the integer-cent representation used everywhere
+/// after the transport boundary.
+@propertyWrapper
+struct DecodedCents: Codable, Equatable {
+    var wrappedValue: Int
+
+    init(wrappedValue: Int) {
+        self.wrappedValue = wrappedValue
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        wrappedValue = Money.cents(from: try container.decode(Decimal.self))
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(Decimal(wrappedValue) / 100)
+    }
+}
+
 enum Money {
     static func cents(from value: Decimal) -> Int {
         var rounded = Decimal()

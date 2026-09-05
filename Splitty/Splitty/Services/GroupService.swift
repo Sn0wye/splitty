@@ -34,6 +34,13 @@ class GroupService {
         try await APIClient.shared.request(endpoint: "/group/\(groupId)/expenses/summary")
     }
 
+    func requestBalanceRecomputation(groupId: Int) async throws {
+        let _: EmptyResponse = try await APIClient.shared.request(
+            endpoint: "/group/\(groupId)/expenses/summary",
+            method: .POST
+        )
+    }
+
     /// Redeems an invite code. The response identifies the group — the caller never
     /// supplies a group id. Redeeming a code for a group you already belong to
     /// succeeds and returns that group.

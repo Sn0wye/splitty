@@ -149,7 +149,8 @@ resolving a fresh scope per message.
 
 So **balances are eventually consistent** — right after creating an expense, a read may
 still return pre-expense numbers. The client must not assume a write is immediately
-reflected.
+reflected. A group's net balance is the sum of the signed-in member's pairwise `Balance`
+rows; the overall figure on the groups list is the sum of those group nets.
 
 `Group.BalancesPending`, surfaced as `balancesPending` on the summary response, says a
 recomputation is outstanding. It is a **display hint only**: it exists so a client can show

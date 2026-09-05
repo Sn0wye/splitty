@@ -23,7 +23,10 @@ struct GroupsView: View {
                             .font(.largeTitle)
                             .fontWeight(.bold)
                         
-                        Text("Overall, you are owed $320.43")
+                        if let overallBalanceCents = viewModel.overallBalanceCents {
+                            Text(BalanceCopy.overall(cents: overallBalanceCents))
+                                .foregroundColor(Color("muted-foreground"))
+                        }
                     }
                     
                     Spacer()

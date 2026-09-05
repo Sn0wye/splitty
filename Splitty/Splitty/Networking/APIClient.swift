@@ -258,14 +258,7 @@ struct GroupMutationResponse: Codable, Identifiable {
     let description: String?
 }
 
-struct GroupDetail: Codable, Identifiable {
-    let id: Int
-    let name: String
-    let description: String?
-    let netBalance: Double
-    let createdAt: String
-    let members: [GroupMember]
-}
+typealias GroupDetail = Group
 
 struct GroupMembership: Codable, Identifiable {
     let id: Int
@@ -275,17 +268,23 @@ struct GroupMembership: Codable, Identifiable {
     let user: User
 }
 
-/// `GET /group/{id}/expenses/summary`. Only the flag is decoded: the header reads its
-/// number from the group itself, and the pairwise rows have no screen yet.
 struct GroupBalanceSummary: Codable {
+    let balances: [Balance]
     /// A display hint only: true while a recomputation is queued or in flight.
     let balancesPending: Bool
 }
 
 struct Balance: Codable {
     let userId: Int
-    let amount: Double
+    let peerId: Int
+    @DecodedCents var amountCents: Int
     let user: User
+    let peer: User
+
+    private enum CodingKeys: String, CodingKey {
+        case userId, peerId, user, peer
+        case amountCents = "amount"
+    }
 }
 
 // MARK: - Empty Response for DELETE operations

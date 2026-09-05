@@ -12,7 +12,7 @@ struct GroupCard: View {
     let onTap: () -> Void
     
     var positiveBalance: Bool {
-        return (group.netBalance) > 0;
+        return group.netBalanceCents > 0;
     }
     
     var body: some View {
@@ -28,10 +28,10 @@ struct GroupCard: View {
                             .fontWeight(.semibold)
                             .padding(.bottom, 2)
                         
-                        Text((group.netBalance) > 0 ? "You are owed" : "You owe")
+                        Text(group.netBalanceCents > 0 ? "You are owed" : "You owe")
                             .font(.system(size: 12))
                         
-                        Text("$\(String(format: "%.2f", abs(group.netBalance)))")
+                        Text(Money.formatted(cents: abs(group.netBalanceCents)))
                             .font(.system(size: 18))
                             .fontWeight(.bold)
                             .foregroundColor(positiveBalance ? .green : .red)
@@ -62,7 +62,7 @@ struct GroupCard: View {
         id: 1,
         name: "Test Group",
         description: "Test Description",
-        netBalance: 430.28,
+        netBalanceCents: 43_028,
         createdAt: "2025-02-02T13:53:41.950093Z",
         members: [
             GroupMember(
@@ -79,7 +79,7 @@ struct GroupCard: View {
         id: 1,
         name: "Test Group",
         description: "Test Description",
-        netBalance: -340.12,
+        netBalanceCents: -34_012,
         createdAt: "2025-02-02T13:53:41.950093Z",
         members: [
             GroupMember(

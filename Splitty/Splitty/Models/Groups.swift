@@ -12,9 +12,14 @@ struct Group: Codable, Identifiable {
     let id: Int
     let name: String
     let description: String?
-    let netBalance: Double
+    @DecodedCents var netBalanceCents: Int
     let createdAt: String
     let members: [GroupMember]
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, description, createdAt, members
+        case netBalanceCents = "netBalance"
+    }
 }
 
 // MARK: - Group Member Model
