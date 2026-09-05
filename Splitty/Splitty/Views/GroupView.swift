@@ -15,6 +15,7 @@ struct GroupView: View {
     @State private var isTitleCollapsed = false
     @State private var showingEditSheet = false
     @State private var showingExpenseSheet = false
+    @State private var showingBalancesSheet = false
     @State private var pendingDeletion: Expense?
     @State private var selectedExpenseId: Int?
 
@@ -93,6 +94,18 @@ struct GroupView: View {
                 ) { saved in
                     viewModel.insert(saved)
                 }
+            }
+        }
+        .sheet(isPresented: $showingBalancesSheet) {
+            if let group = viewModel.group, let currentUserId {
+                BalancesView(
+                    context: BalanceSheetContext(
+                        groupId: groupId,
+                        initialNetCents: group.netBalanceCents,
+                        balancesPending: viewModel.balancesPending
+                    ),
+                    currentUserId: currentUserId
+                )
             }
         }
         // A money write enqueues a recomputation, so the header balance is stale on return.
@@ -300,17 +313,9 @@ struct GroupView: View {
     
     @ViewBuilder
     private var balanceText: some View {
-        if let balance = viewModel.group?.netBalance {
+        if let balanceCents = viewModel.group?.netBalanceCents {
             HStack(spacing: 6) {
-                SwiftUI.Group {
-                    if balance > 0 {
-                        Text("You are owed \(Money.formatted(amount: balance)) overall")
-                    } else if balance < 0 {
-                        Text("You owe \(Money.formatted(amount: abs(balance))) overall")
-                    } else {
-                        Text("You are all settled up")
-                    }
-                }
+                Text(BalanceCopy.overall(cents: balanceCents))
                 // A recomputation is outstanding, so this number predates the last write.
                 // Greyed with a spinner rather than presented as final.
                 .foregroundColor(Color("muted-foreground"))
@@ -338,8 +343,9 @@ struct GroupView: View {
             }
             
             ActionButton(title: "Balances", color: Color("muted"), textColor: Color("foreground")) {
-                // TODO: Balances action
+                showingBalancesSheet = true
             }
+            .disabled(viewModel.group == nil || currentUserId == nil)
             
             ActionButton(title: "Export", color: Color("muted"), textColor: Color("foreground")) {
                 // TODO: Export action
