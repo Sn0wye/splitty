@@ -169,62 +169,29 @@ struct GroupView: View {
     private var currentUserId: Int? { authManager.currentUser?.id }
 
     private var content: some View {
-        List {
-            Section {
-                VStack(spacing: 0) {
-                    headerSection
-                    actionButtonsSection
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color("background"))
-                .listRowSeparator(.hidden)
-            }
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                headerSection
+                actionButtonsSection
 
-            if let actionErrorMessage = viewModel.actionErrorMessage {
-                Section {
+                if let actionErrorMessage = viewModel.actionErrorMessage {
                     Text(actionErrorMessage)
                         .foregroundColor(.red)
-                        .listRowBackground(Color("card"))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 16)
                 }
-            }
 
-            if !viewModel.errorMessage.isEmpty {
-                Section {
-                    Text("Error: \(viewModel.errorMessage)")
-                        .foregroundColor(.red)
-                        .listRowBackground(Color("card"))
-                }
-            } else if viewModel.expenses.isEmpty {
-                Section {
-                    Text("No expenses yet. Add the first one.")
-                        .foregroundColor(Color("muted-foreground"))
-                        .listRowBackground(Color("card"))
-                        .listRowSeparator(.hidden)
-                }
-            } else {
-                ForEach(viewModel.groupedExpenses, id: \.dateString) { groupedExpense in
-                    Section {
-                        ForEach(groupedExpense.expenses) { expense in
-                            expenseRow(expense)
-                        }
-                    } header: {
-                        dateHeader(for: groupedExpense)
-                    }
-                }
+                timeline
             }
-
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
         .background(Color("background"))
-        // A list draws itself under the safe area, so a button stacked on top of one
-        // anchors under the tab bar. As an inset it sits inside the safe area instead,
-        // and the space it reserves is exactly what keeps the last row uncovered.
+        // As an inset, the button sits inside the safe area and reserves exactly enough
+        // space to keep the final row uncovered.
         .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {
             addExpenseButton
         }
-        // The title lives in the list, not in a large-title bar, so the handoff to the
-        // toolbar is driven off the scroll position.
+        // The title lives in the scroll content, so the toolbar picks it up as it leaves.
         .onScrollGeometryChange(for: Bool.self) { geometry in
             geometry.contentOffset.y + geometry.contentInsets.top > titleCollapseOffset
         } action: { _, collapsed in
@@ -235,6 +202,40 @@ struct GroupView: View {
             if let currentUserId {
                 detail(for: expenseId, currentUserId: currentUserId)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var timeline: some View {
+        if !viewModel.errorMessage.isEmpty {
+            Text("Error: \(viewModel.errorMessage)")
+                .foregroundColor(.red)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+                .background(Color("card"))
+        } else if viewModel.expenses.isEmpty {
+            Text("No expenses yet. Add the first one.")
+                .foregroundColor(Color("muted-foreground"))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+                .background(Color("card"))
+        } else {
+            LazyVStack(spacing: 0) {
+                ForEach(viewModel.groupedExpenses, id: \.dateString) { groupedExpense in
+                    dateHeader(for: groupedExpense)
+                    ForEach(groupedExpense.expenses) { expense in
+                        expenseRow(expense)
+                    }
+                }
+            }
+            .background(Color("card"))
+            .clipShape(
+                UnevenRoundedRectangle(
+                    topLeadingRadius: 28,
+                    topTrailingRadius: 28,
+                    style: .continuous
+                )
+            )
         }
     }
 
@@ -255,9 +256,6 @@ struct GroupView: View {
             ExpenseRow(expense: expense, currentUserId: currentUserId)
                 .opacity(0.6)
                 .accessibilityValue("Updating")
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color("card"))
-                .listRowSeparator(.hidden)
         } else {
             SwipeToDeleteRow {
                 selectedExpenseId = expense.id
@@ -266,9 +264,6 @@ struct GroupView: View {
             } content: {
                 ExpenseRow(expense: expense, currentUserId: currentUserId)
             }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color("card"))
-            .listRowSeparator(.hidden)
         }
     }
 
@@ -326,28 +321,17 @@ struct GroupView: View {
     }
     
     private var headerSection: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 16) {
-                ZStack {
-                    MultipleAvatar(urls: viewModel.group?.members.compactMap { member in
-                        return URL(string: member.avatarUrl)
-                    } ?? [])
-                }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(viewModel.group?.name ?? "Loading...")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(Color("foreground"))
-                    
-                    balanceText
-                }
-                
-                Spacer()
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 10)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(viewModel.group?.name ?? "Loading...")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .foregroundColor(Color("foreground"))
+
+            balanceText
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
     }
     
     @ViewBuilder
@@ -411,26 +395,14 @@ struct GroupView: View {
     }
 
     private func dateHeader(for groupedExpense: GroupedExpense) -> some View {
-        HStack {
-            Text(groupedExpense.dateString)
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundColor(Color("card-foreground"))
-            
-            Spacer()
-            
-            Text("Latest")
-                .font(.subheadline)
-                .foregroundColor(Color("muted-foreground"))
-            
-            Image(systemName: "chevron.down")
-                .font(.caption)
-                .foregroundColor(Color("muted-foreground"))
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(Color("card"))
-        .listRowInsets(EdgeInsets())
+        Text(groupedExpense.dateString)
+            .font(.title2.weight(.semibold))
+            .foregroundColor(Color("card-foreground"))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.top, 18)
+            .padding(.bottom, 8)
+            .background(Color("card"))
     }
 }
 
@@ -572,26 +544,6 @@ struct ExpenseRow: View {
     }
 }
 
-// Extension to add corner radius to specific corners
-extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
-    }
-}
-
-struct RoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-
-    func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(
-            roundedRect: rect,
-            byRoundingCorners: corners,
-            cornerRadii: CGSize(width: radius, height: radius)
-        )
-        return Path(path.cgPath)
-    }
-}
 
 #Preview {
     GroupView(groupId: 1)

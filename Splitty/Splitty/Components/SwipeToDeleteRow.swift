@@ -60,7 +60,7 @@ struct SwipeToDeleteRow<Content: View>: View {
         }
         .clipped()
         .sensoryFeedback(.impact(flexibility: .rigid), trigger: commitCount)
-        // Simultaneous, not exclusive: a plain `.gesture` loses the drag to the list's own
+        // Simultaneous, not exclusive: a plain `.gesture` loses the drag to the scroll view's
         // pan recogniser, which is why the row stopped swiping at all. Both see the drag,
         // and the horizontal-dominance check below is what keeps a scroll a scroll.
         .simultaneousGesture(
