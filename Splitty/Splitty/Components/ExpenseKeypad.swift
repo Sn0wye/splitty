@@ -27,6 +27,9 @@ enum KeypadKey: Equatable {
 /// user had to reason about, and the expression model still resolves whatever is typed.
 struct ExpenseKeypad: View {
     let onKey: (KeypadKey) -> Void
+    let onClear: () -> Void
+
+    @State private var clearCount = 0
 
     private let digitRows = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
 
@@ -43,10 +46,11 @@ struct ExpenseKeypad: View {
             HStack(spacing: 0) {
                 key(title: ".") { onKey(.decimalPoint) }
                 key(title: "0") { onKey(.digit(0)) }
-                key(systemImage: "chevron.left", label: "delete") { onKey(.backspace) }
+                backspaceKey
             }
         }
         .padding(.bottom, 8)
+        .sensoryFeedback(.impact(flexibility: .rigid), trigger: clearCount)
     }
 
     private func key(
@@ -60,17 +64,23 @@ struct ExpenseKeypad: View {
         .accessibilityIdentifier("keypad.key.\(title)")
     }
 
-    private func key(
-        systemImage: String,
-        label: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
+    private var backspaceKey: some View {
+        Button { onKey(.backspace) } label: {
+            Image(systemName: "chevron.left")
         }
         .buttonStyle(KeypadKeyStyle())
-        .accessibilityLabel(label)
-        .accessibilityIdentifier("keypad.key.\(systemImage)")
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.45)
+                .onEnded { _ in clear() }
+        )
+        .accessibilityLabel("delete")
+        .accessibilityAction(named: "Clear amount", clear)
+        .accessibilityIdentifier("keypad.key.chevron.left")
+    }
+
+    private func clear() {
+        onClear()
+        clearCount += 1
     }
 }
 

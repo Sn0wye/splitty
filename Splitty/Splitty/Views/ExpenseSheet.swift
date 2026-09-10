@@ -78,7 +78,10 @@ struct ExpenseSheet: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 16)
 
-            ExpenseKeypad(onKey: handle(key:))
+            ExpenseKeypad(
+                onKey: handle(key:),
+                onClear: { viewModel.amount.clear() }
+            )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.expenseBackground)
