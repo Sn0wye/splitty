@@ -5,18 +5,17 @@
 
 import SwiftUI
 
-/// A read-only view of one settlement: who paid whom, and when.
-///
-/// Delete-only. Editing a settlement belongs to the screen that records them, which owns
-/// the cap on what a member may repay; building that form twice is not worth it.
+/// Shows one payment and opens the shared amount screen when it is edited.
 struct SettlementDetailView: View {
     let settlement: Expense
     let members: [GroupMember]
     let currentUserId: Int
+    let onChanged: () -> Void
     let onDeleted: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var showingDeleteConfirmation = false
+    @State private var showingEditSheet = false
     @State private var isDeleting = false
     @State private var errorMessage: String?
 
@@ -45,15 +44,18 @@ struct SettlementDetailView: View {
             Section {
                 // Invariant 2: membership is the only authorization boundary. A settlement
                 // someone else recorded is no more protected than an expense they logged.
-                Text("Any member can delete a settlement, including one someone else recorded.")
+                Text("Any member can delete a payment, including one someone else recorded.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Settlement")
+        .navigationTitle("Payment")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
+                Button("Edit") { showingEditSheet = true }
+                    .disabled(isDeleting)
+
                 if isDeleting {
                     ProgressView()
                 } else {
@@ -62,8 +64,18 @@ struct SettlementDetailView: View {
                     } label: {
                         Image(systemName: "trash")
                     }
-                    .accessibilityLabel("Delete settlement")
+                    .accessibilityLabel("Delete payment")
                 }
+            }
+        }
+        .sheet(isPresented: $showingEditSheet) {
+            SettleUpSheet(
+                groupId: settlement.groupId,
+                members: members,
+                currentUserId: currentUserId,
+                settlement: settlement
+            ) { _ in
+                onChanged()
             }
         }
         .confirmationDialog(
