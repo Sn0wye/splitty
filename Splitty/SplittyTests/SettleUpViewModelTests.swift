@@ -47,6 +47,19 @@ struct SettleUpViewModelTests {
         #expect(viewModel.payAllTitle == "Pay all $12.00")
     }
 
+    @Test func duplicateBalanceRowsKeepTheLargestDebtInsteadOfCrashing() {
+        let viewModel = makeViewModel()
+        viewModel.apply(GroupBalanceSummary(
+            balances: [
+                balance(peerId: 2, cents: -1_200),
+                balance(peerId: 2, cents: -2_350)
+            ],
+            balancesPending: false
+        ))
+
+        #expect(viewModel.debtCents(for: 2) == 2_350)
+    }
+
     @Test func rejectionNamesTheKnownLowerDebt() {
         let viewModel = makeViewModel()
         viewModel.select(peerId: 2)
@@ -119,6 +132,16 @@ struct SettleUpViewModelTests {
 
     private func makeViewModel() -> SettleUpViewModel {
         SettleUpViewModel(groupId: 7, members: members, currentUserId: 1)
+    }
+
+    private func balance(peerId: Int, cents: Int) -> Balance {
+        Balance(
+            userId: 1,
+            peerId: peerId,
+            amountCents: cents,
+            user: User(id: 1, name: "You", email: "you@example.com", createdAt: "", updatedAt: ""),
+            peer: User(id: peerId, name: "Bob", email: "bob@example.com", createdAt: "", updatedAt: "")
+        )
     }
 
     private var members: [GroupMember] {
