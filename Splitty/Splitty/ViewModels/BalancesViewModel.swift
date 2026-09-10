@@ -62,10 +62,6 @@ final class BalancesViewModel: ObservableObject {
         return rows
     }
 
-    var largestMagnitudeCents: Int {
-        rows.map(\.magnitudeCents).max() ?? 1
-    }
-
     func load(currentUserId: Int) async {
         do {
             apply(try await GroupService.shared.getBalanceSummary(groupId: groupId), currentUserId: currentUserId)

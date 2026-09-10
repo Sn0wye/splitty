@@ -28,23 +28,20 @@ struct BalancesView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
                     netHeader
-                        .listRowInsets(EdgeInsets(top: 20, leading: 20, bottom: 20, trailing: 20))
-                        .listRowBackground(Color("background"))
-                        .listRowSeparator(.hidden)
-                }
-
-                Section("Open balances") {
                     content
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                .padding(.bottom, 32)
             }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
             .background(Color("background"))
             .navigationTitle("Balances")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color("background"), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
@@ -73,14 +70,14 @@ struct BalancesView: View {
     }
 
     private var netHeader: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Your balance")
+        VStack(alignment: .leading, spacing: 4) {
+            Text(netLabel)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Color("muted-foreground"))
 
             HStack(spacing: 10) {
-                Text(BalanceCopy.overall(cents: viewModel.netCents))
-                    .font(.title2.weight(.bold))
+                Text(Money.formatted(cents: abs(viewModel.netCents)))
+                    .font(.largeTitle.weight(.bold))
                     .monospacedDigit()
                     .foregroundStyle(Color("foreground"))
                     .opacity(viewModel.balancesPending ? 0.5 : 1)
@@ -94,6 +91,12 @@ struct BalancesView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var netLabel: String {
+        if viewModel.netCents > 0 { return "You are owed overall" }
+        if viewModel.netCents < 0 { return "You owe overall" }
+        return "Your balance"
+    }
+
     @ViewBuilder
     private var content: some View {
         switch viewModel.state {
@@ -103,13 +106,12 @@ struct BalancesView: View {
                 Text("Loading balances…")
                     .foregroundStyle(Color("muted-foreground"))
             }
-            .frame(maxWidth: .infinity, alignment: .center)
-            .listRowBackground(Color("card"))
+            .frame(maxWidth: .infinity, minHeight: 64, alignment: .center)
 
         case .settled:
             Label("Everyone is settled up", systemImage: "checkmark.circle.fill")
                 .foregroundStyle(Color("muted-foreground"))
-                .listRowBackground(Color("card"))
+                .frame(minHeight: 56)
 
         case .error(let message):
             VStack(alignment: .leading, spacing: 12) {
@@ -121,45 +123,38 @@ struct BalancesView: View {
                 }
                 .buttonStyle(.bordered)
             }
-            .padding(.vertical, 4)
-            .listRowBackground(Color("card"))
+            .padding(.vertical, 8)
 
         case .balances(let rows):
-            ForEach(rows) { row in
-                if row.direction == .youOwe {
-                    Button { selectedDebt = row } label: {
+            LazyVStack(spacing: 0) {
+                ForEach(rows) { row in
+                    if row.direction == .youOwe {
+                        Button { selectedDebt = row } label: {
+                            balanceRow(row)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Records a payment")
+                    } else {
                         balanceRow(row)
                     }
-                    .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color("card"))
-                    .accessibilityHint("Records a payment")
-                } else {
-                    balanceRow(row)
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color("card"))
+
+                    if row.id != rows.last?.id {
+                        Divider()
+                            .padding(.leading, 52)
+                    }
                 }
             }
         }
     }
 
     private func balanceRow(_ row: BalanceRow) -> some View {
-        BalancePeerRow(
-            row: row,
-            largestMagnitudeCents: viewModel.largestMagnitudeCents,
-            numbersArePending: viewModel.balancesPending
-        )
+        BalancePeerRow(row: row, numbersArePending: viewModel.balancesPending)
     }
 }
 
 private struct BalancePeerRow: View {
     let row: BalanceRow
-    let largestMagnitudeCents: Int
     let numbersArePending: Bool
-
-    private var fraction: CGFloat {
-        CGFloat(row.magnitudeCents) / CGFloat(max(largestMagnitudeCents, 1))
-    }
 
     private var directionColor: Color {
         row.direction == .youOwe ? .red : .green
@@ -169,32 +164,37 @@ private struct BalancePeerRow: View {
         HStack(spacing: 12) {
             peerAvatar
 
-            Text(
-                row.direction == .youOwe
-                    ? "You owe \(row.peerName)"
-                    : "\(row.peerName) owes you"
-            )
-            .font(.body.weight(.semibold))
-            .foregroundStyle(Color("card-foreground"))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(row.peerName)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color("card-foreground"))
+
+                Text(row.direction == .youOwe ? "You owe" : "Owes you")
+                    .font(.subheadline)
+                    .foregroundStyle(Color("muted-foreground"))
+            }
 
             Spacer(minLength: 12)
 
-            Text(Money.formatted(cents: row.magnitudeCents))
-                .font(.body.weight(.semibold))
-                .monospacedDigit()
-                .foregroundStyle(directionColor)
-                .opacity(numbersArePending ? 0.5 : 1)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(alignment: .leading) {
-            GeometryReader { geometry in
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(directionColor.opacity(0.14))
-                    .frame(width: geometry.size.width * fraction)
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(Money.formatted(cents: row.magnitudeCents))
+                    .font(.body.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(directionColor)
+                    .opacity(numbersArePending ? 0.5 : 1)
+
+                if row.direction == .youOwe {
+                    HStack(spacing: 3) {
+                        Text("Settle")
+                        Image(systemName: "chevron.right")
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.accentColor)
+                }
             }
-            .padding(.vertical, 4)
         }
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(row.statement)
         .accessibilityValue(numbersArePending ? "Updating" : "")
