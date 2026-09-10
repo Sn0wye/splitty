@@ -135,8 +135,11 @@ struct SettleUpSheet: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 16)
 
-            ExpenseKeypad(onKey: handle(key:))
-                .disabled(viewModel.isSubmitting)
+            ExpenseKeypad(
+                onKey: handle(key:),
+                onClear: clearAmount
+            )
+            .disabled(viewModel.isSubmitting)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.expenseBackground)
@@ -161,6 +164,11 @@ struct SettleUpSheet: View {
         case .decimalPoint: viewModel.amount.typeDecimalPoint()
         case .backspace: viewModel.amount.backspace()
         }
+    }
+
+    private func clearAmount() {
+        viewModel.errorMessage = nil
+        viewModel.amount.clear()
     }
 
     private func submit() {
