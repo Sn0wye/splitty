@@ -78,4 +78,11 @@ struct APIErrorMessageTests {
         struct Sad: LocalizedError { var errorDescription: String? { "Sad" } }
         #expect(Sad().displayMessage == "Sad")
     }
+
+    @Test func recognisesCancellationAsControlFlowRatherThanANetworkFailure() {
+        #expect(CancellationError().isCancellation)
+        #expect(URLError(.cancelled).isCancellation)
+        #expect(APIError.networkError(URLError(.cancelled)).isCancellation)
+        #expect(!URLError(.notConnectedToInternet).isCancellation)
+    }
 }

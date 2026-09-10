@@ -186,6 +186,9 @@ struct GroupView: View {
             }
         }
         .background(Color("background"))
+        .refreshable {
+            await viewModel.refresh(groupId: groupId)
+        }
         // As an inset, the button sits inside the safe area and reserves exactly enough
         // space to keep the final row uncovered.
         .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {

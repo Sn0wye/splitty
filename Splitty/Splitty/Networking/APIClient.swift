@@ -96,6 +96,12 @@ class APIClient {
             
         } catch let error as APIError {
             throw error
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as URLError where error.code == .cancelled {
+            // SwiftUI owns tasks such as pull-to-refresh and may cancel them when their
+            // view disappears. Cancellation is control flow, not a failed connection.
+            throw CancellationError()
         } catch {
             throw APIError.networkError(error)
         }
@@ -232,6 +238,17 @@ extension Error {
     /// Non-`APIError` failures have no copy of their own to offer.
     var displayMessage: String {
         (self as? APIError)?.displayMessage ?? localizedDescription
+    }
+
+    /// Task cancellation can arrive directly or wrapped by an older networking call.
+    /// Either shape means the caller should stop quietly rather than show an error.
+    var isCancellation: Bool {
+        if self is CancellationError { return true }
+        if let error = self as? URLError { return error.code == .cancelled }
+        if case .networkError(let underlying) = self as? APIError {
+            return underlying.isCancellation
+        }
+        return false
     }
 }
 

@@ -67,6 +67,7 @@ class GroupViewModel: ObservableObject {
         do {
             loadedGroup = try await groupResult
         } catch {
+            if error.isCancellation { return }
             loadedGroup = nil
             errorMessage = "Failed to load group: \(error.localizedDescription)"
         }
@@ -77,12 +78,19 @@ class GroupViewModel: ObservableObject {
             groupedExpenses = Expense.groupExpensesByDate(loadedExpenses)
             pendingPaymentIds.removeAll()
         } catch {
+            if error.isCancellation { return }
             errorMessage = "Failed to load expenses: \(error.localizedDescription)"
         }
 
         // Preserve locally-known payment arithmetic while the worker still reports the
         // fetched net as stale. Once pending clears, the server owns the number again.
-        let summary = try? await summaryResult
+        let summary: GroupBalanceSummary?
+        do {
+            summary = try await summaryResult
+        } catch {
+            if error.isCancellation { return }
+            summary = nil
+        }
         balancesPending = summary?.balancesPending ?? (pendingNetAdjustmentCents != 0)
         if var loadedGroup {
             if balancesPending {
