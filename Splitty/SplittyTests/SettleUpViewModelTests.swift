@@ -9,7 +9,7 @@ import Testing
 
 @MainActor
 struct SettleUpViewModelTests {
-    @Test func preselectingABalanceRowPrefillsItsAmount() {
+    @Test func preselectingABalanceRowStillStartsAtZero() {
         let row = BalanceRow(
             peerId: 2,
             peerName: "Bob",
@@ -26,7 +26,8 @@ struct SettleUpViewModelTests {
         )
 
         #expect(viewModel.selectedPeer?.userId == 2)
-        #expect(viewModel.amountCents == 2_350)
+        #expect(viewModel.amountCents == 0)
+        #expect(viewModel.payAllTitle == "Pay all $23.50")
     }
 
     @Test(arguments: [nil, 0])
