@@ -112,6 +112,7 @@ Terms that mean something specific here, and the words to avoid for them.
 
 **Settlement**:
 A repayment recorded between two members, stored as an `Expense` with `Type = Payment`.
+The code and API call it a settlement; on screen it is always a **payment**.
 _Avoid_: refund, transfer, payback
 
 **Participant**:

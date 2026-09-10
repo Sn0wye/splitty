@@ -7,12 +7,22 @@ import SwiftUI
 
 struct BalancesView: View {
     let currentUserId: Int
+    let members: [GroupMember]
+    let onSettled: (SettleUpResult) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: BalancesViewModel
+    @State private var selectedDebt: BalanceRow?
 
-    init(context: BalanceSheetContext, currentUserId: Int) {
+    init(
+        context: BalanceSheetContext,
+        currentUserId: Int,
+        members: [GroupMember],
+        onSettled: @escaping (SettleUpResult) -> Void
+    ) {
         self.currentUserId = currentUserId
+        self.members = members
+        self.onSettled = onSettled
         _viewModel = StateObject(wrappedValue: BalancesViewModel(context: context))
     }
 
@@ -49,6 +59,17 @@ struct BalancesView: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .sheet(item: $selectedDebt) { row in
+            SettleUpSheet(
+                groupId: viewModel.groupId,
+                members: members,
+                currentUserId: currentUserId,
+                preselectedRow: row
+            ) { result in
+                onSettled(result)
+                dismiss()
+            }
+        }
     }
 
     private var netHeader: some View {
@@ -105,15 +126,29 @@ struct BalancesView: View {
 
         case .balances(let rows):
             ForEach(rows) { row in
-                BalancePeerRow(
-                    row: row,
-                    largestMagnitudeCents: viewModel.largestMagnitudeCents,
-                    numbersArePending: viewModel.balancesPending
-                )
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color("card"))
+                if row.direction == .youOwe {
+                    Button { selectedDebt = row } label: {
+                        balanceRow(row)
+                    }
+                    .buttonStyle(.plain)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color("card"))
+                    .accessibilityHint("Records a payment")
+                } else {
+                    balanceRow(row)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color("card"))
+                }
             }
         }
+    }
+
+    private func balanceRow(_ row: BalanceRow) -> some View {
+        BalancePeerRow(
+            row: row,
+            largestMagnitudeCents: viewModel.largestMagnitudeCents,
+            numbersArePending: viewModel.balancesPending
+        )
     }
 }
 
@@ -195,6 +230,8 @@ enum BalanceCopy {
 #Preview {
     BalancesView(
         context: BalanceSheetContext(groupId: 1, initialNetCents: -23_585, balancesPending: false),
-        currentUserId: 4
+        currentUserId: 4,
+        members: [],
+        onSettled: { _ in }
     )
 }

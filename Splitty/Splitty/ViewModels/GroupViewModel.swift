@@ -24,6 +24,12 @@ class GroupViewModel: ObservableObject {
     /// number is known to predate the last write.
     @Published var balancesPending = false
 
+    /// Negative ids exist only until a successful expense refetch replaces fabricated
+    /// payment rows with the server's rows.
+    @Published private(set) var pendingPaymentIds: Set<Int> = []
+    private var nextPendingPaymentId = -1
+    private var pendingNetAdjustmentCents = 0
+
     var members: [GroupMember] { group?.members ?? [] }
 
     func loadGroupData(groupId: Int) async {
@@ -57,9 +63,11 @@ class GroupViewModel: ObservableObject {
 
         // Every load runs to completion even if one fails; the later failure wins the
         // single errorMessage slot.
+        let loadedGroup: GroupDetail?
         do {
-            group = try await groupResult
+            loadedGroup = try await groupResult
         } catch {
+            loadedGroup = nil
             errorMessage = "Failed to load group: \(error.localizedDescription)"
         }
 
@@ -67,13 +75,81 @@ class GroupViewModel: ObservableObject {
             let loadedExpenses = try await expensesResult
             expenses = loadedExpenses
             groupedExpenses = Expense.groupExpensesByDate(loadedExpenses)
+            pendingPaymentIds.removeAll()
         } catch {
             errorMessage = "Failed to load expenses: \(error.localizedDescription)"
         }
 
-        // A summary that fails to load is not worth an error line: the flag it carries only
-        // decides whether the header renders as provisional.
-        balancesPending = (try? await summaryResult)?.balancesPending ?? false
+        // Preserve locally-known payment arithmetic while the worker still reports the
+        // fetched net as stale. Once pending clears, the server owns the number again.
+        let summary = try? await summaryResult
+        balancesPending = summary?.balancesPending ?? (pendingNetAdjustmentCents != 0)
+        if var loadedGroup {
+            if balancesPending {
+                loadedGroup.netBalanceCents += pendingNetAdjustmentCents
+            } else {
+                pendingNetAdjustmentCents = 0
+            }
+            group = loadedGroup
+        }
+    }
+
+    /// The settle route returns no row, so make the one piece of UI it cannot return. Its
+    /// negative id keeps navigation and deletion away from a resource that does not exist.
+    @discardableResult
+    func insertPendingPayment(
+        groupId: Int,
+        currentUser: GroupMember,
+        peer: GroupMember,
+        amountCents: Int,
+        now: Date = Date()
+    ) -> Expense {
+        let id = nextPendingPaymentId
+        nextPendingPaymentId -= 1
+        let timestamp = ExpenseService.timestamp(from: now)
+        let payer = Self.user(from: currentUser, timestamp: timestamp)
+        let payee = Self.user(from: peer, timestamp: timestamp)
+        let amount = Money.amount(cents: amountCents)
+
+        let payment = Expense(
+            id: id,
+            groupId: groupId,
+            paidBy: currentUser.userId,
+            amount: amount,
+            description: "Payment to \(peer.name)",
+            type: .payment,
+            splitMode: nil,
+            date: nil,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+            paidByUser: payer,
+            splits: [
+                ExpenseSplit(id: id * 10, expenseId: id, userId: currentUser.userId, amount: amount, percentage: nil, user: payer),
+                ExpenseSplit(id: id * 10 - 1, expenseId: id, userId: peer.userId, amount: -amount, percentage: nil, user: payee)
+            ]
+        )
+
+        pendingPaymentIds.insert(id)
+        insert(payment)
+        pendingNetAdjustmentCents += amountCents
+        group?.netBalanceCents += amountCents
+        balancesPending = true
+        return payment
+    }
+
+    func isPendingPayment(_ expense: Expense) -> Bool {
+        pendingPaymentIds.contains(expense.id)
+    }
+
+    private static func user(from member: GroupMember, timestamp: String) -> User {
+        User(
+            id: member.userId,
+            name: member.name,
+            email: member.email,
+            avatarURL: member.avatarUrl.isEmpty ? nil : URL(string: member.avatarUrl),
+            createdAt: timestamp,
+            updatedAt: timestamp
+        )
     }
 
     /// Deletes an expense or a settlement, whichever the row is. They do not share a route:

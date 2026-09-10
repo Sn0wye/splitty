@@ -15,7 +15,9 @@ struct GroupView: View {
     @State private var isTitleCollapsed = false
     @State private var showingEditSheet = false
     @State private var showingExpenseSheet = false
+    @State private var showingSettleUpSheet = false
     @State private var showingBalancesSheet = false
+    @State private var shouldRefreshAfterBalances = false
     @State private var pendingDeletion: Expense?
     @State private var selectedExpenseId: Int?
 
@@ -96,6 +98,17 @@ struct GroupView: View {
                 }
             }
         }
+        .sheet(isPresented: $showingSettleUpSheet) {
+            if let currentUserId {
+                SettleUpSheet(
+                    groupId: groupId,
+                    members: viewModel.members,
+                    currentUserId: currentUserId
+                ) { result in
+                    insertPendingPayment(from: result, currentUserId: currentUserId)
+                }
+            }
+        }
         .sheet(isPresented: $showingBalancesSheet) {
             if let group = viewModel.group, let currentUserId {
                 BalancesView(
@@ -104,14 +117,29 @@ struct GroupView: View {
                         initialNetCents: group.netBalanceCents,
                         balancesPending: viewModel.balancesPending
                     ),
-                    currentUserId: currentUserId
-                )
+                    currentUserId: currentUserId,
+                    members: viewModel.members
+                ) { result in
+                    insertPendingPayment(from: result, currentUserId: currentUserId)
+                    shouldRefreshAfterBalances = true
+                }
             }
         }
         // A money write enqueues a recomputation, so the header balance is stale on return.
         // One refetch, no polling: the flag it reads exists for exactly this.
         .onChange(of: showingExpenseSheet) { _, isPresented in
             if !isPresented {
+                Task { await viewModel.refresh(groupId: groupId) }
+            }
+        }
+        .onChange(of: showingSettleUpSheet) { _, isPresented in
+            if !isPresented {
+                Task { await viewModel.refresh(groupId: groupId) }
+            }
+        }
+        .onChange(of: showingBalancesSheet) { _, isPresented in
+            if !isPresented, shouldRefreshAfterBalances {
+                shouldRefreshAfterBalances = false
                 Task { await viewModel.refresh(groupId: groupId) }
             }
         }
@@ -221,17 +249,27 @@ struct GroupView: View {
     /// and these rows already say where they go. Any member may delete anything,
     /// including a settlement someone else recorded — membership is the only authorization
     /// boundary in the system.
+    @ViewBuilder
     private func expenseRow(_ expense: Expense, currentUserId: Int) -> some View {
-        SwipeToDeleteRow {
-            selectedExpenseId = expense.id
-        } onDelete: {
-            pendingDeletion = expense
-        } content: {
+        if viewModel.isPendingPayment(expense) {
             ExpenseRow(expense: expense, currentUserId: currentUserId)
+                .opacity(0.6)
+                .accessibilityValue("Updating")
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color("card"))
+                .listRowSeparator(.hidden)
+        } else {
+            SwipeToDeleteRow {
+                selectedExpenseId = expense.id
+            } onDelete: {
+                pendingDeletion = expense
+            } content: {
+                ExpenseRow(expense: expense, currentUserId: currentUserId)
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color("card"))
+            .listRowSeparator(.hidden)
         }
-        .listRowInsets(EdgeInsets())
-        .listRowBackground(Color("card"))
-        .listRowSeparator(.hidden)
     }
 
     @ViewBuilder
@@ -251,6 +289,7 @@ struct GroupView: View {
                     settlement: expense,
                     members: viewModel.members,
                     currentUserId: currentUserId,
+                    onChanged: { Task { await viewModel.refresh(groupId: groupId) } },
                     onDeleted: { Task { await viewModel.refresh(groupId: groupId) } }
                 )
             }
@@ -334,10 +373,13 @@ struct GroupView: View {
     
     private var actionButtonsSection: some View {
         LazyHStack(spacing: 12) {
-            ActionButton(title: "Settle up", color: Color("foreground"), textColor: Color("background")) {
-                // TODO: Settle up action
+            if viewModel.members.count >= 2 {
+                ActionButton(title: "Settle up", color: Color("foreground"), textColor: Color("background")) {
+                    showingSettleUpSheet = true
+                }
+                .disabled(currentUserId == nil)
             }
-            
+
             ActionButton(title: "Charts", color: Color("muted"), textColor: Color("foreground")) {
                 // TODO: Charts action
             }
@@ -355,6 +397,19 @@ struct GroupView: View {
         .padding(.vertical, 20)
     }
     
+    private func insertPendingPayment(from result: SettleUpResult, currentUserId: Int) {
+        guard !result.isEditing,
+              let currentUser = viewModel.members.first(where: { $0.userId == currentUserId })
+        else { return }
+
+        viewModel.insertPendingPayment(
+            groupId: groupId,
+            currentUser: currentUser,
+            peer: result.peer,
+            amountCents: result.amountCents
+        )
+    }
+
     private func dateHeader(for groupedExpense: GroupedExpense) -> some View {
         HStack {
             Text(groupedExpense.dateString)
