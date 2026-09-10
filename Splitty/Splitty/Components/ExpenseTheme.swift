@@ -6,15 +6,11 @@
 import SwiftUI
 import UIKit
 
-/// The expense sheet's palette, pinned to exact values rather than to the system's
-/// semantic colours.
-///
-/// `systemBackground` is pure black in dark mode, which is not the surface this sheet is
-/// meant to be, and the pad is hosted in UIKit — both sides need the same colour from one
-/// definition or the seam comes back.
+/// The money sheets' palette, pinned to exact values so their SwiftUI and UIKit
+/// surfaces remain seamless.
 enum ExpenseTheme {
-    /// The sheet's surface, and the pad's.
-    static let background = dynamic(dark: 0x1C1C1E, light: 0xFEFEFE)
+    /// Matches the Balances drawer's deeper page surface in both appearances.
+    static let background = dynamic(dark: 0x09090B, light: 0xF4F4F5)
 
     /// The amount and the keys.
     static let foreground = dynamic(dark: 0xFEFEFE, light: 0x000000)
