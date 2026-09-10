@@ -30,6 +30,7 @@ struct ExpenseKeypad: View {
     let onClear: () -> Void
 
     @State private var clearCount = 0
+    @State private var suppressNextBackspace = false
 
     private let digitRows = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
 
@@ -65,7 +66,7 @@ struct ExpenseKeypad: View {
     }
 
     private var backspaceKey: some View {
-        Button { onKey(.backspace) } label: {
+        Button { backspace() } label: {
             Image(systemName: "chevron.left")
         }
         .buttonStyle(KeypadKeyStyle())
@@ -78,7 +79,16 @@ struct ExpenseKeypad: View {
         .accessibilityIdentifier("keypad.key.chevron.left")
     }
 
+    private func backspace() {
+        if suppressNextBackspace {
+            suppressNextBackspace = false
+        } else {
+            onKey(.backspace)
+        }
+    }
+
     private func clear() {
+        suppressNextBackspace = true
         onClear()
         clearCount += 1
     }

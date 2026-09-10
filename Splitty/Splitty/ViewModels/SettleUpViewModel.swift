@@ -111,9 +111,10 @@ final class SettleUpViewModel: ObservableObject {
 
     func apply(_ summary: GroupBalanceSummary) {
         debtsByPeerId = Dictionary(
-            uniqueKeysWithValues: summary.balances
+            summary.balances
                 .filter { $0.userId == currentUserId }
-                .map { ($0.peerId, max(-$0.amountCents, 0)) }
+                .map { ($0.peerId, max(-$0.amountCents, 0)) },
+            uniquingKeysWith: max
         )
     }
 

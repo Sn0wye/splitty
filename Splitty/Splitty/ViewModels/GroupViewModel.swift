@@ -55,35 +55,34 @@ class GroupViewModel: ObservableObject {
     }
 
     private func load(groupId: Int) async {
-        errorMessage = ""
-
         async let groupResult = GroupService.shared.getGroup(id: groupId)
         async let expensesResult = ExpenseService.shared.getExpenses(groupId: groupId)
         async let summaryResult = GroupService.shared.getBalanceSummary(groupId: groupId)
 
-        // Every load runs to completion even if one fails; the later failure wins the
-        // single errorMessage slot.
+        // Gather before publishing. If SwiftUI cancels its refresh task, none of a
+        // three-request snapshot should replace the data already on screen.
         let loadedGroup: GroupDetail?
+        let groupError: String?
         do {
             loadedGroup = try await groupResult
+            groupError = nil
         } catch {
             if error.isCancellation { return }
             loadedGroup = nil
-            errorMessage = "Failed to load group: \(error.localizedDescription)"
+            groupError = "Failed to load group: \(error.localizedDescription)"
         }
 
+        let loadedExpenses: [Expense]?
+        let expensesError: String?
         do {
-            let loadedExpenses = try await expensesResult
-            expenses = loadedExpenses
-            groupedExpenses = Expense.groupExpensesByDate(loadedExpenses)
-            pendingPaymentIds.removeAll()
+            loadedExpenses = try await expensesResult
+            expensesError = nil
         } catch {
             if error.isCancellation { return }
-            errorMessage = "Failed to load expenses: \(error.localizedDescription)"
+            loadedExpenses = nil
+            expensesError = "Failed to load expenses: \(error.localizedDescription)"
         }
 
-        // Preserve locally-known payment arithmetic while the worker still reports the
-        // fetched net as stale. Once pending clears, the server owns the number again.
         let summary: GroupBalanceSummary?
         do {
             summary = try await summaryResult
@@ -91,11 +90,26 @@ class GroupViewModel: ObservableObject {
             if error.isCancellation { return }
             summary = nil
         }
+
+        errorMessage = expensesError ?? groupError ?? ""
+
+        if let loadedExpenses {
+            expenses = loadedExpenses
+            groupedExpenses = Expense.groupExpensesByDate(loadedExpenses)
+            pendingPaymentIds.removeAll()
+        }
+
         balancesPending = summary?.balancesPending ?? (pendingNetAdjustmentCents != 0)
         if var loadedGroup {
-            if balancesPending {
-                loadedGroup.netBalanceCents += pendingNetAdjustmentCents
-            } else {
+            if balancesPending,
+               pendingNetAdjustmentCents != 0,
+               let displayedNetCents = group?.netBalanceCents
+            {
+                // The pending flag cannot say whether this snapshot already includes our
+                // payment. Keep the locally-correct displayed number instead of risking a
+                // second adjustment or restoring the known-stale server value.
+                loadedGroup.netBalanceCents = displayedNetCents
+            } else if !balancesPending {
                 pendingNetAdjustmentCents = 0
             }
             group = loadedGroup
