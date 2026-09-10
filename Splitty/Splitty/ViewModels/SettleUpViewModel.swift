@@ -41,7 +41,7 @@ final class SettleUpViewModel: ObservableObject {
             amount = AmountExpression(cents: Money.cents(from: settlement.amount))
             selectedPeerId = settlement.peer?.id
         } else if let preselectedRow {
-            amount = AmountExpression(cents: preselectedRow.magnitudeCents)
+            amount = AmountExpression()
             selectedPeerId = preselectedRow.peerId
             debtsByPeerId[preselectedRow.peerId] = preselectedRow.magnitudeCents
         } else {
