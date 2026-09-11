@@ -47,4 +47,11 @@ class GroupService {
     func redeemInvite(code: String) async throws -> GroupDetail {
         return try await APIClient.shared.redeemInvite(code: code)
     }
+
+    func removeMember(groupId: Int, userId: Int) async throws {
+        let _: EmptyResponse = try await APIClient.shared.request(
+            endpoint: "/group/\(groupId)/members/\(userId)",
+            method: .DELETE
+        )
+    }
 }

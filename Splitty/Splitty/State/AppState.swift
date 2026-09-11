@@ -34,6 +34,7 @@ final class AppState: ObservableObject {
     private static let currentGroupKey = "currentGroupId"
 
     @Published var selectedTab: AppTab = .groups
+    @Published var groupNotice: String?
 
     @Published var currentGroupId: Int? {
         didSet {
@@ -51,7 +52,14 @@ final class AppState: ObservableObject {
     }
 
     func openGroup(_ id: Int) {
+        groupNotice = nil
         currentGroupId = id
         selectedTab = .group
+    }
+
+    func leaveUnavailableGroup(message: String) {
+        groupNotice = message
+        currentGroupId = nil
+        selectedTab = .groups
     }
 }

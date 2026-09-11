@@ -204,6 +204,7 @@ enum APIError: Error, LocalizedError {
         case .httpError(400, _): return "The server rejected this. Check the amounts and try again."
         case .httpError(403, _): return "You are not a member of this group."
         case .httpError(404, _): return "This no longer exists."
+        case .httpError(409, _): return "This member has an outstanding balance."
         case .httpError(let status, _): return "Something went wrong (\(status)). Try again."
         case .networkError: return "Couldn't reach Splitty. Check your connection and try again."
         default: return errorDescription ?? "Something went wrong. Try again."

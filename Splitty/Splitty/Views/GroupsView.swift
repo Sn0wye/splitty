@@ -44,6 +44,16 @@ struct GroupsView: View {
                     Avatar()
                 }
                 .padding([.top, .horizontal])
+
+                if let groupNotice = appState.groupNotice {
+                    Text(groupNotice)
+                        .font(.subheadline)
+                        .foregroundStyle(Color("foreground"))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(Color("muted"), in: RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal)
+                }
                 
                 
                 ScrollView(.vertical) {

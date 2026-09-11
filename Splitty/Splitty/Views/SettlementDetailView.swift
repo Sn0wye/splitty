@@ -23,10 +23,14 @@ struct SettlementDetailView: View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: -8) {
+                        MemberAvatar(display: payerDisplay, size: 40)
+                        MemberAvatar(display: payeeDisplay, size: 40)
+                    }
                     Text(Money.formatted(amount: settlement.amount))
                         .font(.largeTitle.weight(.bold))
                         .monospacedDigit()
-                    Text("\(payerName) paid \(payeeName)")
+                    paymentDescription
                         .font(.headline)
                     Text(dateText)
                         .font(.subheadline)
@@ -91,14 +95,40 @@ struct SettlementDetailView: View {
     }
 
     private var payerName: String {
-        settlement.paidBy == currentUserId ? "You" : settlement.paidByUser.name
+        settlement.paidBy == currentUserId ? "You" : payerDisplay.name
+    }
+
+    private var payerDisplay: MemberDisplay {
+        MemberDisplay(
+            settlement.paidByUser,
+            currentUserId: currentUserId,
+            currentUserLabel: "You"
+        )
     }
 
     private var payeeName: String {
-        guard let peer = settlement.peer else { return "someone who has left" }
-        return peer.id == currentUserId
-            ? "you"
-            : members.first { $0.userId == peer.id }?.name ?? peer.name
+        payeeDisplay.name
+    }
+
+    private var payeeDisplay: MemberDisplay {
+        guard let peer = settlement.peer else {
+            return .removed
+        }
+        if peer.id == currentUserId {
+            return MemberDisplay(peer, currentUserId: currentUserId, currentUserLabel: "you")
+        }
+        if let member = members.first(where: { $0.userId == peer.id }) {
+            return MemberDisplay(member)
+        }
+        return MemberDisplay(peer, currentUserId: currentUserId, currentUserLabel: "you")
+    }
+
+    private var paymentDescription: Text {
+        Text(payerName)
+            .foregroundColor(payerDisplay.isRemoved ? Color("muted-foreground") : Color("foreground"))
+        + Text(" paid ")
+        + Text(payeeName)
+            .foregroundColor(payeeDisplay.isRemoved ? Color("muted-foreground") : Color("foreground"))
     }
 
     private var dateText: String {
