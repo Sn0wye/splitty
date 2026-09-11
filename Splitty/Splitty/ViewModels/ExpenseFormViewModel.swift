@@ -161,58 +161,66 @@ class ExpenseFormViewModel: ObservableObject {
     /// left: a percentage split is not seeded from the equal division it replaces, because
     /// the whole reason to switch is that the equal division is wrong.
     func selectMode(_ mode: ExpenseSplitMode) {
-        switch mode {
-        case .equal:
-            configuration.mode = .equal(participants: equalParticipants)
-        case .custom:
-            configuration.mode = .custom(amounts: customAmounts)
-        case .percentage:
-            configuration.mode = .percentage(percentages: percentages)
+        PerformanceSignpost.around(.splitEdit) {
+            switch mode {
+            case .equal:
+                configuration.mode = .equal(participants: equalParticipants)
+            case .custom:
+                configuration.mode = .custom(amounts: customAmounts)
+            case .percentage:
+                configuration.mode = .percentage(percentages: percentages)
+            }
         }
     }
 
     /// Unchecking a member re-derives the split across the rest and drops them from the
     /// payload. Equal splits only: the typed modes say the same thing with an empty field.
     func toggleParticipant(_ userId: Int) {
-        guard case .equal(var participants) = configuration.mode else { return }
+        PerformanceSignpost.around(.splitEdit) {
+            guard case .equal(var participants) = configuration.mode else { return }
 
-        if participants.contains(userId) {
-            participants.remove(userId)
-        } else {
-            participants.insert(userId)
+            if participants.contains(userId) {
+                participants.remove(userId)
+            } else {
+                participants.insert(userId)
+            }
+
+            equalParticipants = participants
+            configuration.mode = .equal(participants: participants)
         }
-
-        equalParticipants = participants
-        configuration.mode = .equal(participants: participants)
     }
 
     /// A blank field is not a participant, which is why the row is removed rather than set
     /// to zero: zero would be a share the API refuses, blank is someone left out.
     func setCustomText(_ text: String, for userId: Int) {
-        customText[userId] = text
+        PerformanceSignpost.around(.splitEdit) {
+            customText[userId] = text
 
-        if let cents = Money.cents(fromTypedText: text), cents > 0 {
-            customAmounts[userId] = cents
-        } else {
-            customAmounts.removeValue(forKey: userId)
-        }
+            if let cents = Money.cents(fromTypedText: text), cents > 0 {
+                customAmounts[userId] = cents
+            } else {
+                customAmounts.removeValue(forKey: userId)
+            }
 
-        if case .custom = configuration.mode {
-            configuration.mode = .custom(amounts: customAmounts)
+            if case .custom = configuration.mode {
+                configuration.mode = .custom(amounts: customAmounts)
+            }
         }
     }
 
     func setPercentageText(_ text: String, for userId: Int) {
-        percentageText[userId] = text
+        PerformanceSignpost.around(.splitEdit) {
+            percentageText[userId] = text
 
-        if let percent = Percent.value(fromTypedText: text), percent > 0 {
-            percentages[userId] = percent
-        } else {
-            percentages.removeValue(forKey: userId)
-        }
+            if let percent = Percent.value(fromTypedText: text), percent > 0 {
+                percentages[userId] = percent
+            } else {
+                percentages.removeValue(forKey: userId)
+            }
 
-        if case .percentage = configuration.mode {
-            configuration.mode = .percentage(percentages: percentages)
+            if case .percentage = configuration.mode {
+                configuration.mode = .percentage(percentages: percentages)
+            }
         }
     }
 

@@ -21,6 +21,10 @@
 			</array>
 		</dict>
 	</array>
+	<!-- Opt into the display's native refresh rate on ProMotion iPhones. iOS still
+	     chooses the cadence; this only removes the 60 Hz cap. -->
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSExceptionDomains</key>

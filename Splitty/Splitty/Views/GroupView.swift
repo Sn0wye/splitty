@@ -186,6 +186,7 @@ struct GroupView: View {
             }
         }
         .background(Color("background"))
+        .performanceScrollSignpost(.timelineScroll)
         .refreshable {
             await viewModel.refresh(groupId: groupId)
         }
