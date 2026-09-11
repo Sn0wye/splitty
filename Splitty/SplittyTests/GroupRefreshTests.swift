@@ -87,6 +87,28 @@ struct GroupRefreshTests {
         #expect(viewModel.groupedExpenses.flatMap { $0.expenses }.map(\.id) == [2])
     }
 
+    // Cancellation is control flow: it leaves the rows already on screen alone rather
+    // than blanking them or writing an error over them.
+    @Test func aCanceledRefreshLeavesTheRowsOnScreenAlone() async {
+        let data = ControlledGroupData()
+        data.expensesForCall = { call in [TestExpense.make(id: call, paidBy: 1, amount: 10, splitAmounts: [1: 10])] }
+        let viewModel = GroupViewModel(dataSource: data.source())
+
+        let loaded = viewModel.beginRefresh(groupId: 1)
+        await data.waitForExpenseCall(1)
+        data.release(call: 1)
+        await loaded.value
+        #expect(viewModel.expenses.map(\.id) == [1])
+
+        let canceled = viewModel.beginRefresh(groupId: 1)
+        await data.waitForExpenseCall(2)
+        data.fail(call: 2, with: CancellationError())
+        await canceled.value
+
+        #expect(viewModel.expenses.map(\.id) == [1])
+        #expect(viewModel.errorMessage.isEmpty)
+    }
+
     // A superseded refresh is control flow, not a failure the user should read about.
     @Test func aSupersededRefreshLeavesTheScreenAloneWhenItFails() async {
         let data = ControlledGroupData()
@@ -114,7 +136,13 @@ struct GroupRefreshTests {
 /// two overlapping refreshes come back in.
 @MainActor
 final class ControlledGroupData {
-    /// Rows the nth expense request answers with.
+    /// How the nth held expense request ends.
+    enum Outcome {
+        case rows([Expense])
+        case failure(Error)
+    }
+
+    /// Rows the nth expense request answers with, unless a test fails it instead.
     var expensesForCall: (Int) -> [Expense] = { _ in [] }
 
     /// When true, requests answer immediately instead of waiting for `release(call:)`.
@@ -124,36 +152,55 @@ final class ControlledGroupData {
     private(set) var expenseCallCount = 0
     private(set) var summaryCallCount = 0
 
-    private var waiting: [Int: CheckedContinuation<Error?, Never>] = [:]
-    private var resolved: [Int: Error?] = [:]
+    private var waitingForOutcome: [Int: CheckedContinuation<Outcome, Never>] = [:]
+    private var outcomes: [Int: Outcome] = [:]
+    private var waitingForCall: [Int: CheckedContinuation<Void, Never>] = [:]
 
     func source() -> GroupDataSource {
         GroupDataSource(
             group: { [self] groupId in await noteGroupCall(id: groupId) },
             expenses: { [self] _ in
                 let call = await noteExpenseCall()
-                if let error = await gate(call: call) { throw error }
-                return await expensesForCall(call)
+                switch await outcome(of: call) {
+                case .rows(let rows): return rows
+                case .failure(let error): throw error
+                }
             },
             summary: { [self] _ in await noteSummaryCall() }
         )
     }
 
     func release(call: Int) {
-        resolve(call: call, with: nil)
+        resolve(call: call, with: .rows(expensesForCall(call)))
     }
 
     func fail(call: Int, with error: Error) {
-        resolve(call: call, with: error)
+        resolve(call: call, with: .failure(error))
     }
 
-    /// Waits until the nth expense request has been issued. Bounded, so a wiring mistake
-    /// fails the test instead of hanging the suite.
+    /// Suspends until the nth expense request has been issued, so a test can interleave
+    /// two refreshes without sleeping on a timer.
     func waitForExpenseCall(_ call: Int) async {
-        for _ in 0..<2_000 where expenseCallCount < call {
-            try? await Task.sleep(nanoseconds: 1_000_000)
+        guard expenseCallCount < call else { return }
+        await withCheckedContinuation { continuation in
+            waitingForCall[call] = continuation
         }
-        #expect(expenseCallCount >= call)
+    }
+
+    private func resolve(call: Int, with outcome: Outcome) {
+        if let continuation = waitingForOutcome.removeValue(forKey: call) {
+            continuation.resume(returning: outcome)
+        } else {
+            outcomes[call] = outcome
+        }
+    }
+
+    private func outcome(of call: Int) async -> Outcome {
+        if autoRelease { return .rows(expensesForCall(call)) }
+        if let outcome = outcomes.removeValue(forKey: call) { return outcome }
+        return await withCheckedContinuation { continuation in
+            waitingForOutcome[call] = continuation
+        }
     }
 
     private func noteGroupCall(id: Int) -> GroupDetail {
@@ -170,27 +217,12 @@ final class ControlledGroupData {
 
     private func noteExpenseCall() -> Int {
         expenseCallCount += 1
+        waitingForCall.removeValue(forKey: expenseCallCount)?.resume()
         return expenseCallCount
     }
 
     private func noteSummaryCall() -> GroupBalanceSummary {
         summaryCallCount += 1
         return GroupBalanceSummary(balances: [], balancesPending: false)
-    }
-
-    private func resolve(call: Int, with error: Error?) {
-        if let continuation = waiting.removeValue(forKey: call) {
-            continuation.resume(returning: error)
-        } else {
-            resolved[call] = error
-        }
-    }
-
-    private func gate(call: Int) async -> Error? {
-        if autoRelease { return nil }
-        if let outcome = resolved.removeValue(forKey: call) { return outcome }
-        return await withCheckedContinuation { continuation in
-            waiting[call] = continuation
-        }
     }
 }

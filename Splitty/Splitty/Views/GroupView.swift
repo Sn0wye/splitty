@@ -96,7 +96,6 @@ struct GroupView: View {
                     currentUserId: currentUserId
                 ) { saved in
                     viewModel.insert(saved)
-                    viewModel.noteSheetWrite()
                 }
             }
         }
@@ -108,7 +107,6 @@ struct GroupView: View {
                     currentUserId: currentUserId
                 ) { result in
                     insertPendingPayment(from: result, currentUserId: currentUserId)
-                    viewModel.noteSheetWrite()
                 }
             }
         }
@@ -124,7 +122,6 @@ struct GroupView: View {
                     members: viewModel.members
                 ) { result in
                     insertPendingPayment(from: result, currentUserId: currentUserId)
-                    viewModel.noteSheetWrite()
                 }
             }
         }
@@ -404,7 +401,11 @@ struct GroupView: View {
         .padding(.vertical, 20)
     }
     
+    /// A settlement sheet that saved anything owes the screen a refresh, including an
+    /// edit of a row already on screen — which fabricates no new row to insert.
     private func insertPendingPayment(from result: SettleUpResult, currentUserId: Int) {
+        viewModel.noteSheetWrite()
+
         guard !result.isEditing,
               let currentUser = viewModel.members.first(where: { $0.userId == currentUserId })
         else { return }
