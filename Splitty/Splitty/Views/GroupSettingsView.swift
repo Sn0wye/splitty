@@ -38,6 +38,12 @@ struct GroupSettingsView: View {
                 ForEach(members) { member in
                     memberRow(member)
                 }
+
+                NavigationLink {
+                    InviteView(groupId: group.id, groupName: group.name)
+                } label: {
+                    Label("Invite people", systemImage: "person.badge.plus")
+                }
             }
 
             // #64 adds the leave control here, after membership.
