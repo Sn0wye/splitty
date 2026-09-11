@@ -148,11 +148,15 @@ struct ExpenseDetailView: View {
                     groupId: expense.groupId,
                     expenseId: expense.id
                 )
-                onDeleted()
-                dismiss()
             } catch {
-                errorMessage = error.displayMessage
+                guard error.isAlreadyGone else {
+                    errorMessage = error.displayMessage
+                    return
+                }
             }
+
+            onDeleted()
+            dismiss()
         }
     }
 }

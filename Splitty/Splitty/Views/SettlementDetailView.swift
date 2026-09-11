@@ -117,11 +117,15 @@ struct SettlementDetailView: View {
                     groupId: settlement.groupId,
                     expenseId: settlement.id
                 )
-                onDeleted()
-                dismiss()
             } catch {
-                errorMessage = error.displayMessage
+                guard error.isAlreadyGone else {
+                    errorMessage = error.displayMessage
+                    return
+                }
             }
+
+            onDeleted()
+            dismiss()
         }
     }
 }
