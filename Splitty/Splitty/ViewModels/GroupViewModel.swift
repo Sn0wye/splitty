@@ -71,15 +71,21 @@ class GroupViewModel: ObservableObject {
         await load(groupId: groupId)
     }
 
-    /// Reloads after a write without blanking the screen. Called **once**, on the sheet's
-    /// dismissal: `balancesPending` exists so a client can show a spinner instead of
-    /// polling, and the worker usually finishes inside the dismiss animation.
+    /// Reloads after a write without blanking the screen. `balancesPending` exists so a
+    /// client can show a spinner instead of polling, and the worker usually finishes
+    /// inside the dismiss animation.
+    ///
+    /// Structured: a caller that can wait — pull-to-refresh, a delete — keeps the load in
+    /// its own task tree, so SwiftUI cancelling that task cancels the requests underneath
+    /// it. Any owned refresh it supersedes is cancelled first.
     func refresh(groupId: Int) async {
-        await beginRefresh(groupId: groupId).value
+        refreshTask?.cancel()
+        await load(groupId: groupId)
     }
 
-    /// Records that a sheet saved something. Called from the sheet's completion handler,
-    /// which is the only place that knows a write happened — a dismissal alone does not.
+    /// Records that a sheet saved something. `insert` and `insertPendingPayment` call this
+    /// themselves; a caller only needs it for a save that produces no local row, such as
+    /// editing a settlement that is already on screen.
     func noteSheetWrite() {
         hasUnrefreshedSheetWrite = true
     }
@@ -111,6 +117,7 @@ class GroupViewModel: ObservableObject {
     /// server returned it — while the *balance* it feeds is not, which is what
     /// `balancesPending` says.
     func insert(_ expense: Expense) {
+        noteSheetWrite()
         expenses.removeAll { $0.id == expense.id }
         expenses.append(expense)
         groupedExpenses = Expense.groupExpensesByDate(expenses)

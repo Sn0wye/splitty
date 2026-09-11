@@ -144,8 +144,14 @@ extension Expense {
         return formatter
     }()
 
+    /// Shared, so it tracks the device rather than the moment it was built: a formatter
+    /// created once snapshots `Locale.current` and `TimeZone.current`, and grouping still
+    /// reads `Calendar.current` per call. Autoupdating keeps the label and the day bucket
+    /// from disagreeing after a locale or timezone change.
     private static let dayLabelFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.locale = Locale.autoupdatingCurrent
+        formatter.timeZone = TimeZone.autoupdatingCurrent
         formatter.dateFormat = "MMM d, E" // Apr 12, Sat
         return formatter
     }()
