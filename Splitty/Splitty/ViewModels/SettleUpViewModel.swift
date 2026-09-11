@@ -8,12 +8,14 @@ import Foundation
 struct SettleUpResult {
     let peer: GroupMember
     let amountCents: Int
+    let date: Date
     let isEditing: Bool
 }
 
 @MainActor
 final class SettleUpViewModel: ObservableObject {
     @Published var amount: AmountExpression
+    @Published var date: Date
     @Published private(set) var selectedPeerId: Int?
     @Published private(set) var debtsByPeerId: [Int: Int] = [:]
     @Published private(set) var isSubmitting = false
@@ -39,13 +41,16 @@ final class SettleUpViewModel: ObservableObject {
 
         if let settlement {
             amount = AmountExpression(cents: Money.cents(from: settlement.amount))
+            date = settlement.effectiveDate ?? Date()
             selectedPeerId = settlement.peer?.id
         } else if let preselectedRow {
             amount = AmountExpression()
+            date = Date()
             selectedPeerId = preselectedRow.peerId
             debtsByPeerId[preselectedRow.peerId] = preselectedRow.magnitudeCents
         } else {
             amount = AmountExpression()
+            date = Date()
             selectedPeerId = nil
         }
     }
@@ -130,16 +135,18 @@ final class SettleUpViewModel: ObservableObject {
                 try await SettlementService.shared.updateSettlement(
                     groupId: groupId,
                     expenseId: settlementId,
-                    amountCents: amountCents
+                    amountCents: amountCents,
+                    date: date
                 )
             } else {
                 try await SettlementService.shared.settleUp(
                     groupId: groupId,
                     withUserId: peer.userId,
-                    amountCents: amountCents
+                    amountCents: amountCents,
+                    date: date
                 )
             }
-            return SettleUpResult(peer: peer, amountCents: amountCents, isEditing: isEditing)
+            return SettleUpResult(peer: peer, amountCents: amountCents, date: date, isEditing: isEditing)
         } catch {
             recordSubmissionFailure(error)
             return nil

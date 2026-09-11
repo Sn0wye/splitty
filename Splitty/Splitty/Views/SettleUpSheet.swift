@@ -9,6 +9,7 @@ struct SettleUpSheet: View {
     @StateObject private var viewModel: SettleUpViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showingAmount: Bool
+    @State private var showingDatePicker = false
     @State private var savedCount = 0
 
     private let startsWithFixedPeer: Bool
@@ -51,6 +52,9 @@ struct SettleUpSheet: View {
             if shouldLoadDebts {
                 await viewModel.loadDebts()
             }
+        }
+        .sheet(isPresented: $showingDatePicker) {
+            ExpenseDatePicker(date: $viewModel.date)
         }
     }
 
@@ -126,6 +130,21 @@ struct SettleUpSheet: View {
                     .padding(.bottom, 12)
             }
 
+            Button {
+                showingDatePicker = true
+            } label: {
+                Label(dateLabel, systemImage: "calendar")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.expenseForeground)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
+            }
+            .buttonStyle(.pressable(scale: 0.98))
+            .accessibilityIdentifier("settleUp.date")
+            .padding(.horizontal, 20)
+            .padding(.bottom, 12)
+
             PrimaryButton(
                 title: viewModel.isEditing ? "Save" : "Record payment",
                 isLoading: viewModel.isSubmitting,
@@ -155,6 +174,13 @@ struct SettleUpSheet: View {
                 }
             }
         }
+    }
+
+    private var dateLabel: String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(viewModel.date) { return "Today" }
+        if calendar.isDateInYesterday(viewModel.date) { return "Yesterday" }
+        return viewModel.date.formatted(.dateTime.day().month(.abbreviated).year())
     }
 
     private func handle(key: KeypadKey) {

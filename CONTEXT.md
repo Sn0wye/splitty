@@ -60,7 +60,8 @@ fact, so an update sending `Splits` must send `SplitMode` too.
 **Expense date** is `Expense.Date`, nullable, client-supplied, and may be in the future.
 `CreatedAt` next to it is the audit timestamp — server-set, never accepted from a client.
 Rows predating the column have no `Date`, so every reader that orders or groups expenses uses
-`Date ?? CreatedAt`, newest first.
+`Date ?? CreatedAt`, newest first. Expense and settlement creation both accept a date. On an
+update, an omitted or null date leaves the stored date unchanged.
 
 **Settlements are mutated through `/group/{groupId}/settlements/{expenseId}`**, never through
 the expense routes, even though a settlement is an `Expense` row. The expense `PUT`/`DELETE`

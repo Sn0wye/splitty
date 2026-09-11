@@ -87,7 +87,8 @@ struct SettleUpViewModelTests {
             paidBy: 1,
             amount: 12,
             splitAmounts: [1: 12, 2: -12],
-            type: .payment
+            type: .payment,
+            date: "2026-03-01T12:00:00Z"
         )
         let viewModel = SettleUpViewModel(
             groupId: 7,
@@ -99,7 +100,24 @@ struct SettleUpViewModelTests {
 
         viewModel.recordSubmissionFailure(TestError())
 
+        #expect(viewModel.date == Expense.parseTimestamp("2026-03-01T12:00:00Z"))
         #expect(viewModel.errorMessage == "Couldn't record that payment. Pull down to refresh and try again.")
+    }
+
+    @Test func pendingPaymentUsesTheSelectedDate() throws {
+        let viewModel = GroupViewModel()
+        let selectedDate = try #require(Expense.parseTimestamp("2026-03-01T12:00:00Z"))
+
+        let payment = viewModel.insertPendingPayment(
+            groupId: 7,
+            currentUser: members[0],
+            peer: members[1],
+            amountCents: 2_350,
+            date: selectedDate
+        )
+
+        #expect(payment.date == "2026-03-01T12:00:00Z")
+        #expect(payment.effectiveDate == selectedDate)
     }
 
     @Test func fabricatedPaymentLandsInTodaysGroupAndCannotBeOpened() throws {
