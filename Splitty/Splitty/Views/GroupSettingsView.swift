@@ -10,21 +10,27 @@ struct GroupSettingsView: View {
     let currentUserId: Int
     let onGroupSaved: () -> Void
     let onGroupUnavailable: (String) -> Void
+    let onGroupExited: (String?) -> Void
 
     @State private var showingEditSheet = false
     @State private var members: [GroupMember]
     @State private var selectedMember: GroupMember?
+    @State private var showingLeaveAlert = false
+    @State private var isLeaving = false
+    @State private var leaveErrorMessage: String?
 
     init(
         group: GroupDetail,
         currentUserId: Int,
         onGroupSaved: @escaping () -> Void,
-        onGroupUnavailable: @escaping (String) -> Void
+        onGroupUnavailable: @escaping (String) -> Void,
+        onGroupExited: @escaping (String?) -> Void
     ) {
         self.group = group
         self.currentUserId = currentUserId
         self.onGroupSaved = onGroupSaved
         self.onGroupUnavailable = onGroupUnavailable
+        self.onGroupExited = onGroupExited
         _members = State(initialValue: group.members)
     }
 
@@ -47,9 +53,19 @@ struct GroupSettingsView: View {
                 }
             }
 
-            // #64 adds the leave control here, after membership.
             Section {
-                EmptyView()
+                Button(role: .destructive) {
+                    showingLeaveAlert = true
+                } label: {
+                    Label("Leave group", systemImage: "rectangle.portrait.and.arrow.right")
+                        .foregroundStyle(.red)
+                }
+                .disabled(isLeaving)
+            } footer: {
+                if let leaveErrorMessage {
+                    Text(leaveErrorMessage)
+                        .foregroundStyle(.red)
+                }
             }
         }
         .scrollContentBackground(.hidden)
@@ -73,6 +89,14 @@ struct GroupSettingsView: View {
                 },
                 onGroupUnavailable: onGroupUnavailable
             )
+        }
+        .alert(leaveCopy.title, isPresented: $showingLeaveAlert) {
+            Button(leaveCopy.confirmationLabel, role: .destructive) {
+                Task { await leaveGroup() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(leaveCopy.message)
         }
     }
 
@@ -219,6 +243,30 @@ private struct MemberDetailSheet: View {
     }
 }
 
+private extension GroupSettingsView {
+    private var leaveCopy: LeaveCopy {
+        LeaveCopy(memberCount: members.count, groupName: group.name)
+    }
+
+    private func leaveGroup() async {
+        isLeaving = true
+        leaveErrorMessage = nil
+        defer { isLeaving = false }
+
+        do {
+            try await GroupService.shared.leave(groupId: group.id)
+            onGroupExited(nil)
+        } catch {
+            let membershipError = MembershipError(error)
+            if membershipError.shouldLeaveScreen {
+                onGroupExited(membershipError.message)
+            } else {
+                leaveErrorMessage = membershipError.message
+            }
+        }
+    }
+}
+
 #Preview {
     NavigationStack {
         GroupSettingsView(
@@ -235,7 +283,8 @@ private struct MemberDetailSheet: View {
             ),
             currentUserId: 1,
             onGroupSaved: {},
-            onGroupUnavailable: { _ in }
+            onGroupUnavailable: { _ in },
+            onGroupExited: { _ in }
         )
     }
 }

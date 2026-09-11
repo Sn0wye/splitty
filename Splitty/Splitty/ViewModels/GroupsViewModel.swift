@@ -18,6 +18,10 @@ class GroupsViewModel: ObservableObject {
         guard !groups.isEmpty else { return nil }
         return groups.reduce(0) { $0 + $1.netBalanceCents }
     }
+
+    func removeGroup(id: Int) {
+        groups.removeAll { $0.id == id }
+    }
     
     func loadGroups() async {
         if PerformanceScenarioLaunch.isEnabled {
