@@ -41,6 +41,15 @@ class GroupService {
         )
     }
 
+    /// Creates a fresh invite with the API's default expiry and unlimited uses.
+    func createInvite(groupId: Int) async throws -> CreatedInvite {
+        try await APIClient.shared.request(
+            endpoint: "/group/\(groupId)/invites",
+            method: .POST,
+            body: [:]
+        )
+    }
+
     /// Redeems an invite code. The response identifies the group — the caller never
     /// supplies a group id. Redeeming a code for a group you already belong to
     /// succeeds and returns that group.
