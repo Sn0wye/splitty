@@ -13,7 +13,7 @@ struct GroupView: View {
     @StateObject private var viewModel = GroupViewModel()
     @StateObject private var authManager = AuthenticationManager.shared
     @State private var isTitleCollapsed = false
-    @State private var showingEditSheet = false
+    @State private var showingSettings = false
     @State private var showingExpenseSheet = false
     @State private var showingSettleUpSheet = false
     @State private var showingBalancesSheet = false
@@ -72,19 +72,21 @@ struct GroupView: View {
 
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    showingEditSheet = true
+                    showingSettings = true
                 } label: {
                     Image(systemName: "gearshape")
                         .font(.system(size: 17, weight: .regular))
                         .foregroundColor(Color("foreground"))
                 }
                 .disabled(viewModel.group == nil)
-                .accessibilityLabel("Edit group")
+                .accessibilityLabel("Group settings")
             }
         }
-        .sheet(isPresented: $showingEditSheet) {
-            GroupFormSheet(group: viewModel.group) { _ in
-                Task { await viewModel.loadGroupData(groupId: groupId) }
+        .navigationDestination(isPresented: $showingSettings) {
+            if let group = viewModel.group {
+                GroupSettingsView(group: group) {
+                    Task { await viewModel.refresh(groupId: groupId) }
+                }
             }
         }
         .sheet(isPresented: $showingExpenseSheet) {
@@ -331,6 +333,20 @@ struct GroupView: View {
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .foregroundColor(Color("foreground"))
+
+            if let group = viewModel.group {
+                Button {
+                    showingSettings = true
+                } label: {
+                    MultipleAvatar(
+                        urls: group.members.compactMap { URL(string: $0.avatarUrl) },
+                        total: group.members.count
+                    )
+                }
+                .buttonStyle(.pressable(scale: 0.96))
+                .accessibilityHint("Opens group settings")
+                .padding(.vertical, 6)
+            }
 
             balanceText
         }
