@@ -17,7 +17,6 @@ struct GroupView: View {
     @State private var showingExpenseSheet = false
     @State private var showingSettleUpSheet = false
     @State private var showingBalancesSheet = false
-    @State private var shouldRefreshAfterBalances = false
     @State private var pendingDeletion: Expense?
     @State private var selectedExpenseId: Int?
 
@@ -85,7 +84,7 @@ struct GroupView: View {
         .navigationDestination(isPresented: $showingSettings) {
             if let group = viewModel.group {
                 GroupSettingsView(group: group) {
-                    Task { await viewModel.refresh(groupId: groupId) }
+                    viewModel.beginRefresh(groupId: groupId)
                 }
             }
         }
@@ -97,6 +96,7 @@ struct GroupView: View {
                     currentUserId: currentUserId
                 ) { saved in
                     viewModel.insert(saved)
+                    viewModel.noteSheetWrite()
                 }
             }
         }
@@ -108,6 +108,7 @@ struct GroupView: View {
                     currentUserId: currentUserId
                 ) { result in
                     insertPendingPayment(from: result, currentUserId: currentUserId)
+                    viewModel.noteSheetWrite()
                 }
             }
         }
@@ -123,26 +124,27 @@ struct GroupView: View {
                     members: viewModel.members
                 ) { result in
                     insertPendingPayment(from: result, currentUserId: currentUserId)
-                    shouldRefreshAfterBalances = true
+                    viewModel.noteSheetWrite()
                 }
             }
         }
         // A money write enqueues a recomputation, so the header balance is stale on return.
-        // One refetch, no polling: the flag it reads exists for exactly this.
+        // One refetch, no polling: the flag it reads exists for exactly this. A sheet the
+        // user backed out of wrote nothing, so it refetches nothing — the flag is only set
+        // by the save callback.
         .onChange(of: showingExpenseSheet) { _, isPresented in
             if !isPresented {
-                Task { await viewModel.refresh(groupId: groupId) }
+                viewModel.refreshAfterSheetDismissal(groupId: groupId)
             }
         }
         .onChange(of: showingSettleUpSheet) { _, isPresented in
             if !isPresented {
-                Task { await viewModel.refresh(groupId: groupId) }
+                viewModel.refreshAfterSheetDismissal(groupId: groupId)
             }
         }
         .onChange(of: showingBalancesSheet) { _, isPresented in
-            if !isPresented, shouldRefreshAfterBalances {
-                shouldRefreshAfterBalances = false
-                Task { await viewModel.refresh(groupId: groupId) }
+            if !isPresented {
+                viewModel.refreshAfterSheetDismissal(groupId: groupId)
             }
         }
         // An alert, not a confirmation dialog: deleting is destructive and irreversible,
@@ -228,7 +230,7 @@ struct GroupView: View {
                 .background(Color("card"))
         } else {
             LazyVStack(spacing: 0) {
-                ForEach(viewModel.groupedExpenses, id: \.dateString) { groupedExpense in
+                ForEach(viewModel.groupedExpenses) { groupedExpense in
                     dateHeader(for: groupedExpense)
                     ForEach(groupedExpense.expenses) { expense in
                         expenseRow(expense)
@@ -283,16 +285,16 @@ struct GroupView: View {
                     expense: expense,
                     members: viewModel.members,
                     currentUserId: currentUserId,
-                    onChanged: { Task { await viewModel.refresh(groupId: groupId) } },
-                    onDeleted: { Task { await viewModel.refresh(groupId: groupId) } }
+                    onChanged: { viewModel.beginRefresh(groupId: groupId) },
+                    onDeleted: { viewModel.beginRefresh(groupId: groupId) }
                 )
             case .payment:
                 SettlementDetailView(
                     settlement: expense,
                     members: viewModel.members,
                     currentUserId: currentUserId,
-                    onChanged: { Task { await viewModel.refresh(groupId: groupId) } },
-                    onDeleted: { Task { await viewModel.refresh(groupId: groupId) } }
+                    onChanged: { viewModel.beginRefresh(groupId: groupId) },
+                    onDeleted: { viewModel.beginRefresh(groupId: groupId) }
                 )
             }
         }

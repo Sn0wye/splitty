@@ -98,3 +98,85 @@ struct APIErrorMessageTests {
         #expect(!CancellationError().isAlreadyGone)
     }
 }
+
+// MARK: - Timeline construction
+
+struct TimelineGroupingTests {
+
+    @Test func ordersDaysAndRowsWithinADayNewestFirst() {
+        let grouped = Expense.groupExpensesByDate([
+            TestExpense.make(id: 1, paidBy: 1, amount: 10, splitAmounts: [1: 10], date: "2026-04-10T09:00:00Z"),
+            TestExpense.make(id: 2, paidBy: 1, amount: 10, splitAmounts: [1: 10], date: "2026-04-12T08:00:00Z"),
+            TestExpense.make(id: 3, paidBy: 1, amount: 10, splitAmounts: [1: 10], date: "2026-04-12T20:00:00Z")
+        ])
+
+        #expect(grouped.map(\.date) == grouped.map(\.date).sorted(by: >))
+        #expect(grouped.flatMap { $0.expenses }.map(\.id) == [3, 2, 1])
+    }
+
+    // Same label, different years. Identity is the normalized day, so SwiftUI cannot
+    // reuse one section for the other.
+    @Test func sectionsInDifferentYearsSharingALabelStillHaveDistinctIdentities() {
+        let grouped = Expense.groupExpensesByDate([
+            TestExpense.make(id: 1, paidBy: 1, amount: 10, splitAmounts: [1: 10], date: "2021-04-12T09:00:00Z"),
+            TestExpense.make(id: 2, paidBy: 1, amount: 10, splitAmounts: [1: 10], date: "2027-04-12T09:00:00Z")
+        ])
+
+        #expect(grouped.count == 2)
+        #expect(Set(grouped.map(\.dateString)).count == 1)
+        #expect(Set(grouped.map(\.id)).count == 2)
+    }
+
+    @Test func filesAnUndatedRowUnderItsAuditTimestamp() {
+        let grouped = Expense.groupExpensesByDate([
+            TestExpense.make(id: 1, paidBy: 1, amount: 10, splitAmounts: [1: 10])
+        ])
+
+        #expect(grouped.count == 1)
+        #expect(grouped[0].date == Calendar.current.startOfDay(for: Expense.parseTimestamp("2026-08-20T12:00:00Z")!))
+    }
+
+    @Test func keepsARowWhoseTimestampCannotBeParsed() {
+        let grouped = Expense.groupExpensesByDate([
+            TestExpense.make(id: 1, paidBy: 1, amount: 10, splitAmounts: [1: 10], date: "not a date"),
+            TestExpense.make(id: 2, paidBy: 1, amount: 10, splitAmounts: [1: 10], date: "2026-04-12T09:00:00Z")
+        ])
+
+        #expect(grouped.flatMap { $0.expenses }.map(\.id) == [2, 1])
+        #expect(grouped.last?.dateString == "Unknown")
+    }
+
+    @Test func readsTheAcceptedTimestampFormats() {
+        let withFractionalSeconds = Expense.parseTimestamp("2026-04-12T09:00:00.123Z")
+        let withoutFractionalSeconds = Expense.parseTimestamp("2026-04-12T09:00:00Z")
+        let withoutAZone = Expense.parseTimestamp("2026-04-12T09:00:00")
+        let withoutAZoneButFractional = Expense.parseTimestamp("2026-04-12T09:00:00.123")
+
+        #expect(withoutFractionalSeconds == withoutAZone)
+        #expect(withoutFractionalSeconds == withoutAZoneButFractional)
+        #expect(withFractionalSeconds != nil)
+        #expect(withFractionalSeconds! > withoutFractionalSeconds!)
+        #expect(Expense.parseTimestamp("nonsense") == nil)
+    }
+
+    // Parsing is shared, so repeating a parse must not leak formatter state between the
+    // formats — the old implementation mutated one formatter's options in place.
+    @Test func repeatedParsesOfMixedFormatsStayStable() {
+        let values = ["2026-04-12T09:00:00.123Z", "2026-04-12T09:00:00Z", "2026-04-12T09:00:00"]
+        let first = values.map(Expense.parseTimestamp)
+        let second = values.map(Expense.parseTimestamp)
+        #expect(first == second)
+        #expect(first.allSatisfy { $0 != nil })
+    }
+
+    @Test func labelsTodayAndYesterdayRelativeToNow() {
+        let now = Expense.parseTimestamp("2026-04-12T09:00:00Z")!
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: now)!
+        let older = Calendar.current.date(byAdding: .day, value: -8, to: now)!
+
+        #expect(Expense.dayLabel(for: now, now: now) == "Today")
+        #expect(Expense.dayLabel(for: yesterday, now: now) == "Yesterday")
+        #expect(Expense.dayLabel(for: older, now: now) != "Yesterday")
+        #expect(Expense.dayLabel(for: nil, now: now) == "Unknown")
+    }
+}

@@ -7,6 +7,20 @@
 
 import Foundation
 
+/// The three requests a group screen is made of, behind closures so a test can control
+/// their timing. The screen still issues them concurrently; this only names them.
+struct GroupDataSource {
+    var group: (Int) async throws -> GroupDetail
+    var expenses: (Int) async throws -> [Expense]
+    var summary: (Int) async throws -> GroupBalanceSummary
+
+    static let live = GroupDataSource(
+        group: { try await GroupService.shared.getGroup(id: $0) },
+        expenses: { try await ExpenseService.shared.getExpenses(groupId: $0) },
+        summary: { try await GroupService.shared.getBalanceSummary(groupId: $0) }
+    )
+}
+
 @MainActor
 class GroupViewModel: ObservableObject {
     @Published var group: GroupDetail?
@@ -30,6 +44,25 @@ class GroupViewModel: ObservableObject {
     private var nextPendingPaymentId = -1
     private var pendingNetAdjustmentCents = 0
 
+    private let dataSource: GroupDataSource
+
+    /// The refresh this view model owns, so a new one can cancel the one it replaces
+    /// instead of racing it.
+    private var refreshTask: Task<Void, Never>?
+
+    /// Set when a money-entry sheet reports a save, cleared by the refresh that answers
+    /// it. A sheet the user backed out of never sets it, so its dismissal costs nothing.
+    private var hasUnrefreshedSheetWrite = false
+
+    /// Counts started loads. A load that is no longer the newest publishes nothing:
+    /// cancellation is cooperative and a request already past its last suspension point
+    /// would otherwise overwrite a fresher snapshot.
+    private var loadGeneration = 0
+
+    init(dataSource: GroupDataSource = .live) {
+        self.dataSource = dataSource
+    }
+
     var members: [GroupMember] { group?.members ?? [] }
 
     func loadGroupData(groupId: Int) async {
@@ -42,7 +75,36 @@ class GroupViewModel: ObservableObject {
     /// dismissal: `balancesPending` exists so a client can show a spinner instead of
     /// polling, and the worker usually finishes inside the dismiss animation.
     func refresh(groupId: Int) async {
-        await load(groupId: groupId)
+        await beginRefresh(groupId: groupId).value
+    }
+
+    /// Records that a sheet saved something. Called from the sheet's completion handler,
+    /// which is the only place that knows a write happened — a dismissal alone does not.
+    func noteSheetWrite() {
+        hasUnrefreshedSheetWrite = true
+    }
+
+    /// Refreshes on a sheet's dismissal, but only if that sheet wrote. Canceling out of
+    /// an expense or settlement sheet changed no data, so it needs no three-request
+    /// refetch.
+    @discardableResult
+    func refreshAfterSheetDismissal(groupId: Int) -> Task<Void, Never>? {
+        guard hasUnrefreshedSheetWrite else { return nil }
+        hasUnrefreshedSheetWrite = false
+        return beginRefresh(groupId: groupId)
+    }
+
+    /// Starts a refresh the view model owns. A caller that has nothing to await — a
+    /// dismissed sheet, a detail screen reporting a write — uses this rather than
+    /// spawning a `Task` nobody can cancel.
+    @discardableResult
+    func beginRefresh(groupId: Int) -> Task<Void, Never> {
+        refreshTask?.cancel()
+        let task = Task { [weak self] () -> Void in
+            await self?.load(groupId: groupId)
+        }
+        refreshTask = task
+        return task
     }
 
     /// Shows a just-saved expense without waiting for the refetch. The row is real — the
@@ -55,6 +117,9 @@ class GroupViewModel: ObservableObject {
     }
 
     private func load(groupId: Int) async {
+        loadGeneration += 1
+        let generation = loadGeneration
+
         if PerformanceScenarioLaunch.isEnabled {
             group = PerformanceScenarios.groups.first { $0.id == groupId }
                 ?? PerformanceScenarios.groups[0]
@@ -63,9 +128,9 @@ class GroupViewModel: ObservableObject {
             errorMessage = ""
             return
         }
-        async let groupResult = GroupService.shared.getGroup(id: groupId)
-        async let expensesResult = ExpenseService.shared.getExpenses(groupId: groupId)
-        async let summaryResult = GroupService.shared.getBalanceSummary(groupId: groupId)
+        async let groupResult = dataSource.group(groupId)
+        async let expensesResult = dataSource.expenses(groupId)
+        async let summaryResult = dataSource.summary(groupId)
 
         // Gather before publishing. If SwiftUI cancels its refresh task, none of a
         // three-request snapshot should replace the data already on screen.
@@ -98,6 +163,10 @@ class GroupViewModel: ObservableObject {
             if error.isCancellation { return }
             summary = nil
         }
+
+        // A newer load started while this one was in flight. Its snapshot is the current
+        // one, and an older answer arriving late must not replace it.
+        guard generation == loadGeneration else { return }
 
         errorMessage = expensesError ?? groupError ?? ""
 

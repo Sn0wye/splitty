@@ -82,10 +82,15 @@ struct ExpenseSplit: Codable, Identifiable {
 }
 
 // MARK: - Grouped Expenses by Date
-struct GroupedExpense {
+/// One day of the timeline. Identified by the normalized day rather than by
+/// `dateString`: two days in different years share a label ("Apr 12, Sat"), and a
+/// duplicated identity makes SwiftUI reuse the wrong section.
+struct GroupedExpense: Identifiable {
     let date: Date
     let dateString: String
     let expenses: [Expense]
+
+    var id: Date { date }
 }
 
 // MARK: - Extensions for Date Formatting and Calculations
@@ -97,24 +102,17 @@ extension Expense {
     }
 
     /// Parses the API's ISO-8601 timestamps, with and without fractional seconds.
+    ///
+    /// The formatters are shared. Building one costs more than the parse it performs,
+    /// and the timeline parses every loaded record.
     static func parseTimestamp(_ value: String) -> Date? {
-        let iso8601Formatter = ISO8601DateFormatter()
-        iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractionalISO8601Formatter.date(from: value) {
+            return date
+        }
 
         if let date = iso8601Formatter.date(from: value) {
             return date
         }
-
-        iso8601Formatter.formatOptions = [.withInternetDateTime]
-        if let date = iso8601Formatter.date(from: value) {
-            return date
-        }
-
-        // Timestamps serialized without a zone marker are UTC, like every other one.
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
 
         var cleaned = value
         if let fractionRange = value.range(of: "\\.\\d+", options: .regularExpression) {
@@ -122,22 +120,54 @@ extension Expense {
         }
         cleaned = cleaned.replacingOccurrences(of: "Z", with: "")
 
-        return formatter.date(from: cleaned)
+        return zonelessUTCFormatter.date(from: cleaned)
     }
 
+    private static let fractionalISO8601Formatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let iso8601Formatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    /// Timestamps serialized without a zone marker are UTC, like every other one.
+    private static let zonelessUTCFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "UTC")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return formatter
+    }()
+
+    private static let dayLabelFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d, E" // Apr 12, Sat
+        return formatter
+    }()
+
     var dayString: String {
-        guard let date = effectiveDate else { return "Unknown" }
-        
+        Self.dayLabel(for: effectiveDate)
+    }
+
+    /// The section heading for an already-parsed date. Takes `now` so the relative
+    /// labels can be tested without waiting for midnight.
+    static func dayLabel(for date: Date?, now: Date = Date()) -> String {
+        guard let date else { return "Unknown" }
+
         let calendar = Calendar.current
-        if calendar.isDateInToday(date) {
+        if calendar.isDate(date, inSameDayAs: now) {
             return "Today"
-        } else if calendar.isDateInYesterday(date) {
-            return "Yesterday"
-        } else {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM d, E" // Apr 12, Sat
-            return formatter.string(from: date)
         }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+           calendar.isDate(date, inSameDayAs: yesterday) {
+            return "Yesterday"
+        }
+        return dayLabelFormatter.string(from: date)
     }
     
     /// The counterparty on a settlement: the split that is not the payer's, which is the
@@ -167,26 +197,31 @@ extension Expense {
         return (isUserPaid, userSplit)
     }
     
-    static func groupExpensesByDate(_ expenses: [Expense]) -> [GroupedExpense] {
+    /// Builds the whole timeline in one pass and hands back a finished snapshot.
+    ///
+    /// Each record's timestamp is parsed exactly once. Reading `effectiveDate` from
+    /// inside the grouping key and the sort comparison parses the same string O(n log n)
+    /// times, which is what made a 500-row group expensive to open.
+    static func groupExpensesByDate(_ expenses: [Expense], now: Date = Date()) -> [GroupedExpense] {
         let calendar = Calendar.current
-        
-        let grouped = Dictionary(grouping: expenses) { expense in
-            guard let date = expense.effectiveDate else { return Date.distantPast }
-            return calendar.startOfDay(for: date)
+        let dated = expenses.map { (expense: $0, date: $0.effectiveDate) }
+
+        // An unparsable timestamp still belongs on screen: it files under the oldest
+        // possible day, under the label the row itself would have shown.
+        let grouped = Dictionary(grouping: dated) { entry in
+            entry.date.map(calendar.startOfDay(for:)) ?? Date.distantPast
         }
-        
-        return grouped.compactMap { (date, expenses) in
-            let sortedExpenses = expenses.sorted { expense1, expense2 in
-                guard let date1 = expense1.effectiveDate,
-                      let date2 = expense2.effectiveDate else { return false }
-                return date1 > date2
+
+        return grouped.map { day, entries in
+            let sorted = entries.sorted { first, second in
+                guard let firstDate = first.date, let secondDate = second.date else { return false }
+                return firstDate > secondDate
             }
-            
-            let expense = expenses.first!
+
             return GroupedExpense(
-                date: date,
-                dateString: expense.dayString,
-                expenses: sortedExpenses
+                date: day,
+                dateString: dayLabel(for: sorted.first?.date, now: now),
+                expenses: sorted.map(\.expense)
             )
         }.sorted { $0.date > $1.date }
     }
