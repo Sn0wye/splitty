@@ -250,6 +250,16 @@ extension Error {
         }
         return false
     }
+
+    /// A delete can race another member's delete. A 404 means the requested end state
+    /// already holds, whether the networking layer returned it directly or wrapped it.
+    var isAlreadyGone: Bool {
+        if case .httpError(404, _) = self as? APIError { return true }
+        if case .networkError(let underlying) = self as? APIError {
+            return underlying.isAlreadyGone
+        }
+        return false
+    }
 }
 
 // MARK: - Request Types

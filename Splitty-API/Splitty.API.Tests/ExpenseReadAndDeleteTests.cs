@@ -74,6 +74,31 @@ public sealed class ExpenseReadAndDeleteTests(ApiFactory factory)
     }
 
     [Fact]
+    public async Task Deleting_a_fully_settled_expense_reverses_the_debt()
+    {
+        var group = await GroupFixture.CreateAsync(factory);
+        await factory.DrainProcessedAsync();
+        var expenseId = await group.CreateExpenseAsync(amount: 20m, share: 10m);
+        await factory.WaitForProcessedAsync();
+        await group.SettleAsync(10m);
+        await factory.WaitForProcessedAsync();
+
+        var response = await group.Guest.DeleteExpenseAsync(group.Id, expenseId);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        await factory.WaitForProcessedAsync();
+
+        var guestSummary = await group.Guest.ReadSummaryAsync(group.Id);
+        var ownerSummary = await group.Owner.ReadSummaryAsync(group.Id);
+        var guestBalance = guestSummary.AmountOwedBy(group.GuestId, group.OwnerId);
+        var ownerBalance = ownerSummary.AmountOwedBy(group.OwnerId, group.GuestId);
+
+        Assert.Equal(10m, guestBalance);
+        Assert.Equal(-10m, ownerBalance);
+        Assert.Equal(0m, guestBalance + ownerBalance);
+    }
+
+    [Fact]
     public async Task Deleting_an_expense_takes_its_splits_with_it()
     {
         var group = await GroupFixture.CreateAsync(factory);

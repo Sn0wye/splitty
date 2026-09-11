@@ -85,4 +85,16 @@ struct APIErrorMessageTests {
         #expect(APIError.networkError(URLError(.cancelled)).isCancellation)
         #expect(!URLError(.notConnectedToInternet).isCancellation)
     }
+
+    @Test func recognisesOnlyANotFoundResponseAsAlreadyGone() {
+        #expect(APIError.httpError(404, message: nil).isAlreadyGone)
+        #expect(APIError.httpError(404, message: "This no longer exists.").isAlreadyGone)
+        #expect(APIError.networkError(APIError.httpError(404, message: nil)).isAlreadyGone)
+
+        #expect(!APIError.httpError(400, message: nil).isAlreadyGone)
+        #expect(!APIError.httpError(403, message: nil).isAlreadyGone)
+        #expect(!APIError.httpError(500, message: nil).isAlreadyGone)
+        #expect(!URLError(.notConnectedToInternet).isAlreadyGone)
+        #expect(!CancellationError().isAlreadyGone)
+    }
 }

@@ -71,6 +71,11 @@ contribution excluded — the stored balance already counts it, so a cap read ra
 even re-saving the amount already there. See
 `docs/adr/0001-settlements-have-their-own-routes.md`.
 
+Deletion is immediate and permanent, with no history or restore. Any member may delete any
+expense or settlement, just as any member may edit one. If a settlement has already paid
+against an expense, deleting that expense deliberately leaves the payment in place and
+reverses the debt so the group can settle it in the other direction.
+
 **Settle direction** is always caller-as-debtor. `POST /settle` records *the caller* paying
 the peer, so "who can settle a debt" has exactly one answer: the person who owes it. There is
 no route for recording that someone paid *you*, and no counterparty confirmation.

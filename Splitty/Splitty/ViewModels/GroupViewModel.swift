@@ -199,6 +199,7 @@ class GroupViewModel: ObservableObject {
             await refresh(groupId: groupId)
         } catch {
             actionErrorMessage = error.displayMessage
+            await refresh(groupId: groupId)
         }
     }
 }
