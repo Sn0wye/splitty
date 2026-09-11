@@ -77,6 +77,12 @@ struct GroupsView: View {
             .task {
                 await viewModel.loadGroups()
             }
+            .onAppear {
+                removeExitedGroup()
+            }
+            .onChange(of: appState.exitedGroupId) { _, _ in
+                removeExitedGroup()
+            }
             .onChange(of: appState.selectedTab) { _, newTab in
                 // Coming back from a group picks up any edit made in there.
                 if newTab == .groups {
@@ -100,6 +106,11 @@ struct GroupsView: View {
                 }
             }
         }
+    }
+
+    private func removeExitedGroup() {
+        guard let exitedGroupId = appState.exitedGroupId else { return }
+        viewModel.removeGroup(id: exitedGroupId)
     }
 }
 

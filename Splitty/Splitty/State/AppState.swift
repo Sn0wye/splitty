@@ -35,6 +35,7 @@ final class AppState: ObservableObject {
 
     @Published var selectedTab: AppTab = .groups
     @Published var groupNotice: String?
+    @Published private(set) var exitedGroupId: Int?
 
     @Published var currentGroupId: Int? {
         didSet {
@@ -53,12 +54,20 @@ final class AppState: ObservableObject {
 
     func openGroup(_ id: Int) {
         groupNotice = nil
+        exitedGroupId = nil
         currentGroupId = id
         selectedTab = .group
     }
 
     func leaveUnavailableGroup(message: String) {
         groupNotice = message
+        currentGroupId = nil
+        selectedTab = .groups
+    }
+
+    func exitGroup(_ id: Int, message: String? = nil) {
+        groupNotice = message
+        exitedGroupId = id
         currentGroupId = nil
         selectedTab = .groups
     }

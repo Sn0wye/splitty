@@ -91,6 +91,9 @@ struct GroupView: View {
                     },
                     onGroupUnavailable: { message in
                         appState.leaveUnavailableGroup(message: message)
+                    },
+                    onGroupExited: { message in
+                        appState.exitGroup(groupId, message: message)
                     }
                 )
             }

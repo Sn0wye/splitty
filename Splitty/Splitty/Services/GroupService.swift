@@ -63,4 +63,11 @@ class GroupService {
             method: .DELETE
         )
     }
+
+    func leave(groupId: Int) async throws {
+        let _: EmptyResponse = try await APIClient.shared.request(
+            endpoint: "/group/\(groupId)/leave",
+            method: .POST
+        )
+    }
 }
