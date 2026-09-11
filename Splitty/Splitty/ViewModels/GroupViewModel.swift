@@ -55,6 +55,14 @@ class GroupViewModel: ObservableObject {
     }
 
     private func load(groupId: Int) async {
+        if PerformanceScenarioLaunch.isEnabled {
+            group = PerformanceScenarios.groups.first { $0.id == groupId }
+                ?? PerformanceScenarios.groups[0]
+            expenses = PerformanceScenarios.timeline
+            groupedExpenses = Expense.groupExpensesByDate(expenses)
+            errorMessage = ""
+            return
+        }
         async let groupResult = GroupService.shared.getGroup(id: groupId)
         async let expensesResult = ExpenseService.shared.getExpenses(groupId: groupId)
         async let summaryResult = GroupService.shared.getBalanceSummary(groupId: groupId)

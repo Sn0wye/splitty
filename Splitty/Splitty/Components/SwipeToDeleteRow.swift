@@ -59,6 +59,7 @@ struct SwipeToDeleteRow<Content: View>: View {
                 .offset(x: shownOffset)
         }
         .clipped()
+        .accessibilityIdentifier("timeline.row")
         .sensoryFeedback(.impact(flexibility: .rigid), trigger: commitCount)
         // Simultaneous, not exclusive: a plain `.gesture` loses the drag to the scroll view's
         // pan recogniser, which is why the row stopped swiping at all. Both see the drag,

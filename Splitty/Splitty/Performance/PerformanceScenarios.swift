@@ -7,6 +7,18 @@ enum PerformanceScenarios {
         URL(string: "https://picsum.photos/id/\(index)/1024/1024")
     }
 
+    static let profileUser = user(1)
+
+    static let splitMembers: [GroupMember] = (1...50).map { index in
+        GroupMember(
+            id: index,
+            userId: index,
+            name: "Member \(index)",
+            email: "member\(index)@example.com",
+            avatarUrl: largeAvatarURLs[(index - 1) % largeAvatarURLs.count].absoluteString
+        )
+    }
+
     static let groups: [Group] = (1...100).map { index in
         let avatar = largeAvatarURLs[(index - 1) % largeAvatarURLs.count].absoluteString
         return Group(
@@ -15,7 +27,7 @@ enum PerformanceScenarios {
             description: nil,
             netBalanceCents: index.isMultiple(of: 2) ? 1_250 : -980,
             createdAt: "2026-01-01T12:00:00Z",
-            members: [
+            members: index == 1 ? splitMembers : [
                 GroupMember(
                     id: index * 2 - 1,
                     userId: 1,
@@ -72,17 +84,7 @@ enum PerformanceScenarios {
         )
     }
 
-    static let splitMembers: [GroupMember] = (1...50).map { index in
-        GroupMember(
-            id: index,
-            userId: index,
-            name: "Member \(index)",
-            email: "member\(index)@example.com",
-            avatarUrl: largeAvatarURLs[(index - 1) % largeAvatarURLs.count].absoluteString
-        )
-    }
-
-    private static func user(_ id: Int) -> User {
+    static func user(_ id: Int) -> User {
         User(
             id: id,
             name: "User \(id)",
