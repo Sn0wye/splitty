@@ -15,8 +15,8 @@ public abstract class BalanceServiceDecorator(IBalanceService inner) : IBalanceS
     public Task<List<Balance>> GetGroupUserBalance(int groupId, int userId) =>
         inner.GetGroupUserBalance(groupId, userId);
 
-    public Task SettleUp(int groupId, int userId, int peerId, decimal amount) =>
-        inner.SettleUp(groupId, userId, peerId, amount);
+    public Task SettleUp(int groupId, int userId, int peerId, decimal amount, DateTime? date) =>
+        inner.SettleUp(groupId, userId, peerId, amount, date);
 
     public Task UpdateSettlement(int groupId, int expenseId, int userId, decimal amount, DateTime? date) =>
         inner.UpdateSettlement(groupId, expenseId, userId, amount, date);

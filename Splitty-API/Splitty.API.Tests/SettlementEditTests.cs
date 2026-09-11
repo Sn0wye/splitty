@@ -180,6 +180,20 @@ public sealed class SettlementEditTests(ApiFactory factory)
     }
 
     [Fact]
+    public async Task A_date_supplied_on_create_is_stored()
+    {
+        var group = await GroupFixture.CreateAsync(factory);
+        await factory.DrainProcessedAsync();
+        await group.CreateExpenseAsync(amount: 20m, share: 10m);
+        await factory.WaitForProcessedAsync();
+        var date = new DateTime(2026, 3, 1, 12, 0, 0, DateTimeKind.Utc);
+
+        var settlementId = await group.SettleAsync(4m, date);
+
+        Assert.Equal(date, await StoredDateAsync(settlementId));
+    }
+
+    [Fact]
     public async Task An_edit_can_move_the_settlement_date()
     {
         var (group, settlementId) = await SettledAsync(owed: 10m, settled: 4m);
@@ -188,9 +202,31 @@ public sealed class SettlementEditTests(ApiFactory factory)
         (await group.Guest.UpdateSettlementAsync(group.Id, settlementId, new { amount = 4m, date }))
             .EnsureSuccessStatusCode();
 
-        Assert.Equal(date, await factory.UseDbAsync(db => db.Expense
+        Assert.Equal(date, await StoredDateAsync(settlementId));
+    }
+
+    [Fact]
+    public async Task A_null_date_on_edit_leaves_the_settlement_date_unchanged()
+    {
+        var group = await GroupFixture.CreateAsync(factory);
+        await factory.DrainProcessedAsync();
+        await group.CreateExpenseAsync(amount: 20m, share: 10m);
+        await factory.WaitForProcessedAsync();
+        var date = new DateTime(2026, 3, 1, 12, 0, 0, DateTimeKind.Utc);
+        var settlementId = await group.SettleAsync(4m, date);
+
+        (await group.Guest.UpdateSettlementAsync(
+            group.Id,
+            settlementId,
+            new { amount = 4m, date = (DateTime?)null }))
+            .EnsureSuccessStatusCode();
+
+        Assert.Equal(date, await StoredDateAsync(settlementId));
+    }
+
+    private Task<DateTime?> StoredDateAsync(int settlementId) =>
+        factory.UseDbAsync(db => db.Expense
             .Where(e => e.Id == settlementId)
             .Select(e => e.Date)
-            .FirstAsync()));
-    }
+            .FirstAsync());
 }

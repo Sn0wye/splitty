@@ -395,7 +395,8 @@ struct GroupView: View {
             groupId: groupId,
             currentUser: currentUser,
             peer: result.peer,
-            amountCents: result.amountCents
+            amountCents: result.amountCents,
+            date: result.date
         )
     }
 

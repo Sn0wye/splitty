@@ -91,9 +91,9 @@ public sealed class GroupFixture
     /// The id of the settlement the guest just recorded — the settle route answers with no
     /// body, and every settlement assertion needs a row to point at.
     /// </summary>
-    public async Task<int> SettleAsync(decimal amount)
+    public async Task<int> SettleAsync(decimal amount, DateTime? date = null)
     {
-        (await Guest.SettleUpAsync(Id, new { withUserId = OwnerId, amount })).EnsureSuccessStatusCode();
+        (await Guest.SettleUpAsync(Id, new { withUserId = OwnerId, amount, date })).EnsureSuccessStatusCode();
 
         return await _factory.UseDbAsync(db => db.Expense
             .Where(e => e.GroupId == Id && e.Type == ExpenseType.Payment)

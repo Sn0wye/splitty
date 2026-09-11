@@ -13,24 +13,32 @@ class SettlementService {
 
     private init() {}
 
-    func settleUp(groupId: Int, withUserId: Int, amountCents: Int) async throws {
+    func settleUp(groupId: Int, withUserId: Int, amountCents: Int, date: Date) async throws {
         let _: EmptyResponse = try await APIClient.shared.request(
             endpoint: "/group/\(groupId)/settle",
             method: .POST,
             body: [
                 "withUserId": withUserId,
-                "amount": Money.requestValue(cents: amountCents)
+                "amount": Money.requestValue(cents: amountCents),
+                "date": ExpenseService.timestamp(from: date)
             ]
         )
     }
 
-    /// Leaves the stored date alone. The edit route treats an absent date as "keep it",
-    /// and the amount screen has no date control to imply otherwise.
-    func updateSettlement(groupId: Int, expenseId: Int, amountCents: Int) async throws {
+    /// A nil date leaves the stored date unchanged.
+    func updateSettlement(
+        groupId: Int,
+        expenseId: Int,
+        amountCents: Int,
+        date: Date? = nil
+    ) async throws {
+        var body: [String: Any] = ["amount": Money.requestValue(cents: amountCents)]
+        if let date { body["date"] = ExpenseService.timestamp(from: date) }
+
         let _: EmptyResponse = try await APIClient.shared.request(
             endpoint: "/group/\(groupId)/settlements/\(expenseId)",
             method: .PUT,
-            body: ["amount": Money.requestValue(cents: amountCents)]
+            body: body
         )
     }
 

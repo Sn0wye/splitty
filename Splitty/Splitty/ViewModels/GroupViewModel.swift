@@ -132,6 +132,7 @@ class GroupViewModel: ObservableObject {
         currentUser: GroupMember,
         peer: GroupMember,
         amountCents: Int,
+        date: Date? = nil,
         now: Date = Date()
     ) -> Expense {
         let id = nextPendingPaymentId
@@ -149,7 +150,7 @@ class GroupViewModel: ObservableObject {
             description: "Payment to \(peer.name)",
             type: .payment,
             splitMode: nil,
-            date: nil,
+            date: date.map(ExpenseService.timestamp(from:)),
             createdAt: timestamp,
             updatedAt: timestamp,
             paidByUser: payer,

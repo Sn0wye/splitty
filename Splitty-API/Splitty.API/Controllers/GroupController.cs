@@ -363,7 +363,12 @@ public class GroupController(
         
         if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
 
-        await balanceService.SettleUp(groupId, int.Parse(userId), request.WithUserId, request.Amount);
+        await balanceService.SettleUp(
+            groupId,
+            int.Parse(userId),
+            request.WithUserId,
+            request.Amount,
+            request.Date);
 
         await balanceRecomputeQueue.EnqueueAsync(groupId);
 

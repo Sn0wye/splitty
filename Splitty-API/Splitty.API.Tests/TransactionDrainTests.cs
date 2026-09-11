@@ -66,7 +66,7 @@ public sealed class TransactionDrainTests
         public Task<List<Balance>> GetGroupUserBalance(int groupId, int userId) =>
             throw new NotSupportedException();
 
-        public Task SettleUp(int groupId, int userId, int peerId, decimal amount) =>
+        public Task SettleUp(int groupId, int userId, int peerId, decimal amount, DateTime? date) =>
             throw new NotSupportedException();
 
         public Task UpdateSettlement(int groupId, int expenseId, int userId, decimal amount, DateTime? date) =>

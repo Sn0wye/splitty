@@ -71,7 +71,7 @@ public class BalanceService(
         return await balanceRepository.GetUserGroupBalances(userId, groupId);
     }
 
-    public async Task SettleUp(int groupId, int userId, int peerId, decimal amount)
+    public async Task SettleUp(int groupId, int userId, int peerId, decimal amount, DateTime? date)
     {
         if (userId == peerId)
         {
@@ -108,6 +108,7 @@ public class BalanceService(
             Amount = amount,
             PaidBy = userId,
             Type = ExpenseType.Payment,
+            Date = ExpenseDate.Normalize(date),
             Splits = new List<ExpenseSplit>
             {
                 new()
