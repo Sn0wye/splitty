@@ -25,10 +25,17 @@ struct GroupFormSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Name", text: $viewModel.name)
-                        .focused($nameFocused)
-                    TextField("Description (optional)", text: $viewModel.description, axis: .vertical)
-                        .lineLimit(1...3)
+                    HStack(spacing: 14) {
+                        fieldIcon("person.2")
+                        TextField("Name", text: $viewModel.name)
+                            .focused($nameFocused)
+                    }
+
+                    HStack(alignment: .top, spacing: 14) {
+                        fieldIcon("text.alignleft")
+                        TextField("Description (optional)", text: $viewModel.description, axis: .vertical)
+                            .lineLimit(1...3)
+                    }
                 }
                 
                 if let errorMessage = viewModel.errorMessage {
@@ -63,6 +70,13 @@ struct GroupFormSheet: View {
             }
             .onAppear { nameFocused = true }
         }
+    }
+
+    private func fieldIcon(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 16))
+            .foregroundStyle(.secondary)
+            .frame(width: 24)
     }
 }
 
