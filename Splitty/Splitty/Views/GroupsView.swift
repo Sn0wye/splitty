@@ -55,6 +55,7 @@ struct GroupsView: View {
                         }
                     }
                 }
+                .performanceScrollSignpost(.groupsScroll)
                 .refreshable {
                     await viewModel.loadGroups()
                 }

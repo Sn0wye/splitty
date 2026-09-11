@@ -1,12 +1,11 @@
-//
-//  AuthenticationManager.swift
-//  Splitty
-//
-//  Created by Snowye on 19/11/25.
-//
-
 import Foundation
 import SwiftUI
+
+@MainActor
+protocol AuthenticationSource {
+    func isAuthenticated() -> Bool
+    func currentUser() async throws -> User
+}
 
 @MainActor
 class AuthenticationManager: ObservableObject {
@@ -19,12 +18,21 @@ class AuthenticationManager: ObservableObject {
     @Published var currentUser: User?
 
     static let shared = AuthenticationManager()
-    
+
+    private let source: (any AuthenticationSource)?
+
     private init() {
+        source = nil
         checkAuthenticationStatus()
         setupUnauthorizedObserver()
     }
-    
+
+    init(source: any AuthenticationSource) {
+        self.source = source
+        checkAuthenticationStatus()
+        setupUnauthorizedObserver()
+    }
+
     private func setupUnauthorizedObserver() {
         NotificationCenter.default.addObserver(
             forName: .unauthorizedError,
@@ -35,11 +43,18 @@ class AuthenticationManager: ObservableObject {
             Task { @MainActor in self?.logout() }
         }
     }
-    
+
     func checkAuthenticationStatus() {
-        isAuthenticated = AuthService.shared.isAuthenticated()
+        isAuthenticated = source?.isAuthenticated() ?? AuthService.shared.isAuthenticated()
     }
-    
+
+    /// Token presence decides the first screen; the profile fetch fills `currentUser`
+    /// when a token exists. There is no cosmetic delay.
+    func restoreSession() async {
+        checkAuthenticationStatus()
+        await hydrateCurrentUser()
+    }
+
     func login(user: User) {
         currentUser = user
         isAuthenticated = true
@@ -52,7 +67,11 @@ class AuthenticationManager: ObservableObject {
         guard isAuthenticated, currentUser == nil else { return }
 
         do {
-            currentUser = try await AuthService.shared.getCurrentUser()
+            if let source {
+                currentUser = try await source.currentUser()
+            } else {
+                currentUser = try await AuthService.shared.getCurrentUser()
+            }
         } catch {
             print("⚠️ Could not load the signed-in profile: \(error.localizedDescription)")
         }

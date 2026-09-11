@@ -101,10 +101,12 @@ struct ExpenseSheet: View {
     // MARK: - Behaviour
 
     private func handle(key: KeypadKey) {
-        switch key {
-        case .digit(let digit): viewModel.amount.type(digit: digit)
-        case .decimalPoint: viewModel.amount.typeDecimalPoint()
-        case .backspace: viewModel.amount.backspace()
+        PerformanceSignpost.around(.amountEntry) {
+            switch key {
+            case .digit(let digit): viewModel.amount.type(digit: digit)
+            case .decimalPoint: viewModel.amount.typeDecimalPoint()
+            case .backspace: viewModel.amount.backspace()
+            }
         }
     }
 

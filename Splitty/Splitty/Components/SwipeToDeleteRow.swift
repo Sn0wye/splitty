@@ -111,11 +111,14 @@ struct SwipeToDeleteRow<Content: View>: View {
 
         let projected = value.predictedEndTranslation.width
         let committed = projected < -Self.commitWidth
+        let release = PerformanceSignpost.begin(.swipeRelease)
 
         // Bounce, and only here: the row is coming home off a throw, and the overshoot is
         // the momentum the hand put into it. Nothing else in the row animates with bounce.
         withAnimation(.snappy(duration: 0.3, extraBounce: 0.1)) {
             dragOffset = 0
+        } completion: {
+            PerformanceSignpost.end(.swipeRelease, release)
         }
 
         if committed {

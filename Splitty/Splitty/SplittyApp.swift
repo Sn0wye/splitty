@@ -1,14 +1,11 @@
-//
-//  SplittyApp.swift
-//  Splitty
-//
-//  Created by Snowye on 06/02/25.
-//
-
 import SwiftUI
 
 @main
 struct SplittyApp: App {
+    init() {
+        PerformanceSignpost.beginLaunch()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -22,51 +19,18 @@ struct SplittyApp: App {
 
 struct RootView: View {
     @StateObject private var authManager = AuthenticationManager.shared
-    @State private var isCheckingAuth = true
-    
+
     var body: some View {
         ZStack {
-            if isCheckingAuth {
-                SplashView()
-            } else if authManager.isAuthenticated {
+            if authManager.isAuthenticated {
                 ContentView()
             } else {
                 LoginView()
             }
         }
-        .onAppear {
-            checkAuthenticationStatus()
+        .task {
+            PerformanceSignpost.endLaunch()
+            await authManager.restoreSession()
         }
-    }
-    
-    private func checkAuthenticationStatus() {
-        // Add a small delay to show the splash screen
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            authManager.checkAuthenticationStatus()
-            isCheckingAuth = false
-
-            // A launch that restores a Keychain token skips the sign-in screen, so this is
-            // the only place the profile gets loaded.
-            Task { await authManager.hydrateCurrentUser() }
-        }
-    }
-}
-
-struct SplashView: View {
-    var body: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "dollarsign.circle.fill")
-                .font(.system(size: 80))
-                .foregroundColor(.blue)
-            
-            Text("Splitty")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-            
-            ProgressView()
-                .scaleEffect(1.2)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
     }
 }
