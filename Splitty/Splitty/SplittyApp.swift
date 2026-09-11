@@ -4,6 +4,7 @@ import SwiftUI
 struct SplittyApp: App {
     init() {
         PerformanceSignpost.beginLaunch()
+        PerformanceScenarioLaunch.logDeviceConditions()
     }
 
     var body: some Scene {

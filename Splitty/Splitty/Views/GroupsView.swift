@@ -46,7 +46,7 @@ struct GroupsView: View {
                 .padding([.top, .horizontal])
                 
                 
-                ScrollView {
+                ScrollView(.vertical) {
                     VStack(spacing: 10) {
                         ForEach(viewModel.groups) { group in
                             GroupCard(group: group) {
@@ -55,6 +55,7 @@ struct GroupsView: View {
                         }
                     }
                 }
+                .accessibilityIdentifier("groups.scroll")
                 .performanceScrollSignpost(.groupsScroll)
                 .refreshable {
                     await viewModel.loadGroups()

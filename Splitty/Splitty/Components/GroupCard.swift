@@ -20,12 +20,14 @@ struct GroupCard: View {
             VStack {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading) {
-                        MultipleAvatar(urls: group.members.compactMap { member in
-                            return URL(string: member.avatarUrl)
-                        })
+                        MultipleAvatar(
+                            urls: group.members.compactMap { URL(string: $0.avatarUrl) },
+                            total: group.members.count
+                        )
                         
-                        Text("\(group.name)")
+                        Text(group.name)
                             .fontWeight(.semibold)
+                            .lineLimit(1)
                             .padding(.bottom, 2)
                         
                         Text(group.netBalanceCents > 0 ? "You are owed" : "You owe")
@@ -36,8 +38,7 @@ struct GroupCard: View {
                             .fontWeight(.bold)
                             .foregroundColor(positiveBalance ? .green : .red)
                     }
-                    
-                    Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     
                     Image(systemName: "ellipsis")
                 }
@@ -45,7 +46,7 @@ struct GroupCard: View {
             .frame(maxWidth: .infinity)
             .padding()
             .background(Color("card"))
-            .cornerRadius(10)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
             .padding(.horizontal, 20)
         }
         // Shallow: the card is the width of the screen, so a small percentage is a lot of
@@ -92,4 +93,20 @@ struct GroupCard: View {
         ]
     ), onTap: {})
 
+    GroupCard(group: Group(
+        id: 3,
+        name: "A very crowded dinner with a long name",
+        description: nil,
+        netBalanceCents: 1_250,
+        createdAt: "2025-02-02T13:53:41.950093Z",
+        members: (1...20).map { index in
+            GroupMember(
+                id: index,
+                userId: index,
+                name: "Member \(index)",
+                email: "member\(index)@example.com",
+                avatarUrl: "https://api.dicebear.com/10.x/lorelei/svg?seed=\(index)"
+            )
+        }
+    ), onTap: {})
 }

@@ -45,12 +45,22 @@ class AuthenticationManager: ObservableObject {
     }
 
     func checkAuthenticationStatus() {
+        if PerformanceScenarioLaunch.isEnabled {
+            isAuthenticated = true
+            currentUser = PerformanceScenarios.profileUser
+            return
+        }
         isAuthenticated = source?.isAuthenticated() ?? AuthService.shared.isAuthenticated()
     }
 
     /// Token presence decides the first screen; the profile fetch fills `currentUser`
     /// when a token exists. There is no cosmetic delay.
     func restoreSession() async {
+        if PerformanceScenarioLaunch.isEnabled {
+            isAuthenticated = true
+            currentUser = PerformanceScenarios.profileUser
+            return
+        }
         checkAuthenticationStatus()
         await hydrateCurrentUser()
     }

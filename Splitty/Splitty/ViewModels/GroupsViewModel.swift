@@ -20,6 +20,10 @@ class GroupsViewModel: ObservableObject {
     }
     
     func loadGroups() async {
+        if PerformanceScenarioLaunch.isEnabled {
+            groups = PerformanceScenarios.groups
+            return
+        }
         isLoading = true
         defer { isLoading = false }
         do {

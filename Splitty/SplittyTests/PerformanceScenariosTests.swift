@@ -43,4 +43,26 @@ struct PerformanceScenariosTests {
         #expect(amounts.count == 50)
         #expect(amounts.values.reduce(0, +) == 10_000)
     }
+
+    @Test func theFirstGroupCarriesTheFiftyMemberSplit() {
+        #expect(PerformanceScenarios.groups[0].members.map(\.userId) == Array(1...50))
+    }
+
+    @Test func launchArgumentEnablesTheProfilingFixtures() {
+        #expect(
+            PerformanceScenarioLaunch.enabled(
+                arguments: ["-SplittyPerformanceScenario"],
+                environment: [:]
+            )
+        )
+        #expect(
+            PerformanceScenarioLaunch.enabled(
+                arguments: [],
+                environment: ["SPLITTY_PERFORMANCE_SCENARIO": "1"]
+            )
+        )
+        #expect(
+            !PerformanceScenarioLaunch.enabled(arguments: [], environment: [:])
+        )
+    }
 }
