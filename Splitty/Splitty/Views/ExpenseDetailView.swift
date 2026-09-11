@@ -23,23 +23,30 @@ struct ExpenseDetailView: View {
     var body: some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(expense.description)
-                        .font(.title2.weight(.semibold))
-                    Text(Money.formatted(amount: expense.amount))
-                        .font(.largeTitle.weight(.bold))
-                        .monospacedDigit()
-                    Text("\(payerName) paid · \(dateText)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                HStack(spacing: 12) {
+                    MemberAvatar(display: payerDisplay, size: 48)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(expense.description)
+                            .font(.title2.weight(.semibold))
+                        Text(Money.formatted(amount: expense.amount))
+                            .font(.largeTitle.weight(.bold))
+                            .monospacedDigit()
+                        Text("\(payerName) paid · \(dateText)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 .padding(.vertical, 4)
             }
 
             Section(splitHeader) {
                 ForEach(expense.splits) { split in
+                    let display = display(for: split.userId)
                     HStack {
-                        Text(name(for: split.userId))
+                        MemberAvatar(display: display)
+                        Text(display.name)
+                            .foregroundStyle(display.isRemoved ? Color("muted-foreground") : Color("foreground"))
                         Spacer()
                         // A percentage split shows the share it was written as next to the
                         // money it came to: the payoff for storing the mode is that
@@ -121,7 +128,15 @@ struct ExpenseDetailView: View {
     }
 
     private var payerName: String {
-        expense.paidBy == currentUserId ? "You" : expense.paidByUser.name
+        expense.paidBy == currentUserId ? "You" : payerDisplay.name
+    }
+
+    private var payerDisplay: MemberDisplay {
+        MemberDisplay(
+            expense.paidByUser,
+            currentUserId: currentUserId,
+            currentUserLabel: "You"
+        )
     }
 
     private var dateText: String {
@@ -129,12 +144,19 @@ struct ExpenseDetailView: View {
         return date.formatted(.dateTime.weekday(.abbreviated).day().month().year())
     }
 
-    private func name(for userId: Int) -> String {
-        userId == currentUserId
-            ? "You"
-            : members.first { $0.userId == userId }?.name
-                ?? expense.splits.first { $0.userId == userId }?.user.name
-                ?? "Unknown"
+    private func display(for userId: Int) -> MemberDisplay {
+        if let member = members.first(where: { $0.userId == userId }) {
+            let display = MemberDisplay(member)
+            return userId == currentUserId
+                ? MemberDisplay(name: "You", avatarURL: display.avatarURL)
+                : display
+        }
+
+        if let user = expense.splits.first(where: { $0.userId == userId })?.user {
+            return MemberDisplay(user)
+        }
+
+        return MemberDisplay(name: "Unknown", avatarURL: nil)
     }
 
     private func delete() {

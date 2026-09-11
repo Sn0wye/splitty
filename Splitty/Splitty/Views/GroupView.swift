@@ -77,15 +77,22 @@ struct GroupView: View {
                         .font(.system(size: 17, weight: .regular))
                         .foregroundColor(Color("foreground"))
                 }
-                .disabled(viewModel.group == nil)
+                .disabled(viewModel.group == nil || currentUserId == nil)
                 .accessibilityLabel("Group settings")
             }
         }
         .navigationDestination(isPresented: $showingSettings) {
-            if let group = viewModel.group {
-                GroupSettingsView(group: group) {
-                    viewModel.beginRefresh(groupId: groupId)
-                }
+            if let group = viewModel.group, let currentUserId {
+                GroupSettingsView(
+                    group: group,
+                    currentUserId: currentUserId,
+                    onGroupSaved: {
+                        viewModel.beginRefresh(groupId: groupId)
+                    },
+                    onGroupUnavailable: { message in
+                        appState.leaveUnavailableGroup(message: message)
+                    }
+                )
             }
         }
         .sheet(isPresented: $showingExpenseSheet) {
@@ -457,8 +464,7 @@ struct ExpenseRow: View {
     
     var body: some View {
         HStack(spacing: 16) {
-            // Category icon
-            categoryIcon
+            leadingIcon
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(expense.description)
@@ -497,6 +503,15 @@ struct ExpenseRow: View {
                 .foregroundColor(.white)
         }
     }
+
+    @ViewBuilder
+    private var leadingIcon: some View {
+        if let removedDisplay {
+            MemberAvatar(display: removedDisplay)
+        } else {
+            categoryIcon
+        }
+    }
     
     private var categoryColor: Color {
         switch expense.type {
@@ -514,8 +529,18 @@ struct ExpenseRow: View {
 
     private var isUserPaid: Bool { expense.paidBy == currentUserId }
 
-    private var peerName: String {
-        expense.peer?.name ?? "someone"
+    private var paidByDisplay: MemberDisplay {
+        MemberDisplay(expense.paidByUser)
+    }
+
+    private var peerDisplay: MemberDisplay? {
+        expense.peer.map(MemberDisplay.init)
+    }
+
+    private var removedDisplay: MemberDisplay? {
+        if paidByDisplay.isRemoved { return paidByDisplay }
+        if expense.type == .payment, let peerDisplay, peerDisplay.isRemoved { return peerDisplay }
+        return nil
     }
     
     private var paymentText: some View {
@@ -523,11 +548,11 @@ struct ExpenseRow: View {
             // Settlements live in the same timeline as expenses, in their own row style
             // rather than a separate feed.
             if expense.type == .payment {
-                Text(isUserPaid ? "You paid \(peerName)" : "\(expense.paidByUser.name) paid \(payeeLabel)")
+                Text(isUserPaid ? "You paid \(peerDisplay?.name ?? "someone")" : "\(paidByDisplay.name) paid \(payeeLabel)")
             } else {
                 Text(isUserPaid
                      ? "You paid \(Money.formatted(amount: expense.amount))"
-                     : "\(expense.paidByUser.name) paid \(Money.formatted(amount: expense.amount))")
+                     : "\(paidByDisplay.name) paid \(Money.formatted(amount: expense.amount))")
             }
         }
         .font(.subheadline)
@@ -535,7 +560,7 @@ struct ExpenseRow: View {
     }
 
     private var payeeLabel: String {
-        expense.peer?.id == currentUserId ? "you" : peerName
+        expense.peer?.id == currentUserId ? "you" : peerDisplay?.name ?? "someone"
     }
     
     @ViewBuilder
