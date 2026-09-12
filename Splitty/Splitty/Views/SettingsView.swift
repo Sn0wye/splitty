@@ -10,10 +10,31 @@ import SwiftUI
 struct SettingsView: View {
     @State private var showingLogoutAlert = false
     @StateObject private var authManager = AuthenticationManager.shared
-    
+    @ObservedObject private var themeManager = ThemeManager.shared
+
     var body: some View {
         NavigationStack {
             List {
+                Section("Preferences") {
+                    NavigationLink {
+                        AppearanceView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "paintbrush")
+                                .foregroundStyle(Color("muted-foreground"))
+                                .frame(width: 24)
+
+                            Text("Appearance")
+
+                            Spacer()
+
+                            Text(themeManager.theme.title)
+                                .foregroundStyle(Color("muted-foreground"))
+                        }
+                        .frame(minHeight: 44)
+                    }
+                }
+
                 Section("Account") {
                     Button(action: {
                         showingLogoutAlert = true
@@ -27,6 +48,8 @@ struct SettingsView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color("background"))
             .navigationTitle("Settings")
             .alert("Log Out", isPresented: $showingLogoutAlert) {
                 Button("Cancel", role: .cancel) { }
