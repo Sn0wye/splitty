@@ -177,8 +177,12 @@ private struct MemberDetailSheet: View {
             .disabled(isRemoving)
         }
         .padding(20)
-        .presentationSizing(.fitted)
+        .presentationDetents(sheetDetents)
         .presentationCornerRadius(28)
+    }
+
+    private var sheetDetents: Set<PresentationDetent> {
+        [.height(errorMessage == nil ? 320 : 380)]
     }
 
     private func remove() {
