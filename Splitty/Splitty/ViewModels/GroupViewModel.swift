@@ -13,6 +13,21 @@ struct GroupDataSource {
     var group: (Int) async throws -> GroupDetail
     var expenses: (Int) async throws -> [Expense]
     var summary: (Int) async throws -> GroupBalanceSummary
+    var waitForBalanceRetry: (Duration) async throws -> Void
+
+    init(
+        group: @escaping (Int) async throws -> GroupDetail,
+        expenses: @escaping (Int) async throws -> [Expense],
+        summary: @escaping (Int) async throws -> GroupBalanceSummary,
+        waitForBalanceRetry: @escaping (Duration) async throws -> Void = { duration in
+            try await Task.sleep(for: duration)
+        }
+    ) {
+        self.group = group
+        self.expenses = expenses
+        self.summary = summary
+        self.waitForBalanceRetry = waitForBalanceRetry
+    }
 
     static let live = GroupDataSource(
         group: { try await GroupService.shared.getGroup(id: $0) },
@@ -67,20 +82,23 @@ class GroupViewModel: ObservableObject {
 
     func loadGroupData(groupId: Int) async {
         isLoading = true
-        defer { isLoading = false }
-        await load(groupId: groupId)
+        let generation = await load(groupId: groupId)
+        isLoading = false
+
+        if let generation {
+            await refreshPendingBalance(groupId: groupId, generation: generation)
+        }
     }
 
-    /// Reloads after a write without blanking the screen. `balancesPending` exists so a
-    /// client can show a spinner instead of polling, and the worker usually finishes
-    /// inside the dismiss animation.
+    /// Reloads after a write without blanking the screen. A pending balance keeps its
+    /// spinner while bounded polling waits for the worker's settled snapshot.
     ///
     /// Structured: a caller that can wait — pull-to-refresh, a delete — keeps the load in
     /// its own task tree, so SwiftUI cancelling that task cancels the requests underneath
     /// it. Any owned refresh it supersedes is cancelled first.
     func refresh(groupId: Int) async {
         refreshTask?.cancel()
-        await load(groupId: groupId)
+        await reloadThroughBalanceSettlement(groupId: groupId)
     }
 
     /// Records that a sheet saved something. `insert` and `insertPendingPayment` call this
@@ -107,10 +125,16 @@ class GroupViewModel: ObservableObject {
     func beginRefresh(groupId: Int) -> Task<Void, Never> {
         refreshTask?.cancel()
         let task = Task { [weak self] () -> Void in
-            await self?.load(groupId: groupId)
+            await self?.reloadThroughBalanceSettlement(groupId: groupId)
         }
         refreshTask = task
         return task
+    }
+
+    func cancelRefresh() {
+        refreshTask?.cancel()
+        refreshTask = nil
+        loadGeneration += 1
     }
 
     /// Shows a just-saved expense without waiting for the refetch. The row is real — the
@@ -123,7 +147,12 @@ class GroupViewModel: ObservableObject {
         groupedExpenses = Expense.groupExpensesByDate(expenses)
     }
 
-    private func load(groupId: Int) async {
+    private func reloadThroughBalanceSettlement(groupId: Int) async {
+        guard let generation = await load(groupId: groupId) else { return }
+        await refreshPendingBalance(groupId: groupId, generation: generation)
+    }
+
+    private func load(groupId: Int) async -> Int? {
         loadGeneration += 1
         let generation = loadGeneration
 
@@ -133,7 +162,7 @@ class GroupViewModel: ObservableObject {
             expenses = PerformanceScenarios.timeline
             groupedExpenses = Expense.groupExpensesByDate(expenses)
             errorMessage = ""
-            return
+            return nil
         }
         async let groupResult = dataSource.group(groupId)
         async let expensesResult = dataSource.expenses(groupId)
@@ -147,7 +176,7 @@ class GroupViewModel: ObservableObject {
             loadedGroup = try await groupResult
             groupError = nil
         } catch {
-            if error.isCancellation { return }
+            if error.isCancellation { return nil }
             loadedGroup = nil
             groupError = "Failed to load group: \(error.localizedDescription)"
         }
@@ -158,7 +187,7 @@ class GroupViewModel: ObservableObject {
             loadedExpenses = try await expensesResult
             expensesError = nil
         } catch {
-            if error.isCancellation { return }
+            if error.isCancellation { return nil }
             loadedExpenses = nil
             expensesError = "Failed to load expenses: \(error.localizedDescription)"
         }
@@ -167,13 +196,13 @@ class GroupViewModel: ObservableObject {
         do {
             summary = try await summaryResult
         } catch {
-            if error.isCancellation { return }
+            if error.isCancellation { return nil }
             summary = nil
         }
 
         // A newer load started while this one was in flight. Its snapshot is the current
         // one, and an older answer arriving late must not replace it.
-        guard generation == loadGeneration else { return }
+        guard generation == loadGeneration else { return nil }
 
         errorMessage = expensesError ?? groupError ?? ""
 
@@ -197,6 +226,52 @@ class GroupViewModel: ObservableObject {
                 pendingNetAdjustmentCents = 0
             }
             group = loadedGroup
+        }
+
+        return generation
+    }
+
+    /// The summary endpoint carries the worker's display hint. Fast retries taper to a
+    /// low-frequency check and stop when this task is canceled or the hint clears.
+    private func refreshPendingBalance(groupId: Int, generation: Int) async {
+        guard balancesPending, generation == loadGeneration else { return }
+
+        let pendingCleared = await BalanceRefreshPolicy.waitUntilPendingClears(
+            groupId: groupId,
+            balancesPending: true,
+            fetch: dataSource.summary,
+            wait: dataSource.waitForBalanceRetry
+        ) { [weak self] summary in
+            guard let self, generation == loadGeneration else { return false }
+            if summary.balancesPending { balancesPending = true }
+            return true
+        }
+        guard pendingCleared else { return }
+
+        var retryIndex = 0
+        while generation == loadGeneration {
+            do {
+                let refreshedGroup = try await dataSource.group(groupId)
+                guard generation == loadGeneration else { return }
+
+                pendingNetAdjustmentCents = 0
+                group = refreshedGroup
+                balancesPending = false
+                return
+            } catch {
+                if error.isCancellation { return }
+            }
+
+            let delay = BalanceRefreshPolicy.retryDelays[
+                min(retryIndex, BalanceRefreshPolicy.retryDelays.count - 1)
+            ]
+            retryIndex += 1
+
+            do {
+                try await dataSource.waitForBalanceRetry(delay)
+            } catch {
+                if error.isCancellation { return }
+            }
         }
     }
 

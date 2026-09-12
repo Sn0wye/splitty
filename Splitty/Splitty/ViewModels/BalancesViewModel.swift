@@ -11,6 +11,29 @@ struct BalanceSheetContext {
     let balancesPending: Bool
 }
 
+struct BalanceDataSource {
+    var summary: (Int) async throws -> GroupBalanceSummary
+    var requestRefresh: (Int) async throws -> Void
+    var waitForRetry: (Duration) async throws -> Void
+
+    init(
+        summary: @escaping (Int) async throws -> GroupBalanceSummary,
+        requestRefresh: @escaping (Int) async throws -> Void,
+        waitForRetry: @escaping (Duration) async throws -> Void = { duration in
+            try await Task.sleep(for: duration)
+        }
+    ) {
+        self.summary = summary
+        self.requestRefresh = requestRefresh
+        self.waitForRetry = waitForRetry
+    }
+
+    static let live = BalanceDataSource(
+        summary: { try await GroupService.shared.getBalanceSummary(groupId: $0) },
+        requestRefresh: { try await GroupService.shared.requestBalanceRecomputation(groupId: $0) }
+    )
+}
+
 struct BalanceRow: Identifiable, Equatable {
     enum Direction: Equatable {
         case youOwe
@@ -50,11 +73,13 @@ final class BalancesViewModel: ObservableObject {
     @Published private(set) var state: BalancesDisplayState = .loading
     @Published private(set) var netCents: Int
     @Published private(set) var balancesPending: Bool
+    private let dataSource: BalanceDataSource
 
-    init(context: BalanceSheetContext) {
+    init(context: BalanceSheetContext, dataSource: BalanceDataSource = .live) {
         groupId = context.groupId
         netCents = context.initialNetCents
         balancesPending = context.balancesPending
+        self.dataSource = dataSource
     }
 
     var rows: [BalanceRow] {
@@ -64,20 +89,41 @@ final class BalancesViewModel: ObservableObject {
 
     func load(currentUserId: Int) async {
         do {
-            apply(try await GroupService.shared.getBalanceSummary(groupId: groupId), currentUserId: currentUserId)
+            let summary = try await dataSource.summary(groupId)
+            apply(summary, currentUserId: currentUserId)
+            await refreshPendingBalance(startingWith: summary, currentUserId: currentUserId)
         } catch {
             fail(with: error)
         }
     }
 
-    /// Requests a replay, then takes one fresh snapshot. The pending flag explains that the
-    /// snapshot may still predate the worker; it is not treated as a lock and is not polled.
+    /// Requests a replay, then refreshes until the worker returns a settled snapshot or the
+    /// view cancels the task.
     func refresh(currentUserId: Int) async {
         do {
-            try await GroupService.shared.requestBalanceRecomputation(groupId: groupId)
-            apply(try await GroupService.shared.getBalanceSummary(groupId: groupId), currentUserId: currentUserId)
+            try await dataSource.requestRefresh(groupId)
+            let summary = try await dataSource.summary(groupId)
+            apply(summary, currentUserId: currentUserId)
+            await refreshPendingBalance(startingWith: summary, currentUserId: currentUserId)
         } catch {
             fail(with: error)
+        }
+    }
+
+    private func refreshPendingBalance(
+        startingWith initialSummary: GroupBalanceSummary,
+        currentUserId: Int
+    ) async {
+        guard initialSummary.balancesPending else { return }
+
+        _ = await BalanceRefreshPolicy.waitUntilPendingClears(
+            groupId: groupId,
+            balancesPending: initialSummary.balancesPending,
+            fetch: dataSource.summary,
+            wait: dataSource.waitForRetry
+        ) { [weak self] summary in
+            self?.apply(summary, currentUserId: currentUserId)
+            return self != nil
         }
     }
 

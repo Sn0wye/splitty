@@ -136,9 +136,7 @@ struct GroupView: View {
             }
         }
         // A money write enqueues a recomputation, so the header balance is stale on return.
-        // One refetch, no polling: the flag it reads exists for exactly this. A sheet the
-        // user backed out of wrote nothing, so it refetches nothing — the flag is only set
-        // by the save callback.
+        // A saved sheet starts a refetch and bounded polling; backing out starts neither.
         .onChange(of: showingExpenseSheet) { _, isPresented in
             if !isPresented {
                 viewModel.refreshAfterSheetDismissal(groupId: groupId)
@@ -174,6 +172,9 @@ struct GroupView: View {
         }
         .task {
             await viewModel.loadGroupData(groupId: groupId)
+        }
+        .onDisappear {
+            viewModel.cancelRefresh()
         }
     }
 

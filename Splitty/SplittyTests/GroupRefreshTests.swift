@@ -7,6 +7,8 @@ import Foundation
 import Testing
 @testable import Splitty
 
+private struct ControlledGroupFailure: Error {}
+
 @MainActor
 struct GroupRefreshTests {
 
@@ -51,6 +53,34 @@ struct GroupRefreshTests {
         #expect(data.expenseCallCount == 1)
         #expect(data.summaryCallCount == 1)
         #expect(viewModel.group?.id == 1)
+    }
+
+    @Test func aPendingBalanceRefreshesUntilTheWorkerSettles() async {
+        let data = ControlledGroupData()
+        data.autoRelease = true
+        data.groupForCall = { call in
+            GroupDetail(
+                id: 1,
+                name: "Group 1",
+                description: nil,
+                netBalanceCents: call == 1 ? 1_000 : 2_500,
+                createdAt: "2026-01-01T12:00:00Z",
+                members: TestExpense.members
+            )
+        }
+        data.summaryForCall = { call in
+            GroupBalanceSummary(balances: [], balancesPending: call < 10)
+        }
+        data.groupFailureCalls = [2]
+        let viewModel = GroupViewModel(dataSource: data.source())
+
+        await viewModel.refresh(groupId: 1)
+
+        #expect(data.summaryCallCount == 10)
+        #expect(data.balanceRetryCount == 10)
+        #expect(data.groupCallCount == 3)
+        #expect(viewModel.group?.netBalanceCents == 2_500)
+        #expect(!viewModel.balancesPending)
     }
 
     @Test func aRefreshReplacesLocallyInsertedRowsWithTheServersRows() async {
@@ -144,6 +174,11 @@ final class ControlledGroupData {
 
     /// Rows the nth expense request answers with, unless a test fails it instead.
     var expensesForCall: (Int) -> [Expense] = { _ in [] }
+    var groupForCall: ((Int) -> GroupDetail)?
+    var groupFailureCalls: Set<Int> = []
+    var summaryForCall: (Int) -> GroupBalanceSummary = { _ in
+        GroupBalanceSummary(balances: [], balancesPending: false)
+    }
 
     /// When true, requests answer immediately instead of waiting for `release(call:)`.
     var autoRelease = false
@@ -151,6 +186,7 @@ final class ControlledGroupData {
     private(set) var groupCallCount = 0
     private(set) var expenseCallCount = 0
     private(set) var summaryCallCount = 0
+    private(set) var balanceRetryCount = 0
 
     private var waitingForOutcome: [Int: CheckedContinuation<Outcome, Never>] = [:]
     private var outcomes: [Int: Outcome] = [:]
@@ -158,7 +194,7 @@ final class ControlledGroupData {
 
     func source() -> GroupDataSource {
         GroupDataSource(
-            group: { [self] groupId in await noteGroupCall(id: groupId) },
+            group: { [self] groupId in try await noteGroupCall(id: groupId) },
             expenses: { [self] _ in
                 let call = await noteExpenseCall()
                 switch await outcome(of: call) {
@@ -166,7 +202,8 @@ final class ControlledGroupData {
                 case .failure(let error): throw error
                 }
             },
-            summary: { [self] _ in await noteSummaryCall() }
+            summary: { [self] _ in await noteSummaryCall() },
+            waitForBalanceRetry: { [self] _ in await noteBalanceRetry() }
         )
     }
 
@@ -203,8 +240,10 @@ final class ControlledGroupData {
         }
     }
 
-    private func noteGroupCall(id: Int) -> GroupDetail {
+    private func noteGroupCall(id: Int) throws -> GroupDetail {
         groupCallCount += 1
+        if groupFailureCalls.contains(groupCallCount) { throw ControlledGroupFailure() }
+        if let groupForCall { return groupForCall(groupCallCount) }
         return GroupDetail(
             id: id,
             name: "Group \(id)",
@@ -223,6 +262,10 @@ final class ControlledGroupData {
 
     private func noteSummaryCall() -> GroupBalanceSummary {
         summaryCallCount += 1
-        return GroupBalanceSummary(balances: [], balancesPending: false)
+        return summaryForCall(summaryCallCount)
+    }
+
+    private func noteBalanceRetry() {
+        balanceRetryCount += 1
     }
 }
