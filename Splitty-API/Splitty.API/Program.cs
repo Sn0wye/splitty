@@ -55,11 +55,21 @@ if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:SecretKey"]))
     throw new InvalidOperationException("Configuration 'Jwt:SecretKey' is required.");
 }
 
-// Google credentials only matter to the real token exchanger, which the test suite
-// replaces with a fake, so these stay scoped to non-Development hosts.
+// Google and R2 credentials only matter to the real token exchanger and the real avatar
+// storage, both of which the test suite replaces with fakes, so these stay scoped to
+// non-Development hosts.
 if (!builder.Environment.IsDevelopment())
 {
-    foreach (var key in new[] { "Google:ClientId", "Google:ClientSecret" })
+    foreach (var key in new[]
+             {
+                 "Google:ClientId",
+                 "Google:ClientSecret",
+                 "R2:AccountId",
+                 "R2:AccessKeyId",
+                 "R2:SecretAccessKey",
+                 "R2:BucketName",
+                 "R2:PublicBaseUrl"
+             })
     {
         if (string.IsNullOrWhiteSpace(builder.Configuration[key]))
         {
@@ -67,6 +77,17 @@ if (!builder.Environment.IsDevelopment())
         }
     }
 }
+
+// Bound by hand rather than through the options binder: five flat strings do not need a
+// second indirection, and a typo shows up as a compile error here.
+var r2Options = new R2Options
+{
+    AccountId = builder.Configuration["R2:AccountId"] ?? string.Empty,
+    AccessKeyId = builder.Configuration["R2:AccessKeyId"] ?? string.Empty,
+    SecretAccessKey = builder.Configuration["R2:SecretAccessKey"] ?? string.Empty,
+    BucketName = builder.Configuration["R2:BucketName"] ?? string.Empty,
+    PublicBaseUrl = builder.Configuration["R2:PublicBaseUrl"] ?? string.Empty
+};
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -159,11 +180,16 @@ builder.Services.AddScoped<IBalanceService, BalanceService>();
 builder.Services.AddScoped<IInviteService, InviteService>();
 builder.Services.AddScoped<IOAuthService, OAuthService>();
 builder.Services.AddScoped<IPeopleService, PeopleService>();
+builder.Services.AddScoped<IProfileService, ProfileService>();
 
 // Utils
 builder.Services.AddScoped<IJwtTokenIssuer, JwtTokenIssuer>();
 builder.Services.AddScoped<IGoogleTokenExchanger, GoogleTokenExchanger>();
 builder.Services.AddHttpClient(nameof(GoogleTokenExchanger));
+builder.Services.AddSingleton(r2Options);
+builder.Services.AddSingleton(_ => R2AvatarStorage.CreateClient(r2Options));
+builder.Services.AddScoped<IAvatarStorage, R2AvatarStorage>();
+builder.Services.AddScoped<IAvatarResolver, AvatarResolver>();
 
 // Background
 builder.Services.AddScoped<IBalanceRecomputeQueue, BalanceRecomputeQueue>();

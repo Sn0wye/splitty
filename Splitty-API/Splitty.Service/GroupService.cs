@@ -8,7 +8,8 @@ namespace Splitty.Service;
 public class GroupService(
     IGroupRepository groupRepository,
     IGroupMembershipRepository groupMembershipRepository,
-    IBalanceRepository balanceRepository
+    IBalanceRepository balanceRepository,
+    IAvatarResolver avatarResolver
 ) : IGroupService
 {
     public async Task<Group> CreateAsync(int userId, string name, string? description)
@@ -138,13 +139,13 @@ public class GroupService(
         return MembershipRemovalStatus.Success;
     }
 
-    private static MemberDTO ToMemberDTO(GroupMembership membership) => new()
+    private MemberDTO ToMemberDTO(GroupMembership membership) => new()
     {
         Id = membership.Id,
         UserId = membership.UserId,
         Name = membership.User.Name,
         Email = membership.User.Email,
-        AvatarUrl = membership.User.AvatarUrl
+        AvatarUrl = avatarResolver.Resolve(membership.User)
     };
 
     public async Task<bool> IsMemberAsync(int groupId, int userId)

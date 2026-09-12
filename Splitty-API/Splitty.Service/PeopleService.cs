@@ -6,7 +6,8 @@ namespace Splitty.Service;
 
 public class PeopleService(
     IGroupMembershipRepository groupMembershipRepository,
-    IBalanceRepository balanceRepository
+    IBalanceRepository balanceRepository,
+    IAvatarResolver avatarResolver
 ) : IPeopleService
 {
     public async Task<PeopleResponse> GetPeopleAsync(int userId)
@@ -39,7 +40,7 @@ public class PeopleService(
                 {
                     UserId = byPeer.Key,
                     Name = user.Name,
-                    AvatarUrl = user.AvatarUrl,
+                    AvatarUrl = avatarResolver.Resolve(user),
                     NetAmount = groups.Sum(g => g.Amount),
                     Groups = groups
                 };
