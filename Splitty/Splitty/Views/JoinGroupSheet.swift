@@ -17,20 +17,30 @@ struct JoinGroupSheet: View {
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
+            ScrollView {
+                VStack(spacing: 24) {
+                    Text("Enter the six-character invite code shared by a group member.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 320)
+
                     inviteCodeField
-                } footer: {
-                    Text("Ask a group member for their \(JoinGroupViewModel.codeLength)-character invite code.")
-                }
-                
-                if let errorMessage = viewModel.errorMessage {
-                    Section {
+
+                    if let errorMessage = viewModel.errorMessage {
                         Text(errorMessage)
-                            .foregroundColor(.red)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 320)
                     }
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 24)
+                .padding(.top, 48)
             }
+            .background(Color("background"))
+            .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Join with code")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -59,34 +69,56 @@ struct JoinGroupSheet: View {
     }
 
     private var inviteCodeField: some View {
-        ZStack {
-            InviteCodeInputField(
-                text: viewModel.code,
-                isFocused: $codeFocused,
-                isEnabled: !viewModel.isRedeeming
-            ) { proposedText, source in
+        codeGroup(0..<JoinGroupViewModel.codeLength)
+            .accessibilityHidden(true)
+            .overlay {
+                InviteCodeInputField(
+                    text: viewModel.code,
+                    isFocused: $codeFocused,
+                    isEnabled: !viewModel.isRedeeming
+                ) { proposedText, source in
                     guard viewModel.updateCode(proposedText, source: source) else { return }
                     Task { await submit() }
-            }
-            .frame(width: 1, height: 1)
-            .opacity(0.01)
-
-            HStack(spacing: 8) {
-                ForEach(0..<JoinGroupViewModel.codeLength, id: \.self) { index in
-                    Text(character(at: index))
-                        .font(.system(.title2, design: .monospaced, weight: .semibold))
-                        .frame(maxWidth: .infinity, minHeight: 52)
-                        .background(Color("background"), in: RoundedRectangle(cornerRadius: 10))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 10)
-                                .strokeBorder(boxColor(at: index), lineWidth: 1.5)
-                        }
                 }
             }
-            .accessibilityHidden(true)
-            .contentShape(Rectangle())
-            .onTapGesture { codeFocused = true }
             .modifier(ShakeEffect(progress: shakePhase))
+    }
+
+    private func codeGroup(_ indices: Range<Int>) -> some View {
+        HStack(spacing: 0) {
+            ForEach(Array(indices), id: \.self) { index in
+                ZStack {
+                    if isActive(index) {
+                        Color.accentColor.opacity(0.08)
+                    }
+
+                    Text(character(at: index))
+                        .font(.system(.title2, design: .monospaced, weight: .semibold))
+
+                    if isActive(index), character(at: index).isEmpty {
+                        Capsule()
+                            .fill(Color.accentColor)
+                            .frame(width: 2, height: 24)
+                    }
+                }
+                .frame(width: 48, height: 56)
+                .overlay {
+                    Rectangle()
+                        .strokeBorder(isActive(index) ? Color.accentColor : .clear, lineWidth: 2)
+                }
+
+                if index != indices.last {
+                    Rectangle()
+                        .fill(Color("border"))
+                        .frame(width: 1, height: 56)
+                }
+            }
+        }
+        .background(Color("card"))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .strokeBorder(Color("border"), lineWidth: 1)
         }
     }
 
@@ -95,8 +127,8 @@ struct JoinGroupSheet: View {
         return index < characters.count ? String(characters[index]) : ""
     }
 
-    private func boxColor(at index: Int) -> Color {
-        index == viewModel.code.count && codeFocused ? .accentColor : Color("border")
+    private func isActive(_ index: Int) -> Bool {
+        codeFocused && !viewModel.isRedeeming && index == viewModel.code.count
     }
 
     private func submit() async {

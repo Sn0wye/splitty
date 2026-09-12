@@ -74,6 +74,10 @@ struct InviteCodeInputField: UIViewRepresentable {
 final class PasteAwareTextField: UITextField {
     private(set) var isPasting = false
 
+    override func closestPosition(to point: CGPoint) -> UITextPosition? {
+        endOfDocument
+    }
+
     override func paste(_ sender: Any?) {
         isPasting = true
         super.paste(sender)
