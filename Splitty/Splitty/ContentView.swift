@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @StateObject private var appState = AppState()
+    @EnvironmentObject private var appState: AppState
     @StateObject private var authManager = AuthenticationManager.shared
     @State private var addDestination: AddExpenseDestination?
     @State private var pendingExpenseGroup: Group?
@@ -178,4 +178,5 @@ private struct CurrentGroupView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(AppState())
 }

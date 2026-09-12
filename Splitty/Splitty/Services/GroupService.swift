@@ -54,6 +54,11 @@ class GroupService {
         )
     }
 
+    /// Describes an invite before the user decides whether to join.
+    func describeInvite(code: String) async throws -> InviteMetadata {
+        try await APIClient.shared.request(endpoint: "/invite/\(code)")
+    }
+
     /// Redeems an invite code. The response identifies the group — the caller never
     /// supplies a group id. Redeeming a code for a group you already belong to
     /// succeeds and returns that group.

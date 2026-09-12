@@ -63,15 +63,11 @@ struct InviteView: View {
                 .foregroundStyle(.secondary)
 
             VStack(spacing: 12) {
-                ShareLink(item: text) {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.borderedProminent)
+                shareLink(code: code, text: text)
 
                 Button {
                     guard !isCopied else { return }
-                    UIPasteboard.general.string = text
+                    UIPasteboard.general.string = InviteShareText.copyText(code: code)
                     withAnimation(copyAnimation) {
                         isCopied = true
                     }
@@ -95,6 +91,30 @@ struct InviteView: View {
 
     private var copyAnimation: Animation? {
         reduceMotion ? nil : .easeOut(duration: 0.16)
+    }
+
+    @ViewBuilder
+    private func shareLink(code: String, text: String) -> some View {
+        if let link = InviteShareText.link(code: code) {
+            ShareLink(
+                item: link,
+                subject: Text("Join \(groupName) on Splitty"),
+                message: Text(text)
+            ) {
+                shareLabel
+            }
+            .buttonStyle(.borderedProminent)
+        } else {
+            ShareLink(item: text) {
+                shareLabel
+            }
+            .buttonStyle(.borderedProminent)
+        }
+    }
+
+    private var shareLabel: some View {
+        Label("Share", systemImage: "square.and.arrow.up")
+            .frame(maxWidth: .infinity, minHeight: 44)
     }
 
     private func failureContent(message: String) -> some View {
@@ -140,6 +160,23 @@ private enum CreationState {
 enum InviteShareText {
     static func make(groupName: String, code: String) -> String {
         #"Join "\#(groupName)" on Splitty with invite code \#(code)"#
+    }
+
+    static func copyText(code: String) -> String { code }
+
+    static func link(code: String, bundle: Bundle = .main) -> URL? {
+        guard let host = bundle.object(forInfoDictionaryKey: "SplittyInviteHost") as? String else {
+            return nil
+        }
+        return link(code: code, host: host)
+    }
+
+    static func link(code: String, host: String) -> URL? {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = host
+        components.path = "/join/\(code)"
+        return components.url
     }
 }
 

@@ -4,6 +4,8 @@
 <dict>
 	<key>SplittyAPIBaseURL</key>
 	<string>$(SPLITTY_API_BASE_URL)</string>
+	<key>SplittyInviteHost</key>
+	<string>$(SPLITTY_INVITE_HOST)</string>
 	<!-- A Google client id is a public identifier, not a secret: it ships inside every
 	     App Store binary. Security comes from the bundle id plus the server-side code
 	     exchange, so these stay in plaintext and a fresh clone builds. -->
@@ -14,6 +16,14 @@
 	<string>978511957932-q42ajkjue9hbn86t4caaogr7fda8ap6n.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>
 	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.snowye.Splitty.invite</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>splitty</string>
+			</array>
+		</dict>
 		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
