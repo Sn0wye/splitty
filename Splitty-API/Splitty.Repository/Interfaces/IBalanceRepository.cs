@@ -6,6 +6,7 @@ public interface IBalanceRepository
 {
     Task<List<Balance>> GetGroupBalancesAsync(int groupId);
     Task<List<Balance>> GetUserGroupBalances(int userId, int groupId);
+    Task<List<Balance>> GetUserBalancesAsync(int userId);
     Task<Balance?> GetPairwiseBalanceAsync(int userId, int peerId, int groupId);
     Task<List<Balance>> UpdateBalancesAsync(List<Balance> balances);
 }

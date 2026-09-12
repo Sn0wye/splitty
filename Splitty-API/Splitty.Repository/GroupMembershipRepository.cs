@@ -32,6 +32,24 @@ public class GroupMembershipRepository(ApplicationDbContext context): IGroupMemb
         return await context.GroupMembership.CountAsync(gm => gm.GroupId == groupId);
     }
 
+    /// <summary>
+    /// Every other member of every group the user is in, the membership-derived peer set:
+    /// deriving it from balances instead would drop peers settled to exactly zero, who have
+    /// no row. The group filter is the access control — only shared groups can appear.
+    /// </summary>
+    public async Task<List<GroupMembership>> GetPeerMembershipsAsync(int userId)
+    {
+        var groupIds = context.GroupMembership
+            .Where(gm => gm.UserId == userId)
+            .Select(gm => gm.GroupId);
+
+        return await context.GroupMembership
+            .Include(gm => gm.User)
+            .Include(gm => gm.Group)
+            .Where(gm => gm.UserId != userId && groupIds.Contains(gm.GroupId))
+            .ToListAsync();
+    }
+
     public async Task<List<GroupMembership>> GetGroupMembershipsAsync(int groupId)
     {
         return await context.GroupMembership

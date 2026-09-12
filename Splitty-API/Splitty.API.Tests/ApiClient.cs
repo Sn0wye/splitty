@@ -109,6 +109,9 @@ public sealed class ApiClient
     public Task<HttpResponseMessage> GetSummaryAsync(int groupId) =>
         _http.GetAsync($"/group/{groupId}/expenses/summary");
 
+    public Task<HttpResponseMessage> GetPeopleAsync() =>
+        _http.GetAsync("/people");
+
     public Task<HttpResponseMessage> SettleUpAsync(int groupId, object body) =>
         _http.PostAsJsonAsync($"/group/{groupId}/settle", body);
 

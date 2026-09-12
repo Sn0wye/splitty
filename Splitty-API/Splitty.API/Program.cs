@@ -158,6 +158,7 @@ builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IBalanceService, BalanceService>();
 builder.Services.AddScoped<IInviteService, InviteService>();
 builder.Services.AddScoped<IOAuthService, OAuthService>();
+builder.Services.AddScoped<IPeopleService, PeopleService>();
 
 // Utils
 builder.Services.AddScoped<IJwtTokenIssuer, JwtTokenIssuer>();
