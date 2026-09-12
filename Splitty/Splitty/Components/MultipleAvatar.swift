@@ -43,26 +43,17 @@ struct MultipleAvatar: View {
     }
 
     private func face(_ url: URL) -> some View {
-        AsyncImage(url: url) { phase in
-            switch phase {
-            case .empty:
-                Circle()
-                    .fill(Color("muted"))
-                    .overlay(ProgressView().controlSize(.mini))
-            case .success(let image):
-                image.resizable()
-                    .scaledToFill()
-            case .failure:
-                Circle()
-                    .fill(Color("muted"))
-                    .overlay {
-                        Image(systemName: "person.fill")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(Color("muted-foreground"))
-                    }
-            @unknown default:
-                EmptyView()
-            }
+        CachedAsyncImage(url: url) { image in
+            image.resizable()
+                .scaledToFill()
+        } placeholder: {
+            Circle()
+                .fill(Color("muted"))
+                .overlay {
+                    Image(systemName: "person.fill")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundStyle(Color("muted-foreground"))
+                }
         }
         .frame(width: 40, height: 40)
         .clipShape(Circle())

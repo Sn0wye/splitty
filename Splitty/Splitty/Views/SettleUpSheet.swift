@@ -209,14 +209,12 @@ struct SettleUpSheet: View {
     }
 
     private func peerAvatar(_ peer: GroupMember) -> some View {
-        AsyncImage(url: URL(string: peer.avatarUrl)) { phase in
-            if case .success(let image) = phase {
-                image.resizable().scaledToFill()
-            } else {
-                Image(systemName: "person.crop.circle.fill")
-                    .resizable()
-                    .foregroundStyle(Color("muted-foreground"))
-            }
+        CachedAsyncImage(url: URL(string: peer.avatarUrl)) { image in
+            image.resizable().scaledToFill()
+        } placeholder: {
+            Image(systemName: "person.crop.circle.fill")
+                .resizable()
+                .foregroundStyle(Color("muted-foreground"))
         }
         .frame(width: 40, height: 40)
         .clipShape(Circle())

@@ -201,14 +201,12 @@ private struct BalancePeerRow: View {
     }
 
     private var peerAvatar: some View {
-        AsyncImage(url: row.peerAvatarURL) { phase in
-            if case .success(let image) = phase {
-                image.resizable().scaledToFill()
-            } else {
-                Image(systemName: "person.crop.circle.fill")
-                    .resizable()
-                    .foregroundStyle(Color("muted-foreground"))
-            }
+        CachedAsyncImage(url: row.peerAvatarURL) { image in
+            image.resizable().scaledToFill()
+        } placeholder: {
+            Image(systemName: "person.crop.circle.fill")
+                .resizable()
+                .foregroundStyle(Color("muted-foreground"))
         }
         .frame(width: 40, height: 40)
         .clipShape(Circle())
