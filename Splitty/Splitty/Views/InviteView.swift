@@ -65,7 +65,7 @@ struct InviteView: View {
             VStack(spacing: 12) {
                 ShareLink(item: text) {
                     Label("Share", systemImage: "square.and.arrow.up")
-                        .frame(maxWidth: .infinity, minHeight: 52)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.borderedProminent)
 
@@ -83,9 +83,9 @@ struct InviteView: View {
                         }
                     }
                 } label: {
-                    Label(isCopied ? "Copied" : "Copy", systemImage: isCopied ? "checkmark" : "doc.on.doc")
+                    Label("Copy", systemImage: isCopied ? "checkmark" : "doc.on.doc")
                         .contentTransition(.symbolEffect(.replace))
-                        .frame(maxWidth: .infinity, minHeight: 52)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.bordered)
                 .tint(isCopied ? .green : .accentColor)
