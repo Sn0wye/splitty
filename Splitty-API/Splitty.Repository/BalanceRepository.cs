@@ -25,6 +25,13 @@ public class BalanceRepository(ApplicationDbContext context) : IBalanceRepositor
             .ToListAsync();
     }
     
+    public async Task<List<Balance>> GetUserBalancesAsync(int userId)
+    {
+        return await context.Balance
+            .Where(b => b.UserId == userId)
+            .ToListAsync();
+    }
+
     /// <summary>
     /// The single row the settle cap is read from. No includes: the cap needs the amount,
     /// not the users behind it.

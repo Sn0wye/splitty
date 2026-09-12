@@ -134,6 +134,12 @@ _Avoid_: split type, division method
 Per-person amounts typed by hand, which must sum exactly to the total.
 _Avoid_: exact split, manual mode
 
+**Peer**:
+A member of a group you are also in, seen from your side. Already the domain word — it is
+the `Balance.PeerId` column. The code and API say peer; the screen listing them is called
+**People**, the same code-versus-screen split as settlement versus payment.
+_Avoid_: friend, contact, counterparty
+
 ## Balance recomputation
 
 Balances are **derived state, recomputed wholesale** — never incrementally patched.
