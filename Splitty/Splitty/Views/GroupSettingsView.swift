@@ -141,19 +141,17 @@ private struct MemberDetailSheet: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        VStack(spacing: 20) {
-            Capsule()
-                .fill(Color("muted-foreground").opacity(0.35))
-                .frame(width: 36, height: 5)
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(spacing: 14) {
+                MemberAvatar(display: MemberDisplay(member), size: 52)
 
-            MemberAvatar(display: MemberDisplay(member), size: 64)
-
-            VStack(spacing: 4) {
-                Text(member.name)
-                    .font(.title3.weight(.semibold))
-                Text(member.email)
-                    .font(.subheadline)
-                    .foregroundStyle(Color("muted-foreground"))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(member.name)
+                        .font(.headline)
+                    Text(member.email)
+                        .font(.subheadline)
+                        .foregroundStyle(Color("muted-foreground"))
+                }
             }
 
             if let errorMessage {
@@ -178,11 +176,13 @@ private struct MemberDetailSheet: View {
         }
         .padding(20)
         .presentationDetents(sheetDetents)
+        .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
+        .presentationBackground(Color("background"))
     }
 
     private var sheetDetents: Set<PresentationDetent> {
-        [.height(errorMessage == nil ? 320 : 380)]
+        [.height(errorMessage == nil ? 230 : 290)]
     }
 
     private func remove() {
