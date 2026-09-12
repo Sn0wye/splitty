@@ -20,6 +20,7 @@ struct SplittyApp: App {
 
 struct RootView: View {
     @StateObject private var authManager = AuthenticationManager.shared
+    @ObservedObject private var themeManager = ThemeManager.shared
 
     var body: some View {
         ZStack {
@@ -29,6 +30,8 @@ struct RootView: View {
                 LoginView()
             }
         }
+        // Set on the root so sheets and the login screen follow the choice too.
+        .preferredColorScheme(themeManager.theme.colorScheme)
         .task {
             PerformanceSignpost.endLaunch()
             await authManager.restoreSession()
