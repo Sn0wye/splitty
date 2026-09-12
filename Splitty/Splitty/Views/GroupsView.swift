@@ -9,6 +9,7 @@ import SwiftUI
 
 struct GroupsView: View {
     @StateObject private var viewModel = GroupsViewModel()
+    @StateObject private var authManager = AuthenticationManager.shared
     @EnvironmentObject private var appState: AppState
     @State private var showingCreateSheet = false
     @State private var showingJoinSheet = false
@@ -41,7 +42,9 @@ struct GroupsView: View {
                     }
                     .padding(.trailing, 12)
                     
-                    Avatar()
+                    if let user = authManager.currentUser {
+                        MemberAvatar(display: MemberDisplay(user))
+                    }
                 }
                 .padding([.top, .horizontal])
 

@@ -14,13 +14,10 @@ struct GroupView: View {
     @StateObject private var authManager = AuthenticationManager.shared
     @State private var isTitleCollapsed = false
     @State private var showingSettings = false
-    @State private var showingExpenseSheet = false
     @State private var showingSettleUpSheet = false
     @State private var showingBalancesSheet = false
     @State private var pendingDeletion: Expense?
     @State private var selectedExpenseId: Int?
-
-    private let addButtonSize: CGFloat = 56
 
     /// Roughly the height of the in-list title, so the toolbar picks the name up
     /// as the header leaves rather than while it is still readable.
@@ -98,17 +95,6 @@ struct GroupView: View {
                 )
             }
         }
-        .sheet(isPresented: $showingExpenseSheet) {
-            if let currentUserId {
-                ExpenseSheet(
-                    groupId: groupId,
-                    members: viewModel.members,
-                    currentUserId: currentUserId
-                ) { saved in
-                    viewModel.insert(saved)
-                }
-            }
-        }
         .sheet(isPresented: $showingSettleUpSheet) {
             if let currentUserId {
                 SettleUpSheet(
@@ -136,12 +122,7 @@ struct GroupView: View {
             }
         }
         // A money write enqueues a recomputation, so the header balance is stale on return.
-        // A saved sheet starts a refetch and bounded polling; backing out starts neither.
-        .onChange(of: showingExpenseSheet) { _, isPresented in
-            if !isPresented {
-                viewModel.refreshAfterSheetDismissal(groupId: groupId)
-            }
-        }
+        // Saved sheets start a refetch and bounded polling; backing out starts neither.
         .onChange(of: showingSettleUpSheet) { _, isPresented in
             if !isPresented {
                 viewModel.refreshAfterSheetDismissal(groupId: groupId)
@@ -173,6 +154,11 @@ struct GroupView: View {
         .task {
             await viewModel.loadGroupData(groupId: groupId)
         }
+        .onChange(of: appState.savedExpense?.id) { _, _ in
+            guard let event = appState.savedExpense, event.groupId == groupId else { return }
+            viewModel.insert(event.expense)
+            viewModel.refreshAfterSheetDismissal(groupId: groupId)
+        }
         .onDisappear {
             viewModel.cancelRefresh()
         }
@@ -202,11 +188,6 @@ struct GroupView: View {
         .performanceScrollSignpost(.timelineScroll)
         .refreshable {
             await viewModel.refresh(groupId: groupId)
-        }
-        // As an inset, the button sits inside the safe area and reserves exactly enough
-        // space to keep the final row uncovered.
-        .safeAreaInset(edge: .bottom, alignment: .trailing, spacing: 0) {
-            addExpenseButton
         }
         // The title lives in the scroll content, so the toolbar picks it up as it leaves.
         .onScrollGeometryChange(for: Bool.self) { geometry in
@@ -315,28 +296,6 @@ struct GroupView: View {
             : "Delete \"\(expense.description)\"?"
     }
 
-    private var addExpenseButton: some View {
-        Button {
-            showingExpenseSheet = true
-        } label: {
-            Image(systemName: "plus")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundColor(Color("background"))
-                .frame(width: addButtonSize, height: addButtonSize)
-                .background(Color("foreground"))
-                .clipShape(Circle())
-                .shadow(radius: 8, y: 4)
-        }
-        // The deepest press in the app: a 56pt disc under a thumb has to move a visible
-        // amount before the dip reads, and the shadow compressing with it sells the push.
-        .buttonStyle(.pressable(scale: 0.9))
-        .padding(.trailing, 20)
-        .padding(.vertical, 16)
-        .disabled(currentUserId == nil || viewModel.group == nil)
-        .accessibilityIdentifier("group.addExpense")
-        .accessibilityLabel("Add expense")
-    }
-    
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(viewModel.group?.name ?? "Loading...")

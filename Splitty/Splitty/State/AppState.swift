@@ -5,15 +5,17 @@
 
 import SwiftUI
 
-enum AppTab: Int, CaseIterable {
+enum AppTab: Int {
     case groups
     case group
+    case people
     case settings
 
     var title: String {
         switch self {
         case .groups: return "Groups"
         case .group: return "Group"
+        case .people: return "People"
         case .settings: return "Settings"
         }
     }
@@ -22,7 +24,41 @@ enum AppTab: Int, CaseIterable {
         switch self {
         case .groups: return "square.grid.2x2"
         case .group: return "person.2"
+        case .people: return "arrow.left.arrow.right"
         case .settings: return "gearshape"
+        }
+    }
+}
+
+enum AddExpenseDestination: Equatable {
+    case createGroup
+    case expense(Group)
+    case chooseGroup([Group])
+
+    static func resolve(groups: [Group], currentGroupId: Int?) -> AddExpenseDestination {
+        if let currentGroup = groups.first(where: { $0.id == currentGroupId }) {
+            return .expense(currentGroup)
+        }
+        switch groups.count {
+        case 0:
+            return .createGroup
+        case 1:
+            return .expense(groups[0])
+        default:
+            return .chooseGroup(groups)
+        }
+    }
+
+    static func == (lhs: AddExpenseDestination, rhs: AddExpenseDestination) -> Bool {
+        switch (lhs, rhs) {
+        case (.createGroup, .createGroup):
+            true
+        case (.expense(let lhsGroup), .expense(let rhsGroup)):
+            lhsGroup.id == rhsGroup.id
+        case (.chooseGroup(let lhsGroups), .chooseGroup(let rhsGroups)):
+            lhsGroups.map(\.id) == rhsGroups.map(\.id)
+        default:
+            false
         }
     }
 }
@@ -36,6 +72,7 @@ final class AppState: ObservableObject {
     @Published var selectedTab: AppTab = .groups
     @Published var groupNotice: String?
     @Published private(set) var exitedGroupId: Int?
+    @Published private(set) var savedExpense: SavedExpenseEvent?
 
     @Published var currentGroupId: Int? {
         didSet {
@@ -71,4 +108,14 @@ final class AppState: ObservableObject {
         currentGroupId = nil
         selectedTab = .groups
     }
+
+    func recordSavedExpense(_ expense: Expense, groupId: Int) {
+        savedExpense = SavedExpenseEvent(groupId: groupId, expense: expense)
+    }
+}
+
+struct SavedExpenseEvent: Identifiable {
+    let id = UUID()
+    let groupId: Int
+    let expense: Expense
 }
