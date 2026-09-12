@@ -5,8 +5,10 @@ struct InviteView: View {
     let groupId: Int
     let groupName: String
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var state = CreationState.idle
     @State private var hasStartedCreation = false
+    @State private var isCopied = false
 
     var body: some View {
         VStack(spacing: 24) {
@@ -63,19 +65,36 @@ struct InviteView: View {
             VStack(spacing: 12) {
                 ShareLink(item: text) {
                     Label("Share", systemImage: "square.and.arrow.up")
-                        .frame(maxWidth: .infinity)
+                        .frame(maxWidth: .infinity, minHeight: 52)
                 }
                 .buttonStyle(.borderedProminent)
 
                 Button {
+                    guard !isCopied else { return }
                     UIPasteboard.general.string = text
+                    withAnimation(copyAnimation) {
+                        isCopied = true
+                    }
+
+                    Task {
+                        try? await Task.sleep(for: .seconds(2))
+                        withAnimation(copyAnimation) {
+                            isCopied = false
+                        }
+                    }
                 } label: {
-                    Label("Copy", systemImage: "doc.on.doc")
-                        .frame(maxWidth: .infinity)
+                    Label(isCopied ? "Copied" : "Copy", systemImage: isCopied ? "checkmark" : "doc.on.doc")
+                        .contentTransition(.symbolEffect(.replace))
+                        .frame(maxWidth: .infinity, minHeight: 52)
                 }
                 .buttonStyle(.bordered)
+                .tint(isCopied ? .green : .accentColor)
             }
         }
+    }
+
+    private var copyAnimation: Animation? {
+        reduceMotion ? nil : .easeOut(duration: 0.16)
     }
 
     private func failureContent(message: String) -> some View {
