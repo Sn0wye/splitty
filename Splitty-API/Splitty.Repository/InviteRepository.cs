@@ -34,6 +34,15 @@ public class InviteRepository(ApplicationDbContext context) : IInviteRepository
             .FirstOrDefaultAsync(i => i.Code == code);
     }
 
+    public async Task<Invite?> GetByCodeWithDetailsAsync(string code)
+    {
+        return await context.Invite
+            .AsNoTracking()
+            .Include(i => i.Group)
+            .Include(i => i.CreatedByUser)
+            .FirstOrDefaultAsync(i => i.Code == code);
+    }
+
     /// Claims one use of the invite and creates the membership as a single unit:
     /// a failed membership insert leaves the use count untouched.
     public async Task<InviteRedemptionOutcome> TryRedeemAsync(int inviteId, GroupMembership membership)

@@ -16,6 +16,35 @@ public class InviteController(
     IGroupService groupService
 ) : ControllerBase
 {
+    /// Read-only: describes the invite so the client can confirm before joining.
+    /// Shares the redemption rate-limit partition, or it would be a free oracle for
+    /// guessing the codes redemption is protected against.
+    [HttpGet("{code}")]
+    [EnableRateLimiting(RateLimitPolicies.InviteRedemption)]
+    public async Task<ActionResult<InviteMetadataResponse>> GetInvite(string code)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        var result = await inviteService.DescribeAsync(code, int.Parse(userId));
+
+        return result.Status switch
+        {
+            DescribeInviteStatus.Success => Ok(new InviteMetadataResponse
+            {
+                GroupName = result.Metadata!.GroupName,
+                MemberCount = result.Metadata.MemberCount,
+                CreatedByName = result.Metadata.CreatedByName,
+                AlreadyMember = result.Metadata.AlreadyMember
+            }),
+            DescribeInviteStatus.NotFound => NotFound(new ErrorResponse { StatusCode = 404, Message = "Invite not found" }),
+            DescribeInviteStatus.Expired => StatusCode(410, new ErrorResponse { StatusCode = 410, Message = "Invite has expired" }),
+            DescribeInviteStatus.Exhausted => Conflict(new ErrorResponse { StatusCode = 409, Message = "Invite has no uses left" }),
+            _ => StatusCode(500)
+        };
+    }
+
     [HttpPost("{code}/accept")]
     [EnableRateLimiting(RateLimitPolicies.InviteRedemption)]
     public async Task<ActionResult<GroupDTO>> AcceptInvite(string code)
