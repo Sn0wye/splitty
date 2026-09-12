@@ -105,7 +105,7 @@ struct GroupCard: View {
                 userId: index,
                 name: "Member \(index)",
                 email: "member\(index)@example.com",
-                avatarUrl: "https://api.dicebear.com/10.x/lorelei/svg?seed=\(index)"
+                avatarUrl: "https://api.dicebear.com/11.x/lorelei/png?seed=\(index)"
             )
         }
     ), onTap: {})

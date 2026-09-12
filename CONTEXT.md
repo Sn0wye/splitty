@@ -200,7 +200,56 @@ outright — it is an account-takeover path, not a nicety. (`User.Email` is uniq
 indexed, so an unverified collision cannot fall back to a second user either.)
 
 `Name` and `AvatarUrl` come from the Google payload **once, at user creation**. They are
-never overwritten on later sign-ins, or an in-app rename would silently revert.
+never overwritten on later sign-ins, or an in-app rename would silently revert. `Name` is
+editable through `PATCH /profile`; `AvatarUrl` is provider-owned and is not.
+
+## Profiles and avatars
+
+`/profile` is the one resource for reading and editing a user. There is no `GET /auth`.
+
+```
+GET   /profile                    the signed-in user
+PATCH /profile                    partial update: name, avatarKey
+GET   /profile/{userId}           a peer — 404 unless a group is shared
+POST  /profile/avatar/upload-url  a presigned PUT slot
+```
+
+All four return or accept `ProfileResponse`, a DTO rather than the `User` entity, so
+adding a column is not automatically an API change. The peer read is gated on **sharing a
+group** and 404s otherwise — membership is the only authorization boundary in the system,
+and a 403 would confirm the account exists.
+
+`PATCH` is partial by construction. `Patch<T>` (`Splitty.DTO/Json`) distinguishes an
+absent property from an explicit `null`; a plain nullable would collapse the two and make
+every omitted field a clear. An explicit `"avatarKey": null` removes the uploaded image.
+Names are trimmed, non-empty, capped at 60 characters, and **not unique**.
+
+**Avatar resolution**, in order: the uploaded object → the provider's `AvatarUrl` when
+non-empty → a generated DiceBear URL. The client is never told which one it got.
+
+Two columns carry this. `AvatarUrl` still holds the provider's picture, written once.
+`AvatarKey` holds the **key** of the uploaded object, not an absolute URL, so the storage
+host can move without rewriting rows. **The generated default is computed, never stored** —
+a stored default is a stored default forever, so the rows that predate avatars fix
+themselves and a later move off DiceBear needs no backfill. Seeded on the **user id**,
+never the email: the seed is rendered verbatim in every peer's client. The hosted DiceBear
+API routes on the major version only (`11.x`; `11.0` is a 404), so an exact minor cannot
+be pinned.
+
+**Upload flow.** The client asks for a URL, PUTs the image straight to R2, then sends the
+key back. The bytes never pass through the API, so there is no request-size configuration
+or streaming code here. On commit the API confirms the object exists, is under 2 MB and is
+`image/jpeg`, and that the key carries the caller's own `avatars/{userId}/` prefix —
+without that last check a user could point their row at someone else's object. The
+previous object is then deleted **best effort**: a failed delete is logged, not fatal.
+Keys contain a fresh UUID, so a committed URL is permanently cacheable.
+
+`IAvatarStorage` is the only component that talks to Cloudflare, the way
+`IGoogleTokenExchanger` is the only one that talks to Google — that is what keeps
+`ProfileService` testable. It is implemented with `AWSSDK.S3` against R2's S3-compatible
+endpoint; hand-rolling SigV4 reimplements a solved problem. Size and type are enforced on
+commit rather than in the signature because an S3 presigned PUT cannot bound a body whose
+length is unknown at signing time.
 
 `POST /auth/dev-login { email }` mints a token for a seeded user with no credential. It
 exists only when the host is Development — `Program.cs` strips `DevAuthController` from
@@ -223,10 +272,16 @@ Controllers are `[Authorize]` at class level; anonymous endpoints must opt out e
 
 ### Secrets
 
-`Jwt__SecretKey`, `Google__ClientId` and `Google__ClientSecret` come from `Splitty-API/.env`
+`Jwt__SecretKey`, `Google__ClientId`, `Google__ClientSecret` and the five `R2__*` keys
+(`AccountId`, `AccessKeyId`, `SecretAccessKey`, `BucketName`, `PublicBaseUrl`) come from `Splitty-API/.env`
 (gitignored; `.env.example` is the template). ASP.NET maps the double underscore to a
 config section. `appsettings.json` keeps `""` placeholders and is a schema, not a config.
-`Program.cs` throws at startup if any of the three is empty outside Development.
+`Program.cs` throws at startup if any of them is empty outside Development.
+
+`R2__PublicBaseUrl` is the host that **serves** the images — a custom domain bound to the
+bucket. It is not the `<AccountId>.r2.cloudflarestorage.com` S3 API endpoint, which the
+SDK signs against and which is not publicly readable, and not the `r2.dev` subdomain,
+which Cloudflare rate-limits and documents as unsuitable for production.
 
 Compose passes the file through `env_file:`. Running the API directly:
 
@@ -265,7 +320,7 @@ SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
 - `AuthenticationManager.currentUser` is the signed-in `User`: set from the sign-in response,
   and fetched once on a cold launch that restored a Keychain token. Everything that says
   "you" reads it. Not cached in UserDefaults — a second copy of the profile can go stale, a
-  Keychain token cannot. The profile route is `GET /auth`; there is no `/profile`.
+  Keychain token cannot. The profile route is `GET /profile`.
 
 **Money is integer cents everywhere on the client**, converted to `Double` once at the
 request boundary (`Money`). The API validates that splits sum *exactly* to the total against

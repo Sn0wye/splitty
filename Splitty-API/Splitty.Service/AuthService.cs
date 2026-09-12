@@ -9,11 +9,6 @@ public class AuthService(
     IJwtTokenIssuer tokenIssuer
 ) : IAuthService
 {
-    public async Task<User?> GetProfile(int userId)
-    {
-        return await userRepository.GetByIdAsync(userId);
-    }
-
     public async Task<(User user, string token)> DevLogin(string email)
     {
         var user = await userRepository.GetByEmailAsync(email);

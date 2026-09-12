@@ -32,6 +32,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         await _postgres.DisposeAsync();
     }
 
+    /// The storage stand-in the host is wired to, so a test can seed and inspect it.
+    public FakeAvatarStorage AvatarStorage => Services.GetRequiredService<FakeAvatarStorage>();
+
     public async Task WaitForProcessedAsync(CancellationToken cancellationToken = default)
     {
         await Services.GetRequiredService<TransactionProcessedSignal>().WaitAsync(cancellationToken);
@@ -51,10 +54,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             });
         });
 
-        // Nothing in the test suite reaches Google.
+        // Nothing in the test suite reaches Google or Cloudflare.
         builder.ConfigureTestServices(services =>
         {
             services.AddScoped<IGoogleTokenExchanger, FakeGoogleTokenExchanger>();
+            services.AddSingleton<FakeAvatarStorage>();
+            services.AddSingleton<IAvatarStorage>(sp => sp.GetRequiredService<FakeAvatarStorage>());
         });
     }
 }

@@ -50,6 +50,20 @@ public class GroupMembershipRepository(ApplicationDbContext context): IGroupMemb
             .ToListAsync();
     }
 
+    /// <summary>
+    /// Whether the two are in at least one group together. The membership boundary the
+    /// peer profile route is gated on.
+    /// </summary>
+    public async Task<bool> SharesGroupAsync(int userId, int peerId)
+    {
+        var groupIds = context.GroupMembership
+            .Where(gm => gm.UserId == userId)
+            .Select(gm => gm.GroupId);
+
+        return await context.GroupMembership
+            .AnyAsync(gm => gm.UserId == peerId && groupIds.Contains(gm.GroupId));
+    }
+
     public async Task<List<GroupMembership>> GetGroupMembershipsAsync(int groupId)
     {
         return await context.GroupMembership

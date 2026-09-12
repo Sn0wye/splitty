@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Text;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -34,13 +35,17 @@ public sealed class ApiClient
 
     /// Signs in through the real `/oauth/google` route against the fake exchanger, so
     /// tests exercise the same path the app does.
-    public async Task<SignedInUser> SignInAsync(string? email = null, string name = "Ada", string? subject = null)
+    public async Task<SignedInUser> SignInAsync(
+        string? email = null,
+        string name = "Ada",
+        string? subject = null,
+        string picture = "")
     {
         email ??= $"{Guid.NewGuid():N}@splitty.test";
         subject ??= Guid.NewGuid().ToString("N");
 
         var response = await SignInResponseAsync(
-            FakeGoogleTokenExchanger.Encode(subject, email, emailVerified: true, name));
+            FakeGoogleTokenExchanger.Encode(subject, email, emailVerified: true, name, picture));
         response.EnsureSuccessStatusCode();
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(Json);
@@ -114,6 +119,23 @@ public sealed class ApiClient
 
     public Task<HttpResponseMessage> GetSummaryAsync(int groupId) =>
         _http.GetAsync($"/group/{groupId}/expenses/summary");
+
+    public Task<HttpResponseMessage> GetProfileAsync() =>
+        _http.GetAsync("/profile");
+
+    public Task<HttpResponseMessage> GetPeerProfileAsync(int userId) =>
+        _http.GetAsync($"/profile/{userId}");
+
+    /// Takes the body verbatim so a test can send an explicit null, which is what
+    /// distinguishes "clear the avatar" from "leave it alone".
+    public Task<HttpResponseMessage> UpdateProfileAsync(object body) =>
+        _http.PatchAsJsonAsync("/profile", body);
+
+    public Task<HttpResponseMessage> UpdateProfileRawAsync(string json) =>
+        _http.PatchAsync("/profile", new StringContent(json, Encoding.UTF8, "application/json"));
+
+    public Task<HttpResponseMessage> CreateAvatarUploadAsync() =>
+        _http.PostAsync("/profile/avatar/upload-url", null);
 
     public Task<HttpResponseMessage> GetPeopleAsync() =>
         _http.GetAsync("/people");

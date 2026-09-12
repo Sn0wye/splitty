@@ -31,7 +31,7 @@ public sealed class DevLoginTests
         Assert.Equal(user.Id, body.GetProperty("user").GetProperty("id").GetInt32());
 
         var authed = ApiClient.Create(_factory, body.GetProperty("token").GetString());
-        var profile = await authed.Http.GetAsync("/auth");
+        var profile = await authed.GetProfileAsync();
 
         Assert.Equal(HttpStatusCode.OK, profile.StatusCode);
     }
