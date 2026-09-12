@@ -34,6 +34,10 @@ class GroupService {
         try await APIClient.shared.request(endpoint: "/group/\(groupId)/expenses/summary")
     }
 
+    func getPeople() async throws -> PeopleResponse {
+        try await APIClient.shared.request(endpoint: "/people")
+    }
+
     func requestBalanceRecomputation(groupId: Int) async throws {
         let _: EmptyResponse = try await APIClient.shared.request(
             endpoint: "/group/\(groupId)/expenses/summary",

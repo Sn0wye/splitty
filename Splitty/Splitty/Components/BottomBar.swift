@@ -8,16 +8,19 @@ import SwiftUI
 /// Flat, monochrome tab bar pinned to the bottom edge.
 struct BottomBar: View {
     @Binding var selection: AppTab
+    let isAdding: Bool
+    let isAddEnabled: Bool
+    let onAdd: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
-            ForEach(AppTab.allCases, id: \.rawValue) { tab in
-                BottomBarItem(tab: tab, isSelected: tab == selection) {
-                    selection = tab
-                }
-            }
+            tab(.groups)
+            tab(.group)
+            addButton
+            tab(.people)
+            tab(.settings)
         }
-        .padding(.top, 12)
+        .frame(height: 60, alignment: .bottom)
         .padding(.bottom, 4)
         .padding(.horizontal, 8)
         .background(alignment: .top) {
@@ -26,12 +29,45 @@ struct BottomBar: View {
                 Rectangle()
                     .fill(Color("border"))
                     .frame(height: 0.5)
+                    .padding(.top, 18)
             }
             .ignoresSafeArea(edges: .bottom)
         }
         // Selection, not impact: moving between tabs is a picker landing on a detent, and
         // the system has a texture for exactly that.
         .sensoryFeedback(.selection, trigger: selection)
+    }
+
+    private func tab(_ tab: AppTab) -> some View {
+        BottomBarItem(tab: tab, isSelected: tab == selection) {
+            selection = tab
+        }
+        .padding(.top, 18)
+    }
+
+    private var addButton: some View {
+        Button {
+            onAdd()
+        } label: {
+            SwiftUI.Group {
+                if isAdding {
+                    ProgressView()
+                        .tint(Color("background"))
+                } else {
+                    Image(systemName: "plus")
+                        .font(.system(size: 22, weight: .semibold))
+                }
+            }
+            .foregroundStyle(Color("background"))
+            .frame(width: 56, height: 56)
+            .background(Color("foreground"), in: Circle())
+            .shadow(radius: 8, y: 4)
+        }
+        .frame(maxWidth: .infinity)
+        .buttonStyle(.pressable(scale: 0.9))
+        .disabled(isAdding || !isAddEnabled)
+        .accessibilityLabel("Add expense")
+        .accessibilityIdentifier("app.addExpense")
     }
 }
 
@@ -59,7 +95,7 @@ private struct BottomBarItem: View {
     StatefulPreviewWrapper(AppTab.groups) { binding in
         VStack {
             Spacer()
-            BottomBar(selection: binding)
+            BottomBar(selection: binding, isAdding: false, isAddEnabled: true) {}
         }
         .background(Color("background"))
     }
