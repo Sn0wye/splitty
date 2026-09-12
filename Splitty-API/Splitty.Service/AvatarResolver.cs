@@ -40,5 +40,5 @@ public class AvatarResolver(IAvatarStorage storage) : IAvatarResolver
     /// every peer's client renders.
     /// </summary>
     private static string Generated(int userId) =>
-        $"https://api.dicebear.com/{DiceBearVersion}/lorelei/png?seed={userId}&size=256";
+        $"https://api.dicebear.com/{DiceBearVersion}/line-face/png?seed={userId}&size=256";
 }
