@@ -529,6 +529,10 @@ struct ExpenseRow: View {
 
     private var isUserPaid: Bool { expense.paidBy == currentUserId }
 
+    private var isUserInvolved: Bool {
+        isUserPaid || expense.splits.contains { $0.userId == currentUserId }
+    }
+
     private var paidByDisplay: MemberDisplay {
         MemberDisplay(expense.paidByUser)
     }
@@ -569,6 +573,10 @@ struct ExpenseRow: View {
             Text("payment")
                 .font(.caption)
                 .foregroundColor(Color("muted-foreground"))
+        } else if !isUserInvolved {
+            Text("not involved")
+                .font(.caption)
+                .foregroundColor(Color("muted-foreground"))
         } else {
             Text(isUserPaid ? "you lent" : "you borrowed")
                 .font(.caption)
@@ -583,7 +591,7 @@ struct ExpenseRow: View {
                 .font(.headline)
                 .fontWeight(.semibold)
                 .foregroundColor(Color("card-foreground"))
-        } else {
+        } else if isUserInvolved {
             // Signed: what the payer lent is the total less their own share, and what
             // anyone else borrowed is their share.
             Text(Money.formatted(amount: abs(expense.getUserSplit(currentUserId: currentUserId))))
