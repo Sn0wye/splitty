@@ -87,9 +87,11 @@ struct JoinGroupSheet: View {
     private func codeGroup(_ indices: Range<Int>) -> some View {
         HStack(spacing: 0) {
             ForEach(Array(indices), id: \.self) { index in
+                let shape = cellShape(index, in: indices)
+
                 ZStack {
                     if isActive(index) {
-                        Color.accentColor.opacity(0.08)
+                        shape.fill(Color.accentColor.opacity(0.08))
                     }
 
                     Text(character(at: index))
@@ -103,8 +105,7 @@ struct JoinGroupSheet: View {
                 }
                 .frame(width: 48, height: 56)
                 .overlay {
-                    Rectangle()
-                        .strokeBorder(isActive(index) ? Color.accentColor : .clear, lineWidth: 2)
+                    shape.strokeBorder(isActive(index) ? Color.accentColor : .clear, lineWidth: 2)
                 }
 
                 if index != indices.last {
@@ -114,13 +115,34 @@ struct JoinGroupSheet: View {
                 }
             }
         }
-        .background(Color("card"))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(Color("card"), in: containerShape)
+        .clipShape(containerShape)
         .overlay {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .strokeBorder(Color("border"), lineWidth: 1)
+            containerShape.strokeBorder(Color("border"), lineWidth: 1)
         }
     }
+
+    private var containerShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous)
+    }
+
+    /// End cells follow the container's corners so the focus ring never gets
+    /// sheared off by the outer clip - a square ring on a rounded box is what
+    /// made the first and last slots look chipped.
+    private func cellShape(_ index: Int, in indices: Range<Int>) -> UnevenRoundedRectangle {
+        let leading = index == indices.first ? Self.cornerRadius : 0
+        let trailing = index == indices.last ? Self.cornerRadius : 0
+
+        return UnevenRoundedRectangle(
+            topLeadingRadius: leading,
+            bottomLeadingRadius: leading,
+            bottomTrailingRadius: trailing,
+            topTrailingRadius: trailing,
+            style: .continuous
+        )
+    }
+
+    private static let cornerRadius: CGFloat = 12
 
     private func character(at index: Int) -> String {
         let characters = Array(viewModel.code)
