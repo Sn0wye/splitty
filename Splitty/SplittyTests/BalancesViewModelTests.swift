@@ -76,6 +76,23 @@ struct BalancesViewModelTests {
         #expect(viewModel.rows.map(\.peerName) == ["Ana"])
     }
 
+    @Test func aPendingSummaryRefreshesUntilTheWorkerSettles() async {
+        let pending = summary([balance(peerId: 2, name: "Ana", cents: -4_000)], pending: true)
+        let settled = summary([balance(peerId: 2, name: "Ana", cents: -1_500)])
+        let data = ControlledBalanceData(summaries: Array(repeating: pending, count: 9) + [settled])
+        let viewModel = BalancesViewModel(
+            context: BalanceSheetContext(groupId: 7, initialNetCents: 0, balancesPending: false),
+            dataSource: data.source()
+        )
+
+        await viewModel.load(currentUserId: 1)
+
+        #expect(data.summaryCallCount == 10)
+        #expect(data.retryCount == 9)
+        #expect(viewModel.netCents == -1_500)
+        #expect(!viewModel.balancesPending)
+    }
+
     @Test func onlyTheCurrentUsersRowsContribute() {
         let viewModel = makeViewModel()
         viewModel.apply(summary([
@@ -109,6 +126,35 @@ struct BalancesViewModelTests {
 
     private func user(id: Int, name: String) -> User {
         User(id: id, name: name, email: "\(id)@example.com", createdAt: "2026-01-01", updatedAt: "2026-01-01")
+    }
+}
+
+@MainActor
+private final class ControlledBalanceData {
+    private let summaries: [GroupBalanceSummary]
+    private(set) var summaryCallCount = 0
+    private(set) var retryCount = 0
+
+    init(summaries: [GroupBalanceSummary]) {
+        self.summaries = summaries
+    }
+
+    func source() -> BalanceDataSource {
+        BalanceDataSource(
+            summary: { [self] _ in await nextSummary() },
+            requestRefresh: { _ in },
+            waitForRetry: { [self] _ in await noteRetry() }
+        )
+    }
+
+    private func nextSummary() -> GroupBalanceSummary {
+        let index = min(summaryCallCount, summaries.count - 1)
+        summaryCallCount += 1
+        return summaries[index]
+    }
+
+    private func noteRetry() {
+        retryCount += 1
     }
 }
 
