@@ -62,9 +62,9 @@ public sealed class ApiClient
         return body.GetProperty("id").GetInt32();
     }
 
-    public async Task<string> CreateInviteAsync(int groupId)
+    public async Task<string> CreateInviteAsync(int groupId, int? maxUses = null)
     {
-        var response = await _http.PostAsJsonAsync($"/group/{groupId}/invites", new { });
+        var response = await _http.PostAsJsonAsync($"/group/{groupId}/invites", new { maxUses });
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(Json);
         return body.GetProperty("code").GetString()!;
@@ -75,6 +75,12 @@ public sealed class ApiClient
 
     public Task<HttpResponseMessage> AcceptInviteAsync(string code) =>
         _http.PostAsync($"/invite/{code}/accept", null);
+
+    public Task<HttpResponseMessage> GetInviteAsync(string code) =>
+        _http.GetAsync($"/invite/{code}");
+
+    public Task<HttpResponseMessage> LeaveGroupAsync(int groupId) =>
+        _http.PostAsync($"/group/{groupId}/leave", null);
 
     public Task<HttpResponseMessage> CreateExpenseAsync(int groupId, object body) =>
         _http.PostAsJsonAsync($"/group/{groupId}/expenses", body);

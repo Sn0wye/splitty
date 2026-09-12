@@ -21,12 +21,25 @@ public enum RedeemInviteStatus
     AlreadyMember
 }
 
+public enum DescribeInviteStatus
+{
+    Success,
+    NotFound,
+    Expired,
+    Exhausted
+}
+
 public record CreateInviteResult(CreateInviteStatus Status, Invite? Invite = null);
 
 public record RedeemInviteResult(RedeemInviteStatus Status, int GroupId = 0);
+
+public record InviteMetadata(string GroupName, int MemberCount, string CreatedByName, bool AlreadyMember);
+
+public record DescribeInviteResult(DescribeInviteStatus Status, InviteMetadata? Metadata = null);
 
 public interface IInviteService
 {
     Task<CreateInviteResult> CreateAsync(int groupId, int userId, int? maxUses, DateTime? expiresAt);
     Task<RedeemInviteResult> RedeemAsync(string code, int userId);
+    Task<DescribeInviteResult> DescribeAsync(string code, int userId);
 }

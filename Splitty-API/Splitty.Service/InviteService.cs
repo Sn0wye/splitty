@@ -86,5 +86,32 @@ public class InviteService(
         };
     }
 
+    /// Describes an invite without spending it. Statuses mirror RedeemAsync so the
+    /// client keeps one error mapping; unlike redemption this never mutates the invite.
+    public async Task<DescribeInviteResult> DescribeAsync(string code, int userId)
+    {
+        var invite = await inviteRepository.GetByCodeWithDetailsAsync(code.Trim().ToUpperInvariant());
+
+        if (invite is null) return new DescribeInviteResult(DescribeInviteStatus.NotFound);
+
+        if (invite.ExpiresAt <= DateTime.UtcNow) return new DescribeInviteResult(DescribeInviteStatus.Expired);
+
+        var alreadyMember =
+            await groupMembershipRepository.GetGroupMembershipByUserIdAndGroupId(userId, invite.GroupId) is not null;
+
+        // Membership before exhaustion, as in RedeemAsync: a member holding an exhausted
+        // code gets 200 from accept, so describe must not answer 409 to the same person.
+        if (!alreadyMember && invite.MaxUses is not null && invite.UsedCount >= invite.MaxUses)
+        {
+            return new DescribeInviteResult(DescribeInviteStatus.Exhausted);
+        }
+
+        return new DescribeInviteResult(DescribeInviteStatus.Success, new InviteMetadata(
+            invite.Group.Name,
+            await groupMembershipRepository.CountByGroupIdAsync(invite.GroupId),
+            invite.CreatedByUser.Name,
+            alreadyMember));
+    }
+
     private static string GenerateCode() => RandomNumberGenerator.GetString(CodeAlphabet, CodeLength);
 }

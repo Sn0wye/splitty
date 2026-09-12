@@ -15,6 +15,9 @@ public interface IInviteRepository
     Task<Invite?> TryCreateAsync(Invite invite);
     Task<Invite?> GetByCodeAsync(string code);
 
+    /// Like GetByCodeAsync, but with the group and the creating user loaded.
+    Task<Invite?> GetByCodeWithDetailsAsync(string code);
+
     /// Claims one use of the invite and creates the membership as a single unit:
     /// a failed membership insert leaves the use count untouched.
     Task<InviteRedemptionOutcome> TryRedeemAsync(int inviteId, GroupMembership membership);
