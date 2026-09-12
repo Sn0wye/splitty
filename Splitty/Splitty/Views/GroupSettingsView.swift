@@ -35,7 +35,7 @@ struct GroupSettingsView: View {
             }
 
             Section("Members") {
-                ForEach(members) { member in
+                ForEach(orderedMembers) { member in
                     memberRow(member)
                 }
 
@@ -43,6 +43,7 @@ struct GroupSettingsView: View {
                     InviteView(groupId: group.id, groupName: group.name)
                 } label: {
                     Label("Invite people", systemImage: "person.badge.plus")
+                        .frame(minHeight: 44)
                 }
             }
 
@@ -102,6 +103,11 @@ struct GroupSettingsView: View {
         else { return "No description" }
 
         return description
+    }
+
+    private var orderedMembers: [GroupMember] {
+        members.filter { $0.userId == currentUserId }
+            + members.filter { $0.userId != currentUserId }
     }
 
     @ViewBuilder
