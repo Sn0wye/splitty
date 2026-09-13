@@ -298,7 +298,10 @@ class GroupViewModel: ObservableObject {
             groupId: groupId,
             paidBy: currentUser.userId,
             amount: amount,
-            description: L10n.Settlement.paymentTo(peer.name),
+            // Server-owned data, not copy: BalanceService writes this exact English
+            // string and the refresh overwrites whatever we put here. The row title
+            // is localized at render time instead.
+            description: "Payment to \(peer.name)",
             type: .payment,
             splitMode: nil,
             date: date.map(ExpenseService.timestamp(from:)),

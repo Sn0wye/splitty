@@ -436,7 +436,7 @@ struct ExpenseRow: View {
             leadingIcon
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(expense.description)
+                Text(title)
                     .font(.headline)
                     .foregroundColor(Color("card-foreground"))
                 
@@ -516,6 +516,16 @@ struct ExpenseRow: View {
         return nil
     }
     
+    /// A payment's description is written by the server, in English, and stored.
+    /// Deriving the title from the split instead keeps every settlement row in the
+    /// reader's language — including rows someone else recorded. Expenses keep their
+    /// description: that one is the user's own words.
+    private var title: String {
+        expense.type == .payment
+            ? L10n.Settlement.paymentTo(peerDisplay?.name ?? L10n.Common.someone)
+            : expense.description
+    }
+
     private var paymentText: some View {
         SwiftUI.Group {
             // Settlements live in the same timeline as expenses, in their own row style
