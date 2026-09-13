@@ -18,6 +18,17 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
 
     var locale: Locale { Locale(identifier: rawValue) }
 
+    /// A flag is a country, not a language, so this is a deliberate approximation:
+    /// the one users scan fastest in a list. The autonym carries the real meaning.
+    var flag: String {
+        switch self {
+        case .english: "🇬🇧"
+        case .brazilianPortuguese: "🇧🇷"
+        case .spanish: "🇪🇸"
+        case .french: "🇫🇷"
+        }
+    }
+
     /// Autonym — shown in the language itself, not translated through L10n.
     var displayName: String {
         switch self {
