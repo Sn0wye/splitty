@@ -1898,7 +1898,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Acertar contas"
+            "value": "Quitar contas"
           }
         },
         "es": {
@@ -3116,7 +3116,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Tudo certo"
+            "value": "Quitado"
           }
         },
         "es": {
