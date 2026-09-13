@@ -2942,7 +2942,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Acertado"
+            "value": "Quitado"
           }
         },
         "es": {
@@ -5147,7 +5147,7 @@
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "Você está em dia"
+            "value": "Você quitou todas as suas dívidas"
           }
         },
         "es": {
