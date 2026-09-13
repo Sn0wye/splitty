@@ -7,3 +7,17 @@
 - Do not run the complete `SplittyTests` suite or any `SplittyUITests` without explicit user approval.
 - Reserve full unit and UI test-suite runs for CI, release validation, or an explicit user request.
 - Report runtime concerns that cannot be verified statically instead of automatically expanding the test scope.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in `Sn0wye/splitty`, managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Canonical five-role vocabulary, label strings unchanged. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
