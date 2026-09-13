@@ -58,11 +58,17 @@ struct AvatarCropView: View {
                     }
                 }
 
-                Button(L10n.Profile.startOver) {
+                Button {
                     resetImagePosition()
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Color("foreground"))
+                        .frame(width: 44, height: 44)
+                        .background(Color("card"), in: Circle())
                 }
-                .buttonStyle(.bordered)
-                .padding(.horizontal)
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.Profile.startOver)
             }
             .padding(.bottom)
             .background(Color("background").ignoresSafeArea())
