@@ -10,6 +10,7 @@ public class UpdateExpenseDTO
     public Decimal? Amount { get; set; }
     public string? Description { get; set; }
     public DateTime? Date { get; set; }
+    public ExpenseCategory? Category { get; set; }
     public SplitMode? SplitMode { get; set; }
     public List<UpdateExpenseSplitDTO>? ExpenseSplits { get; set; }
 }

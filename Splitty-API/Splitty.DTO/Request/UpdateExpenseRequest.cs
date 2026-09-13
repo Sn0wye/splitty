@@ -13,6 +13,13 @@ public class UpdateExpenseRequest
     public string? Description { get; set; }
     
     public DateTime? Date { get; set; }
+
+    /// <summary>
+    /// Omitted means unchanged, like every other field here. Clearing a category is setting
+    /// it to <see cref="ExpenseCategory.General"/>, which is what a non-null column buys.
+    /// <see cref="ExpenseCategory.Payment"/> is refused.
+    /// </summary>
+    public ExpenseCategory? Category { get; set; }
     
     /// <summary>
     /// Omitted means unchanged, except that an update supplying <see cref="Splits"/> must

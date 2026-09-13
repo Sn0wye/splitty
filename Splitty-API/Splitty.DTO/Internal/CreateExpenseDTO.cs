@@ -9,6 +9,7 @@ public class CreateExpenseDTO
     public Decimal Amount { get; set; }
     public string Description { get; set; }
     public DateTime? Date { get; set; }
+    public ExpenseCategory? Category { get; set; }
     public required SplitMode SplitMode { get; set; }
     public required List<ExpenseSplitDTO> ExpenseSplits { get; set; }
 }
