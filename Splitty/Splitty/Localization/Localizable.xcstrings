@@ -21,6 +21,12 @@
             "state": "translated",
             "value": "Cancelar"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler"
+          }
         }
       }
     },
@@ -40,6 +46,12 @@
           }
         },
         "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "fr": {
           "stringUnit": {
             "state": "translated",
             "value": "OK"
@@ -67,6 +79,12 @@
             "state": "translated",
             "value": "Guardar"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer"
+          }
         }
       }
     },
@@ -89,6 +107,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Crear"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créer"
           }
         }
       }
@@ -113,6 +137,12 @@
             "state": "translated",
             "value": "Editar"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier"
+          }
         }
       }
     },
@@ -135,6 +165,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eliminar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer"
           }
         }
       }
@@ -159,6 +195,12 @@
             "state": "translated",
             "value": "Listo"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminé"
+          }
         }
       }
     },
@@ -181,6 +223,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Siguiente"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suivant"
           }
         }
       }
@@ -205,6 +253,12 @@
             "state": "translated",
             "value": "Reintentar"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réessayer"
+          }
         }
       }
     },
@@ -227,6 +281,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Inténtalo de nuevo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réessayer"
           }
         }
       }
@@ -251,6 +311,12 @@
             "state": "translated",
             "value": "Tú"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous"
+          }
         }
       }
     },
@@ -273,6 +339,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "tú"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vous"
           }
         }
       }
@@ -297,6 +369,12 @@
             "state": "translated",
             "value": "alguien"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "quelqu’un"
+          }
         }
       }
     },
@@ -319,6 +397,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "miembro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "membre"
           }
         }
       }
@@ -343,6 +427,12 @@
             "state": "translated",
             "value": "Desconocido"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inconnu"
+          }
         }
       }
     },
@@ -365,6 +455,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cargando..."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargement…"
           }
         }
       }
@@ -389,6 +485,12 @@
             "state": "translated",
             "value": "Actualizando"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mise à jour"
+          }
         }
       }
     },
@@ -411,6 +513,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hoy"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aujourd’hui"
           }
         }
       }
@@ -435,6 +543,12 @@
             "state": "translated",
             "value": "Ayer"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hier"
+          }
         }
       }
     },
@@ -457,6 +571,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fecha"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date"
           }
         }
       }
@@ -481,6 +601,12 @@
             "state": "translated",
             "value": "Ajustes"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réglages"
+          }
         }
       }
     },
@@ -503,6 +629,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preferencias"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Préférences"
           }
         }
       }
@@ -527,6 +659,12 @@
             "state": "translated",
             "value": "Cuenta"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compte"
+          }
         }
       }
     },
@@ -549,6 +687,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Apariencia"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apparence"
           }
         }
       }
@@ -573,6 +717,12 @@
             "state": "translated",
             "value": "Idioma"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Langue"
+          }
         }
       }
     },
@@ -595,6 +745,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cerrar sesión"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se déconnecter"
           }
         }
       }
@@ -619,6 +775,12 @@
             "state": "translated",
             "value": "¿Seguro que quieres cerrar sesión?"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voulez-vous vraiment vous déconnecter ?"
+          }
         }
       }
     },
@@ -641,6 +803,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Idioma"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Langue"
           }
         }
       }
@@ -665,6 +833,12 @@
             "state": "translated",
             "value": "Apariencia"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apparence"
+          }
         }
       }
     },
@@ -687,6 +861,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "El sistema sigue el modo claro u oscuro de tu dispositivo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "L’apparence claire ou sombre suit celle de votre appareil."
           }
         }
       }
@@ -711,6 +891,12 @@
             "state": "translated",
             "value": "Sistema"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Système"
+          }
         }
       }
     },
@@ -733,6 +919,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Claro"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clair"
           }
         }
       }
@@ -757,6 +949,12 @@
             "state": "translated",
             "value": "Oscuro"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sombre"
+          }
         }
       }
     },
@@ -779,6 +977,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Grupos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groupes"
           }
         }
       }
@@ -803,6 +1007,12 @@
             "state": "translated",
             "value": "Grupo"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groupe"
+          }
         }
       }
     },
@@ -825,6 +1035,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Personas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personnes"
           }
         }
       }
@@ -849,6 +1065,12 @@
             "state": "translated",
             "value": "Ajustes"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réglages"
+          }
         }
       }
     },
@@ -871,6 +1093,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Añadir gasto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter une dépense"
           }
         }
       }
@@ -895,6 +1123,12 @@
             "state": "translated",
             "value": "Divide los gastos, salda las cuentas."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répartissez les dépenses, réglez les comptes."
+          }
         }
       }
     },
@@ -917,6 +1151,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Iniciar sesión con Google"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se connecter avec Google"
           }
         }
       }
@@ -941,6 +1181,12 @@
             "state": "translated",
             "value": "Iniciar sesión con Apple"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se connecter avec Apple"
+          }
         }
       }
     },
@@ -963,6 +1209,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Próximamente"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bientôt disponible"
           }
         }
       }
@@ -987,6 +1239,12 @@
             "state": "translated",
             "value": "Inicio de sesión de desarrollo"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connexion développeur"
+          }
         }
       }
     },
@@ -1009,6 +1267,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "El inicio de sesión no está configurado correctamente en esta versión."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La connexion n’est pas correctement configurée dans cette version."
           }
         }
       }
@@ -1033,6 +1297,12 @@
             "state": "translated",
             "value": "No se ha podido iniciar sesión. Inténtalo de nuevo."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Échec de la connexion. Réessayez."
+          }
         }
       }
     },
@@ -1055,6 +1325,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Google no ha podido verificar esa cuenta. Inténtalo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Google n’a pas pu vérifier ce compte. Réessayez."
           }
         }
       }
@@ -1079,6 +1355,12 @@
             "state": "translated",
             "value": "Algo ha fallado al iniciar sesión. Inténtalo de nuevo dentro de un momento."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une erreur s’est produite lors de la connexion. Réessayez dans un instant."
+          }
         }
       }
     },
@@ -1101,6 +1383,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se ha podido conectar con Splitty. Comprueba la conexión e inténtalo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de joindre Splitty. Vérifiez votre connexion et réessayez."
           }
         }
       }
@@ -1125,6 +1413,12 @@
             "state": "translated",
             "value": "Grupos"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Groupes"
+          }
         }
       }
     },
@@ -1147,6 +1441,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nuevo grupo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouveau groupe"
           }
         }
       }
@@ -1171,6 +1471,12 @@
             "state": "translated",
             "value": "Unirse con código"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rejoindre avec un code"
+          }
         }
       }
     },
@@ -1193,6 +1499,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Te deben"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On vous doit"
           }
         }
       }
@@ -1217,6 +1529,12 @@
             "state": "translated",
             "value": "Debes"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous devez"
+          }
         }
       }
     },
@@ -1239,6 +1557,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elegir un grupo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir un groupe"
           }
         }
       }
@@ -1263,6 +1587,12 @@
             "state": "translated",
             "value": "Ningún grupo seleccionado"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun groupe sélectionné"
+          }
         }
       }
     },
@@ -1285,6 +1615,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Elige un grupo en la pestaña Grupos."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisissez un groupe dans l’onglet Groupes."
           }
         }
       }
@@ -1309,6 +1645,12 @@
             "state": "translated",
             "value": "No se ha podido iniciar un gasto"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de commencer une dépense"
+          }
         }
       }
     },
@@ -1331,6 +1673,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Volver a los grupos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retour aux groupes"
           }
         }
       }
@@ -1355,6 +1703,12 @@
             "state": "translated",
             "value": "Ajustes del grupo"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réglages du groupe"
+          }
         }
       }
     },
@@ -1377,6 +1731,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Abre los ajustes del grupo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvre les réglages du groupe"
           }
         }
       }
@@ -1401,6 +1761,12 @@
             "state": "translated",
             "value": "¿Eliminar?"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer ?"
+          }
         }
       }
     },
@@ -1423,6 +1789,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Esta acción no se puede deshacer."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette action est irréversible."
           }
         }
       }
@@ -1447,6 +1819,12 @@
             "state": "translated",
             "value": "Error: %@"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erreur : %@"
+          }
         }
       }
     },
@@ -1469,6 +1847,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Todavía no hay gastos. Añade el primero."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune dépense pour le moment. Ajoutez la première."
           }
         }
       }
@@ -1493,6 +1877,12 @@
             "state": "translated",
             "value": "Cargando saldo..."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargement du solde…"
+          }
         }
       }
     },
@@ -1515,6 +1905,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saldar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Régler"
           }
         }
       }
@@ -1539,6 +1935,12 @@
             "state": "translated",
             "value": "Gráficos"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Graphiques"
+          }
         }
       }
     },
@@ -1561,6 +1963,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saldos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soldes"
           }
         }
       }
@@ -1585,6 +1993,12 @@
             "state": "translated",
             "value": "Exportar"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporter"
+          }
         }
       }
     },
@@ -1607,6 +2021,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Has pagado %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez payé %@"
           }
         }
       }
@@ -1631,6 +2051,12 @@
             "state": "translated",
             "value": "%1$@ ha pagado %2$@"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ a payé %2$@"
+          }
         }
       }
     },
@@ -1653,6 +2079,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Has pagado %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous avez payé %@"
           }
         }
       }
@@ -1677,6 +2109,12 @@
             "state": "translated",
             "value": "%1$@ ha pagado %2$@"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ a payé %2$@"
+          }
         }
       }
     },
@@ -1699,6 +2137,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "pago"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "paiement"
           }
         }
       }
@@ -1723,6 +2167,12 @@
             "state": "translated",
             "value": "no participa"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "sans participation"
+          }
         }
       }
     },
@@ -1745,6 +2195,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "has prestado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vous avez prêté"
           }
         }
       }
@@ -1769,6 +2225,12 @@
             "state": "translated",
             "value": "has pedido prestado"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vous avez emprunté"
+          }
         }
       }
     },
@@ -1791,6 +2253,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "¿Eliminar el pago de %@?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer le paiement de %@ ?"
           }
         }
       }
@@ -1815,6 +2283,12 @@
             "state": "translated",
             "value": "¿Eliminar \"%@\"?"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer \"%@\" ?"
+          }
         }
       }
     },
@@ -1837,6 +2311,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se ha podido cargar el grupo: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger le groupe : %@"
           }
         }
       }
@@ -1861,6 +2341,12 @@
             "state": "translated",
             "value": "No se han podido cargar los gastos: %@"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger les dépenses : %@"
+          }
         }
       }
     },
@@ -1883,6 +2369,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ajustes del grupo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réglages du groupe"
           }
         }
       }
@@ -1907,6 +2399,12 @@
             "state": "translated",
             "value": "Miembros"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Membres"
+          }
         }
       }
     },
@@ -1929,6 +2427,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Invitar a personas"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inviter des personnes"
           }
         }
       }
@@ -1953,6 +2457,12 @@
             "state": "translated",
             "value": "Abandonar grupo"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitter le groupe"
+          }
         }
       }
     },
@@ -1975,6 +2485,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sin descripción"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune description"
           }
         }
       }
@@ -1999,6 +2515,12 @@
             "state": "translated",
             "value": "Eliminar del grupo"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retirer du groupe"
+          }
         }
       }
     },
@@ -2021,6 +2543,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Editar grupo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier le groupe"
           }
         }
       }
@@ -2045,6 +2573,12 @@
             "state": "translated",
             "value": "Nombre"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom"
+          }
         }
       }
     },
@@ -2067,6 +2601,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Descripción (opcional)"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Description (facultative)"
           }
         }
       }
@@ -2091,6 +2631,12 @@
             "state": "translated",
             "value": "Comprueba el nombre e inténtalo de nuevo."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérifiez le nom et réessayez."
+          }
         }
       }
     },
@@ -2113,6 +2659,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "No eres miembro de este grupo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous n’êtes pas membre de ce groupe."
           }
         }
       }
@@ -2137,6 +2689,12 @@
             "state": "translated",
             "value": "Este grupo ya no existe."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce groupe n’existe plus."
+          }
         }
       }
     },
@@ -2159,6 +2717,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "este grupo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ce groupe"
           }
         }
       }
@@ -2183,6 +2747,12 @@
             "state": "translated",
             "value": "¿Abandonar y eliminar %@?"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitter et supprimer %@ ?"
+          }
         }
       }
     },
@@ -2205,6 +2775,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "El grupo y todos sus gastos se eliminarán de forma permanente."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le groupe et toutes ses dépenses seront supprimés définitivement."
           }
         }
       }
@@ -2229,6 +2805,12 @@
             "state": "translated",
             "value": "Abandonar y eliminar"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitter et supprimer"
+          }
         }
       }
     },
@@ -2251,6 +2833,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "¿Abandonar %@?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitter %@ ?"
           }
         }
       }
@@ -2275,6 +2863,12 @@
             "state": "translated",
             "value": "Perderás el acceso a los gastos de este grupo. Puedes volver a unirte con un nuevo código de invitación."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous n’aurez plus accès aux dépenses de ce groupe. Vous pourrez le rejoindre avec un nouveau code d’invitation."
+          }
         }
       }
     },
@@ -2297,6 +2891,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Abandonar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitter"
           }
         }
       }
@@ -2321,6 +2921,12 @@
             "state": "translated",
             "value": "Personas"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personnes"
+          }
         }
       }
     },
@@ -2343,6 +2949,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saldado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réglé"
           }
         }
       }
@@ -2367,6 +2979,12 @@
             "state": "translated",
             "value": "Aún no hay personas"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune personne pour le moment"
+          }
         }
       }
     },
@@ -2389,6 +3007,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Las personas con las que compartes un grupo aparecerán aquí."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les personnes avec qui vous partagez un groupe apparaîtront ici."
           }
         }
       }
@@ -2413,6 +3037,12 @@
             "state": "translated",
             "value": "Abre este grupo"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvre ce groupe"
+          }
         }
       }
     },
@@ -2435,6 +3065,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Debes %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous devez %@"
           }
         }
       }
@@ -2459,6 +3095,12 @@
             "state": "translated",
             "value": "Te debe %@"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous doit %@"
+          }
         }
       }
     },
@@ -2481,6 +3123,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Todo saldado"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout est réglé"
           }
         }
       }
@@ -2505,6 +3153,12 @@
             "state": "translated",
             "value": "Gasto"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dépense"
+          }
         }
       }
     },
@@ -2527,6 +3181,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nuevo gasto"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouvelle dépense"
           }
         }
       }
@@ -2551,6 +3211,12 @@
             "state": "translated",
             "value": "Editar gasto"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier la dépense"
+          }
         }
       }
     },
@@ -2573,6 +3239,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "¿En qué se ha gastado?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À quoi correspond cette dépense ?"
           }
         }
       }
@@ -2597,6 +3269,12 @@
             "state": "translated",
             "value": "Selecciona entre quiénes se divide"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionnez les personnes entre lesquelles répartir cette dépense"
+          }
         }
       }
     },
@@ -2619,6 +3297,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ por asignar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il reste %@ à attribuer"
           }
         }
       }
@@ -2643,6 +3327,12 @@
             "state": "translated",
             "value": "%@ de más sobre el total"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ au-dessus du total"
+          }
         }
       }
     },
@@ -2665,6 +3355,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@%% por asignar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Il reste %@%% à attribuer"
           }
         }
       }
@@ -2689,6 +3385,12 @@
             "state": "translated",
             "value": "%@%% de más sobre 100%%"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dépassement de %@%% par rapport à 100%%"
+          }
         }
       }
     },
@@ -2711,6 +3413,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "La parte de %@ se redondea a cero"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La part de %@ est arrondie à zéro"
           }
         }
       }
@@ -2735,6 +3443,12 @@
             "state": "translated",
             "value": "Eliminar gasto"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer la dépense"
+          }
         }
       }
     },
@@ -2757,6 +3471,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "¿Eliminar \"%@\"?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer \"%@\" ?"
           }
         }
       }
@@ -2781,6 +3501,12 @@
             "state": "translated",
             "value": "Esto elimina el gasto y la parte de cada persona."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La dépense et la part de chacun seront supprimées."
+          }
         }
       }
     },
@@ -2803,6 +3529,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dividir a partes iguales"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répartir équitablement"
           }
         }
       }
@@ -2827,6 +3559,12 @@
             "state": "translated",
             "value": "Dividir por importes"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répartir selon les montants"
+          }
         }
       }
     },
@@ -2849,6 +3587,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dividir por porcentajes"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répartir selon les pourcentages"
           }
         }
       }
@@ -2873,6 +3617,12 @@
             "state": "translated",
             "value": "Dividir"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répartir"
+          }
         }
       }
     },
@@ -2895,6 +3645,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Fecha desconocida"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date inconnue"
           }
         }
       }
@@ -2919,6 +3675,12 @@
             "state": "translated",
             "value": "%1$@ ha pagado · %2$@"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ a payé · %2$@"
+          }
         }
       }
     },
@@ -2941,6 +3703,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Desconocido"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inconnu"
           }
         }
       }
@@ -2965,6 +3733,12 @@
             "state": "translated",
             "value": "Dividir"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répartition"
+          }
         }
       }
     },
@@ -2987,6 +3761,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pagado por"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payé par"
           }
         }
       }
@@ -3011,6 +3791,12 @@
             "state": "translated",
             "value": "A partes iguales"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À parts égales"
+          }
         }
       }
     },
@@ -3033,6 +3819,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Importes"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Montants"
           }
         }
       }
@@ -3057,6 +3849,12 @@
             "state": "translated",
             "value": "Porcentajes"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pourcentages"
+          }
         }
       }
     },
@@ -3079,6 +3877,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dividir entre"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répartir entre"
           }
         }
       }
@@ -3103,6 +3907,12 @@
             "state": "translated",
             "value": "Todo está asignado. Un campo en blanco indica que se ha excluido a alguien."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout est attribué. Un champ vide signifie qu’une personne est exclue."
+          }
         }
       }
     },
@@ -3125,6 +3935,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "tú"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vous"
           }
         }
       }
@@ -3149,6 +3965,12 @@
             "state": "translated",
             "value": "otra persona"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "quelqu’un d’autre"
+          }
         }
       }
     },
@@ -3171,6 +3993,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "debes"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vous devez"
           }
         }
       }
@@ -3195,6 +4023,12 @@
             "state": "translated",
             "value": "%@ debe"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ doit"
+          }
         }
       }
     },
@@ -3217,6 +4051,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "ellos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "cette personne"
           }
         }
       }
@@ -3241,6 +4081,12 @@
             "state": "translated",
             "value": "Pagado por %@ y dividido por importes"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payé par %@ et réparti selon les montants"
+          }
         }
       }
     },
@@ -3263,6 +4109,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pagado por %1$@, queda un %2$@%% por asignar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payé par %1$@, il reste %2$@%% à attribuer"
           }
         }
       }
@@ -3287,6 +4139,12 @@
             "state": "translated",
             "value": "Pagado por %1$@, un %2$@%% por encima del 100%%"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payé par %1$@, dépassement de %2$@%% par rapport à 100%%"
+          }
         }
       }
     },
@@ -3309,6 +4167,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pagado por %@ y dividido por porcentajes"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payé par %@ et réparti selon les pourcentages"
           }
         }
       }
@@ -3333,6 +4197,12 @@
             "state": "translated",
             "value": "Pagado por %1$@, %2$@ el importe total"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payé par %1$@, %2$@ le montant total"
+          }
         }
       }
     },
@@ -3355,6 +4225,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pagado por %@ y dividido a partes iguales"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payé par %@ et réparti à parts égales"
           }
         }
       }
@@ -3445,6 +4321,34 @@
               }
             }
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payé par %1$@ et réparti à parts égales entre %#@people@"
+          },
+          "substitutions": {
+            "people": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg personne"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg personnes"
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -3467,6 +4371,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pago"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paiement"
           }
         }
       }
@@ -3491,6 +4401,12 @@
             "state": "translated",
             "value": "Editar pago"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier le paiement"
+          }
         }
       }
     },
@@ -3513,6 +4429,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Registrar pago"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer le paiement"
           }
         }
       }
@@ -3537,6 +4459,12 @@
             "state": "translated",
             "value": "Saldar"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Régler"
+          }
         }
       }
     },
@@ -3559,6 +4487,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Eliminar pago"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer le paiement"
           }
         }
       }
@@ -3583,6 +4517,12 @@
             "state": "translated",
             "value": "Cualquier miembro puede eliminar un pago, incluso si lo ha registrado otra persona."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "N’importe quel membre peut supprimer un paiement, y compris celui enregistré par une autre personne."
+          }
         }
       }
     },
@@ -3605,6 +4545,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "¿Eliminar el pago de %1$@ de %2$@ a %3$@?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer le paiement de %1$@, versé par %2$@ à %3$@ ?"
           }
         }
       }
@@ -3629,6 +4575,12 @@
             "state": "translated",
             "value": "El saldo entre ellos vuelve a ser el anterior a este pago."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le solde entre ces deux personnes reviendra à son niveau d’avant ce paiement."
+          }
         }
       }
     },
@@ -3651,6 +4603,12 @@
           "stringUnit": {
             "state": "translated",
             "value": " pagó "
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " a payé "
           }
         }
       }
@@ -3675,6 +4633,12 @@
             "state": "translated",
             "value": "Pago con %@"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paiement avec %@"
+          }
         }
       }
     },
@@ -3697,6 +4661,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pagar %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payer %@"
           }
         }
       }
@@ -3721,6 +4691,12 @@
             "state": "translated",
             "value": "Pagar todo a %@"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Payer la totalité à %@"
+          }
         }
       }
     },
@@ -3743,6 +4719,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Solo debes %2$@ a %1$@."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous devez seulement %2$@ à %1$@."
           }
         }
       }
@@ -3767,6 +4749,12 @@
             "state": "translated",
             "value": "No se ha podido registrar ese pago. Desliza hacia abajo para actualizar e inténtalo de nuevo."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible d’enregistrer ce paiement. Tirez vers le bas pour actualiser et réessayez."
+          }
         }
       }
     },
@@ -3789,6 +4777,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pago a %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Paiement à %@"
           }
         }
       }
@@ -3813,6 +4807,12 @@
             "state": "translated",
             "value": "Saldos"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Soldes"
+          }
         }
       }
     },
@@ -3835,6 +4835,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Te deben en total"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On vous doit au total"
           }
         }
       }
@@ -3859,6 +4865,12 @@
             "state": "translated",
             "value": "Debes en total"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous devez au total"
+          }
         }
       }
     },
@@ -3881,6 +4893,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tu saldo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Votre solde"
           }
         }
       }
@@ -3905,6 +4923,12 @@
             "state": "translated",
             "value": "Cargando saldos…"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chargement des soldes…"
+          }
         }
       }
     },
@@ -3927,6 +4951,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Todos están al día"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout le monde est à jour"
           }
         }
       }
@@ -3951,6 +4981,12 @@
             "state": "translated",
             "value": "Registra un pago"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistre un paiement"
+          }
         }
       }
     },
@@ -3973,6 +5009,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Debes"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous devez"
           }
         }
       }
@@ -3997,6 +5039,12 @@
             "state": "translated",
             "value": "Te debe"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous doit"
+          }
         }
       }
     },
@@ -4019,6 +5067,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Saldar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Régler"
           }
         }
       }
@@ -4043,6 +5097,12 @@
             "state": "translated",
             "value": "Te deben %@ en total"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On vous doit %@ au total"
+          }
         }
       }
     },
@@ -4065,6 +5125,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Debes %@ en total"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous devez %@ au total"
           }
         }
       }
@@ -4089,6 +5155,12 @@
             "state": "translated",
             "value": "Estás al día"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tout est réglé pour vous"
+          }
         }
       }
     },
@@ -4111,6 +5183,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Debes %2$@ a %1$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous devez %2$@ à %1$@"
           }
         }
       }
@@ -4135,6 +5213,12 @@
             "state": "translated",
             "value": "%1$@ te debe %2$@"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ vous doit %2$@"
+          }
         }
       }
     },
@@ -4157,6 +5241,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Creando invitación…"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Création de l’invitation…"
           }
         }
       }
@@ -4181,6 +5271,12 @@
             "state": "translated",
             "value": "Invitar a personas"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inviter des personnes"
+          }
         }
       }
     },
@@ -4203,6 +5299,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Código de invitación"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code d’invitation"
           }
         }
       }
@@ -4227,6 +5329,12 @@
             "state": "translated",
             "value": "Código de invitación %@"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code d’invitation %@"
+          }
         }
       }
     },
@@ -4249,6 +5357,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Comparte este código con alguien a quien quieras añadir a \"%@\"."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partagez ce code avec une personne que vous voulez ajouter à \"%@\"."
           }
         }
       }
@@ -4273,6 +5387,12 @@
             "state": "translated",
             "value": "Copiar"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copier"
+          }
         }
       }
     },
@@ -4295,6 +5415,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Compartir"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Partager"
           }
         }
       }
@@ -4319,6 +5445,12 @@
             "state": "translated",
             "value": "Únete a %@ en Splitty"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rejoignez %@ sur Splitty"
+          }
         }
       }
     },
@@ -4341,6 +5473,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Únete a \"%1$@\" en Splitty con el código de invitación %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rejoignez \"%1$@\" sur Splitty avec le code d’invitation %2$@"
           }
         }
       }
@@ -4365,6 +5503,12 @@
             "state": "translated",
             "value": "Se ha interrumpido la creación de la invitación. Inténtalo de nuevo."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La création de l’invitation a été interrompue. Réessayez."
+          }
         }
       }
     },
@@ -4387,6 +5531,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Unirse con código"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rejoindre avec un code"
           }
         }
       }
@@ -4411,6 +5561,12 @@
             "state": "translated",
             "value": "Introduce el código de invitación de seis caracteres que ha compartido un miembro del grupo."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saisissez le code d’invitation à six caractères partagé par un membre du groupe."
+          }
         }
       }
     },
@@ -4433,6 +5589,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Unirse"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rejoindre"
           }
         }
       }
@@ -4457,6 +5619,12 @@
             "state": "translated",
             "value": "Comprobando la invitación…"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vérification de l’invitation…"
+          }
         }
       }
     },
@@ -4479,6 +5647,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Invitación al grupo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invitation de groupe"
           }
         }
       }
@@ -4503,6 +5677,12 @@
             "state": "translated",
             "value": "Invitado por %@"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invitation envoyée par %@"
+          }
         }
       }
     },
@@ -4525,6 +5705,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ya eres miembro de este grupo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous êtes déjà membre de ce groupe."
           }
         }
       }
@@ -4549,6 +5735,12 @@
             "state": "translated",
             "value": "Abrir grupo"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ouvrir le groupe"
+          }
         }
       }
     },
@@ -4571,6 +5763,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Este enlace de invitación no es válido. Pide uno nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce lien d’invitation n’est pas valide. Demandez-en un nouveau."
           }
         }
       }
@@ -4595,6 +5793,12 @@
             "state": "translated",
             "value": "Ese código de invitación no es válido."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce code d’invitation n’est pas valide."
+          }
         }
       }
     },
@@ -4617,6 +5821,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Esta invitación ha caducado. Pide una nueva."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette invitation a expiré. Demandez-en une nouvelle."
           }
         }
       }
@@ -4641,6 +5851,12 @@
             "state": "translated",
             "value": "Esta invitación ya no se puede usar. Pide una nueva."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette invitation n’a plus d’utilisation disponible. Demandez-en une nouvelle."
+          }
         }
       }
     },
@@ -4664,6 +5880,12 @@
             "state": "translated",
             "value": "Demasiados intentos. Espera un minuto e inténtalo de nuevo."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trop de tentatives. Attendez une minute et réessayez."
+          }
         }
       }
     },
@@ -4686,6 +5908,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Enlace de invitación"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lien d’invitation"
           }
         }
       }
@@ -4746,6 +5974,24 @@
               }
             }
           }
+        },
+        "fr": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld membre"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld membres"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -4768,6 +6014,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Se envía automáticamente después de seis caracteres"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Validation automatique après six caractères"
           }
         }
       }
@@ -4792,6 +6044,12 @@
             "state": "translated",
             "value": "Vacío"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vide"
+          }
         }
       }
     },
@@ -4814,6 +6072,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@, %2$lld de %3$lld caracteres introducidos"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$lld caractères saisis sur %3$lld"
           }
         }
       }
@@ -4838,6 +6102,12 @@
             "state": "translated",
             "value": "El servidor ha rechazado la operación. Comprueba los importes e inténtalo de nuevo."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Le serveur a refusé cette opération. Vérifiez les montants et réessayez."
+          }
         }
       }
     },
@@ -4860,6 +6130,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "No eres miembro de este grupo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vous n’êtes pas membre de ce groupe."
           }
         }
       }
@@ -4884,6 +6160,12 @@
             "state": "translated",
             "value": "Ya no existe."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cet élément n’existe plus."
+          }
         }
       }
     },
@@ -4906,6 +6188,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Este miembro tiene un saldo pendiente."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce membre a un solde impayé."
           }
         }
       }
@@ -4930,6 +6218,12 @@
             "state": "translated",
             "value": "Algo ha fallado (%lld). Inténtalo de nuevo."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une erreur s’est produite (%lld). Réessayez."
+          }
         }
       }
     },
@@ -4952,6 +6246,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "No se ha podido conectar con Splitty. Comprueba la conexión e inténtalo de nuevo."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de joindre Splitty. Vérifiez votre connexion et réessayez."
           }
         }
       }
@@ -4976,6 +6276,12 @@
             "state": "translated",
             "value": "Algo ha fallado. Inténtalo de nuevo."
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Une erreur s’est produite. Réessayez."
+          }
         }
       }
     },
@@ -4998,6 +6304,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Este grupo ya no está disponible"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce groupe n’est plus disponible"
           }
         }
       }
@@ -5022,6 +6334,12 @@
             "state": "translated",
             "value": "Miembro eliminado"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Membre retiré"
+          }
         }
       }
     },
@@ -5044,6 +6362,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "borrar"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "supprimer"
           }
         }
       }
@@ -5068,6 +6392,12 @@
             "state": "translated",
             "value": "Borrar importe"
           }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effacer le montant"
+          }
         }
       }
     },
@@ -5090,6 +6420,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "listo"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "terminé"
           }
         }
       }

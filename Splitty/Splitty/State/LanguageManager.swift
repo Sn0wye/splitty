@@ -10,6 +10,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     case english = "en"
     case brazilianPortuguese = "pt-BR"
     case spanish = "es"
+    case french = "fr"
 
     static let storageKey = "appLanguage"
 
@@ -23,6 +24,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
         case .english: "English"
         case .brazilianPortuguese: "Português (Brasil)"
         case .spanish: "Español"
+        case .french: "Français"
         }
     }
 
