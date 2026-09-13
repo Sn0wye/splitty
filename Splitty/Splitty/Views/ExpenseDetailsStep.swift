@@ -183,7 +183,6 @@ struct ExpenseDetailsStep: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 8)
-        .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
     }
 
     private var dateRow: some View {
