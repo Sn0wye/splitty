@@ -17,7 +17,8 @@ struct ProfileView: View {
     var body: some View {
         Form {
             Section {
-                VStack(spacing: 14) {
+                HStack {
+                    Spacer()
                     ZStack {
                         MemberAvatar(display: MemberDisplay(viewModel.user), size: 112)
                         if viewModel.isChangingAvatar {
@@ -28,31 +29,41 @@ struct ProfileView: View {
                                 .tint(.white)
                         }
                     }
+                    Spacer()
+                }
+                .padding(.vertical, 12)
 
-                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                        Text(L10n.Profile.choosePhoto)
-                    }
-                    .disabled(!viewModel.canChangeAvatar)
+                PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                    Label(L10n.Profile.choosePhoto, systemImage: "photo.on.rectangle")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .disabled(!viewModel.canChangeAvatar)
 
-                    Button(L10n.Profile.removePhoto, role: .destructive) {
-                        showingRemoveConfirmation = true
-                    }
-                    .disabled(!viewModel.canChangeAvatar)
+                Button(role: .destructive) {
+                    showingRemoveConfirmation = true
+                } label: {
+                    Label(L10n.Profile.removePhoto, systemImage: "trash")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .disabled(!viewModel.canChangeAvatar)
 
-                    if let status = uploadStatus {
-                        Text(status)
-                            .font(.footnote)
-                            .foregroundStyle(Color("muted-foreground"))
-                    }
+                if let status = uploadStatus {
+                    Text(status)
+                        .font(.footnote)
+                        .foregroundStyle(Color("muted-foreground"))
+                }
 
-                    if viewModel.canRetryUpload {
-                        Button(L10n.Profile.retryUpload) {
-                            Task { await viewModel.retryUpload() }
-                        }
+                if viewModel.canRetryUpload {
+                    Button {
+                        Task { await viewModel.retryUpload() }
+                    } label: {
+                        Label(L10n.Profile.retryUpload, systemImage: "arrow.clockwise")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
             }
 
             Section(L10n.Profile.title) {
