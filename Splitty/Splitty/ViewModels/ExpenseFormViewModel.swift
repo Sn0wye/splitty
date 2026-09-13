@@ -15,6 +15,7 @@ class ExpenseFormViewModel: ObservableObject {
     @Published var amount: AmountExpression
     @Published var description: String
     @Published var date: Date
+    @Published var category: ExpenseCategory
     @Published var configuration: SplitConfiguration
     @Published var errorMessage: String?
     @Published var isSaving = false
@@ -22,6 +23,7 @@ class ExpenseFormViewModel: ObservableObject {
     let groupId: Int
     let members: [GroupMember]
     let currentUserId: Int
+    let timelineExpenses: [Expense]
 
     /// Each mode keeps its own draft for as long as the **sheet** is open. The split
     /// screen is pushed and popped constantly while composing, so holding the drafts there
@@ -38,22 +40,31 @@ class ExpenseFormViewModel: ObservableObject {
 
     private let existingExpenseId: Int?
 
-    init(groupId: Int, members: [GroupMember], currentUserId: Int, expense: Expense? = nil) {
+    init(
+        groupId: Int,
+        members: [GroupMember],
+        currentUserId: Int,
+        expense: Expense? = nil,
+        timelineExpenses: [Expense] = []
+    ) {
         self.groupId = groupId
         self.members = members
         self.currentUserId = currentUserId
+        self.timelineExpenses = timelineExpenses
         self.existingExpenseId = expense?.id
 
         if let expense {
             amount = AmountExpression(cents: Money.cents(from: expense.amount))
             description = expense.description
             date = expense.effectiveDate ?? Date()
+            category = expense.category
             configuration = SplitConfiguration(restoredFrom: expense)
             equalParticipants = Set(expense.splits.map(\.userId))
         } else {
             amount = AmountExpression()
             description = ""
             date = Date()
+            category = .general
             configuration = SplitConfiguration(
                 payerId: currentUserId,
                 mode: .equal(participants: Set(members.map(\.userId)))
@@ -91,6 +102,10 @@ class ExpenseFormViewModel: ObservableObject {
     var title: String { isEditing ? L10n.Expense.editExpense : L10n.Expense.newExpense }
 
     var memberIds: [Int] { members.map(\.userId) }
+
+    var categorySuggestions: [ExpenseCategory] {
+        ExpenseCategory.chipSuggestions(from: timelineExpenses, selected: category)
+    }
 
     /// The whole expression's value, pending operation included: Save auto-evaluates rather
     /// than refusing to save a number the app can compute.
@@ -250,6 +265,7 @@ class ExpenseFormViewModel: ObservableObject {
                     amountCents: total,
                     paidBy: configuration.payerId,
                     date: date,
+                    category: category,
                     splitMode: configuration.mode.wireValue,
                     splits: splits()
                 )
@@ -261,6 +277,7 @@ class ExpenseFormViewModel: ObservableObject {
                 amountCents: total,
                 paidBy: configuration.payerId,
                 date: date,
+                category: category,
                 splitMode: configuration.mode.wireValue,
                 splits: splits()
             )

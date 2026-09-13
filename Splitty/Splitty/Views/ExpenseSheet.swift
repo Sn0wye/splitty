@@ -31,13 +31,15 @@ struct ExpenseSheet: View {
         members: [GroupMember],
         currentUserId: Int,
         expense: Expense? = nil,
+        timelineExpenses: [Expense] = [],
         onSaved: @escaping (Expense) -> Void
     ) {
         _viewModel = StateObject(wrappedValue: ExpenseFormViewModel(
             groupId: groupId,
             members: members,
             currentUserId: currentUserId,
-            expense: expense
+            expense: expense,
+            timelineExpenses: timelineExpenses
         ))
         self.onSaved = onSaved
     }

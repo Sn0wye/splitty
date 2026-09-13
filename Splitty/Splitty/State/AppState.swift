@@ -73,6 +73,7 @@ final class AppState: ObservableObject {
     @Published var groupNotice: String?
     @Published private(set) var exitedGroupId: Int?
     @Published private(set) var savedExpense: SavedExpenseEvent?
+    private var timelineExpensesByGroupID: [Int: [Expense]] = [:]
 
     @Published var currentGroupId: Int? {
         didSet {
@@ -111,6 +112,14 @@ final class AppState: ObservableObject {
 
     func recordSavedExpense(_ expense: Expense, groupId: Int) {
         savedExpense = SavedExpenseEvent(groupId: groupId, expense: expense)
+    }
+
+    func cacheTimelineExpenses(_ expenses: [Expense], groupId: Int) {
+        timelineExpensesByGroupID[groupId] = expenses
+    }
+
+    func timelineExpenses(groupId: Int) -> [Expense] {
+        timelineExpensesByGroupID[groupId] ?? []
     }
 }
 

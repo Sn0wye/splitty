@@ -22,6 +22,7 @@ struct ExpenseDetailsStep: View {
         ScrollView {
             VStack(spacing: 12) {
                 descriptionRow
+                categoryRow
                 splitRow
                 dateRow
 
@@ -113,6 +114,75 @@ struct ExpenseDetailsStep: View {
         }
         .buttonStyle(.pressable(scale: 0.98))
         .accessibilityIdentifier("expense.split")
+    }
+
+    private var categoryRow: some View {
+        HStack(spacing: 10) {
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(viewModel.categorySuggestions) { category in
+                        Button {
+                            viewModel.category = viewModel.category == category ? .general : category
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: category.glyph)
+                                Text(category.name)
+                                if viewModel.category == category {
+                                    Image(systemName: "checkmark")
+                                        .font(.caption2.weight(.bold))
+                                }
+                            }
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(
+                                viewModel.category == category
+                                    ? Color.expenseBackground
+                                    : Color.expenseForeground.opacity(0.72)
+                            )
+                            .padding(.horizontal, 10)
+                            .frame(height: 32)
+                            .background(
+                                viewModel.category == category
+                                    ? Color.expenseForeground
+                                    : Color.expenseForeground.opacity(0.08),
+                                in: Capsule()
+                            )
+                            .contentShape(Capsule())
+                        }
+                        .buttonStyle(.pressable(scale: 0.96))
+                        .accessibilityAddTraits(viewModel.category == category ? .isSelected : [])
+                    }
+                }
+                .padding(.trailing, 14)
+            }
+            .scrollIndicators(.hidden)
+            .mask {
+                LinearGradient(
+                    stops: [
+                        .init(color: .black, location: 0),
+                        .init(color: .black, location: 0.92),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            }
+
+            NavigationLink {
+                ExpenseCategoryPickerView(selection: $viewModel.category)
+            } label: {
+                Image(systemName: "list.bullet")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.expenseForeground)
+                    .frame(width: 36, height: 36)
+                    .background(
+                        Color.expenseForeground.opacity(0.10),
+                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    )
+            }
+            .buttonStyle(.pressable(scale: 0.94))
+            .accessibilityIdentifier("expense.category-picker")
+        }
+        .padding(.vertical, 8)
     }
 
     private var dateRow: some View {

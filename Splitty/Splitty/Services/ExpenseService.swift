@@ -26,6 +26,7 @@ class ExpenseService {
         amountCents: Int,
         paidBy: Int,
         date: Date?,
+        category: ExpenseCategory,
         splitMode: ExpenseSplitMode,
         splits: [ExpenseSplitRequest]
     ) async throws -> Expense {
@@ -34,6 +35,7 @@ class ExpenseService {
             "description": description,
             "amount": Money.requestValue(cents: amountCents),
             "paidBy": paidBy,
+            "category": category.rawValue,
             "splitMode": splitMode.rawValue,
             "splits": splits.map(Self.splitBody(_:))
         ]
@@ -53,6 +55,7 @@ class ExpenseService {
         amountCents: Int? = nil,
         paidBy: Int? = nil,
         date: Date? = nil,
+        category: ExpenseCategory? = nil,
         splitMode: ExpenseSplitMode? = nil,
         splits: [ExpenseSplitRequest]? = nil
     ) async throws -> Expense {
@@ -61,6 +64,7 @@ class ExpenseService {
         if let amountCents { body["amount"] = Money.requestValue(cents: amountCents) }
         if let paidBy { body["paidBy"] = paidBy }
         if let date { body["date"] = Self.timestamp(from: date) }
+        if let category { body["category"] = category.rawValue }
         // The rows and the mode naming them are one fact: an update sending splits without
         // a mode is rejected, so they travel together or not at all.
         if let splitMode { body["splitMode"] = splitMode.rawValue }

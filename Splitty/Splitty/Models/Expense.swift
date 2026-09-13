@@ -30,6 +30,7 @@ struct Expense: Codable, Identifiable {
     let amount: Double
     let description: String
     let type: ExpenseType
+    let category: ExpenseCategory
     /// How this was divided. `nil` on a settlement, on a row written before the column
     /// existed, and on a mode this build does not recognise — see `init(from:)`.
     let splitMode: ExpenseSplitMode?
@@ -43,7 +44,7 @@ struct Expense: Codable, Identifiable {
     let splits: [ExpenseSplit]
 
     enum CodingKeys: String, CodingKey {
-        case id, groupId, paidBy, amount, description, type, splitMode, date
+        case id, groupId, paidBy, amount, description, type, category, splitMode, date
         case createdAt, updatedAt, paidByUser, splits
     }
 }
@@ -60,6 +61,7 @@ extension Expense {
         amount = try container.decode(Double.self, forKey: .amount)
         description = try container.decode(String.self, forKey: .description)
         type = try container.decode(ExpenseType.self, forKey: .type)
+        category = (try? container.decode(ExpenseCategory.self, forKey: .category)) ?? .general
         splitMode = try? container.decodeIfPresent(ExpenseSplitMode.self, forKey: .splitMode)
         date = try container.decodeIfPresent(String.self, forKey: .date)
         createdAt = try container.decode(String.self, forKey: .createdAt)

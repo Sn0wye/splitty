@@ -11,6 +11,7 @@ struct ExpenseDetailView: View {
     let expense: Expense
     let members: [GroupMember]
     let currentUserId: Int
+    let timelineExpenses: [Expense]
     let onChanged: () -> Void
     let onDeleted: () -> Void
 
@@ -38,6 +39,16 @@ struct ExpenseDetailView: View {
                     }
                 }
                 .padding(.vertical, 4)
+            }
+
+            Section {
+                HStack(spacing: 12) {
+                    Image(systemName: expense.category.glyph)
+                        .foregroundStyle(.white)
+                        .frame(width: 32, height: 32)
+                        .background(expense.category.tint, in: Circle())
+                    Text(expense.category.name)
+                }
             }
 
             Section(splitHeader) {
@@ -97,7 +108,8 @@ struct ExpenseDetailView: View {
                 groupId: expense.groupId,
                 members: members,
                 currentUserId: currentUserId,
-                expense: expense
+                expense: expense,
+                timelineExpenses: timelineExpenses
             ) { _ in
                 onChanged()
                 dismiss()

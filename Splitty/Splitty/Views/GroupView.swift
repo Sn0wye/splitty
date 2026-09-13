@@ -159,6 +159,9 @@ struct GroupView: View {
             viewModel.insert(event.expense)
             viewModel.refreshAfterSheetDismissal(groupId: groupId)
         }
+        .onReceive(viewModel.$expenses) { expenses in
+            appState.cacheTimelineExpenses(expenses, groupId: groupId)
+        }
         .onDisappear {
             viewModel.cancelRefresh()
         }
@@ -274,6 +277,7 @@ struct GroupView: View {
                     expense: expense,
                     members: viewModel.members,
                     currentUserId: currentUserId,
+                    timelineExpenses: viewModel.expenses,
                     onChanged: { viewModel.beginRefresh(groupId: groupId) },
                     onDeleted: { viewModel.beginRefresh(groupId: groupId) }
                 )
@@ -485,17 +489,11 @@ struct ExpenseRow: View {
     }
     
     private var categoryColor: Color {
-        switch expense.type {
-        case .expense: return .blue
-        case .payment: return .green
-        }
+        expense.category.tint
     }
     
     private var categoryIconName: String {
-        switch expense.type {
-        case .expense: return "dollarsign.circle.fill"
-        case .payment: return "arrow.left.arrow.right"
-        }
+        expense.category.glyph
     }
 
     private var isUserPaid: Bool { expense.paidBy == currentUserId }

@@ -58,6 +58,7 @@ enum PerformanceScenarios {
             amount: 10,
             description: "Expense \(index)",
             type: .expense,
+            category: .general,
             splitMode: .equal,
             date: timestamp,
             createdAt: timestamp,

@@ -383,6 +383,7 @@ enum TestExpense {
         splitMode: ExpenseSplitMode? = nil,
         percentages: [Int: Double] = [:],
         type: ExpenseType = .expense,
+        category: ExpenseCategory = .general,
         date: String? = nil
     ) -> Expense {
         Expense(
@@ -392,6 +393,7 @@ enum TestExpense {
             amount: amount,
             description: "Dinner",
             type: type,
+            category: category,
             splitMode: splitMode,
             date: date,
             createdAt: "2026-08-20T12:00:00Z",

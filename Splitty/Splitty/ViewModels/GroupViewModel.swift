@@ -303,6 +303,7 @@ class GroupViewModel: ObservableObject {
             // is localized at render time instead.
             description: "Payment to \(peer.name)",
             type: .payment,
+            category: .payment,
             splitMode: nil,
             date: date.map(ExpenseService.timestamp(from:)),
             createdAt: timestamp,
