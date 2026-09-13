@@ -37,6 +37,7 @@ struct AppLanguageTests {
         for language in AppLanguage.allCases {
             #expect(language.locale.identifier == language.rawValue)
             #expect(!language.displayName.isEmpty)
+            #expect(!language.flag.isEmpty)
         }
     }
 }

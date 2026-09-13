@@ -30,6 +30,12 @@ struct LanguageView: View {
             }
         } label: {
             HStack(spacing: 12) {
+                // Decorative: the autonym next to it already names the language, and
+                // VoiceOver reading "flag of Brazil" first would only get in the way.
+                Text(language.flag)
+                    .font(.title3)
+                    .accessibilityHidden(true)
+
                 Text(language.displayName)
                     .foregroundStyle(Color("foreground"))
 
