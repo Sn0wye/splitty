@@ -38,13 +38,13 @@ struct BalancesView: View {
                 .padding(.bottom, 32)
             }
             .background(Color("background"))
-            .navigationTitle("Balances")
+            .navigationTitle(Text(L10n.Balances.title))
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color("background"), for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button { dismiss() } label: { Text(L10n.Common.done) }
                 }
             }
             .refreshable {
@@ -92,9 +92,9 @@ struct BalancesView: View {
     }
 
     private var netLabel: String {
-        if viewModel.netCents > 0 { return "You are owed overall" }
-        if viewModel.netCents < 0 { return "You owe overall" }
-        return "Your balance"
+        if viewModel.netCents > 0 { return L10n.Balances.owedOverall }
+        if viewModel.netCents < 0 { return L10n.Balances.oweOverall }
+        return L10n.Balances.yourBalance
     }
 
     @ViewBuilder
@@ -103,13 +103,13 @@ struct BalancesView: View {
         case .loading:
             HStack(spacing: 10) {
                 ProgressView()
-                Text("Loading balances…")
+                Text(L10n.Balances.loading)
                     .foregroundStyle(Color("muted-foreground"))
             }
             .frame(maxWidth: .infinity, minHeight: 64, alignment: .center)
 
         case .settled:
-            Label("Everyone is settled up", systemImage: "checkmark.circle.fill")
+            Label(L10n.Balances.everyoneSettled, systemImage: "checkmark.circle.fill")
                 .foregroundStyle(Color("muted-foreground"))
                 .frame(minHeight: 56)
 
@@ -118,8 +118,10 @@ struct BalancesView: View {
                 Label(message, systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.red)
 
-                Button("Try again") {
+                Button {
                     Task { await viewModel.load(currentUserId: currentUserId) }
+                } label: {
+                    Text(L10n.Common.tryAgain)
                 }
                 .buttonStyle(.bordered)
             }
@@ -133,7 +135,7 @@ struct BalancesView: View {
                             balanceRow(row)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityHint("Records a payment")
+                        .accessibilityHint(L10n.Balances.recordsPayment)
                     } else {
                         balanceRow(row)
                     }
@@ -169,7 +171,7 @@ private struct BalancePeerRow: View {
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Color("card-foreground"))
 
-                Text(row.direction == .youOwe ? "You owe" : "Owes you")
+                Text(row.direction == .youOwe ? L10n.Balances.youOwe : L10n.Balances.owesYou)
                     .font(.subheadline)
                     .foregroundStyle(Color("muted-foreground"))
             }
@@ -185,7 +187,7 @@ private struct BalancePeerRow: View {
 
                 if row.direction == .youOwe {
                     HStack(spacing: 3) {
-                        Text("Settle")
+                        Text(L10n.Balances.settle)
                         Image(systemName: "chevron.right")
                     }
                     .font(.caption.weight(.semibold))
@@ -197,7 +199,7 @@ private struct BalancePeerRow: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(row.statement)
-        .accessibilityValue(numbersArePending ? "Updating" : "")
+        .accessibilityValue(numbersArePending ? L10n.Common.updating : "")
     }
 
     private var peerAvatar: some View {
@@ -216,11 +218,11 @@ private struct BalancePeerRow: View {
 enum BalanceCopy {
     static func overall(cents: Int) -> String {
         if cents > 0 {
-            "You are owed \(Money.formatted(cents: cents)) overall"
+            L10n.Balances.owedOverallAmount(Money.formatted(cents: cents))
         } else if cents < 0 {
-            "You owe \(Money.formatted(cents: abs(cents))) overall"
+            L10n.Balances.oweOverallAmount(Money.formatted(cents: abs(cents)))
         } else {
-            "You are all settled up"
+            L10n.Balances.allSettled
         }
     }
 }

@@ -48,16 +48,16 @@ struct SettlementDetailView: View {
             Section {
                 // Invariant 2: membership is the only authorization boundary. A settlement
                 // someone else recorded is no more protected than an expense they logged.
-                Text("Any member can delete a payment, including one someone else recorded.")
+                Text(L10n.Settlement.anyMemberDelete)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("Payment")
+        .navigationTitle(Text(L10n.Settlement.title))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .navigationBarTrailing) {
-                Button("Edit") { showingEditSheet = true }
+                Button { showingEditSheet = true } label: { Text(L10n.Common.edit) }
                     .disabled(isDeleting)
 
                 if isDeleting {
@@ -68,7 +68,7 @@ struct SettlementDetailView: View {
                     } label: {
                         Image(systemName: "trash")
                     }
-                    .accessibilityLabel("Delete payment")
+                    .accessibilityLabel(L10n.Settlement.deleteA11y)
                 }
             }
         }
@@ -83,26 +83,26 @@ struct SettlementDetailView: View {
             }
         }
         .confirmationDialog(
-            "Delete the \(Money.formatted(amount: settlement.amount)) payment from \(payerName) to \(payeeName)?",
+            L10n.Settlement.deleteTitle(Money.formatted(amount: settlement.amount), payerName, payeeName),
             isPresented: $showingDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Delete", role: .destructive) { delete() }
-            Button("Cancel", role: .cancel) {}
+            Button(role: .destructive) { delete() } label: { Text(L10n.Common.delete) }
+            Button(role: .cancel) {} label: { Text(L10n.Common.cancel) }
         } message: {
-            Text("The balance between them goes back to what it was before this payment.")
+            Text(L10n.Settlement.deleteMessage)
         }
     }
 
     private var payerName: String {
-        settlement.paidBy == currentUserId ? "You" : payerDisplay.name
+        settlement.paidBy == currentUserId ? L10n.Common.you : payerDisplay.name
     }
 
     private var payerDisplay: MemberDisplay {
         MemberDisplay(
             settlement.paidByUser,
             currentUserId: currentUserId,
-            currentUserLabel: "You"
+            currentUserLabel: L10n.Common.you
         )
     }
 
@@ -115,24 +115,24 @@ struct SettlementDetailView: View {
             return .removed
         }
         if peer.id == currentUserId {
-            return MemberDisplay(peer, currentUserId: currentUserId, currentUserLabel: "you")
+            return MemberDisplay(peer, currentUserId: currentUserId, currentUserLabel: L10n.Common.youLowercase)
         }
         if let member = members.first(where: { $0.userId == peer.id }) {
             return MemberDisplay(member)
         }
-        return MemberDisplay(peer, currentUserId: currentUserId, currentUserLabel: "you")
+        return MemberDisplay(peer, currentUserId: currentUserId, currentUserLabel: L10n.Common.youLowercase)
     }
 
     private var paymentDescription: Text {
         Text(payerName)
             .foregroundColor(payerDisplay.isRemoved ? Color("muted-foreground") : Color("foreground"))
-        + Text(" paid ")
+        + Text(L10n.Settlement.paidConnector)
         + Text(payeeName)
             .foregroundColor(payeeDisplay.isRemoved ? Color("muted-foreground") : Color("foreground"))
     }
 
     private var dateText: String {
-        guard let date = settlement.effectiveDate else { return "Unknown date" }
+        guard let date = settlement.effectiveDate else { return L10n.Expense.unknownDate }
         return date.formatted(.dateTime.weekday(.abbreviated).day().month().year())
     }
 

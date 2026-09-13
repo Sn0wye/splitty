@@ -34,7 +34,7 @@ struct LoginView: View {
                         .foregroundColor(.white)
 
                     // Says what the app is before it asks for an account.
-                    Text("Split expenses, settle up.")
+                    Text(L10n.Login.tagline)
                         .font(.subheadline)
                         .foregroundColor(.white.opacity(0.6))
                 }
@@ -65,7 +65,7 @@ struct LoginView: View {
                                     .frame(width: 18, height: 18)
 
                                 // Google brand guidelines require this exact string.
-                                Text("Sign in with Google")
+                                Text(L10n.Login.signInGoogle)
                                     .fontWeight(.medium)
                             }
                         }
@@ -86,7 +86,7 @@ struct LoginView: View {
                         } label: {
                             HStack(spacing: 10) {
                                 Image(systemName: "apple.logo")
-                                Text("Sign in with Apple")
+                                Text(L10n.Login.signInApple)
                                     .fontWeight(.medium)
                             }
                             .frame(maxWidth: .infinity)
@@ -98,7 +98,7 @@ struct LoginView: View {
                         .disabled(true)
                         .opacity(0.4)
 
-                        Text("Coming soon")
+                        Text(L10n.Login.comingSoon)
                             .font(.caption)
                             .foregroundColor(.white.opacity(0.4))
                     }
@@ -137,26 +137,26 @@ struct LoginView: View {
         if let signInError = error as? GoogleSignInError {
             switch signInError {
             case .missingAuthCode, .noPresenter:
-                return "Sign-in isn't set up correctly on this build."
+                return L10n.Login.setupError
             case .cancelled, .failed:
-                return "Sign-in failed. Try again."
+                return L10n.Login.failed
             }
         }
 
         if let apiError = error as? APIError {
             switch apiError {
             case .httpError(401, _):
-                return "Google couldn't verify that account. Try again."
+                return L10n.Login.googleUnverified
             case .httpError, .decodingError, .invalidResponse:
-                return "Something went wrong signing you in. Try again in a moment."
+                return L10n.Login.genericError
             case .networkError:
-                return "Couldn't reach Splitty. Check your connection and try again."
+                return L10n.Login.network
             default:
-                return "Sign-in isn't set up correctly on this build."
+                return L10n.Login.setupError
             }
         }
 
-        return "Sign-in failed. Try again."
+        return L10n.Login.failed
     }
 }
 
@@ -222,7 +222,7 @@ private struct DevSignInPicker: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "hammer")
-                Text("Dev sign in")
+                Text(L10n.Login.devSignIn)
                     .fontWeight(.medium)
             }
             .frame(maxWidth: .infinity)

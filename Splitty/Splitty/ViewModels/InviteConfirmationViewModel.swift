@@ -27,7 +27,7 @@ final class InviteConfirmationViewModel: ObservableObject {
     }
 
     var actionTitle: String {
-        metadata?.alreadyMember == true ? "Open group" : "Join"
+        metadata?.alreadyMember == true ? L10n.Invite.openGroup : L10n.Invite.join
     }
 
     func load() async {

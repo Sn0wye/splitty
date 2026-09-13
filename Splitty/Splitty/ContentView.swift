@@ -68,13 +68,13 @@ struct ContentView: View {
             }
         }
         .alert(
-            "Could not start an expense",
+            L10n.Groups.couldNotStartExpense,
             isPresented: Binding(
                 get: { addErrorMessage != nil },
                 set: { if !$0 { addErrorMessage = nil } }
             )
         ) {
-            Button("OK", role: .cancel) { addErrorMessage = nil }
+            Button(role: .cancel) { addErrorMessage = nil } label: { Text(L10n.Common.ok) }
         } message: {
             Text(addErrorMessage ?? "")
         }
@@ -140,11 +140,11 @@ private struct ExpenseGroupPicker: View {
             }
             .scrollContentBackground(.hidden)
             .background(Color("background"))
-            .navigationTitle("Choose a group")
+            .navigationTitle(Text(L10n.Groups.choose))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button { dismiss() } label: { Text(L10n.Common.cancel) }
                 }
             }
         }
@@ -163,9 +163,9 @@ private struct CurrentGroupView: View {
             VStack(spacing: 8) {
                 Image(systemName: "person.2")
                     .font(.system(size: 32, weight: .light))
-                Text("No group selected")
+                Text(L10n.Groups.noneSelected)
                     .font(.headline)
-                Text("Pick a group from the Groups tab.")
+                Text(L10n.Groups.pickFromTab)
                     .font(.subheadline)
                     .foregroundColor(Color("muted-foreground"))
             }

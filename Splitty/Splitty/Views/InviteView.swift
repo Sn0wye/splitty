@@ -16,7 +16,7 @@ struct InviteView: View {
 
             switch state {
             case .idle, .loading:
-                ProgressView("Creating invite…")
+                ProgressView { Text(L10n.Invite.creating) }
                     .frame(maxWidth: .infinity)
 
             case .created(let code):
@@ -31,7 +31,7 @@ struct InviteView: View {
         .padding(.horizontal, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color("background"))
-        .navigationTitle("Invite people")
+        .navigationTitle(Text(L10n.Invite.title))
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color("background"), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
@@ -47,7 +47,7 @@ struct InviteView: View {
 
         return VStack(spacing: 24) {
             VStack(spacing: 10) {
-                Text("Invite code")
+                Text(L10n.Invite.code)
                     .font(.headline)
                     .foregroundStyle(.secondary)
 
@@ -55,10 +55,10 @@ struct InviteView: View {
                     .font(.system(size: 42, weight: .bold, design: .monospaced))
                     .tracking(6)
                     .textSelection(.enabled)
-                    .accessibilityLabel("Invite code \(code)")
+                    .accessibilityLabel(L10n.Invite.codeA11y(code))
             }
 
-            Text("Share this code with someone you want to add to \"\(groupName)\".")
+            Text(L10n.Invite.shareHint(groupName))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
 
@@ -79,7 +79,7 @@ struct InviteView: View {
                         }
                     }
                 } label: {
-                    Label("Copy", systemImage: isCopied ? "checkmark" : "doc.on.doc")
+                    Label(L10n.Invite.copy, systemImage: isCopied ? "checkmark" : "doc.on.doc")
                         .contentTransition(.symbolEffect(.replace))
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
@@ -98,7 +98,7 @@ struct InviteView: View {
         if let link = InviteShareText.link(code: code) {
             ShareLink(
                 item: link,
-                subject: Text("Join \(groupName) on Splitty"),
+                subject: Text(L10n.Invite.joinSubject(groupName)),
                 message: Text(text)
             ) {
                 shareLabel
@@ -113,7 +113,7 @@ struct InviteView: View {
     }
 
     private var shareLabel: some View {
-        Label("Share", systemImage: "square.and.arrow.up")
+        Label(L10n.Invite.share, systemImage: "square.and.arrow.up")
             .frame(maxWidth: .infinity, minHeight: 44)
     }
 
@@ -127,8 +127,10 @@ struct InviteView: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.red)
 
-            Button("Try again") {
+            Button {
                 Task { await createInvite() }
+            } label: {
+                Text(L10n.Common.tryAgain)
             }
             .buttonStyle(.borderedProminent)
         }
@@ -142,7 +144,7 @@ struct InviteView: View {
             let invite = try await GroupService.shared.createInvite(groupId: groupId)
             state = .created(code: invite.code)
         } catch is CancellationError {
-            state = .failed(message: "Invite creation was interrupted. Try again.")
+            state = .failed(message: L10n.Invite.interrupted)
         } catch {
             let message = (error as? APIError)?.displayMessage ?? error.localizedDescription
             state = .failed(message: message)
@@ -159,7 +161,7 @@ private enum CreationState {
 
 enum InviteShareText {
     static func make(groupName: String, code: String) -> String {
-        #"Join "\#(groupName)" on Splitty with invite code \#(code)"#
+        L10n.Invite.shareText(groupName, code)
     }
 
     static func copyText(code: String) -> String { code }

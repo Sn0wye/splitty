@@ -163,15 +163,15 @@ extension Expense {
     /// The section heading for an already-parsed date. Takes `now` so the relative
     /// labels can be tested without waiting for midnight.
     static func dayLabel(for date: Date?, now: Date = Date()) -> String {
-        guard let date else { return "Unknown" }
+        guard let date else { return L10n.Expense.unknownDay }
 
         let calendar = Calendar.current
         if calendar.isDate(date, inSameDayAs: now) {
-            return "Today"
+            return L10n.Common.today
         }
         if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
            calendar.isDate(date, inSameDayAs: yesterday) {
-            return "Yesterday"
+            return L10n.Common.yesterday
         }
         return dayLabelFormatter.string(from: date)
     }

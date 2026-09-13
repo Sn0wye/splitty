@@ -21,8 +21,8 @@ struct InviteCodeInputField: UIViewRepresentable {
         field.textColor = .clear
         field.tintColor = .clear
         field.backgroundColor = .clear
-        field.accessibilityLabel = "Invite code"
-        field.accessibilityHint = "Submits automatically after six characters"
+        field.accessibilityLabel = L10n.Invite.code
+        field.accessibilityHint = L10n.Invite.codeHint
         return field
     }
 

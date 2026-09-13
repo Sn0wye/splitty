@@ -30,7 +30,7 @@ struct GroupCard: View {
                             .lineLimit(1)
                             .padding(.bottom, 2)
                         
-                        Text(group.netBalanceCents > 0 ? "You are owed" : "You owe")
+                        Text(group.netBalanceCents > 0 ? L10n.Groups.youAreOwed : L10n.Groups.youOwe)
                             .font(.system(size: 12))
                         
                         Text(Money.formatted(cents: abs(group.netBalanceCents)))

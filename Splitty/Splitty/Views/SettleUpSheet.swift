@@ -88,12 +88,12 @@ struct SettleUpSheet: View {
         }
         .scrollContentBackground(.hidden)
         .background(Color.expenseBackground)
-        .navigationTitle("Settle up")
+        .navigationTitle(Text(L10n.Settlement.settleUp))
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.expenseBackground, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+                Button { dismiss() } label: { Text(L10n.Common.cancel) }
                     .foregroundStyle(Color.expenseForeground)
             }
         }
@@ -103,7 +103,7 @@ struct SettleUpSheet: View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            Text(viewModel.isEditing ? "Payment with \(viewModel.selectedPeer?.name ?? "member")" : "Pay \(viewModel.selectedPeer?.name ?? "member")")
+            Text(viewModel.isEditing ? L10n.Settlement.paymentWith(viewModel.selectedPeer?.name ?? L10n.Common.member) : L10n.Settlement.pay(viewModel.selectedPeer?.name ?? L10n.Common.member))
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Color("muted-foreground"))
                 .padding(.bottom, 8)
@@ -146,7 +146,7 @@ struct SettleUpSheet: View {
             .padding(.bottom, 12)
 
             PrimaryButton(
-                title: viewModel.isEditing ? "Save" : "Record payment",
+                title: viewModel.isEditing ? L10n.Common.save : L10n.Settlement.record,
                 isLoading: viewModel.isSubmitting,
                 action: submit
             )
@@ -162,14 +162,14 @@ struct SettleUpSheet: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.expenseBackground)
-        .navigationTitle(viewModel.isEditing ? "Edit payment" : "Settle up")
+        .navigationTitle(Text(viewModel.isEditing ? L10n.Settlement.edit : L10n.Settlement.settleUp))
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(startsWithFixedPeer)
         .toolbarBackground(Color.expenseBackground, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 if startsWithFixedPeer {
-                    Button("Cancel") { dismiss() }
+                    Button { dismiss() } label: { Text(L10n.Common.cancel) }
                         .foregroundStyle(Color.expenseForeground)
                 }
             }
@@ -178,8 +178,8 @@ struct SettleUpSheet: View {
 
     private var dateLabel: String {
         let calendar = Calendar.current
-        if calendar.isDateInToday(viewModel.date) { return "Today" }
-        if calendar.isDateInYesterday(viewModel.date) { return "Yesterday" }
+        if calendar.isDateInToday(viewModel.date) { return L10n.Common.today }
+        if calendar.isDateInYesterday(viewModel.date) { return L10n.Common.yesterday }
         return viewModel.date.formatted(.dateTime.day().month(.abbreviated).year())
     }
 

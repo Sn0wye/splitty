@@ -13,10 +13,10 @@ enum AppTab: Int {
 
     var title: String {
         switch self {
-        case .groups: return "Groups"
-        case .group: return "Group"
-        case .people: return "People"
-        case .settings: return "Settings"
+        case .groups: L10n.Tabs.groups
+        case .group: L10n.Tabs.group
+        case .people: L10n.Tabs.people
+        case .settings: L10n.Tabs.settings
         }
     }
 

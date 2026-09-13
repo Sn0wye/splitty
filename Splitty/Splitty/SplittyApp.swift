@@ -19,6 +19,7 @@ struct RootView: View {
     @StateObject private var inviteCoordinator = InviteLinkCoordinator()
     @StateObject private var appState = AppState()
     @ObservedObject private var themeManager = ThemeManager.shared
+    @ObservedObject private var languageManager = LanguageManager.shared
 
     var body: some View {
         ZStack {
@@ -31,6 +32,7 @@ struct RootView: View {
         }
         // Set on the root so sheets and the login screen follow the choice too.
         .preferredColorScheme(themeManager.theme.colorScheme)
+        .environment(\.locale, languageManager.locale)
         .task {
             PerformanceSignpost.endLaunch()
             await authManager.restoreSession()
@@ -46,8 +48,8 @@ struct RootView: View {
                 appState.openGroup(group.id)
             }
         }
-        .alert("Invite link", isPresented: invalidLinkAlert) {
-            Button("OK", role: .cancel) {}
+        .alert(Text(L10n.Invite.linkAlert), isPresented: invalidLinkAlert) {
+            Button(role: .cancel) {} label: { Text(L10n.Common.ok) }
         } message: {
             Text(inviteCoordinator.invalidLinkMessage ?? "")
         }

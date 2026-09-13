@@ -74,8 +74,8 @@ struct ExpenseKeypad: View {
             LongPressGesture(minimumDuration: 0.45)
                 .onEnded { _ in clear() }
         )
-        .accessibilityLabel("delete")
-        .accessibilityAction(named: "Clear amount", clear)
+        .accessibilityLabel(L10n.Keypad.delete)
+        .accessibilityAction(named: L10n.Keypad.clearAmount, clear)
         .accessibilityIdentifier("keypad.key.chevron.left")
     }
 
@@ -170,14 +170,14 @@ struct ExpenseDatePicker: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            DatePicker("Date", selection: $date, displayedComponents: .date)
+            DatePicker(selection: $date, displayedComponents: .date) { Text(L10n.Common.date) }
                 .labelsHidden()
                 .datePickerStyle(.graphical)
                 .tint(Color.expenseAccent)
                 .accessibilityIdentifier("expense.datePicker")
 
             ForwardButton(isEnabled: true, diameter: 44) { dismiss() }
-                .accessibilityLabel("done")
+                .accessibilityLabel(L10n.Keypad.done)
         }
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)

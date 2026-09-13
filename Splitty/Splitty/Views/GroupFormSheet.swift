@@ -27,13 +27,13 @@ struct GroupFormSheet: View {
                 Section {
                     HStack(spacing: 14) {
                         fieldIcon("person.2")
-                        TextField("Name", text: $viewModel.name)
+                        TextField(L10n.GroupSettings.name, text: $viewModel.name)
                             .focused($nameFocused)
                     }
 
                     HStack(alignment: .top, spacing: 14) {
                         fieldIcon("text.alignleft")
-                        TextField("Description (optional)", text: $viewModel.description, axis: .vertical)
+                        TextField(L10n.GroupSettings.descriptionOptional, text: $viewModel.description, axis: .vertical)
                             .lineLimit(1...3)
                     }
                 }
@@ -49,20 +49,22 @@ struct GroupFormSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
+                    Button { dismiss() } label: { Text(L10n.Common.cancel) }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if viewModel.isSaving {
                         ProgressView()
                     } else {
-                        Button(viewModel.isEditing ? "Save" : "Create") {
+                        Button {
                             Task {
                                 if let groupId = await viewModel.save() {
                                     onSaved(groupId)
                                     dismiss()
                                 }
                             }
+                        } label: {
+                            Text(viewModel.isEditing ? L10n.Common.save : L10n.Common.create)
                         }
                         .disabled(!viewModel.canSave)
                     }

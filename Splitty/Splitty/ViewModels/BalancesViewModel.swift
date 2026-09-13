@@ -52,9 +52,9 @@ struct BalanceRow: Identifiable, Equatable {
     var statement: String {
         switch direction {
         case .youOwe:
-            "You owe \(peerName) \(Money.formatted(cents: magnitudeCents))"
+            L10n.Balances.youOwePeer(peerName, Money.formatted(cents: magnitudeCents))
         case .owedToYou:
-            "\(peerName) owes you \(Money.formatted(cents: magnitudeCents))"
+            L10n.Balances.peerOwesYou(peerName, Money.formatted(cents: magnitudeCents))
         }
     }
 }

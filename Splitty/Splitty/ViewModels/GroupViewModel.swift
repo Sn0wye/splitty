@@ -178,7 +178,7 @@ class GroupViewModel: ObservableObject {
         } catch {
             if error.isCancellation { return nil }
             loadedGroup = nil
-            groupError = "Failed to load group: \(error.localizedDescription)"
+            groupError = L10n.Group.failedToLoadGroup(error.localizedDescription)
         }
 
         let loadedExpenses: [Expense]?
@@ -189,7 +189,7 @@ class GroupViewModel: ObservableObject {
         } catch {
             if error.isCancellation { return nil }
             loadedExpenses = nil
-            expensesError = "Failed to load expenses: \(error.localizedDescription)"
+            expensesError = L10n.Group.failedToLoadExpenses(error.localizedDescription)
         }
 
         let summary: GroupBalanceSummary?
@@ -298,7 +298,7 @@ class GroupViewModel: ObservableObject {
             groupId: groupId,
             paidBy: currentUser.userId,
             amount: amount,
-            description: "Payment to \(peer.name)",
+            description: L10n.Settlement.paymentTo(peer.name),
             type: .payment,
             splitMode: nil,
             date: date.map(ExpenseService.timestamp(from:)),
