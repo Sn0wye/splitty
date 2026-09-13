@@ -101,8 +101,6 @@ public class ExpenseService(
             throw new ArgumentException("An update that changes the splits must also send the split mode.");
         }
 
-        EnsureNotPaymentCategory(dto.Category);
-
         var expense = await expenseRepository.FindByIdAsync(dto.Id);
 
         if (expense is null)
@@ -126,6 +124,8 @@ public class ExpenseService(
             throw new InvalidOperationException(
                 "This is a settlement. Edit it through /group/{groupId}/settlements/{expenseId}.");
         }
+
+        EnsureNotPaymentCategory(dto.Category);
 
         // Validate the resulting state, not just the supplied fields: an
         // amount-only update must not leave a nonmember payer or split behind.

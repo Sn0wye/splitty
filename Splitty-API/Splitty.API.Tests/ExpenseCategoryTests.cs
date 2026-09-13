@@ -166,6 +166,42 @@ public sealed class ExpenseCategoryTests(ApiFactory factory)
         Assert.Equal(ExpenseCategory.Payment, await StoredCategoryAsync(settlementId));
     }
 
+    /// <summary>
+    /// Coercion, not refusal: the settlement requests carry no category field, so even a
+    /// token the enum has never heard of is dropped rather than answered with a 400.
+    /// </summary>
+    [Fact]
+    public async Task An_unknown_category_sent_to_the_settle_route_is_dropped()
+    {
+        var group = await GroupFixture.CreateAsync(factory);
+        await factory.DrainProcessedAsync();
+        await group.CreateExpenseAsync(amount: 20m, share: 10m);
+        await factory.WaitForProcessedAsync();
+
+        var response = await group.Guest.SettleUpAsync(group.Id, new
+        {
+            withUserId = group.OwnerId,
+            amount = 5m,
+            category = "spaceship"
+        });
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>
+    /// The category guard runs once the row is resolved, like every other guard on the
+    /// update path — otherwise a category nobody may send masks the missing expense.
+    /// </summary>
+    [Fact]
+    public async Task An_edit_of_a_missing_expense_answers_404_even_with_the_payment_category()
+    {
+        var group = await GroupFixture.CreateAsync(factory);
+
+        var response = await group.Owner.UpdateExpenseAsync(group.Id, 987654, new { category = "payment" });
+
+        await ErrorResponseAssertions.AssertErrorAsync(response, HttpStatusCode.NotFound);
+    }
+
     private async Task<int> CreateExpenseAsync(GroupFixture group, string category)
     {
         var response = await group.Owner.CreateExpenseAsync(group.Id, Expense(group, category));
