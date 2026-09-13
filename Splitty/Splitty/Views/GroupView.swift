@@ -548,12 +548,12 @@ struct ExpenseRow: View {
     
     @ViewBuilder
     private var balanceLabel: some View {
-        if expense.type == .payment {
-            Text(L10n.Group.payment)
+        if !isUserInvolved {
+            Text(L10n.Group.notInvolved)
                 .font(.caption)
                 .foregroundColor(Color("muted-foreground"))
-        } else if !isUserInvolved {
-            Text(L10n.Group.notInvolved)
+        } else if expense.type == .payment {
+            Text(L10n.Group.payment)
                 .font(.caption)
                 .foregroundColor(Color("muted-foreground"))
         } else {
@@ -566,10 +566,12 @@ struct ExpenseRow: View {
     @ViewBuilder
     private var balanceAmount: some View {
         if expense.type == .payment {
+            // A payment between two other members still shows its amount: the row reads
+            // as group history, so it is dimmed rather than dropped.
             Text(Money.formatted(amount: expense.amount))
                 .font(.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(Color("card-foreground"))
+                .foregroundColor(Color(isUserInvolved ? "card-foreground" : "muted-foreground"))
         } else if isUserInvolved {
             // Signed: what the payer lent is the total less their own share, and what
             // anyone else borrowed is their share.
