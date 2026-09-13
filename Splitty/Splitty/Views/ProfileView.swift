@@ -9,6 +9,7 @@ struct ProfileView: View {
     @State private var cropCandidate: CropCandidate?
     @State private var showingRemoveConfirmation = false
     @State private var showingDiscardConfirmation = false
+    @FocusState private var isNameFocused: Bool
 
     init(user: User) {
         _viewModel = StateObject(wrappedValue: ProfileViewModel(user: user))
@@ -19,26 +20,45 @@ struct ProfileView: View {
             Section {
                 HStack {
                     Spacer()
-                    ZStack {
-                        MemberAvatar(display: MemberDisplay(viewModel.user), size: 112)
-                        if viewModel.isChangingAvatar {
-                            Circle()
-                                .fill(.black.opacity(0.45))
-                                .frame(width: 112, height: 112)
-                            ProgressView()
-                                .tint(.white)
+                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                        ZStack(alignment: .bottomLeading) {
+                            MemberAvatar(display: MemberDisplay(viewModel.user), size: 112)
+
+                            if !viewModel.isChangingAvatar {
+                                Circle()
+                                    .fill(Color("primary"))
+                                    .frame(width: 44, height: 44)
+                                    .overlay {
+                                        Image(systemName: "camera.fill")
+                                            .font(.system(size: 18, weight: .semibold))
+                                            .foregroundStyle(Color("primary-foreground"))
+                                    }
+                                    .overlay {
+                                        Circle()
+                                            .stroke(Color("background"), lineWidth: 3)
+                                    }
+                                    .offset(x: -6, y: 6)
+                            }
+
+                            if viewModel.isChangingAvatar {
+                                Circle()
+                                    .fill(.black.opacity(0.45))
+                                    .frame(width: 112, height: 112)
+                                ProgressView()
+                                    .tint(.white)
+                                    .frame(width: 112, height: 112)
+                            }
                         }
+                        .padding(.leading, 6)
+                        .padding(.bottom, 6)
+                        .contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    .disabled(!viewModel.canChangeAvatar)
+                    .accessibilityLabel(L10n.Profile.choosePhoto)
                     Spacer()
                 }
                 .padding(.vertical, 12)
-
-                PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                    Label(L10n.Profile.choosePhoto, systemImage: "photo.on.rectangle")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .contentShape(Rectangle())
-                }
-                .disabled(!viewModel.canChangeAvatar)
 
                 Button(role: .destructive) {
                     showingRemoveConfirmation = true
@@ -70,6 +90,7 @@ struct ProfileView: View {
                 TextField(L10n.Profile.name, text: $viewModel.name)
                     .textContentType(.name)
                     .autocorrectionDisabled()
+                    .focused($isNameFocused)
 
                 if !viewModel.name.isEmpty && viewModel.trimmedName.isEmpty {
                     Text(L10n.Profile.emptyName)
@@ -77,13 +98,12 @@ struct ProfileView: View {
                         .foregroundStyle(.red)
                 }
 
-                HStack {
-                    Text(L10n.Profile.nameLimit)
-                    Spacer()
+                if isNameFocused {
                     Text("\(viewModel.nameLength)/\(ProfileViewModel.nameLimit)")
                         .foregroundStyle(Color("muted-foreground"))
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .font(.footnote)
                 }
-                .font(.footnote)
 
                 LabeledContent(L10n.Profile.email, value: viewModel.user.email)
             }

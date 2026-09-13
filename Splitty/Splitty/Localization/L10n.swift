@@ -71,7 +71,6 @@ enum L10n {
         static var retryUpload: String { text("profile.retry_upload", default: "Retry upload") }
         static var name: String { text("profile.name", default: "Name") }
         static var emptyName: String { text("profile.empty_name", default: "Name can't be empty.") }
-        static var nameLimit: String { text("profile.name_limit", default: "Name limit") }
         static var email: String { text("profile.email", default: "Email") }
         static var cropTitle: String { text("profile.crop_title", default: "Crop photo") }
         static var startOver: String { text("profile.start_over", default: "Start over") }
