@@ -3,6 +3,17 @@ import Testing
 @testable import Splitty
 
 struct ExpenseCategoryTests {
+    @Test func multiwordCategoriesUseTheAPIsSnakeCaseTokens() throws {
+        let decoded = try JSONDecoder().decode(
+            ExpenseCategory.self,
+            from: Data(#""dining_out""#.utf8)
+        )
+        let encoded = try JSONEncoder().encode(ExpenseCategory.tvPhoneInternet)
+
+        #expect(decoded == .diningOut)
+        #expect(String(decoding: encoded, as: UTF8.self) == #""tv_phone_internet""#)
+    }
+
     @Test func unknownWireCategoryFallsBackToGeneral() throws {
         let data = Data(
             #"""

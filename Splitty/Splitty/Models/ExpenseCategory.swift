@@ -32,12 +32,29 @@ enum ExpenseCategoryHeading: CaseIterable, Identifiable {
 /// resolved separately, so changing a translation never changes stored data.
 enum ExpenseCategory: String, Codable, CaseIterable, Identifiable {
     case general
-    case games, movies, music, sports, entertainmentOther
-    case diningOut, groceries, liquor, foodOther
-    case electronics, furniture, householdSupplies, maintenance, mortgage, pets, rent, services, homeOther
-    case childcare, clothing, education, gifts, insurance, medical, taxes, lifeOther
-    case bicycle, busTrain, car, gasFuel, hotel, parking, plane, taxi, transportationOther
-    case cleaning, electricity, heatGas, trash, tvPhoneInternet, water, utilitiesOther
+    case games, movies, music, sports
+    case entertainmentOther = "entertainment_other"
+    case diningOut = "dining_out"
+    case groceries, liquor
+    case foodOther = "food_other"
+    case electronics, furniture
+    case householdSupplies = "household_supplies"
+    case maintenance, mortgage, pets, rent, services
+    case homeOther = "home_other"
+    case childcare, clothing, education, gifts, insurance, medical, taxes
+    case lifeOther = "life_other"
+    case bicycle
+    case busTrain = "bus_train"
+    case car
+    case gasFuel = "gas_fuel"
+    case hotel, parking, plane, taxi
+    case transportationOther = "transportation_other"
+    case cleaning, electricity
+    case heatGas = "heat_gas"
+    case trash
+    case tvPhoneInternet = "tv_phone_internet"
+    case water
+    case utilitiesOther = "utilities_other"
     case payment
 
     var id: Self { self }
