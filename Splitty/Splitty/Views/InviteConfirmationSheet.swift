@@ -49,7 +49,7 @@ struct InviteConfirmationSheet: View {
                     .font(.title2.bold())
                     .multilineTextAlignment(.center)
 
-                Text(memberCountText(metadata.memberCount))
+                Text(L10n.Invite.members(metadata.memberCount))
                     .foregroundStyle(.secondary)
 
                 Text(L10n.Invite.invitedBy(metadata.createdByName))
@@ -109,10 +109,6 @@ struct InviteConfirmationSheet: View {
 
             Spacer()
         }
-    }
-
-    private func memberCountText(_ count: Int) -> String {
-        count == 1 ? L10n.Invite.membersOne : L10n.Invite.membersOther(count)
     }
 
     private func proceed() async {

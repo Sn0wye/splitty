@@ -23,12 +23,19 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
-            if authManager.isAuthenticated {
-                ContentView()
-                    .environmentObject(appState)
-            } else {
-                LoginView()
+            SwiftUI.Group {
+                if authManager.isAuthenticated {
+                    ContentView()
+                        .environmentObject(appState)
+                } else {
+                    LoginView()
+                }
             }
+            // L10n reads the stored preference rather than the environment, so
+            // changing it has to rebuild the tree for already-rendered copy to
+            // follow. Scoped to the content: the modifiers below keep their
+            // identity so `task` and `onOpenURL` don't re-fire on a switch.
+            .id(languageManager.language)
         }
         // Set on the root so sheets and the login screen follow the choice too.
         .preferredColorScheme(themeManager.theme.colorScheme)

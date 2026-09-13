@@ -777,7 +777,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ paid %@"
+            "value": "%1$@ paid %2$@"
           }
         }
       }
@@ -799,7 +799,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ paid %@"
+            "value": "%1$@ paid %2$@"
           }
         }
       }
@@ -1393,7 +1393,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ paid · %@"
+            "value": "%1$@ paid \u00b7 %2$@"
           }
         }
       }
@@ -1558,7 +1558,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Paid by %@, %@%% left to assign"
+            "value": "Paid by %1$@, %2$@%% left to assign"
           }
         }
       }
@@ -1569,7 +1569,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Paid by %@, %@%% over 100%%"
+            "value": "Paid by %1$@, %2$@%% over 100%%"
           }
         }
       }
@@ -1591,7 +1591,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Paid by %@, %@ the full amount"
+            "value": "Paid by %1$@, %2$@ the full amount"
           }
         }
       }
@@ -1613,7 +1613,29 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Paid by %@ and split equally between %lld people"
+            "value": "Paid by %1$@ and split equally between %#@people@"
+          },
+          "substitutions": {
+            "people": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg person"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg people"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -1690,7 +1712,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Delete the %@ payment from %@ to %@?"
+            "value": "Delete the %1$@ payment from %2$@ to %3$@?"
           }
         }
       }
@@ -1756,7 +1778,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You only owe %@ %@."
+            "value": "You only owe %1$@ %2$@."
           }
         }
       }
@@ -1932,7 +1954,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You owe %@ %@"
+            "value": "You owe %1$@ %2$@"
           }
         }
       }
@@ -1943,7 +1965,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@ owes you %@"
+            "value": "%1$@ owes you %2$@"
           }
         }
       }
@@ -2042,7 +2064,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Join \"%@\" on Splitty with invite code %@"
+            "value": "Join \"%1$@\" on Splitty with invite code %2$@"
           }
         }
       }
@@ -2212,24 +2234,25 @@
         }
       }
     },
-    "invite.members_one": {
+    "invite.members": {
       "extractionState": "manual",
       "localizations": {
         "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1 member"
-          }
-        }
-      }
-    },
-    "invite.members_other": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld members"
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld member"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld members"
+                }
+              }
+            }
           }
         }
       }
@@ -2262,7 +2285,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%@, %lld of %lld characters entered"
+            "value": "%1$@, %2$lld of %3$lld characters entered"
           }
         }
       }
