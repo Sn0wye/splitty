@@ -118,11 +118,6 @@ struct ExpenseDetailsStep: View {
 
     private var categoryRow: some View {
         HStack(spacing: 10) {
-            // Reserved for the AI suggestion chip planned for this row.
-            Color.clear
-                .frame(width: 32, height: 32)
-                .accessibilityHidden(true)
-
             ScrollView(.horizontal) {
                 HStack(spacing: 8) {
                     ForEach(viewModel.categorySuggestions) { category in
@@ -143,8 +138,14 @@ struct ExpenseDetailsStep: View {
                                     ? category.tint
                                     : Color.expenseForeground.opacity(0.72)
                             )
-                            .padding(.horizontal, 4)
+                            .padding(.horizontal, 10)
                             .frame(height: 32)
+                            .background(
+                                Color.expenseForeground.opacity(
+                                    viewModel.category == category ? 0.14 : 0.08
+                                ),
+                                in: Capsule()
+                            )
                             .contentShape(Capsule())
                         }
                         .buttonStyle(.pressable(scale: 0.96))
@@ -181,7 +182,6 @@ struct ExpenseDetailsStep: View {
             .buttonStyle(.pressable(scale: 0.94))
             .accessibilityIdentifier("expense.category-picker")
         }
-        .padding(.horizontal, 8)
         .padding(.vertical, 8)
     }
 
