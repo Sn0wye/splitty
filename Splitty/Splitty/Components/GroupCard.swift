@@ -39,10 +39,12 @@ struct GroupCard: View {
                         Text(balanceLabel)
                             .font(.system(size: 12))
                         
-                        Text(Money.formatted(cents: abs(group.netBalanceCents)))
-                            .font(.system(size: 18))
-                            .fontWeight(.bold)
-                            .foregroundColor(positiveBalance ? .green : .red)
+                        if group.netBalanceCents != 0 {
+                            Text(Money.formatted(cents: abs(group.netBalanceCents)))
+                                .font(.system(size: 18))
+                                .fontWeight(.bold)
+                                .foregroundColor(positiveBalance ? .green : .red)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     
