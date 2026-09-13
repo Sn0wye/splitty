@@ -14,6 +14,12 @@ struct GroupCard: View {
     var positiveBalance: Bool {
         return group.netBalanceCents > 0;
     }
+
+    private var balanceLabel: String {
+        if group.netBalanceCents > 0 { return L10n.Groups.youAreOwed }
+        if group.netBalanceCents < 0 { return L10n.Groups.youOwe }
+        return L10n.Balances.allSettled
+    }
     
     var body: some View {
         Button(action: onTap) {
@@ -30,13 +36,15 @@ struct GroupCard: View {
                             .lineLimit(1)
                             .padding(.bottom, 2)
                         
-                        Text(group.netBalanceCents > 0 ? L10n.Groups.youAreOwed : L10n.Groups.youOwe)
+                        Text(balanceLabel)
                             .font(.system(size: 12))
                         
-                        Text(Money.formatted(cents: abs(group.netBalanceCents)))
-                            .font(.system(size: 18))
-                            .fontWeight(.bold)
-                            .foregroundColor(positiveBalance ? .green : .red)
+                        if group.netBalanceCents != 0 {
+                            Text(Money.formatted(cents: abs(group.netBalanceCents)))
+                                .font(.system(size: 18))
+                                .fontWeight(.bold)
+                                .foregroundColor(positiveBalance ? .green : .red)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     
