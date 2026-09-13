@@ -67,6 +67,7 @@ public sealed class DatabaseSeeder(ApplicationDbContext context, IBalanceRecompu
                     Amount = entry.Amount,
                     PaidBy = users[entry.PaidBy].Id,
                     Type = entry.Type,
+                    Category = entry.Category,
                     SplitMode = entry.Mode,
                     Date = DateTime.UtcNow.Date.AddDays(-entry.DaysAgo),
                     Splits = entry.Splits
@@ -123,6 +124,7 @@ public sealed class DatabaseSeeder(ApplicationDbContext context, IBalanceRecompu
         if (entry.Type is ExpenseType.Payment)
         {
             if (entry.Mode is not null
+                || entry.Category is not ExpenseCategory.Payment
                 || entry.Splits.Count != 2
                 || entry.Splits.Sum(split => split.Amount) != 0m
                 || Math.Abs(entry.Splits[0].Amount) != entry.Amount)
@@ -137,6 +139,12 @@ public sealed class DatabaseSeeder(ApplicationDbContext context, IBalanceRecompu
         if (entry.Mode is null)
         {
             throw new InvalidOperationException($"Seeded expense '{entry.Description}' has no split mode.");
+        }
+
+        if (entry.Category is ExpenseCategory.Payment)
+        {
+            throw new InvalidOperationException(
+                $"Seeded expense '{entry.Description}' is categorized as a payment, which the API refuses.");
         }
 
         if (entry.Amount <= 0m || entry.Splits.Count == 0)

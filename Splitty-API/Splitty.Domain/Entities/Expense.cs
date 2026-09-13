@@ -45,6 +45,14 @@ public class Expense
     public SplitMode? SplitMode { get; set; }
 
     /// <summary>
+    /// What the expense was for. Non-null with <see cref="ExpenseCategory.General"/> as the
+    /// value meaning "nobody chose", so clearing a category is an ordinary write and every
+    /// reader gets one without a fallback. A settlement holds
+    /// <see cref="ExpenseCategory.Payment"/>. Descriptive: no amount or balance reads it.
+    /// </summary>
+    public ExpenseCategory Category { get; set; } = ExpenseCategory.General;
+
+    /// <summary>
     /// When the expense happened, as the user says it did. Nullable because rows written
     /// before the column existed have no user-supplied date; readers fall back to
     /// <see cref="CreatedAt"/>. Future dates are allowed.

@@ -20,6 +20,14 @@ public class CreateExpenseRequest
     public DateTime? Date { get; set; }
     
     /// <summary>
+    /// What the expense was for. Optional: absent means
+    /// <see cref="ExpenseCategory.General"/>, the value that means nobody chose.
+    /// <see cref="ExpenseCategory.Payment"/> is refused — it belongs to settlements, which
+    /// are written through their own route.
+    /// </summary>
+    public ExpenseCategory? Category { get; set; }
+
+    /// <summary>
     /// Required for the same reason <see cref="Splits"/> is: a stored <c>null</c> then
     /// means exactly one thing — a settlement — rather than "an expense whose client
     /// forgot to say".

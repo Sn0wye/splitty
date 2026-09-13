@@ -109,6 +109,43 @@ public sealed class SeedTests(ApiFactory factory)
         Assert.Contains("payment", types);
     }
 
+    /// <summary>
+    /// The chip ranking on the client ranks the categories a group already carries, so a data
+    /// set where every row is `general` gives it nothing to rank.
+    /// </summary>
+    [Fact]
+    public async Task Seeded_expenses_carry_several_different_categories()
+    {
+        await SeedAsync();
+
+        var categories = new List<string>();
+        foreach (var (_, expenses) in await SeededExpensesAsync())
+        {
+            categories.AddRange(expenses.Select(expense => expense.GetProperty("category").GetString()!));
+        }
+
+        Assert.True(categories.Distinct().Count() > 3, $"Only {categories.Distinct().Count()} categories seeded.");
+        Assert.Contains("general", categories);
+    }
+
+    [Fact]
+    public async Task Every_seeded_settlement_is_categorized_as_a_payment()
+    {
+        await SeedAsync();
+
+        foreach (var (_, expenses) in await SeededExpensesAsync())
+        {
+            foreach (var expense in expenses)
+            {
+                var category = expense.GetProperty("category").GetString();
+
+                Assert.Equal(
+                    expense.GetProperty("type").GetString() == "payment",
+                    category == "payment");
+            }
+        }
+    }
+
     [Fact]
     public async Task Every_seeded_expense_has_splits_that_sum_to_its_amount_with_no_zero_split()
     {

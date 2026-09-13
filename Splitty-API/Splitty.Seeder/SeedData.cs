@@ -9,7 +9,8 @@ namespace Splitty.Seeder;
 ///
 /// The shapes here are the cases a screen has to survive — a six-member group, a
 /// two-member group, amounts from a few euros to four figures, one debtor group, one
-/// creditor group, a pair settled to exactly zero, and a percentage split.
+/// creditor group, a pair settled to exactly zero, a percentage split, and a spread of
+/// categories — including one uncategorized row, since general is a value the client renders.
 /// </summary>
 internal static class SeedData
 {
@@ -50,6 +51,7 @@ internal static class SeedData
                     Amount: 1240.00m,
                     PaidBy: John,
                     Mode: SplitMode.Equal,
+                    Category: ExpenseCategory.Hotel,
                     DaysAgo: 12,
                     Splits:
                     [
@@ -66,6 +68,7 @@ internal static class SeedData
                     Amount: 892.50m,
                     PaidBy: Jane,
                     Mode: SplitMode.Custom,
+                    Category: ExpenseCategory.Plane,
                     DaysAgo: 11,
                     // Three of the six flew together; the rest are simply not on the row.
                     Splits:
@@ -79,6 +82,7 @@ internal static class SeedData
                     Amount: 465.00m,
                     PaidBy: Eva,
                     Mode: SplitMode.Percentage,
+                    Category: ExpenseCategory.DiningOut,
                     DaysAgo: 9,
                     Splits:
                     [
@@ -92,6 +96,7 @@ internal static class SeedData
                     Amount: 38.40m,
                     PaidBy: Bob,
                     Mode: SplitMode.Equal,
+                    Category: ExpenseCategory.Taxi,
                     DaysAgo: 12,
                     Splits:
                     [
@@ -101,6 +106,8 @@ internal static class SeedData
                         new SeedSplit(Eva, 9.60m)
                     ]),
                 new SeedEntry(
+                    // Left uncategorized on purpose: general is a value the client has to
+                    // render, and a data set where every row is categorized never shows it.
                     Description: "Pastéis de nata",
                     Amount: 9.75m,
                     PaidBy: Charlie,
@@ -117,6 +124,7 @@ internal static class SeedData
                     Amount: 4.20m,
                     PaidBy: Alice,
                     Mode: SplitMode.Equal,
+                    Category: ExpenseCategory.Gifts,
                     DaysAgo: 7,
                     Splits:
                     [
@@ -138,6 +146,7 @@ internal static class SeedData
                     Amount: 1850.00m,
                     PaidBy: Jane,
                     Mode: SplitMode.Equal,
+                    Category: ExpenseCategory.Rent,
                     DaysAgo: 20,
                     Splits: [new SeedSplit(John, 925.00m), new SeedSplit(Jane, 925.00m)]),
                 new SeedEntry(
@@ -145,6 +154,7 @@ internal static class SeedData
                     Amount: 96.40m,
                     PaidBy: Jane,
                     Mode: SplitMode.Equal,
+                    Category: ExpenseCategory.Electricity,
                     DaysAgo: 18,
                     Splits: [new SeedSplit(John, 48.20m), new SeedSplit(Jane, 48.20m)]),
                 new SeedEntry(
@@ -152,6 +162,7 @@ internal static class SeedData
                     Amount: 79.90m,
                     PaidBy: John,
                     Mode: SplitMode.Equal,
+                    Category: ExpenseCategory.TvPhoneInternet,
                     DaysAgo: 17,
                     Splits: [new SeedSplit(John, 39.95m), new SeedSplit(Jane, 39.95m)])
             ]),
@@ -170,6 +181,7 @@ internal static class SeedData
                     Amount: 68.00m,
                     PaidBy: Bob,
                     Mode: SplitMode.Equal,
+                    Category: ExpenseCategory.DiningOut,
                     DaysAgo: 5,
                     Splits:
                     [
@@ -183,6 +195,7 @@ internal static class SeedData
                     Amount: 24.00m,
                     PaidBy: Alice,
                     Mode: SplitMode.Equal,
+                    Category: ExpenseCategory.Games,
                     DaysAgo: 4,
                     Splits:
                     [
@@ -218,6 +231,7 @@ internal sealed record SeedEntry(
     SplitMode? Mode,
     int DaysAgo,
     IReadOnlyList<SeedSplit> Splits,
+    ExpenseCategory Category = ExpenseCategory.General,
     ExpenseType Type = ExpenseType.Expense)
 {
     /// <summary>
@@ -237,5 +251,6 @@ internal sealed record SeedEntry(
             Mode: null,
             daysAgo,
             Splits: [new SeedSplit(paidBy, amount), new SeedSplit(peer, -amount)],
+            Category: ExpenseCategory.Payment,
             Type: ExpenseType.Payment);
 }

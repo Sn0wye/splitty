@@ -17,6 +17,8 @@ public class ExpenseService(
         // describing an equal split, and the stored rows should say only that.
         var percentages = PercentagesFor(dto.SplitMode, dto.ExpenseSplits.Select(s => s.Percentage));
 
+        EnsureNotPaymentCategory(dto.Category);
+
         ExpenseSplitInvariants.Ensure(
             ExpenseType.Expense,
             dto.SplitMode,
@@ -36,6 +38,7 @@ public class ExpenseService(
             GroupId = dto.GroupId,
             PaidBy = dto.PaidBy,
             Date = ExpenseDate.Normalize(dto.Date),
+            Category = dto.Category ?? ExpenseCategory.General,
             SplitMode = dto.SplitMode,
             Splits = splits.Zip(percentages, (s, percentage) => new ExpenseSplit
             {
@@ -98,6 +101,8 @@ public class ExpenseService(
             throw new ArgumentException("An update that changes the splits must also send the split mode.");
         }
 
+        EnsureNotPaymentCategory(dto.Category);
+
         var expense = await expenseRepository.FindByIdAsync(dto.Id);
 
         if (expense is null)
@@ -154,6 +159,7 @@ public class ExpenseService(
 
         expense.Amount = resultingAmount;
         expense.SplitMode = resultingMode;
+        expense.Category = dto.Category ?? expense.Category;
         expense.Description = dto.Description ?? expense.Description;
         expense.PaidBy = dto.PaidBy ?? expense.PaidBy;
         expense.Date = ExpenseDate.Normalize(dto.Date) ?? expense.Date;
@@ -179,6 +185,20 @@ public class ExpenseService(
         
         await expenseRepository.UpdateAsync(expense);
         return expense;
+    }
+
+    /// <summary>
+    /// Payment is the category a settlement carries, and settlements are written through
+    /// their own routes — a client filing an expense as one is confused about what it is
+    /// writing, the same way a client editing a settlement through the expense route is.
+    /// </summary>
+    private static void EnsureNotPaymentCategory(ExpenseCategory? category)
+    {
+        if (category is ExpenseCategory.Payment)
+        {
+            throw new ArgumentException(
+                "Payment is the category of a settlement. Record one through /group/{groupId}/settle.");
+        }
     }
 
     /// <summary>

@@ -108,6 +108,9 @@ public class BalanceService(
             Amount = amount,
             PaidBy = userId,
             Type = ExpenseType.Payment,
+            // Not taken from the caller: a settlement always carries Payment, which is the
+            // category no expense may hold and the picker never offers.
+            Category = ExpenseCategory.Payment,
             Date = ExpenseDate.Normalize(date),
             Splits = new List<ExpenseSplit>
             {
@@ -178,6 +181,9 @@ public class BalanceService(
         }
 
         settlement.Amount = amount;
+        // Coerced rather than preserved, so a row written before the column existed, or by an
+        // earlier path, ends up saying what it is.
+        settlement.Category = ExpenseCategory.Payment;
         settlement.Date = ExpenseDate.Normalize(date) ?? settlement.Date;
         settlement.UpdatedAt = DateTime.UtcNow;
 

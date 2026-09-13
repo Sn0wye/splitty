@@ -135,6 +135,16 @@ public class ApplicationDbContext : DbContext
 
             // Nullable so a settlement can store no mode; see Expense.SplitMode.
             entity.Property(e => e.SplitMode);
+
+            // Text rather than the ordinal used by the two enum columns above it, because a
+            // forty-four value list is edited and an ordinal punishes exactly those edits.
+            // No check constraint: EF only ever writes member names, and the DTO
+            // deserializer rejects an unknown token with a 400 before a handler runs. See
+            // docs/adr/0002-expense-categories-are-a-closed-text-list.md.
+            entity.Property(e => e.Category)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasDefaultValue(Domain.Entities.ExpenseCategory.General);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
 
