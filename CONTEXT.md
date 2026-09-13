@@ -57,6 +57,14 @@ write rather than refused. The column is nullable because a settlement has no mo
 service is what keeps it non-null for every `Type = Expense` row. Splits and mode are one
 fact, so an update sending `Splits` must send `SplitMode` too.
 
+**Category** is `Expense.Category` — one value from a closed, server-defined list, stored as
+text, `NOT NULL`, defaulting to `general`. It is descriptive: no amount, balance, or invariant
+reads it. A settlement holds `payment`, a value no expense may take and the picker never
+offers, so every row has a category and the client derives its glyph and tint from that alone.
+The expense routes refuse `payment` with a `400`; the settlement routes coerce whatever they
+are sent to `payment`. Adding a value is cheap, renaming one is a data migration. See
+`docs/adr/0002-expense-categories-are-a-closed-text-list.md`.
+
 **Expense date** is `Expense.Date`, nullable, client-supplied, and may be in the future.
 `CreatedAt` next to it is the audit timestamp — server-set, never accepted from a client.
 Rows predating the column have no `Date`, so every reader that orders or groups expenses uses
@@ -133,6 +141,12 @@ _Avoid_: split type, division method
 **Custom split**:
 Per-person amounts typed by hand, which must sum exactly to the total.
 _Avoid_: exact split, manual mode
+
+**Category**:
+What an expense was for, chosen by the user from a fixed list. Leaves are grouped under
+headings (Food and drink, Transportation, …) for display only; the heading is never stored.
+`general` means nobody chose. `payment` is the category every settlement carries.
+_Avoid_: tag, label, type (`ExpenseType` already owns "type")
 
 **Peer**:
 A member of a group you are also in, seen from your side. Already the domain word — it is
