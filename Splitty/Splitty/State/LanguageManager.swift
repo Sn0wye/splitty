@@ -8,6 +8,7 @@ import SwiftUI
 /// Languages the app can render. New cases are added here when a translation ships.
 enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     case english = "en"
+    case brazilianPortuguese = "pt-BR"
 
     static let storageKey = "appLanguage"
 
@@ -19,6 +20,7 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
     var displayName: String {
         switch self {
         case .english: "English"
+        case .brazilianPortuguese: "Português (Brasil)"
         }
     }
 
