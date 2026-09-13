@@ -337,6 +337,62 @@ enum L10n {
         static var unknownDay: String { text("expense.unknown_day", default: "Unknown") }
     }
 
+    enum CategoryHeading {
+        static var uncategorized: String { text("category_heading.uncategorized", default: "Uncategorized") }
+        static var entertainment: String { text("category_heading.entertainment", default: "Entertainment") }
+        static var foodAndDrink: String { text("category_heading.food_and_drink", default: "Food and drink") }
+        static var home: String { text("category_heading.home", default: "Home") }
+        static var life: String { text("category_heading.life", default: "Life") }
+        static var transportation: String { text("category_heading.transportation", default: "Transportation") }
+        static var utilities: String { text("category_heading.utilities", default: "Utilities") }
+    }
+
+    enum Category {
+        static var general: String { text("category.general", default: "General") }
+        static var games: String { text("category.games", default: "Games") }
+        static var movies: String { text("category.movies", default: "Movies") }
+        static var music: String { text("category.music", default: "Music") }
+        static var sports: String { text("category.sports", default: "Sports") }
+        static var entertainmentOther: String { text("category.entertainment_other", default: "Other entertainment") }
+        static var diningOut: String { text("category.dining_out", default: "Dining out") }
+        static var groceries: String { text("category.groceries", default: "Groceries") }
+        static var liquor: String { text("category.liquor", default: "Liquor") }
+        static var foodOther: String { text("category.food_other", default: "Other food and drink") }
+        static var electronics: String { text("category.electronics", default: "Electronics") }
+        static var furniture: String { text("category.furniture", default: "Furniture") }
+        static var householdSupplies: String { text("category.household_supplies", default: "Household supplies") }
+        static var maintenance: String { text("category.maintenance", default: "Maintenance") }
+        static var mortgage: String { text("category.mortgage", default: "Mortgage") }
+        static var pets: String { text("category.pets", default: "Pets") }
+        static var rent: String { text("category.rent", default: "Rent") }
+        static var services: String { text("category.services", default: "Services") }
+        static var homeOther: String { text("category.home_other", default: "Other home") }
+        static var childcare: String { text("category.childcare", default: "Childcare") }
+        static var clothing: String { text("category.clothing", default: "Clothing") }
+        static var education: String { text("category.education", default: "Education") }
+        static var gifts: String { text("category.gifts", default: "Gifts") }
+        static var insurance: String { text("category.insurance", default: "Insurance") }
+        static var medical: String { text("category.medical", default: "Medical") }
+        static var taxes: String { text("category.taxes", default: "Taxes") }
+        static var lifeOther: String { text("category.life_other", default: "Other life") }
+        static var bicycle: String { text("category.bicycle", default: "Bicycle") }
+        static var busTrain: String { text("category.bus_train", default: "Bus and train") }
+        static var car: String { text("category.car", default: "Car") }
+        static var gasFuel: String { text("category.gas_fuel", default: "Gas and fuel") }
+        static var hotel: String { text("category.hotel", default: "Hotel") }
+        static var parking: String { text("category.parking", default: "Parking") }
+        static var plane: String { text("category.plane", default: "Plane") }
+        static var taxi: String { text("category.taxi", default: "Taxi") }
+        static var transportationOther: String { text("category.transportation_other", default: "Other transportation") }
+        static var cleaning: String { text("category.cleaning", default: "Cleaning") }
+        static var electricity: String { text("category.electricity", default: "Electricity") }
+        static var heatGas: String { text("category.heat_gas", default: "Heat and gas") }
+        static var trash: String { text("category.trash", default: "Trash") }
+        static var tvPhoneInternet: String { text("category.tv_phone_internet", default: "TV, phone and internet") }
+        static var water: String { text("category.water", default: "Water") }
+        static var utilitiesOther: String { text("category.utilities_other", default: "Other utilities") }
+    }
+
     enum Split {
         static var title: String { text("split.title", default: "Split") }
         static var paidBy: String { text("split.paid_by", default: "Paid by") }

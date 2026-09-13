@@ -55,7 +55,8 @@ struct ContentView: View {
                     ExpenseSheet(
                         groupId: group.id,
                         members: group.members,
-                        currentUserId: currentUserId
+                        currentUserId: currentUserId,
+                        timelineExpenses: appState.timelineExpenses(groupId: group.id)
                     ) { saved in
                         appState.recordSavedExpense(saved, groupId: group.id)
                     }

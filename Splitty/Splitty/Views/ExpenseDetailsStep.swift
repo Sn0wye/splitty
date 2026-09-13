@@ -22,6 +22,7 @@ struct ExpenseDetailsStep: View {
         ScrollView {
             VStack(spacing: 12) {
                 descriptionRow
+                categoryRow
                 splitRow
                 dateRow
 
@@ -113,6 +114,57 @@ struct ExpenseDetailsStep: View {
         }
         .buttonStyle(.pressable(scale: 0.98))
         .accessibilityIdentifier("expense.split")
+    }
+
+    private var categoryRow: some View {
+        HStack(spacing: 8) {
+            // Reserved for the AI suggestion chip planned for this row.
+            Color.clear
+                .frame(width: 32, height: 32)
+                .accessibilityHidden(true)
+
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(viewModel.categorySuggestions) { category in
+                        Button {
+                            viewModel.category = viewModel.category == category ? .general : category
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: category.glyph)
+                                Text(category.name)
+                            }
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(viewModel.category == category ? .white : category.tint)
+                            .padding(.horizontal, 10)
+                            .frame(height: 32)
+                            .background(
+                                viewModel.category == category
+                                    ? category.tint
+                                    : category.tint.opacity(0.14),
+                                in: Capsule()
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(viewModel.category == category ? .isSelected : [])
+                    }
+                }
+            }
+            .scrollIndicators(.hidden)
+
+            NavigationLink {
+                ExpenseCategoryPickerView(selection: $viewModel.category)
+            } label: {
+                Image(systemName: "list.bullet")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.expenseForeground)
+                    .frame(width: 32, height: 32)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("expense.category-picker")
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 8)
+        .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
     }
 
     private var dateRow: some View {
