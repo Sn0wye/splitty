@@ -25,19 +25,22 @@ struct ProfileView: View {
                             MemberAvatar(display: MemberDisplay(viewModel.user), size: 112)
 
                             if !viewModel.isChangingAvatar {
-                                Circle()
-                                    .fill(Color("primary"))
-                                    .frame(width: 44, height: 44)
-                                    .overlay {
-                                        Image(systemName: "camera.fill")
-                                            .font(.system(size: 18, weight: .semibold))
-                                            .foregroundStyle(Color("primary-foreground"))
-                                    }
-                                    .overlay {
-                                        Circle()
-                                            .stroke(Color("background"), lineWidth: 3)
-                                    }
-                                    .offset(x: -6, y: 6)
+                                ZStack {
+                                    Circle()
+                                        .fill(.black.opacity(0.72))
+
+                                    Image(systemName: "camera.fill")
+                                        .font(.system(size: 16, weight: .semibold))
+                                        .foregroundStyle(.white)
+                                }
+                                .frame(width: 36, height: 36)
+                                .overlay {
+                                    Circle()
+                                        .stroke(Color("card"), lineWidth: 2)
+                                }
+                                .frame(width: 44, height: 44)
+                                .contentShape(Circle())
+                                .padding(2)
                             }
 
                             if viewModel.isChangingAvatar {
@@ -49,8 +52,6 @@ struct ProfileView: View {
                                     .frame(width: 112, height: 112)
                             }
                         }
-                        .padding(.leading, 6)
-                        .padding(.bottom, 6)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
