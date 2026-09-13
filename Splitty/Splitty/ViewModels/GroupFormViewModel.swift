@@ -24,7 +24,7 @@ class GroupFormViewModel: ObservableObject {
     
     var isEditing: Bool { existingGroupId != nil }
     
-    var title: String { isEditing ? "Edit group" : "New group" }
+    var title: String { isEditing ? L10n.GroupSettings.editGroup : L10n.Groups.newGroup }
     
     var canSave: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSaving
@@ -67,10 +67,10 @@ class GroupFormViewModel: ObservableObject {
             return error.localizedDescription
         }
         switch status {
-        case 400: return "Check the name and try again."
-        case 403: return "You are not a member of this group."
-        case 404: return "This group no longer exists."
-        default: return "Something went wrong (\(status)). Try again."
+        case 400: return L10n.GroupSettings.checkName
+        case 403: return L10n.GroupSettings.notMember
+        case 404: return L10n.GroupSettings.gone
+        default: return L10n.Errors.status(status)
         }
     }
 }

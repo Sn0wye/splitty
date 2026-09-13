@@ -32,7 +32,7 @@ struct ExpenseDetailView: View {
                         Text(Money.formatted(amount: expense.amount))
                             .font(.largeTitle.weight(.bold))
                             .monospacedDigit()
-                        Text("\(payerName) paid · \(dateText)")
+                        Text(L10n.Expense.payerPaidDate(payerName, dateText))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -71,7 +71,7 @@ struct ExpenseDetailView: View {
             }
 
         }
-        .navigationTitle("Expense")
+        .navigationTitle(Text(L10n.Expense.title))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -83,12 +83,12 @@ struct ExpenseDetailView: View {
                     } label: {
                         Image(systemName: "trash")
                     }
-                    .accessibilityLabel("Delete expense")
+                    .accessibilityLabel(L10n.Expense.deleteA11y)
                 }
             }
 
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Edit") { showingEditSheet = true }
+                Button { showingEditSheet = true } label: { Text(L10n.Common.edit) }
                     .disabled(isDeleting)
             }
         }
@@ -106,41 +106,41 @@ struct ExpenseDetailView: View {
         // Every member may delete anything, so the confirmation names what is going, not
         // who recorded it.
         .confirmationDialog(
-            "Delete \"\(expense.description)\"?",
+            L10n.Expense.deleteTitle(expense.description),
             isPresented: $showingDeleteConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Delete", role: .destructive) { delete() }
-            Button("Cancel", role: .cancel) {}
+            Button(role: .destructive) { delete() } label: { Text(L10n.Common.delete) }
+            Button(role: .cancel) {} label: { Text(L10n.Common.cancel) }
         } message: {
-            Text("This removes the expense and everyone's share of it.")
+            Text(L10n.Expense.deleteMessage)
         }
     }
 
     /// The stored mode, said once above the rows rather than repeated on each of them.
     private var splitHeader: String {
         switch expense.splitMode {
-        case .equal: return "Split equally"
-        case .custom: return "Split by amounts"
-        case .percentage: return "Split by percentages"
-        case .none: return "Split"
+        case .equal: return L10n.Expense.splitEqually
+        case .custom: return L10n.Expense.splitByAmounts
+        case .percentage: return L10n.Expense.splitByPercentages
+        case .none: return L10n.Expense.split
         }
     }
 
     private var payerName: String {
-        expense.paidBy == currentUserId ? "You" : payerDisplay.name
+        expense.paidBy == currentUserId ? L10n.Common.you : payerDisplay.name
     }
 
     private var payerDisplay: MemberDisplay {
         MemberDisplay(
             expense.paidByUser,
             currentUserId: currentUserId,
-            currentUserLabel: "You"
+            currentUserLabel: L10n.Common.you
         )
     }
 
     private var dateText: String {
-        guard let date = expense.effectiveDate else { return "Unknown date" }
+        guard let date = expense.effectiveDate else { return L10n.Expense.unknownDate }
         return date.formatted(.dateTime.weekday(.abbreviated).day().month().year())
     }
 
@@ -148,7 +148,7 @@ struct ExpenseDetailView: View {
         if let member = members.first(where: { $0.userId == userId }) {
             let display = MemberDisplay(member)
             return userId == currentUserId
-                ? MemberDisplay(name: "You", avatarURL: display.avatarURL)
+                ? MemberDisplay(name: L10n.Common.you, avatarURL: display.avatarURL)
                 : display
         }
 
@@ -156,7 +156,7 @@ struct ExpenseDetailView: View {
             return MemberDisplay(user)
         }
 
-        return MemberDisplay(name: "Unknown", avatarURL: nil)
+        return MemberDisplay(name: L10n.Common.unknown, avatarURL: nil)
     }
 
     private func delete() {

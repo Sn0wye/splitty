@@ -20,13 +20,13 @@ struct SplitConfigurationView: View {
             modeSection
             participantSection
         }
-        .navigationTitle("Split")
+        .navigationTitle(Text(L10n.Split.title))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 // Save is what an unfinished split blocks; leaving this screen is not. The
                 // mode in effect is whichever is selected on the way out.
-                Button("Done") { dismiss() }
+                Button { dismiss() } label: { Text(L10n.Common.done) }
             }
         }
     }
@@ -41,7 +41,7 @@ struct SplitConfigurationView: View {
                 PayerPickerView(viewModel: viewModel)
             } label: {
                 HStack {
-                    Text("Paid by")
+                    Text(L10n.Split.paidBy)
                     Spacer()
                     Text(viewModel.name(for: viewModel.configuration.payerId))
                         .foregroundStyle(.secondary)
@@ -55,13 +55,15 @@ struct SplitConfigurationView: View {
 
     private var modeSection: some View {
         Section {
-            Picker("Split", selection: Binding(
+            Picker(selection: Binding(
                 get: { viewModel.selectedMode },
                 set: { viewModel.selectMode($0) }
             )) {
-                Text("Equally").tag(ExpenseSplitMode.equal)
-                Text("Amounts").tag(ExpenseSplitMode.custom)
-                Text("Percentages").tag(ExpenseSplitMode.percentage)
+                Text(L10n.Split.equally).tag(ExpenseSplitMode.equal)
+                Text(L10n.Split.amounts).tag(ExpenseSplitMode.custom)
+                Text(L10n.Split.percentages).tag(ExpenseSplitMode.percentage)
+            } label: {
+                Text(L10n.Split.title)
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier("split.mode")
@@ -85,16 +87,16 @@ struct SplitConfigurationView: View {
             if let message = viewModel.blockingMessage {
                 Text(message).foregroundStyle(.orange)
             } else if viewModel.selectedMode != .equal {
-                Text("Everything is assigned. A blank field is someone left out.")
+                Text(L10n.Split.blankHint)
             }
         }
     }
 
     private var header: String {
         switch viewModel.selectedMode {
-        case .equal: return "Split between"
-        case .custom: return "Amounts"
-        case .percentage: return "Percentages"
+        case .equal: return L10n.Split.between
+        case .custom: return L10n.Split.amounts
+        case .percentage: return L10n.Split.percentages
         }
     }
 
@@ -187,7 +189,7 @@ private struct PayerPickerView: View {
             }
             .accessibilityIdentifier("split.payer.\(member.userId)")
         }
-        .navigationTitle("Paid by")
+        .navigationTitle(Text(L10n.Split.paidBy))
         .navigationBarTitleDisplayMode(.inline)
     }
 }

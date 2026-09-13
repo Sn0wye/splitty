@@ -70,7 +70,7 @@ struct ExpenseSheet: View {
 
             Spacer(minLength: 0)
 
-            PrimaryButton(title: "Next") {
+            PrimaryButton(title: L10n.Common.next) {
                 showingDetails = true
             }
             .disabled(viewModel.totalCents == 0)
@@ -91,7 +91,7 @@ struct ExpenseSheet: View {
             // The way out. A sheet with no visible dismiss leaves the drag gesture as the
             // only exit, which is not something to have to discover.
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+                Button { dismiss() } label: { Text(L10n.Common.cancel) }
                     .foregroundStyle(Color.expenseForeground)
                     .accessibilityIdentifier("expense.cancel")
             }

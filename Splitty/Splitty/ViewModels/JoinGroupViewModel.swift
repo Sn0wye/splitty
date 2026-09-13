@@ -74,11 +74,11 @@ final class JoinGroupViewModel: ObservableObject {
             return error.localizedDescription
         }
         switch status {
-        case 404: return "That invite code isn't valid."
-        case 410: return "That invite has expired. Ask for a new one."
-        case 409: return "That invite has no uses left. Ask for a new one."
-        case 429: return "Too many attempts. Wait a minute and try again."
-        default: return "Something went wrong (\(status)). Try again."
+        case 404: return L10n.Invite.invalidCode
+        case 410: return L10n.Invite.expired
+        case 409: return L10n.Invite.exhausted
+        case 429: return L10n.Invite.tooMany
+        default: return L10n.Errors.status(status)
         }
     }
 }

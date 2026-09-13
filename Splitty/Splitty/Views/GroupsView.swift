@@ -20,7 +20,7 @@ struct GroupsView: View {
 
                 HStack {
                     VStack(alignment: .leading) {
-                        Text("Groups")
+                        Text(L10n.Groups.title)
                             .font(.largeTitle)
                             .fontWeight(.bold)
                         
@@ -33,8 +33,8 @@ struct GroupsView: View {
                     Spacer()
                     
                     Menu {
-                        Button("New group") { showingCreateSheet = true }
-                        Button("Join with code") { showingJoinSheet = true }
+                        Button { showingCreateSheet = true } label: { Text(L10n.Groups.newGroup) }
+                        Button { showingJoinSheet = true } label: { Text(L10n.Groups.joinWithCode) }
                     } label: {
                         Image(systemName: "plus")
                             .font(.title2)

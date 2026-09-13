@@ -1,48 +1,46 @@
 //
-//  AppearanceView.swift
+//  LanguageView.swift
 //  Splitty
 //
 
 import SwiftUI
 
-struct AppearanceView: View {
-    @ObservedObject private var themeManager = ThemeManager.shared
+struct LanguageView: View {
+    @ObservedObject private var languageManager = LanguageManager.shared
 
     var body: some View {
         List {
             Section {
-                ForEach(AppTheme.allCases) { theme in
-                    themeRow(theme)
+                ForEach(AppLanguage.allCases) { language in
+                    languageRow(language)
                 }
-            } footer: {
-                Text(L10n.Appearance.footer)
             }
         }
         .scrollContentBackground(.hidden)
         .background(Color("background").ignoresSafeArea())
-        .navigationTitle(Text(L10n.Appearance.title))
+        .navigationTitle(Text(L10n.Language.title))
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    private func themeRow(_ theme: AppTheme) -> some View {
+    private func languageRow(_ language: AppLanguage) -> some View {
         Button {
-            guard themeManager.theme != theme else { return }
+            guard languageManager.language != language else { return }
             withAnimation(.easeInOut(duration: 0.2)) {
-                themeManager.theme = theme
+                languageManager.language = language
             }
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: theme.icon)
+                Image(systemName: language.icon)
                     .font(.body)
                     .foregroundStyle(Color("muted-foreground"))
                     .frame(width: 24)
 
-                Text(theme.title)
+                Text(language.displayName)
                     .foregroundStyle(Color("foreground"))
 
                 Spacer()
 
-                if themeManager.theme == theme {
+                if languageManager.language == language {
                     Image(systemName: "checkmark")
                         .font(.body.weight(.semibold))
                         .foregroundStyle(Color("foreground"))
@@ -57,6 +55,6 @@ struct AppearanceView: View {
 
 #Preview {
     NavigationStack {
-        AppearanceView()
+        LanguageView()
     }
 }

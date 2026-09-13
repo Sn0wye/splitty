@@ -66,7 +66,7 @@ struct BottomBar: View {
         .frame(maxWidth: .infinity)
         .buttonStyle(.pressable(scale: 0.9))
         .disabled(isAdding || !isAddEnabled)
-        .accessibilityLabel("Add expense")
+        .accessibilityLabel(L10n.Tabs.addExpense)
         .accessibilityIdentifier("app.addExpense")
     }
 }

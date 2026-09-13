@@ -12,16 +12,16 @@ struct LeaveCopy: Equatable {
 
     init(memberCount: Int, groupName: String) {
         let trimmedName = groupName.trimmingCharacters(in: .whitespacesAndNewlines)
-        let namedGroup = trimmedName.isEmpty ? "this group" : "\"\(trimmedName)\""
+        let namedGroup = trimmedName.isEmpty ? L10n.Leave.thisGroup : "\"\(trimmedName)\""
 
         if memberCount == 1 {
-            title = "Leave and delete \(namedGroup)?"
-            message = "The group and all of its expenses are deleted permanently."
-            confirmationLabel = "Leave and delete"
+            title = L10n.Leave.deleteTitle(namedGroup)
+            message = L10n.Leave.deleteMessage
+            confirmationLabel = L10n.Leave.deleteConfirm
         } else {
-            title = "Leave \(namedGroup)?"
-            message = "You will lose access to this group's expenses. You can re-join with a new invite code."
-            confirmationLabel = "Leave"
+            title = L10n.Leave.title(namedGroup)
+            message = L10n.Leave.message
+            confirmationLabel = L10n.Leave.confirm
         }
     }
 }

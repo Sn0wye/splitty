@@ -49,7 +49,7 @@ struct ExpenseDetailsStep: View {
         // Save rides above the keyboard because SwiftUI's own avoidance puts it there. This
         // screen does not opt out of that, so there is nothing left to measure.
         .safeAreaInset(edge: .bottom) {
-            PrimaryButton(title: "Save", isLoading: viewModel.isSaving, action: onSave)
+            PrimaryButton(title: L10n.Common.save, isLoading: viewModel.isSaving, action: onSave)
                 .disabled(!viewModel.canSave)
                 .accessibilityIdentifier("expense.save")
                 .padding(.horizontal, 20)
@@ -78,7 +78,7 @@ struct ExpenseDetailsStep: View {
         HStack(spacing: 14) {
             rowIcon("text.alignleft")
 
-            TextField("What was it for?", text: $viewModel.description)
+            TextField(L10n.Expense.whatFor, text: $viewModel.description)
                 .focused($descriptionFocused)
                 .submitLabel(.done)
                 .foregroundStyle(Color.expenseForeground)
@@ -150,8 +150,8 @@ struct ExpenseDetailsStep: View {
 
     private var dateLabel: String {
         let calendar = Calendar.current
-        if calendar.isDateInToday(viewModel.date) { return "Today" }
-        if calendar.isDateInYesterday(viewModel.date) { return "Yesterday" }
+        if calendar.isDateInToday(viewModel.date) { return L10n.Common.today }
+        if calendar.isDateInYesterday(viewModel.date) { return L10n.Common.yesterday }
         return viewModel.date.formatted(.dateTime.day().month(.abbreviated).year())
     }
 }

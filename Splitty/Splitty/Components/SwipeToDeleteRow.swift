@@ -42,7 +42,7 @@ struct SwipeToDeleteRow<Content: View>: View {
                     .background(Color.red)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Delete")
+            .accessibilityLabel(L10n.Common.delete)
             .frame(width: max(Self.actionWidth, -shownOffset))
             .offset(x: max(0, Self.actionWidth + shownOffset))
 

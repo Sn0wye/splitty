@@ -32,7 +32,7 @@ struct GroupView: View {
     private var groupScreen: some View {
         ZStack {
             if viewModel.isLoading {
-                ProgressView("Loading...")
+                ProgressView { Text(L10n.Common.loading) }
                     .foregroundColor(Color("foreground"))
             } else {
                 content
@@ -56,7 +56,7 @@ struct GroupView: View {
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(Color("foreground"))
                 }
-                .accessibilityLabel("Back to groups")
+                .accessibilityLabel(L10n.Group.backToGroups)
             }
 
             ToolbarItem(placement: .principal) {
@@ -75,7 +75,7 @@ struct GroupView: View {
                         .foregroundColor(Color("foreground"))
                 }
                 .disabled(viewModel.group == nil || currentUserId == nil)
-                .accessibilityLabel("Group settings")
+                .accessibilityLabel(L10n.Group.settings)
             }
         }
         .navigationDestination(isPresented: $showingSettings) {
@@ -143,13 +143,13 @@ struct GroupView: View {
             ),
             presenting: pendingDeletion
         ) { expense in
-            Button("Delete", role: .destructive) {
+            Button(role: .destructive) {
                 pendingDeletion = nil
                 Task { await viewModel.delete(expense, groupId: groupId) }
-            }
-            Button("Cancel", role: .cancel) { pendingDeletion = nil }
+            } label: { Text(L10n.Common.delete) }
+            Button(role: .cancel) { pendingDeletion = nil } label: { Text(L10n.Common.cancel) }
         } message: { _ in
-            Text("This cannot be undone.")
+            Text(L10n.Group.deleteUndone)
         }
         .task {
             await viewModel.loadGroupData(groupId: groupId)
@@ -206,13 +206,13 @@ struct GroupView: View {
     @ViewBuilder
     private var timeline: some View {
         if !viewModel.errorMessage.isEmpty {
-            Text("Error: \(viewModel.errorMessage)")
+            Text(L10n.Group.error(viewModel.errorMessage))
                 .foregroundColor(.red)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
                 .background(Color("card"))
         } else if viewModel.expenses.isEmpty {
-            Text("No expenses yet. Add the first one.")
+            Text(L10n.Group.noExpenses)
                 .foregroundColor(Color("muted-foreground"))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
@@ -253,7 +253,7 @@ struct GroupView: View {
         if viewModel.isPendingPayment(expense) {
             ExpenseRow(expense: expense, currentUserId: currentUserId)
                 .opacity(0.6)
-                .accessibilityValue("Updating")
+                .accessibilityValue(L10n.Common.updating)
         } else {
             SwipeToDeleteRow {
                 selectedExpenseId = expense.id
@@ -290,15 +290,15 @@ struct GroupView: View {
     }
 
     private var deletionTitle: String {
-        guard let expense = pendingDeletion else { return "Delete?" }
+        guard let expense = pendingDeletion else { return L10n.Group.deleteQuestion }
         return expense.type == .payment
-            ? "Delete the \(Money.formatted(amount: expense.amount)) payment?"
-            : "Delete \"\(expense.description)\"?"
+            ? L10n.Group.deletePayment(Money.formatted(amount: expense.amount))
+            : L10n.Group.deleteExpense(expense.description)
     }
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(viewModel.group?.name ?? "Loading...")
+            Text(viewModel.group?.name ?? L10n.Common.loading)
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .foregroundColor(Color("foreground"))
@@ -313,7 +313,7 @@ struct GroupView: View {
                     )
                 }
                 .buttonStyle(.pressable(scale: 0.96))
-                .accessibilityHint("Opens group settings")
+                .accessibilityHint(L10n.Group.settingsHint)
                 .padding(.vertical, 6)
             }
 
@@ -340,7 +340,7 @@ struct GroupView: View {
                 }
             }
         } else {
-            Text("Loading balance...")
+            Text(L10n.Group.loadingBalance)
                 .foregroundColor(Color("muted-foreground"))
         }
     }
@@ -348,22 +348,22 @@ struct GroupView: View {
     private var actionButtonsSection: some View {
         LazyHStack(spacing: 12) {
             if viewModel.members.count >= 2 {
-                ActionButton(title: "Settle up", color: Color("foreground"), textColor: Color("background")) {
+                ActionButton(title: L10n.Group.settleUp, color: Color("foreground"), textColor: Color("background")) {
                     showingSettleUpSheet = true
                 }
                 .disabled(currentUserId == nil)
             }
 
-            ActionButton(title: "Charts", color: Color("muted"), textColor: Color("foreground")) {
+            ActionButton(title: L10n.Group.charts, color: Color("muted"), textColor: Color("foreground")) {
                 // TODO: Charts action
             }
             
-            ActionButton(title: "Balances", color: Color("muted"), textColor: Color("foreground")) {
+            ActionButton(title: L10n.Group.balances, color: Color("muted"), textColor: Color("foreground")) {
                 showingBalancesSheet = true
             }
             .disabled(viewModel.group == nil || currentUserId == nil)
             
-            ActionButton(title: "Export", color: Color("muted"), textColor: Color("foreground")) {
+            ActionButton(title: L10n.Group.export, color: Color("muted"), textColor: Color("foreground")) {
                 // TODO: Export action
             }
         }
@@ -515,11 +515,11 @@ struct ExpenseRow: View {
             // Settlements live in the same timeline as expenses, in their own row style
             // rather than a separate feed.
             if expense.type == .payment {
-                Text(isUserPaid ? "You paid \(peerDisplay?.name ?? "someone")" : "\(paidByDisplay.name) paid \(payeeLabel)")
+                Text(isUserPaid ? L10n.Group.youPaidPeer(peerDisplay?.name ?? L10n.Common.someone) : L10n.Group.payerPaidPayee(paidByDisplay.name, payeeLabel))
             } else {
                 Text(isUserPaid
-                     ? "You paid \(Money.formatted(amount: expense.amount))"
-                     : "\(paidByDisplay.name) paid \(Money.formatted(amount: expense.amount))")
+                     ? L10n.Group.youPaidAmount(Money.formatted(amount: expense.amount))
+                     : L10n.Group.payerPaidAmount(paidByDisplay.name, Money.formatted(amount: expense.amount)))
             }
         }
         .font(.subheadline)
@@ -527,21 +527,21 @@ struct ExpenseRow: View {
     }
 
     private var payeeLabel: String {
-        expense.peer?.id == currentUserId ? "you" : peerDisplay?.name ?? "someone"
+        expense.peer?.id == currentUserId ? L10n.Common.youLowercase : peerDisplay?.name ?? L10n.Common.someone
     }
     
     @ViewBuilder
     private var balanceLabel: some View {
         if expense.type == .payment {
-            Text("payment")
+            Text(L10n.Group.payment)
                 .font(.caption)
                 .foregroundColor(Color("muted-foreground"))
         } else if !isUserInvolved {
-            Text("not involved")
+            Text(L10n.Group.notInvolved)
                 .font(.caption)
                 .foregroundColor(Color("muted-foreground"))
         } else {
-            Text(isUserPaid ? "you lent" : "you borrowed")
+            Text(isUserPaid ? L10n.Group.youLent : L10n.Group.youBorrowed)
                 .font(.caption)
                 .foregroundColor(isUserPaid ? Color.green : Color.red)
         }

@@ -43,8 +43,8 @@ struct InviteCodeEntry {
 
     static func accessibilityValue(for code: String) -> String {
         let characters = code.isEmpty
-            ? "Empty"
+            ? L10n.Invite.a11yEmpty
             : code.map(String.init).joined(separator: " ")
-        return "\(characters), \(code.count) of \(InviteCode.length) characters entered"
+        return L10n.Invite.a11yValue(characters, code.count, InviteCode.length)
     }
 }

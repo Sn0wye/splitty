@@ -9,7 +9,7 @@ struct PeopleView: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color("background"))
-                .navigationTitle("People")
+                .navigationTitle(Text(L10n.People.title))
                 .task { await viewModel.load() }
         }
     }
@@ -18,7 +18,7 @@ struct PeopleView: View {
     private var content: some View {
         switch viewModel.state {
         case .loading:
-            ProgressView("Loading...")
+            ProgressView { Text(L10n.Common.loading) }
         case .empty:
             refreshableScroll {
                 emptyState
@@ -30,8 +30,10 @@ struct PeopleView: View {
                 Text(message)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(Color("muted-foreground"))
-                Button("Retry") {
+                Button {
                     Task { await viewModel.load() }
+                } label: {
+                    Text(L10n.Common.retry)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color("foreground"))
@@ -43,7 +45,7 @@ struct PeopleView: View {
                     peerRows(viewModel.activePeers)
 
                     if !viewModel.settledPeers.isEmpty {
-                        Text("Settled")
+                        Text(L10n.People.settled)
                             .font(.headline)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.top, 28)
@@ -70,9 +72,9 @@ struct PeopleView: View {
         VStack(spacing: 10) {
             Image(systemName: "arrow.left.arrow.right")
                 .font(.system(size: 34, weight: .light))
-            Text("No people yet")
+            Text(L10n.People.emptyTitle)
                 .font(.headline)
-            Text("People you share a group with will appear here.")
+            Text(L10n.People.emptyMessage)
                 .font(.subheadline)
                 .foregroundStyle(Color("muted-foreground"))
                 .multilineTextAlignment(.center)
@@ -114,7 +116,7 @@ struct PeopleView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityHint("Opens this group")
+                    .accessibilityHint(L10n.People.opensGroup)
                 }
             }
             .padding(.leading, 54)
@@ -142,12 +144,12 @@ struct PeopleView: View {
 
     private func peerStatement(_ peer: Peer) -> String {
         if peer.netAmountCents < 0 {
-            return "You owe \(Money.formatted(cents: peer.magnitudeCents))"
+            return L10n.People.youOwe(Money.formatted(cents: peer.magnitudeCents))
         }
         if peer.netAmountCents > 0 {
-            return "Owes you \(Money.formatted(cents: peer.magnitudeCents))"
+            return L10n.People.owesYou(Money.formatted(cents: peer.magnitudeCents))
         }
-        return "Settled up"
+        return L10n.People.settledUp
     }
 }
 

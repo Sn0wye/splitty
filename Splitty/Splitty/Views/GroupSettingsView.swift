@@ -40,7 +40,7 @@ struct GroupSettingsView: View {
                 groupInformationRow
             }
 
-            Section("Members") {
+            Section {
                 ForEach(orderedMembers) { member in
                     memberRow(member)
                 }
@@ -48,16 +48,18 @@ struct GroupSettingsView: View {
                 NavigationLink {
                     InviteView(groupId: group.id, groupName: group.name)
                 } label: {
-                    Label("Invite people", systemImage: "person.badge.plus")
+                    Label(L10n.GroupSettings.invitePeople, systemImage: "person.badge.plus")
                         .frame(minHeight: 44)
                 }
+            } header: {
+                Text(L10n.GroupSettings.members)
             }
 
             Section {
                 Button(role: .destructive) {
                     showingLeaveAlert = true
                 } label: {
-                    Label("Leave group", systemImage: "rectangle.portrait.and.arrow.right")
+                    Label(L10n.GroupSettings.leaveGroup, systemImage: "rectangle.portrait.and.arrow.right")
                         .foregroundStyle(.red)
                 }
                 .disabled(isLeaving)
@@ -70,7 +72,7 @@ struct GroupSettingsView: View {
         }
         .scrollContentBackground(.hidden)
         .background(Color("background"))
-        .navigationTitle("Group settings")
+        .navigationTitle(Text(L10n.GroupSettings.title))
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color("background"), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
@@ -94,7 +96,7 @@ struct GroupSettingsView: View {
             Button(leaveCopy.confirmationLabel, role: .destructive) {
                 Task { await leaveGroup() }
             }
-            Button("Cancel", role: .cancel) {}
+            Button(role: .cancel) {} label: { Text(L10n.Common.cancel) }
         } message: {
             Text(leaveCopy.message)
         }
@@ -113,8 +115,10 @@ struct GroupSettingsView: View {
 
             Spacer(minLength: 12)
 
-            Button("Edit") {
+            Button {
                 showingEditSheet = true
+            } label: {
+                Text(L10n.Common.edit)
             }
             .buttonStyle(.borderless)
         }
@@ -124,7 +128,7 @@ struct GroupSettingsView: View {
     private var groupDescription: String {
         guard let description = group.description,
               !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        else { return "No description" }
+        else { return L10n.GroupSettings.noDescription }
 
         return description
     }
@@ -146,7 +150,7 @@ struct GroupSettingsView: View {
             Spacer()
 
             if member.userId == currentUserId {
-                Text("You")
+                Text(L10n.Common.you)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(Color("muted-foreground"))
             } else {
@@ -200,7 +204,7 @@ private struct MemberDetailSheet: View {
             Button(role: .destructive, action: remove) {
                 HStack {
                     if isRemoving { ProgressView().controlSize(.small) }
-                    Text("Remove from group")
+                    Text(L10n.GroupSettings.removeMember)
                         .fontWeight(.semibold)
                 }
                 .frame(maxWidth: .infinity)

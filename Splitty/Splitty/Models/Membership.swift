@@ -13,7 +13,7 @@ struct MembershipError: Equatable {
     init(_ error: Error) {
         switch error as? APIError {
         case .httpError(403, _), .httpError(404, _):
-            message = "This group is no longer available"
+            message = L10n.Errors.groupUnavailable
             shouldLeaveScreen = true
         default:
             message = error.displayMessage
@@ -32,7 +32,7 @@ struct MemberDisplay: Equatable {
 
     init(name: String, avatarURL: URL?) {
         isRemoved = name == "[removed]"
-        self.name = isRemoved ? "Removed member" : name
+        self.name = isRemoved ? L10n.Errors.removedMember : name
         self.avatarURL = isRemoved ? nil : avatarURL
     }
 

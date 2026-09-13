@@ -19,7 +19,7 @@ struct JoinGroupSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    Text("Enter the six-character invite code shared by a group member.")
+                    Text(L10n.Invite.enterCode)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -41,18 +41,18 @@ struct JoinGroupSheet: View {
             }
             .background(Color("background"))
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("Join with code")
+            .navigationTitle(Text(L10n.Invite.joinTitle))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") { dismiss() }
+                    Button { dismiss() } label: { Text(L10n.Common.cancel) }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     if viewModel.isRedeeming {
                         ProgressView()
                     } else {
-                        Button("Join") {}
+                        Button { } label: { Text(L10n.Invite.join) }
                             .disabled(true)
                     }
                 }

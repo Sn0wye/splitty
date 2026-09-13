@@ -34,7 +34,7 @@ final class InviteLinkCoordinator: ObservableObject {
             pendingInvite = PendingInvite(code: code)
             invalidLinkMessage = nil
         case .unknown:
-            invalidLinkMessage = "This invite link isn't valid. Ask for a new one."
+            invalidLinkMessage = L10n.Invite.invalidLink
         case .googleSignIn:
             break
         }

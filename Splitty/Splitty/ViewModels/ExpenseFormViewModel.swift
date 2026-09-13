@@ -88,7 +88,7 @@ class ExpenseFormViewModel: ObservableObject {
 
     var isEditing: Bool { existingExpenseId != nil }
 
-    var title: String { isEditing ? "Edit expense" : "New expense" }
+    var title: String { isEditing ? L10n.Expense.editExpense : L10n.Expense.newExpense }
 
     var memberIds: [Int] { members.map(\.userId) }
 
@@ -121,19 +121,19 @@ class ExpenseFormViewModel: ObservableObject {
         case .none, .amountNotPositive:
             return nil
         case .noParticipants:
-            return "Select who this is split between"
+            return L10n.Expense.selectSplit
         case .unassigned(let cents):
             return cents > 0
-                ? "\(Money.formatted(cents: cents)) left to assign"
-                : "\(Money.formatted(cents: -cents)) over the total"
+                ? L10n.Expense.leftToAssign(Money.formatted(cents: cents))
+                : L10n.Expense.overTotal(Money.formatted(cents: -cents))
         case .unassignedPercent(let percent):
             return percent > 0
-                ? "\(Percent.string(percent))% left to assign"
-                : "\(Percent.string(-percent))% over 100%"
+                ? L10n.Expense.percentLeft(Percent.string(percent))
+                : L10n.Expense.percentOver(Percent.string(-percent))
         case .percentageRoundsToZero(let userId):
             // The API rejects a split of zero, and the reason is invisible from the field:
             // the share is a real number, it is the total that is too small for it.
-            return "\(name(for: userId))'s share rounds down to nothing"
+            return L10n.Expense.roundsToZero(name(for: userId))
         }
     }
 
@@ -147,8 +147,8 @@ class ExpenseFormViewModel: ObservableObject {
 
     func name(for userId: Int) -> String {
         userId == currentUserId
-            ? "You"
-            : members.first { $0.userId == userId }?.name ?? "Unknown"
+            ? L10n.Common.you
+            : members.first { $0.userId == userId }?.name ?? L10n.Common.unknown
     }
 
     func splits() -> [ExpenseSplitRequest] {

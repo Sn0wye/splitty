@@ -19,17 +19,17 @@ struct InviteConfirmationSheet: View {
                 } else if let errorMessage = viewModel.errorMessage {
                     failure(message: errorMessage)
                 } else {
-                    ProgressView("Checking invite…")
+                    ProgressView { Text(L10n.Invite.checking) }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(24)
             .background(Color("background"))
-            .navigationTitle("Group invite")
+            .navigationTitle(Text(L10n.Invite.groupInvite))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button { dismiss() } label: { Text(L10n.Common.cancel) }
                 }
             }
         }
@@ -52,12 +52,12 @@ struct InviteConfirmationSheet: View {
                 Text(memberCountText(metadata.memberCount))
                     .foregroundStyle(.secondary)
 
-                Text("Invited by \(metadata.createdByName)")
+                Text(L10n.Invite.invitedBy(metadata.createdByName))
                     .foregroundStyle(.secondary)
             }
 
             if metadata.alreadyMember {
-                Text("You're already a member of this group.")
+                Text(L10n.Invite.alreadyMember)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -100,8 +100,10 @@ struct InviteConfirmationSheet: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.red)
 
-            Button("Try again") {
+            Button {
                 Task { await viewModel.load() }
+            } label: {
+                Text(L10n.Common.tryAgain)
             }
             .buttonStyle(.borderedProminent)
 
@@ -110,7 +112,7 @@ struct InviteConfirmationSheet: View {
     }
 
     private func memberCountText(_ count: Int) -> String {
-        count == 1 ? "1 member" : "\(count) members"
+        count == 1 ? L10n.Invite.membersOne : L10n.Invite.membersOther(count)
     }
 
     private func proceed() async {

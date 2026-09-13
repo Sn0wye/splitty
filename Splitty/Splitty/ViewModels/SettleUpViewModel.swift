@@ -81,7 +81,7 @@ final class SettleUpViewModel: ObservableObject {
               let cents = debtCents(for: selectedPeerId),
               cents > 0
         else { return nil }
-        return "Pay all \(Money.formatted(cents: cents))"
+        return L10n.Settlement.payAll(Money.formatted(cents: cents))
     }
 
     func debtCents(for peerId: Int) -> Int? {
@@ -160,9 +160,9 @@ final class SettleUpViewModel: ObservableObject {
            debtCents > 0,
            debtCents < amountCents
         {
-            errorMessage = "You only owe \(peer.name) \(Money.formatted(cents: debtCents))."
+            errorMessage = L10n.Settlement.onlyOwe(peer.name, Money.formatted(cents: debtCents))
         } else {
-            errorMessage = "Couldn't record that payment. Pull down to refresh and try again."
+            errorMessage = L10n.Settlement.recordFailed
         }
     }
 }

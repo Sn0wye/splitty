@@ -255,34 +255,34 @@ struct SplitConfiguration: Equatable {
     /// The line the sheet shows in place of the split screen.
     func summary(members: [GroupMember], currentUserId: Int) -> String {
         let payer = payerId == currentUserId
-            ? "you"
-            : members.first { $0.userId == payerId }?.name ?? "someone else"
+            ? L10n.Split.you
+            : members.first { $0.userId == payerId }?.name ?? L10n.Split.someoneElse
 
         switch mode {
         case .custom:
-            return "Paid by \(payer) and split by amounts"
+            return L10n.Split.summaryAmounts(payer)
         case .percentage:
             // Leaving the split screen at 80% is allowed; the line is where the missing
             // fifth is said out loud, since Save only says that something is wrong.
             let unassigned = unassignedPercent
             if unassigned > 0 {
-                return "Paid by \(payer), \(Percent.string(unassigned))% left to assign"
+                return L10n.Split.summaryPercentLeft(payer, Percent.string(unassigned))
             }
             if unassigned < 0 {
-                return "Paid by \(payer), \(Percent.string(-unassigned))% over 100%"
+                return L10n.Split.summaryPercentOver(payer, Percent.string(-unassigned))
             }
-            return "Paid by \(payer) and split by percentages"
+            return L10n.Split.summaryPercentages(payer)
         case .equal(let participants):
             if participants.count == 1, let onlyId = participants.first, onlyId != payerId {
                 let debtor = onlyId == currentUserId
-                    ? "you owe"
-                    : "\(members.first { $0.userId == onlyId }?.name ?? "they") owes"
-                return "Paid by \(payer), \(debtor) the full amount"
+                    ? L10n.Split.youOwe
+                    : L10n.Split.theyOwe(members.first { $0.userId == onlyId }?.name ?? L10n.Split.they)
+                return L10n.Split.summaryFullAmount(payer, debtor)
             }
             if participants.count == members.count || members.isEmpty {
-                return "Paid by \(payer) and split equally"
+                return L10n.Split.summaryEqually(payer)
             }
-            return "Paid by \(payer) and split equally between \(participants.count) people"
+            return L10n.Split.summaryEquallyBetween(payer, participants.count)
         }
     }
 }
