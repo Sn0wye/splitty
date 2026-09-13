@@ -13,6 +13,7 @@ struct GroupSettingsView: View {
     let onGroupExited: (String?) -> Void
 
     @State private var showingEditSheet = false
+    @ObservedObject private var authManager = AuthenticationManager.shared
     @State private var members: [GroupMember]
     @State private var selectedMember: GroupMember?
     @State private var showingLeaveAlert = false
@@ -140,7 +141,7 @@ struct GroupSettingsView: View {
 
     @ViewBuilder
     private func memberRow(_ member: GroupMember) -> some View {
-        let display = MemberDisplay(member)
+        let display = MemberDisplay(member).resolved(currentUser: authManager.currentUser)
         let row = HStack(spacing: 12) {
             MemberAvatar(display: display)
 

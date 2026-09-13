@@ -148,7 +148,7 @@ struct ExpenseDetailView: View {
         if let member = members.first(where: { $0.userId == userId }) {
             let display = MemberDisplay(member)
             return userId == currentUserId
-                ? MemberDisplay(name: L10n.Common.you, avatarURL: display.avatarURL)
+                ? MemberDisplay(name: L10n.Common.you, avatarURL: display.avatarURL, userID: userId)
                 : display
         }
 

@@ -70,6 +70,11 @@ class AuthenticationManager: ObservableObject {
         isAuthenticated = true
     }
 
+    func updateCurrentUser(_ user: User) {
+        guard currentUser?.id == user.id else { return }
+        currentUser = user
+    }
+
     /// Fills in `currentUser` on a cold launch that skipped the sign-in screen. A network
     /// blip leaves the session alone for a later screen to retry, but a server that
     /// answers and does not recognize the token's user (a stale Keychain token against a

@@ -57,3 +57,26 @@ struct User: Codable, Identifiable {
         try values.encode(updatedAt, forKey: .updatedAt)
     }
 }
+
+struct ProfileResponse: Codable {
+    let id: Int
+    let name: String
+    let email: String
+    let avatarURL: URL?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, email
+        case avatarURL = "avatarUrl"
+    }
+
+    var user: User {
+        User(
+            id: id,
+            name: name,
+            email: email,
+            avatarURL: avatarURL,
+            createdAt: "",
+            updatedAt: ""
+        )
+    }
+}

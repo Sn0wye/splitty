@@ -173,12 +173,6 @@ class APIClient {
         return try await request(endpoint: "/invite/\(code)/accept", method: .POST)
     }
     
-    // MARK: - Users/Profile
-    /// The profile route is `GET /auth`, not `/profile` — there has never been a
-    /// `/profile` route to call.
-    func getProfile() async throws -> User {
-        return try await request(endpoint: "/auth")
-    }
 }
 
 enum APIError: Error, LocalizedError {

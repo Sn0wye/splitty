@@ -64,6 +64,64 @@ enum L10n {
         }
     }
 
+    enum Profile {
+        static var title: String { text("profile.title", default: "Profile") }
+        static var choosePhoto: String { text("profile.choose_photo", default: "Choose photo") }
+        static var removePhoto: String { text("profile.remove_photo", default: "Remove photo") }
+        static var retryUpload: String { text("profile.retry_upload", default: "Retry upload") }
+        static var name: String { text("profile.name", default: "Name") }
+        static var emptyName: String { text("profile.empty_name", default: "Name can't be empty.") }
+        static var nameLimit: String { text("profile.name_limit", default: "Name limit") }
+        static var email: String { text("profile.email", default: "Email") }
+        static var cropTitle: String { text("profile.crop_title", default: "Crop photo") }
+        static var zoom: String { text("profile.zoom", default: "Zoom") }
+        static var cropInstructions: String {
+            text(
+                "profile.crop_instructions",
+                default: "Drag and zoom to choose what appears in your profile photo."
+            )
+        }
+        static var choose: String { text("profile.choose", default: "Choose") }
+        static var remove: String { text("profile.remove", default: "Remove") }
+        static var removeConfirmation: String {
+            text("profile.remove_confirmation", default: "Remove photo?")
+        }
+        static var removeFallback: String {
+            text(
+                "profile.remove_fallback",
+                default: "Your provider photo or a generated image will be used instead."
+            )
+        }
+        static var keepEditing: String { text("profile.keep_editing", default: "Keep editing") }
+        static var discard: String { text("profile.discard", default: "Discard") }
+        static var discardConfirmation: String {
+            text("profile.discard_confirmation", default: "Discard changes?")
+        }
+        static var discardWarning: String {
+            text("profile.discard_warning", default: "Your name change has not been saved.")
+        }
+        static var errorTitle: String { text("profile.error_title", default: "Profile error") }
+        static var preparing: String { text("profile.preparing", default: "Preparing photo...") }
+        static var uploading: String { text("profile.uploading", default: "Uploading photo...") }
+        static var confirming: String { text("profile.confirming", default: "Finishing upload...") }
+        static var updated: String { text("profile.updated", default: "Photo updated") }
+        static var invalidImage: String {
+            text(
+                "profile.invalid_image",
+                default: "That photo could not be opened. Choose another one."
+            )
+        }
+        static var preparationFailed: String {
+            text(
+                "profile.preparation_failed",
+                default: "That photo could not be prepared. Try another one."
+            )
+        }
+        static var tooLarge: String {
+            text("profile.too_large", default: "That photo is too large to upload.")
+        }
+    }
+
     enum Language {
         static var title: String { text("language.title", default: "Language") }
     }
