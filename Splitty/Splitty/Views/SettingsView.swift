@@ -57,6 +57,23 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    if let user = authManager.currentUser {
+                        NavigationLink {
+                            ProfileView(user: user)
+                        } label: {
+                            HStack(spacing: 12) {
+                                MemberAvatar(display: MemberDisplay(user), size: 36)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(user.name)
+                                    Text(user.email)
+                                        .font(.caption)
+                                        .foregroundStyle(Color("muted-foreground"))
+                                }
+                            }
+                            .frame(minHeight: 44)
+                        }
+                    }
+
                     Button(action: {
                         showingLogoutAlert = true
                     }) {

@@ -10,6 +10,7 @@ import SwiftUI
 struct GroupCard: View {
     let group: Group
     let onTap: () -> Void
+    @ObservedObject private var authManager = AuthenticationManager.shared
     
     var positiveBalance: Bool {
         return group.netBalanceCents > 0;
@@ -27,7 +28,7 @@ struct GroupCard: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading) {
                         MultipleAvatar(
-                            urls: group.members.compactMap { URL(string: $0.avatarUrl) },
+                            urls: group.members.compactMap(avatarURL),
                             total: group.members.count
                         )
                         
@@ -63,6 +64,10 @@ struct GroupCard: View {
         // Shared across every card on purpose: a test wants "a group", not a particular
         // one, and naming them individually would tie it to whatever the data happens to be.
         .accessibilityIdentifier("groups.card")
+    }
+
+    private func avatarURL(for member: GroupMember) -> URL? {
+        MemberDisplay(member).resolved(currentUser: authManager.currentUser).avatarURL
     }
 }
 

@@ -308,7 +308,9 @@ struct GroupView: View {
                     showingSettings = true
                 } label: {
                     MultipleAvatar(
-                        urls: group.members.compactMap { URL(string: $0.avatarUrl) },
+                        urls: group.members.compactMap {
+                            MemberDisplay($0).resolved(currentUser: authManager.currentUser).avatarURL
+                        },
                         total: group.members.count
                     )
                 }

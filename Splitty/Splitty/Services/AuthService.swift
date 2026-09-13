@@ -55,6 +55,7 @@ class AuthService {
             throw APIError.noAuthToken
         }
         
-        return try await APIClient.shared.getProfile()
+        let profile: ProfileResponse = try await APIClient.shared.request(endpoint: "/profile")
+        return profile.user
     }
 }

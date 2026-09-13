@@ -26,31 +26,40 @@ struct MembershipError: Equatable {
 struct MemberDisplay: Equatable {
     static let removed = MemberDisplay(name: "[removed]", avatarURL: nil)
 
+    let userID: Int?
     let name: String
     let avatarURL: URL?
     let isRemoved: Bool
 
-    init(name: String, avatarURL: URL?) {
+    init(name: String, avatarURL: URL?, userID: Int? = nil) {
+        self.userID = userID
         isRemoved = name == "[removed]"
         self.name = isRemoved ? L10n.Errors.removedMember : name
         self.avatarURL = isRemoved ? nil : avatarURL
     }
 
     init(_ user: User) {
-        self.init(name: user.name, avatarURL: user.avatarURL)
+        self.init(name: user.name, avatarURL: user.avatarURL, userID: user.id)
     }
 
     init(_ user: User, currentUserId: Int, currentUserLabel: String) {
         self.init(
             name: user.id == currentUserId ? currentUserLabel : user.name,
-            avatarURL: user.avatarURL
+            avatarURL: user.avatarURL,
+            userID: user.id
         )
     }
 
     init(_ member: GroupMember) {
         self.init(
             name: member.name,
-            avatarURL: member.avatarUrl.isEmpty ? nil : URL(string: member.avatarUrl)
+            avatarURL: member.avatarUrl.isEmpty ? nil : URL(string: member.avatarUrl),
+            userID: member.userId
         )
+    }
+
+    func resolved(currentUser: User?) -> MemberDisplay {
+        guard let currentUser, userID == currentUser.id else { return self }
+        return MemberDisplay(currentUser)
     }
 }
