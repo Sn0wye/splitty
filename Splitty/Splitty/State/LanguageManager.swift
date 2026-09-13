@@ -22,13 +22,14 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    var icon: String { "globe" }
-
     /// Readable from any isolation so copy can resolve without hopping to the main actor.
-    nonisolated static var current: AppLanguage {
-        let stored = UserDefaults.standard.string(forKey: storageKey)
+    /// Takes its store so tests can read a preference that isn't the shared one.
+    nonisolated static func current(in defaults: UserDefaults = .standard) -> AppLanguage {
+        let stored = defaults.string(forKey: storageKey)
         return stored.flatMap(AppLanguage.init(rawValue:)) ?? .english
     }
+
+    nonisolated static var current: AppLanguage { current(in: .standard) }
 
     nonisolated static var currentLocale: Locale { current.locale }
 }
@@ -39,15 +40,18 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
 final class LanguageManager: ObservableObject {
     static let shared = LanguageManager()
 
+    private let defaults: UserDefaults
+
     @Published var language: AppLanguage {
         didSet {
-            UserDefaults.standard.set(language.rawValue, forKey: AppLanguage.storageKey)
+            defaults.set(language.rawValue, forKey: AppLanguage.storageKey)
         }
     }
 
     var locale: Locale { language.locale }
 
-    private init() {
-        language = AppLanguage.current
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        language = AppLanguage.current(in: defaults)
     }
 }

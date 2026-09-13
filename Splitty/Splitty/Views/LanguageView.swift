@@ -30,11 +30,6 @@ struct LanguageView: View {
             }
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: language.icon)
-                    .font(.body)
-                    .foregroundStyle(Color("muted-foreground"))
-                    .frame(width: 24)
-
                 Text(language.displayName)
                     .foregroundStyle(Color("foreground"))
 

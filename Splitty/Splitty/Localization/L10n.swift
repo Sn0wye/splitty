@@ -10,12 +10,17 @@ import Foundation
 enum L10n {
     nonisolated private static var locale: Locale { AppLanguage.currentLocale }
 
+    /// Resolves a catalog entry. Interpolating values into `defaultValue` lets the
+    /// localization system pick plural variations and substitutions from the catalog.
     nonisolated static func text(_ key: StaticString, default defaultValue: String.LocalizationValue) -> String {
         var resource = LocalizedStringResource(key, defaultValue: defaultValue)
         resource.locale = locale
         return String(localized: resource)
     }
 
+    /// printf-style substitution for copy that takes arguments but needs no plural
+    /// agreement. Anything with two or more arguments must use positional specifiers
+    /// (`%1$@`, `%2$lld`) so translators can reorder them; use `text` for counts.
     nonisolated static func format(
         _ key: StaticString,
         default defaultValue: String.LocalizationValue,
@@ -148,13 +153,13 @@ enum L10n {
             format("group.you_paid_peer", default: "You paid %@", name)
         }
         static func payerPaidPayee(_ payer: String, _ payee: String) -> String {
-            format("group.payer_paid_payee", default: "%@ paid %@", payer, payee)
+            format("group.payer_paid_payee", default: "%1$@ paid %2$@", payer, payee)
         }
         static func youPaidAmount(_ amount: String) -> String {
             format("group.you_paid_amount", default: "You paid %@", amount)
         }
         static func payerPaidAmount(_ payer: String, _ amount: String) -> String {
-            format("group.payer_paid_amount", default: "%@ paid %@", payer, amount)
+            format("group.payer_paid_amount", default: "%1$@ paid %2$@", payer, amount)
         }
         static var payment: String { text("group.payment", default: "payment") }
         static var notInvolved: String { text("group.not_involved", default: "not involved") }
@@ -276,7 +281,7 @@ enum L10n {
         static var split: String { text("expense.split", default: "Split") }
         static var unknownDate: String { text("expense.unknown_date", default: "Unknown date") }
         static func payerPaidDate(_ payer: String, _ date: String) -> String {
-            format("expense.payer_paid_date", default: "%@ paid · %@", payer, date)
+            format("expense.payer_paid_date", default: "%1$@ paid · %2$@", payer, date)
         }
         static var unknownDay: String { text("expense.unknown_day", default: "Unknown") }
     }
@@ -305,26 +310,24 @@ enum L10n {
             format("split.summary_amounts", default: "Paid by %@ and split by amounts", payer)
         }
         static func summaryPercentLeft(_ payer: String, _ percent: String) -> String {
-            format("split.summary_percent_left", default: "Paid by %@, %@%% left to assign", payer, percent)
+            format("split.summary_percent_left", default: "Paid by %1$@, %2$@%% left to assign", payer, percent)
         }
         static func summaryPercentOver(_ payer: String, _ percent: String) -> String {
-            format("split.summary_percent_over", default: "Paid by %@, %@%% over 100%%", payer, percent)
+            format("split.summary_percent_over", default: "Paid by %1$@, %2$@%% over 100%%", payer, percent)
         }
         static func summaryPercentages(_ payer: String) -> String {
             format("split.summary_percentages", default: "Paid by %@ and split by percentages", payer)
         }
         static func summaryFullAmount(_ payer: String, _ debtor: String) -> String {
-            format("split.summary_full_amount", default: "Paid by %@, %@ the full amount", payer, debtor)
+            format("split.summary_full_amount", default: "Paid by %1$@, %2$@ the full amount", payer, debtor)
         }
         static func summaryEqually(_ payer: String) -> String {
             format("split.summary_equally", default: "Paid by %@ and split equally", payer)
         }
         static func summaryEquallyBetween(_ payer: String, _ count: Int) -> String {
-            format(
+            text(
                 "split.summary_equally_between",
-                default: "Paid by %@ and split equally between %lld people",
-                payer,
-                count
+                default: "Paid by \(payer) and split equally between \(count) people"
             )
         }
     }
@@ -344,7 +347,7 @@ enum L10n {
         static func deleteTitle(_ amount: String, _ payer: String, _ payee: String) -> String {
             format(
                 "settlement.delete_title",
-                default: "Delete the %@ payment from %@ to %@?",
+                default: "Delete the %1$@ payment from %2$@ to %3$@?",
                 amount,
                 payer,
                 payee
@@ -367,7 +370,7 @@ enum L10n {
             format("settlement.pay_all", default: "Pay all %@", amount)
         }
         static func onlyOwe(_ name: String, _ amount: String) -> String {
-            format("settlement.only_owe", default: "You only owe %@ %@.", name, amount)
+            format("settlement.only_owe", default: "You only owe %1$@ %2$@.", name, amount)
         }
         static var recordFailed: String {
             text(
@@ -401,10 +404,10 @@ enum L10n {
         }
         static var allSettled: String { text("balances.all_settled", default: "You are all settled up") }
         static func youOwePeer(_ name: String, _ amount: String) -> String {
-            format("balances.you_owe_peer", default: "You owe %@ %@", name, amount)
+            format("balances.you_owe_peer", default: "You owe %1$@ %2$@", name, amount)
         }
         static func peerOwesYou(_ name: String, _ amount: String) -> String {
-            format("balances.peer_owes_you", default: "%@ owes you %@", name, amount)
+            format("balances.peer_owes_you", default: "%1$@ owes you %2$@", name, amount)
         }
     }
 
@@ -430,7 +433,7 @@ enum L10n {
         static func shareText(_ groupName: String, _ code: String) -> String {
             format(
                 "invite.share_text",
-                default: "Join \"%@\" on Splitty with invite code %@",
+                default: "Join \"%1$@\" on Splitty with invite code %2$@",
                 groupName,
                 code
             )
@@ -471,9 +474,10 @@ enum L10n {
             text("invite.too_many", default: "Too many attempts. Wait a minute and try again.")
         }
         static var linkAlert: String { text("invite.link_alert", default: "Invite link") }
-        static var membersOne: String { text("invite.members_one", default: "1 member") }
-        static func membersOther(_ count: Int) -> String {
-            format("invite.members_other", default: "%lld members", count)
+        /// Plural category is chosen by the catalog, not by Swift, so locales with
+        /// more than two forms stay correct without touching this call site.
+        static func members(_ count: Int) -> String {
+            text("invite.members", default: "\(count) members")
         }
         static var codeHint: String {
             text("invite.code_hint", default: "Submits automatically after six characters")
@@ -482,7 +486,7 @@ enum L10n {
         static func a11yValue(_ characters: String, _ entered: Int, _ length: Int) -> String {
             format(
                 "invite.a11y_value",
-                default: "%@, %lld of %lld characters entered",
+                default: "%1$@, %2$lld of %3$lld characters entered",
                 characters,
                 entered,
                 length
