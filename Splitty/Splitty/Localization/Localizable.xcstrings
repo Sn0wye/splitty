@@ -9,6 +9,12 @@
             "state": "translated",
             "value": "Cancel"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar"
+          }
         }
       }
     },
@@ -16,6 +22,12 @@
       "extractionState": "manual",
       "localizations": {
         "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
+          }
+        },
+        "pt-BR": {
           "stringUnit": {
             "state": "translated",
             "value": "OK"
@@ -31,6 +43,12 @@
             "state": "translated",
             "value": "Save"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salvar"
+          }
         }
       }
     },
@@ -41,6 +59,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Create"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Criar"
           }
         }
       }
@@ -53,6 +77,12 @@
             "state": "translated",
             "value": "Edit"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar"
+          }
         }
       }
     },
@@ -63,6 +93,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Delete"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apagar"
           }
         }
       }
@@ -75,6 +111,12 @@
             "state": "translated",
             "value": "Done"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Concluído"
+          }
         }
       }
     },
@@ -85,6 +127,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Next"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seguinte"
           }
         }
       }
@@ -97,6 +145,12 @@
             "state": "translated",
             "value": "Retry"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tentar novamente"
+          }
         }
       }
     },
@@ -107,6 +161,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Try again"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tentar novamente"
           }
         }
       }
@@ -119,6 +179,12 @@
             "state": "translated",
             "value": "You"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você"
+          }
         }
       }
     },
@@ -129,6 +195,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "you"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "você"
           }
         }
       }
@@ -141,6 +213,12 @@
             "state": "translated",
             "value": "someone"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "alguém"
+          }
         }
       }
     },
@@ -151,6 +229,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "member"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "membro"
           }
         }
       }
@@ -163,6 +247,12 @@
             "state": "translated",
             "value": "Unknown"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desconhecido"
+          }
         }
       }
     },
@@ -173,6 +263,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Loading..."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carregando..."
           }
         }
       }
@@ -185,6 +281,12 @@
             "state": "translated",
             "value": "Updating"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atualizando"
+          }
         }
       }
     },
@@ -195,6 +297,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Today"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoje"
           }
         }
       }
@@ -207,6 +315,12 @@
             "state": "translated",
             "value": "Yesterday"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ontem"
+          }
         }
       }
     },
@@ -217,6 +331,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Date"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data"
           }
         }
       }
@@ -229,6 +349,12 @@
             "state": "translated",
             "value": "Settings"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configurações"
+          }
         }
       }
     },
@@ -239,6 +365,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Preferences"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preferências"
           }
         }
       }
@@ -251,6 +383,12 @@
             "state": "translated",
             "value": "Account"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Conta"
+          }
         }
       }
     },
@@ -261,6 +399,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Appearance"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aparência"
           }
         }
       }
@@ -273,6 +417,12 @@
             "state": "translated",
             "value": "Language"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma"
+          }
         }
       }
     },
@@ -283,6 +433,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Log Out"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finalizar sessão"
           }
         }
       }
@@ -295,6 +451,12 @@
             "state": "translated",
             "value": "Are you sure you want to log out?"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tem certeza de que deseja finalizar a sessão?"
+          }
         }
       }
     },
@@ -305,6 +467,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Language"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma"
           }
         }
       }
@@ -317,6 +485,12 @@
             "state": "translated",
             "value": "Appearance"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aparência"
+          }
         }
       }
     },
@@ -327,6 +501,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "System follows your device's light and dark appearance."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O sistema segue a aparência clara ou escura do seu dispositivo."
           }
         }
       }
@@ -339,6 +519,12 @@
             "state": "translated",
             "value": "System"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sistema"
+          }
         }
       }
     },
@@ -349,6 +535,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Light"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Claro"
           }
         }
       }
@@ -361,6 +553,12 @@
             "state": "translated",
             "value": "Dark"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escuro"
+          }
         }
       }
     },
@@ -371,6 +569,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Groups"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grupos"
           }
         }
       }
@@ -383,6 +587,12 @@
             "state": "translated",
             "value": "Group"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grupo"
+          }
         }
       }
     },
@@ -393,6 +603,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "People"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pessoas"
           }
         }
       }
@@ -405,6 +621,12 @@
             "state": "translated",
             "value": "Settings"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configurações"
+          }
         }
       }
     },
@@ -415,6 +637,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Add expense"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Adicionar despesa"
           }
         }
       }
@@ -427,6 +655,12 @@
             "state": "translated",
             "value": "Split expenses, settle up."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Divida despesas, acerte as contas."
+          }
         }
       }
     },
@@ -437,6 +671,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sign in with Google"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar sessão com o Google"
           }
         }
       }
@@ -449,6 +689,12 @@
             "state": "translated",
             "value": "Sign in with Apple"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar sessão com a Apple"
+          }
         }
       }
     },
@@ -459,6 +705,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Coming soon"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Em breve"
           }
         }
       }
@@ -471,6 +723,12 @@
             "state": "translated",
             "value": "Dev sign in"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar sessão como desenvolvedor"
+          }
         }
       }
     },
@@ -481,6 +739,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sign-in isn't set up correctly on this build."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O início de sessão não está configurado corretamente nesta versão."
           }
         }
       }
@@ -493,6 +757,12 @@
             "state": "translated",
             "value": "Sign-in failed. Try again."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Falha ao iniciar sessão. Tente novamente."
+          }
         }
       }
     },
@@ -503,6 +773,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Google couldn't verify that account. Try again."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O Google não conseguiu verificar essa conta. Tente novamente."
           }
         }
       }
@@ -515,6 +791,12 @@
             "state": "translated",
             "value": "Something went wrong signing you in. Try again in a moment."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algo deu errado ao iniciar sua sessão. Tente novamente em instantes."
+          }
         }
       }
     },
@@ -525,6 +807,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn't reach Splitty. Check your connection and try again."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível acessar o Splitty. Verifique sua conexão e tente novamente."
           }
         }
       }
@@ -537,6 +825,12 @@
             "state": "translated",
             "value": "Groups"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grupos"
+          }
         }
       }
     },
@@ -547,6 +841,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "New group"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Novo grupo"
           }
         }
       }
@@ -559,6 +859,12 @@
             "state": "translated",
             "value": "Join with code"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrar com código"
+          }
         }
       }
     },
@@ -569,6 +875,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "You are owed"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você tem a receber"
           }
         }
       }
@@ -581,6 +893,12 @@
             "state": "translated",
             "value": "You owe"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você deve"
+          }
         }
       }
     },
@@ -591,6 +909,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Choose a group"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolher um grupo"
           }
         }
       }
@@ -603,6 +927,12 @@
             "state": "translated",
             "value": "No group selected"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhum grupo selecionado"
+          }
         }
       }
     },
@@ -613,6 +943,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pick a group from the Groups tab."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Escolha um grupo na aba Grupos."
           }
         }
       }
@@ -625,6 +961,12 @@
             "state": "translated",
             "value": "Could not start an expense"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível iniciar uma despesa"
+          }
         }
       }
     },
@@ -635,6 +977,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Back to groups"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voltar aos grupos"
           }
         }
       }
@@ -647,6 +995,12 @@
             "state": "translated",
             "value": "Group settings"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configurações do grupo"
+          }
         }
       }
     },
@@ -657,6 +1011,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Opens group settings"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre as configurações do grupo"
           }
         }
       }
@@ -669,6 +1029,12 @@
             "state": "translated",
             "value": "Delete?"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apagar?"
+          }
         }
       }
     },
@@ -679,6 +1045,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "This cannot be undone."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta ação não pode ser desfeita."
           }
         }
       }
@@ -691,6 +1063,12 @@
             "state": "translated",
             "value": "Error: %@"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erro: %@"
+          }
         }
       }
     },
@@ -701,6 +1079,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "No expenses yet. Add the first one."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma despesa ainda. Adicione a primeira."
           }
         }
       }
@@ -713,6 +1097,12 @@
             "state": "translated",
             "value": "Loading balance..."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carregando saldo..."
+          }
         }
       }
     },
@@ -723,6 +1113,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Settle up"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acertar contas"
           }
         }
       }
@@ -735,6 +1131,12 @@
             "state": "translated",
             "value": "Charts"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gráficos"
+          }
         }
       }
     },
@@ -745,6 +1147,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Balances"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saldos"
           }
         }
       }
@@ -757,6 +1165,12 @@
             "state": "translated",
             "value": "Export"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exportar"
+          }
         }
       }
     },
@@ -767,6 +1181,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "You paid %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você pagou %@"
           }
         }
       }
@@ -779,6 +1199,12 @@
             "state": "translated",
             "value": "%1$@ paid %2$@"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ pagou %2$@"
+          }
         }
       }
     },
@@ -789,6 +1215,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "You paid %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você pagou %@"
           }
         }
       }
@@ -801,6 +1233,12 @@
             "state": "translated",
             "value": "%1$@ paid %2$@"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ pagou %2$@"
+          }
         }
       }
     },
@@ -811,6 +1249,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "payment"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "pagamento"
           }
         }
       }
@@ -823,6 +1267,12 @@
             "state": "translated",
             "value": "not involved"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "não participa"
+          }
         }
       }
     },
@@ -833,6 +1283,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "you lent"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "você emprestou"
           }
         }
       }
@@ -845,6 +1301,12 @@
             "state": "translated",
             "value": "you borrowed"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "você pegou emprestado"
+          }
         }
       }
     },
@@ -855,6 +1317,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Delete the %@ payment?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apagar o pagamento de %@?"
           }
         }
       }
@@ -867,6 +1335,12 @@
             "state": "translated",
             "value": "Delete \"%@\"?"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apagar \"%@\"?"
+          }
         }
       }
     },
@@ -877,6 +1351,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Failed to load group: %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível carregar o grupo: %@"
           }
         }
       }
@@ -889,6 +1369,12 @@
             "state": "translated",
             "value": "Failed to load expenses: %@"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível carregar as despesas: %@"
+          }
         }
       }
     },
@@ -899,6 +1385,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Group settings"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Configurações do grupo"
           }
         }
       }
@@ -911,6 +1403,12 @@
             "state": "translated",
             "value": "Members"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Membros"
+          }
         }
       }
     },
@@ -921,6 +1419,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Invite people"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Convidar pessoas"
           }
         }
       }
@@ -933,6 +1437,12 @@
             "state": "translated",
             "value": "Leave group"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sair do grupo"
+          }
         }
       }
     },
@@ -943,6 +1453,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "No description"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sem descrição"
           }
         }
       }
@@ -955,6 +1471,12 @@
             "state": "translated",
             "value": "Remove from group"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remover do grupo"
+          }
         }
       }
     },
@@ -965,6 +1487,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Edit group"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar grupo"
           }
         }
       }
@@ -977,6 +1505,12 @@
             "state": "translated",
             "value": "Name"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nome"
+          }
         }
       }
     },
@@ -987,6 +1521,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Description (optional)"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descrição (opcional)"
           }
         }
       }
@@ -999,6 +1539,12 @@
             "state": "translated",
             "value": "Check the name and try again."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verifique o nome e tente novamente."
+          }
         }
       }
     },
@@ -1009,6 +1555,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "You are not a member of this group."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você não é membro deste grupo."
           }
         }
       }
@@ -1021,6 +1573,12 @@
             "state": "translated",
             "value": "This group no longer exists."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este grupo não existe mais."
+          }
         }
       }
     },
@@ -1031,6 +1589,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "this group"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "este grupo"
           }
         }
       }
@@ -1043,6 +1607,12 @@
             "state": "translated",
             "value": "Leave and delete %@?"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sair e apagar %@?"
+          }
         }
       }
     },
@@ -1053,6 +1623,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "The group and all of its expenses are deleted permanently."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O grupo e todas as suas despesas serão apagados permanentemente."
           }
         }
       }
@@ -1065,6 +1641,12 @@
             "state": "translated",
             "value": "Leave and delete"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sair e apagar"
+          }
         }
       }
     },
@@ -1075,6 +1657,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Leave %@?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sair de %@?"
           }
         }
       }
@@ -1087,6 +1675,12 @@
             "state": "translated",
             "value": "You will lose access to this group's expenses. You can re-join with a new invite code."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você perderá acesso às despesas deste grupo. É possível entrar novamente com um novo código de convite."
+          }
         }
       }
     },
@@ -1097,6 +1691,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Leave"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sair"
           }
         }
       }
@@ -1109,6 +1709,12 @@
             "state": "translated",
             "value": "People"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pessoas"
+          }
         }
       }
     },
@@ -1119,6 +1725,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Settled"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acertado"
           }
         }
       }
@@ -1131,6 +1743,12 @@
             "state": "translated",
             "value": "No people yet"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nenhuma pessoa ainda"
+          }
         }
       }
     },
@@ -1141,6 +1759,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "People you share a group with will appear here."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "As pessoas com quem você compartilha um grupo aparecerão aqui."
           }
         }
       }
@@ -1153,6 +1777,12 @@
             "state": "translated",
             "value": "Opens this group"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre este grupo"
+          }
         }
       }
     },
@@ -1163,6 +1793,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "You owe %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você deve %@"
           }
         }
       }
@@ -1175,6 +1811,12 @@
             "state": "translated",
             "value": "Owes you %@"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deve a você %@"
+          }
         }
       }
     },
@@ -1185,6 +1827,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Settled up"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tudo certo"
           }
         }
       }
@@ -1197,6 +1845,12 @@
             "state": "translated",
             "value": "Expense"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Despesa"
+          }
         }
       }
     },
@@ -1207,6 +1861,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "New expense"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nova despesa"
           }
         }
       }
@@ -1219,6 +1879,12 @@
             "state": "translated",
             "value": "Edit expense"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar despesa"
+          }
         }
       }
     },
@@ -1229,6 +1895,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "What was it for?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para que foi?"
           }
         }
       }
@@ -1241,6 +1913,12 @@
             "state": "translated",
             "value": "Select who this is split between"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selecione entre quem dividir"
+          }
         }
       }
     },
@@ -1251,6 +1929,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ left to assign"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ restante para atribuir"
           }
         }
       }
@@ -1263,6 +1947,12 @@
             "state": "translated",
             "value": "%@ over the total"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ acima do total"
+          }
         }
       }
     },
@@ -1273,6 +1963,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@%% left to assign"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%% restante para atribuir"
           }
         }
       }
@@ -1285,6 +1981,12 @@
             "state": "translated",
             "value": "%@%% over 100%%"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@%% acima de 100%%"
+          }
         }
       }
     },
@@ -1295,6 +1997,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@'s share rounds down to nothing"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A parte de %@ é arredondada para zero"
           }
         }
       }
@@ -1307,6 +2015,12 @@
             "state": "translated",
             "value": "Delete expense"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apagar despesa"
+          }
         }
       }
     },
@@ -1317,6 +2031,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Delete \"%@\"?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apagar \"%@\"?"
           }
         }
       }
@@ -1329,6 +2049,12 @@
             "state": "translated",
             "value": "This removes the expense and everyone's share of it."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isso remove a despesa e a parte de cada pessoa."
+          }
         }
       }
     },
@@ -1339,6 +2065,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Split equally"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dividir igualmente"
           }
         }
       }
@@ -1351,6 +2083,12 @@
             "state": "translated",
             "value": "Split by amounts"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dividir por valores"
+          }
         }
       }
     },
@@ -1361,6 +2099,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Split by percentages"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dividir por porcentagens"
           }
         }
       }
@@ -1373,6 +2117,12 @@
             "state": "translated",
             "value": "Split"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dividir"
+          }
         }
       }
     },
@@ -1384,6 +2134,12 @@
             "state": "translated",
             "value": "Unknown date"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data desconhecida"
+          }
         }
       }
     },
@@ -1393,7 +2149,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%1$@ paid \u00b7 %2$@"
+            "value": "%1$@ paid · %2$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ pagou · %2$@"
           }
         }
       }
@@ -1406,6 +2168,12 @@
             "state": "translated",
             "value": "Unknown"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desconhecido"
+          }
         }
       }
     },
@@ -1416,6 +2184,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Split"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Divisão"
           }
         }
       }
@@ -1428,6 +2202,12 @@
             "state": "translated",
             "value": "Paid by"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pago por"
+          }
         }
       }
     },
@@ -1438,6 +2218,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Equally"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Igualmente"
           }
         }
       }
@@ -1450,6 +2236,12 @@
             "state": "translated",
             "value": "Amounts"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Valores"
+          }
         }
       }
     },
@@ -1460,6 +2252,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Percentages"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Porcentagens"
           }
         }
       }
@@ -1472,6 +2270,12 @@
             "state": "translated",
             "value": "Split between"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dividir entre"
+          }
         }
       }
     },
@@ -1482,6 +2286,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Everything is assigned. A blank field is someone left out."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tudo foi atribuído. Um campo em branco indica que alguém ficou de fora."
           }
         }
       }
@@ -1494,6 +2304,12 @@
             "state": "translated",
             "value": "you"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "você"
+          }
         }
       }
     },
@@ -1504,6 +2320,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "someone else"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "outra pessoa"
           }
         }
       }
@@ -1516,6 +2338,12 @@
             "state": "translated",
             "value": "you owe"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "você deve"
+          }
         }
       }
     },
@@ -1526,6 +2354,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@ owes"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ deve"
           }
         }
       }
@@ -1538,6 +2372,12 @@
             "state": "translated",
             "value": "they"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a pessoa"
+          }
         }
       }
     },
@@ -1548,6 +2388,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Paid by %@ and split by amounts"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pago por %@ e dividido por valores"
           }
         }
       }
@@ -1560,6 +2406,12 @@
             "state": "translated",
             "value": "Paid by %1$@, %2$@%% left to assign"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pago por %1$@, %2$@%% restante para atribuir"
+          }
         }
       }
     },
@@ -1570,6 +2422,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Paid by %1$@, %2$@%% over 100%%"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pago por %1$@, %2$@%% acima de 100%%"
           }
         }
       }
@@ -1582,6 +2440,12 @@
             "state": "translated",
             "value": "Paid by %@ and split by percentages"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pago por %@ e dividido por porcentagens"
+          }
         }
       }
     },
@@ -1593,6 +2457,12 @@
             "state": "translated",
             "value": "Paid by %1$@, %2$@ the full amount"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pago por %1$@, %2$@ o valor total"
+          }
         }
       }
     },
@@ -1603,6 +2473,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Paid by %@ and split equally"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pago por %@ e dividido igualmente"
           }
         }
       }
@@ -1637,6 +2513,34 @@
               }
             }
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pago por %1$@ e dividido igualmente entre %#@people@"
+          },
+          "substitutions": {
+            "people": {
+              "argNum": 2,
+              "formatSpecifier": "lld",
+              "variations": {
+                "plural": {
+                  "one": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg pessoa"
+                    }
+                  },
+                  "other": {
+                    "stringUnit": {
+                      "state": "translated",
+                      "value": "%arg pessoas"
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -1647,6 +2551,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Payment"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pagamento"
           }
         }
       }
@@ -1659,6 +2569,12 @@
             "state": "translated",
             "value": "Edit payment"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar pagamento"
+          }
         }
       }
     },
@@ -1669,6 +2585,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Record payment"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrar pagamento"
           }
         }
       }
@@ -1681,6 +2603,12 @@
             "state": "translated",
             "value": "Settle up"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acertar contas"
+          }
         }
       }
     },
@@ -1691,6 +2619,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Delete payment"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apagar pagamento"
           }
         }
       }
@@ -1703,6 +2637,12 @@
             "state": "translated",
             "value": "Any member can delete a payment, including one someone else recorded."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Qualquer membro pode apagar um pagamento, inclusive um registrado por outra pessoa."
+          }
         }
       }
     },
@@ -1713,6 +2653,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Delete the %1$@ payment from %2$@ to %3$@?"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apagar o pagamento de %1$@, feito por %2$@ para %3$@?"
           }
         }
       }
@@ -1725,6 +2671,12 @@
             "state": "translated",
             "value": "The balance between them goes back to what it was before this payment."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O saldo entre essas pessoas volta a ser o que era antes deste pagamento."
+          }
         }
       }
     },
@@ -1735,6 +2687,12 @@
           "stringUnit": {
             "state": "translated",
             "value": " paid "
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": " pagou "
           }
         }
       }
@@ -1747,6 +2705,12 @@
             "state": "translated",
             "value": "Payment with %@"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pagamento com %@"
+          }
         }
       }
     },
@@ -1757,6 +2721,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Pay %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pagar %@"
           }
         }
       }
@@ -1769,6 +2739,12 @@
             "state": "translated",
             "value": "Pay all %@"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pagar tudo a %@"
+          }
         }
       }
     },
@@ -1779,6 +2755,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "You only owe %1$@ %2$@."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você só deve %2$@ a %1$@."
           }
         }
       }
@@ -1791,6 +2773,12 @@
             "state": "translated",
             "value": "Couldn't record that payment. Pull down to refresh and try again."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível registrar esse pagamento. Puxe para baixo para atualizar e tente novamente."
+          }
         }
       }
     },
@@ -1801,6 +2789,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Payment to %@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pagamento para %@"
           }
         }
       }
@@ -1813,6 +2807,12 @@
             "state": "translated",
             "value": "Balances"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saldos"
+          }
         }
       }
     },
@@ -1823,6 +2823,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "You are owed overall"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você tem a receber no total"
           }
         }
       }
@@ -1835,6 +2841,12 @@
             "state": "translated",
             "value": "You owe overall"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você deve no total"
+          }
         }
       }
     },
@@ -1845,6 +2857,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Your balance"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seu saldo"
           }
         }
       }
@@ -1857,6 +2875,12 @@
             "state": "translated",
             "value": "Loading balances…"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carregando saldos…"
+          }
         }
       }
     },
@@ -1867,6 +2891,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Everyone is settled up"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todos estão em dia"
           }
         }
       }
@@ -1879,6 +2909,12 @@
             "state": "translated",
             "value": "Records a payment"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Registrar pagamento"
+          }
         }
       }
     },
@@ -1889,6 +2925,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "You owe"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você deve"
           }
         }
       }
@@ -1901,6 +2943,12 @@
             "state": "translated",
             "value": "Owes you"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deve a você"
+          }
         }
       }
     },
@@ -1911,6 +2959,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Settle"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acertar"
           }
         }
       }
@@ -1923,6 +2977,12 @@
             "state": "translated",
             "value": "You are owed %@ overall"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você tem %@ a receber no total"
+          }
         }
       }
     },
@@ -1933,6 +2993,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "You owe %@ overall"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você deve %@ no total"
           }
         }
       }
@@ -1945,6 +3011,12 @@
             "state": "translated",
             "value": "You are all settled up"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você está em dia"
+          }
         }
       }
     },
@@ -1955,6 +3027,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "You owe %1$@ %2$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você deve %2$@ a %1$@"
           }
         }
       }
@@ -1967,6 +3045,12 @@
             "state": "translated",
             "value": "%1$@ owes you %2$@"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ deve a você %2$@"
+          }
         }
       }
     },
@@ -1977,6 +3061,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Creating invite…"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Criando convite…"
           }
         }
       }
@@ -1989,6 +3079,12 @@
             "state": "translated",
             "value": "Invite people"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Convidar pessoas"
+          }
         }
       }
     },
@@ -1999,6 +3095,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Invite code"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código do convite"
           }
         }
       }
@@ -2011,6 +3113,12 @@
             "state": "translated",
             "value": "Invite code %@"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Código do convite %@"
+          }
         }
       }
     },
@@ -2021,6 +3129,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Share this code with someone you want to add to \"%@\"."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartilhe este código com alguém que você quer adicionar a \"%@\"."
           }
         }
       }
@@ -2033,6 +3147,12 @@
             "state": "translated",
             "value": "Copy"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar"
+          }
         }
       }
     },
@@ -2043,6 +3163,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Share"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartilhar"
           }
         }
       }
@@ -2055,6 +3181,12 @@
             "state": "translated",
             "value": "Join %@ on Splitty"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entre em %@ no Splitty"
+          }
         }
       }
     },
@@ -2065,6 +3197,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Join \"%1$@\" on Splitty with invite code %2$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entre em \"%1$@\" no Splitty com o código de convite %2$@"
           }
         }
       }
@@ -2077,6 +3215,12 @@
             "state": "translated",
             "value": "Invite creation was interrupted. Try again."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A criação do convite foi interrompida. Tente novamente."
+          }
         }
       }
     },
@@ -2087,6 +3231,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Join with code"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrar com código"
           }
         }
       }
@@ -2099,6 +3249,12 @@
             "state": "translated",
             "value": "Enter the six-character invite code shared by a group member."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Digite o código de convite de seis caracteres compartilhado por alguém do grupo."
+          }
         }
       }
     },
@@ -2109,6 +3265,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Join"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrar"
           }
         }
       }
@@ -2121,6 +3283,12 @@
             "state": "translated",
             "value": "Checking invite…"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verificando convite…"
+          }
         }
       }
     },
@@ -2131,6 +3299,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Group invite"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Convite para o grupo"
           }
         }
       }
@@ -2143,6 +3317,12 @@
             "state": "translated",
             "value": "Invited by %@"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Convite de %@"
+          }
         }
       }
     },
@@ -2153,6 +3333,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "You're already a member of this group."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você já é membro deste grupo."
           }
         }
       }
@@ -2165,6 +3351,12 @@
             "state": "translated",
             "value": "Open group"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir grupo"
+          }
         }
       }
     },
@@ -2175,6 +3367,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "This invite link isn't valid. Ask for a new one."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este link de convite não é válido. Peça um novo."
           }
         }
       }
@@ -2187,6 +3385,12 @@
             "state": "translated",
             "value": "That invite code isn't valid."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esse código de convite não é válido."
+          }
         }
       }
     },
@@ -2197,6 +3401,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "That invite has expired. Ask for a new one."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esse convite expirou. Peça um novo."
           }
         }
       }
@@ -2209,6 +3419,12 @@
             "state": "translated",
             "value": "That invite has no uses left. Ask for a new one."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esse convite não tem mais usos. Peça um novo."
+          }
         }
       }
     },
@@ -2220,6 +3436,12 @@
             "state": "translated",
             "value": "Too many attempts. Wait a minute and try again."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muitas tentativas. Aguarde um minuto e tente novamente."
+          }
         }
       }
     },
@@ -2230,6 +3452,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Invite link"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link do convite"
           }
         }
       }
@@ -2254,6 +3482,24 @@
               }
             }
           }
+        },
+        "pt-BR": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld membro"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld membros"
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -2264,6 +3510,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Submits automatically after six characters"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Envia automaticamente após seis caracteres"
           }
         }
       }
@@ -2276,6 +3528,12 @@
             "state": "translated",
             "value": "Empty"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vazio"
+          }
         }
       }
     },
@@ -2286,6 +3544,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@, %2$lld of %3$lld characters entered"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$lld de %3$lld caracteres inseridos"
           }
         }
       }
@@ -2298,6 +3562,12 @@
             "state": "translated",
             "value": "The server rejected this. Check the amounts and try again."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "O servidor rejeitou isso. Verifique os valores e tente novamente."
+          }
         }
       }
     },
@@ -2308,6 +3578,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "You are not a member of this group."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Você não é membro deste grupo."
           }
         }
       }
@@ -2320,6 +3596,12 @@
             "state": "translated",
             "value": "This no longer exists."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Isso não existe mais."
+          }
         }
       }
     },
@@ -2330,6 +3612,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "This member has an outstanding balance."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este membro tem um saldo pendente."
           }
         }
       }
@@ -2342,6 +3630,12 @@
             "state": "translated",
             "value": "Something went wrong (%lld). Try again."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algo deu errado (%lld). Tente novamente."
+          }
         }
       }
     },
@@ -2352,6 +3646,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn't reach Splitty. Check your connection and try again."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Não foi possível acessar o Splitty. Verifique sua conexão e tente novamente."
           }
         }
       }
@@ -2364,6 +3664,12 @@
             "state": "translated",
             "value": "Something went wrong. Try again."
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Algo deu errado. Tente novamente."
+          }
         }
       }
     },
@@ -2374,6 +3680,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "This group is no longer available"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Este grupo não está mais disponível"
           }
         }
       }
@@ -2386,6 +3698,12 @@
             "state": "translated",
             "value": "Removed member"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Membro removido"
+          }
         }
       }
     },
@@ -2396,6 +3714,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "delete"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "apagar"
           }
         }
       }
@@ -2408,6 +3732,12 @@
             "state": "translated",
             "value": "Clear amount"
           }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Limpar valor"
+          }
         }
       }
     },
@@ -2418,6 +3748,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "done"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "concluído"
           }
         }
       }
