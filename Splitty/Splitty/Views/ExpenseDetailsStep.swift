@@ -135,15 +135,15 @@ struct ExpenseDetailsStep: View {
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(
                                 viewModel.category == category
-                                    ? category.tint
+                                    ? Color.expenseBackground
                                     : Color.expenseForeground.opacity(0.72)
                             )
                             .padding(.horizontal, 10)
                             .frame(height: 32)
                             .background(
-                                Color.expenseForeground.opacity(
-                                    viewModel.category == category ? 0.14 : 0.08
-                                ),
+                                viewModel.category == category
+                                    ? Color.expenseForeground
+                                    : Color.expenseForeground.opacity(0.08),
                                 in: Capsule()
                             )
                             .contentShape(Capsule())
