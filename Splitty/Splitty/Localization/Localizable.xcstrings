@@ -1,6 +1,7 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "category.title": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Categories"}},"es":{"stringUnit":{"state":"translated","value":"Categorías"}},"fr":{"stringUnit":{"state":"translated","value":"Catégories"}},"pt-BR":{"stringUnit":{"state":"translated","value":"Categorias"}}}},
     "category.bicycle": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Bicycle"}},"es":{"stringUnit":{"state":"translated","value":"Bicicleta"}},"fr":{"stringUnit":{"state":"translated","value":"Vélo"}},"pt-BR":{"stringUnit":{"state":"translated","value":"Bicicleta"}}}},
     "category.bus_train": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Bus and train"}},"es":{"stringUnit":{"state":"translated","value":"Autobús y tren"}},"fr":{"stringUnit":{"state":"translated","value":"Bus et train"}},"pt-BR":{"stringUnit":{"state":"translated","value":"Ônibus e trem"}}}},
     "category.car": {"extractionState":"manual","localizations":{"en":{"stringUnit":{"state":"translated","value":"Car"}},"es":{"stringUnit":{"state":"translated","value":"Coche"}},"fr":{"stringUnit":{"state":"translated","value":"Voiture"}},"pt-BR":{"stringUnit":{"state":"translated","value":"Carro"}}}},

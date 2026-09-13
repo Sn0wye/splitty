@@ -348,6 +348,7 @@ enum L10n {
     }
 
     enum Category {
+        static var title: String { text("category.title", default: "Categories") }
         static var general: String { text("category.general", default: "General") }
         static var games: String { text("category.games", default: "Games") }
         static var movies: String { text("category.movies", default: "Movies") }

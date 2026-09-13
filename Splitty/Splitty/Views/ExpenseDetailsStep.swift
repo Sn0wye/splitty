@@ -117,7 +117,7 @@ struct ExpenseDetailsStep: View {
     }
 
     private var categoryRow: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             // Reserved for the AI suggestion chip planned for this row.
             Color.clear
                 .frame(width: 32, height: 32)
@@ -132,24 +132,39 @@ struct ExpenseDetailsStep: View {
                             HStack(spacing: 6) {
                                 Image(systemName: category.glyph)
                                 Text(category.name)
+                                if viewModel.category == category {
+                                    Image(systemName: "checkmark")
+                                        .font(.caption2.weight(.bold))
+                                }
                             }
                             .font(.caption.weight(.semibold))
-                            .foregroundStyle(viewModel.category == category ? .white : category.tint)
-                            .padding(.horizontal, 10)
-                            .frame(height: 32)
-                            .background(
+                            .foregroundStyle(
                                 viewModel.category == category
                                     ? category.tint
-                                    : category.tint.opacity(0.14),
-                                in: Capsule()
+                                    : Color.expenseForeground.opacity(0.72)
                             )
+                            .padding(.horizontal, 4)
+                            .frame(height: 32)
+                            .contentShape(Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.pressable(scale: 0.96))
                         .accessibilityAddTraits(viewModel.category == category ? .isSelected : [])
                     }
                 }
+                .padding(.trailing, 14)
             }
             .scrollIndicators(.hidden)
+            .mask {
+                LinearGradient(
+                    stops: [
+                        .init(color: .black, location: 0),
+                        .init(color: .black, location: 0.92),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            }
 
             NavigationLink {
                 ExpenseCategoryPickerView(selection: $viewModel.category)
@@ -157,9 +172,13 @@ struct ExpenseDetailsStep: View {
                 Image(systemName: "list.bullet")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Color.expenseForeground)
-                    .frame(width: 32, height: 32)
+                    .frame(width: 36, height: 36)
+                    .background(
+                        Color.expenseForeground.opacity(0.10),
+                        in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.pressable(scale: 0.94))
             .accessibilityIdentifier("expense.category-picker")
         }
         .padding(.horizontal, 8)
