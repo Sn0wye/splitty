@@ -88,18 +88,40 @@ class TokenManager {
         return getToken() != nil
     }
     
-    // MARK: - Token Validation (basic check for JWT format)
+    // MARK: - Token Validation (JWT format + expiry)
     func isTokenValid() -> Bool {
         guard let token = getToken() else { return false }
-        
+
         // Basic JWT format validation (3 parts separated by dots)
         let components = token.components(separatedBy: ".")
         if components.count != 3 {
             return false
         }
-        
-        // Optional: You can add expiration check here by decoding the JWT
-        // For now, we'll just check the format
+
+        // An expired token would only bounce through the app and back out via a 401;
+        // reading `exp` here sends it straight to the login screen instead. A payload
+        // without `exp` passes: the server stays the authority on anything else.
+        if let expiry = Self.expirationDate(fromPayload: components[1]) {
+            return expiry > Date()
+        }
+
         return true
+    }
+
+    private static func expirationDate(fromPayload payload: String) -> Date? {
+        var base64 = payload
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        while base64.count % 4 != 0 {
+            base64 += "="
+        }
+
+        guard let data = Data(base64Encoded: base64),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let exp = json["exp"] as? TimeInterval else {
+            return nil
+        }
+
+        return Date(timeIntervalSince1970: exp)
     }
 }

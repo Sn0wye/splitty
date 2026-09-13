@@ -70,9 +70,11 @@ class AuthenticationManager: ObservableObject {
         isAuthenticated = true
     }
 
-    /// Fills in `currentUser` on a cold launch that skipped the sign-in screen. A failure
-    /// leaves the session alone: a 401 already forces a logout through the notification,
-    /// and anything else is a network blip that a later screen can retry.
+    /// Fills in `currentUser` on a cold launch that skipped the sign-in screen. A network
+    /// blip leaves the session alone for a later screen to retry, but a server that
+    /// answers and does not recognize the token's user (a stale Keychain token against a
+    /// reset database) means there is no session to keep: log out so the login screen
+    /// shows instead of a half-authenticated app.
     func hydrateCurrentUser() async {
         guard isAuthenticated, currentUser == nil else { return }
 
@@ -81,6 +83,14 @@ class AuthenticationManager: ObservableObject {
                 currentUser = try await source.currentUser()
             } else {
                 currentUser = try await AuthService.shared.getCurrentUser()
+            }
+        } catch let error as APIError {
+            switch error {
+            case .httpError(400..<500, _), .noAuthToken:
+                print("🔴 Server rejected the stored session (\(error)) - forcing logout")
+                logout()
+            default:
+                print("⚠️ Could not load the signed-in profile: \(error.localizedDescription)")
             }
         } catch {
             print("⚠️ Could not load the signed-in profile: \(error.localizedDescription)")
