@@ -346,28 +346,34 @@ struct GroupView: View {
     }
     
     private var actionButtonsSection: some View {
-        LazyHStack(spacing: 12) {
-            if viewModel.members.count >= 2 {
-                ActionButton(title: L10n.Group.settleUp, color: Color("foreground"), textColor: Color("background")) {
-                    showingSettleUpSheet = true
+        // The row runs off the edge once the titles are long enough — translated
+        // ones already do — so it scrolls. Content margins rather than padding,
+        // so the inset doesn't clip the first and last pill mid-scroll.
+        ScrollView(.horizontal) {
+            LazyHStack(spacing: 12) {
+                if viewModel.members.count >= 2 {
+                    ActionButton(title: L10n.Group.settleUp, color: Color("foreground"), textColor: Color("background")) {
+                        showingSettleUpSheet = true
+                    }
+                    .disabled(currentUserId == nil)
                 }
-                .disabled(currentUserId == nil)
-            }
 
-            ActionButton(title: L10n.Group.charts, color: Color("muted"), textColor: Color("foreground")) {
-                // TODO: Charts action
-            }
-            
-            ActionButton(title: L10n.Group.balances, color: Color("muted"), textColor: Color("foreground")) {
-                showingBalancesSheet = true
-            }
-            .disabled(viewModel.group == nil || currentUserId == nil)
-            
-            ActionButton(title: L10n.Group.export, color: Color("muted"), textColor: Color("foreground")) {
-                // TODO: Export action
+                ActionButton(title: L10n.Group.balances, color: Color("muted"), textColor: Color("foreground")) {
+                    showingBalancesSheet = true
+                }
+                .disabled(viewModel.group == nil || currentUserId == nil)
+
+                ActionButton(title: L10n.Group.charts, color: Color("muted"), textColor: Color("foreground")) {
+                    // TODO: Charts action
+                }
+
+                ActionButton(title: L10n.Group.export, color: Color("muted"), textColor: Color("foreground")) {
+                    // TODO: Export action
+                }
             }
         }
-        .padding(.horizontal, 20)
+        .scrollIndicators(.hidden)
+        .contentMargins(.horizontal, 20, for: .scrollContent)
         .padding(.vertical, 20)
     }
     
