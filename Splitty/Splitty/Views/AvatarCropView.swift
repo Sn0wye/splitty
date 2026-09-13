@@ -6,45 +6,63 @@ struct AvatarCropView: View {
     let onCancel: () -> Void
     let onCrop: (AvatarCrop) -> Void
 
-    @State private var cropRect = CGRect.zero
-    @State private var settledCropRect = CGRect.zero
-    @State private var currentImageRect = CGRect.zero
+    @State private var zoom: CGFloat = 1
+    @State private var settledZoom: CGFloat = 1
+    @State private var imageOffset = CGSize.zero
+    @State private var settledImageOffset = CGSize.zero
+    @State private var currentCropSide: CGFloat = 0
+
+    private let maximumZoom: CGFloat = 4
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
                 GeometryReader { proxy in
-                    let imageRect = aspectFitRect(in: proxy.size)
+                    let cropSide = max(0, min(proxy.size.width, proxy.size.height) - 32)
+                    let cropRect = CGRect(
+                        x: (proxy.size.width - cropSide) / 2,
+                        y: (proxy.size.height - cropSide) / 2,
+                        width: cropSide,
+                        height: cropSide
+                    )
+                    let imageSize = displayedImageSize(for: cropSide, zoom: zoom)
 
                     ZStack {
                         Color.black
 
                         Image(uiImage: image)
                             .resizable()
-                            .scaledToFit()
-                            .frame(width: imageRect.width, height: imageRect.height)
-                            .position(x: imageRect.midX, y: imageRect.midY)
+                            .frame(width: imageSize.width, height: imageSize.height)
+                            .position(
+                                x: proxy.size.width / 2 + imageOffset.width,
+                                y: proxy.size.height / 2 + imageOffset.height
+                            )
 
-                        selectionOverlay(in: imageRect)
+                        selectionOverlay(in: proxy.size, cropRect: cropRect)
+
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .frame(width: cropSide, height: cropSide)
+                            .position(x: cropRect.midX, y: cropRect.midY)
+                            .gesture(imageGesture(cropSide: cropSide))
                     }
-                    .contentShape(Rectangle())
-                    .gesture(selectionGesture(in: imageRect))
-                    .onAppear { updateCanvas(to: imageRect) }
-                    .onChange(of: imageRect) { _, newRect in
-                        updateCanvas(to: newRect)
+                    .clipped()
+                    .onAppear { updateCropSide(to: cropSide) }
+                    .onChange(of: cropSide) { _, newSide in
+                        updateCropSide(to: newSide)
                     }
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(L10n.Profile.cropInstructions)
+                    .accessibilityLabel(L10n.Profile.cropTitle)
                     .accessibilityAdjustableAction { direction in
-                        resizeSelection(direction == .increment ? 1.1 : 0.9, in: imageRect)
+                        adjustZoom(direction == .increment ? 1.1 : 0.9, cropSide: cropSide)
                     }
                 }
 
-                Text(L10n.Profile.cropInstructions)
-                    .font(.footnote)
-                    .foregroundStyle(Color("muted-foreground"))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+                Button(L10n.Profile.startOver) {
+                    resetImagePosition()
+                }
+                .buttonStyle(.bordered)
+                .padding(.horizontal)
             }
             .padding(.bottom)
             .background(Color("background").ignoresSafeArea())
@@ -62,10 +80,10 @@ struct AvatarCropView: View {
         }
     }
 
-    private func selectionOverlay(in imageRect: CGRect) -> some View {
+    private func selectionOverlay(in canvasSize: CGSize, cropRect: CGRect) -> some View {
         ZStack {
             Path { path in
-                path.addRect(imageRect)
+                path.addRect(CGRect(origin: .zero, size: canvasSize))
                 path.addRect(cropRect)
             }
             .fill(.black.opacity(0.55), style: FillStyle(eoFill: true))
@@ -79,110 +97,94 @@ struct AvatarCropView: View {
                 .stroke(.white.opacity(0.9), lineWidth: 1)
                 .frame(width: max(0, cropRect.width - 8), height: max(0, cropRect.height - 8))
                 .position(x: cropRect.midX, y: cropRect.midY)
-
         }
         .allowsHitTesting(false)
     }
 
-    private func selectionGesture(in imageRect: CGRect) -> some Gesture {
-        DragGesture()
+    private func imageGesture(cropSide: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 0)
             .simultaneously(with: MagnificationGesture())
             .onChanged { value in
                 let translation = value.first?.translation ?? .zero
-                let scale = value.second ?? 1
-                let side = settledCropRect.width * scale
-                let proposed = CGRect(
-                    x: settledCropRect.midX + translation.width - side / 2,
-                    y: settledCropRect.midY + translation.height - side / 2,
-                    width: side,
-                    height: side
+                let magnification = value.second ?? 1
+                let proposedZoom = min(max(settledZoom * magnification, 1), maximumZoom)
+                let proposedOffset = CGSize(
+                    width: settledImageOffset.width + translation.width,
+                    height: settledImageOffset.height + translation.height
                 )
-                cropRect = constrained(proposed, to: imageRect)
+
+                zoom = proposedZoom
+                imageOffset = constrained(proposedOffset, cropSide: cropSide, zoom: proposedZoom)
             }
             .onEnded { _ in
-                settledCropRect = cropRect
+                settledZoom = zoom
+                settledImageOffset = imageOffset
             }
     }
 
     private var crop: AvatarCrop {
-        guard currentImageRect.width > 0, currentImageRect.height > 0 else {
-            return .fullImage
-        }
-        return normalizedCrop(in: currentImageRect)
-    }
+        guard currentCropSide > 0 else { return .fullImage }
 
-    private func aspectFitRect(in canvasSize: CGSize) -> CGRect {
-        guard image.size.width > 0, image.size.height > 0,
-              canvasSize.width > 0, canvasSize.height > 0
-        else { return .zero }
+        let imageSize = displayedImageSize(for: currentCropSide, zoom: zoom)
+        guard imageSize.width > 0, imageSize.height > 0 else { return .fullImage }
 
-        let scale = min(canvasSize.width / image.size.width, canvasSize.height / image.size.height)
-        let size = CGSize(width: image.size.width * scale, height: image.size.height * scale)
-        return CGRect(
-            x: (canvasSize.width - size.width) / 2,
-            y: (canvasSize.height - size.height) / 2,
-            width: size.width,
-            height: size.height
-        )
-    }
-
-    private func updateCanvas(to newImageRect: CGRect) {
-        guard newImageRect.width > 0, newImageRect.height > 0 else { return }
-
-        if currentImageRect.width > 0, currentImageRect.height > 0, cropRect.width > 0 {
-            let normalized = normalizedCrop(in: currentImageRect).normalizedRect
-            cropRect = constrained(
-                CGRect(
-                    x: newImageRect.minX + normalized.minX * newImageRect.width,
-                    y: newImageRect.minY + normalized.minY * newImageRect.height,
-                    width: normalized.width * newImageRect.width,
-                    height: normalized.height * newImageRect.height
-                ),
-                to: newImageRect
-            )
-        } else {
-            let side = min(newImageRect.width, newImageRect.height) * 0.8
-            cropRect = CGRect(
-                x: newImageRect.midX - side / 2,
-                y: newImageRect.midY - side / 2,
-                width: side,
-                height: side
-            )
-        }
-
-        currentImageRect = newImageRect
-        settledCropRect = cropRect
-    }
-
-    private func normalizedCrop(in imageRect: CGRect) -> AvatarCrop {
-        AvatarCrop(normalizedRect: CGRect(
-            x: (cropRect.minX - imageRect.minX) / imageRect.width,
-            y: (cropRect.minY - imageRect.minY) / imageRect.height,
-            width: cropRect.width / imageRect.width,
-            height: cropRect.height / imageRect.height
+        let width = currentCropSide / imageSize.width
+        let height = currentCropSide / imageSize.height
+        return AvatarCrop(normalizedRect: CGRect(
+            x: 0.5 - imageOffset.width / imageSize.width - width / 2,
+            y: 0.5 - imageOffset.height / imageSize.height - height / 2,
+            width: width,
+            height: height
         ))
     }
 
-    private func constrained(_ proposed: CGRect, to imageRect: CGRect) -> CGRect {
-        let maximumSide = min(imageRect.width, imageRect.height)
-        let minimumSide = min(96, maximumSide)
-        let side = min(max(proposed.width, minimumSide), maximumSide)
-        let centerX = min(max(proposed.midX, imageRect.minX + side / 2), imageRect.maxX - side / 2)
-        let centerY = min(max(proposed.midY, imageRect.minY + side / 2), imageRect.maxY - side / 2)
-        return CGRect(x: centerX - side / 2, y: centerY - side / 2, width: side, height: side)
+    private func displayedImageSize(for cropSide: CGFloat, zoom: CGFloat) -> CGSize {
+        guard image.size.width > 0, image.size.height > 0, cropSide > 0 else { return .zero }
+
+        let fillScale = max(cropSide / image.size.width, cropSide / image.size.height)
+        return CGSize(
+            width: image.size.width * fillScale * zoom,
+            height: image.size.height * fillScale * zoom
+        )
     }
 
-    private func resizeSelection(_ scale: CGFloat, in imageRect: CGRect) {
-        let side = settledCropRect.width * scale
-        cropRect = constrained(
-            CGRect(
-                x: settledCropRect.midX - side / 2,
-                y: settledCropRect.midY - side / 2,
-                width: side,
-                height: side
-            ),
-            to: imageRect
+    private func constrained(_ proposed: CGSize, cropSide: CGFloat, zoom: CGFloat) -> CGSize {
+        let imageSize = displayedImageSize(for: cropSide, zoom: zoom)
+        let maximumX = max(0, (imageSize.width - cropSide) / 2)
+        let maximumY = max(0, (imageSize.height - cropSide) / 2)
+        return CGSize(
+            width: min(max(proposed.width, -maximumX), maximumX),
+            height: min(max(proposed.height, -maximumY), maximumY)
         )
-        settledCropRect = cropRect
+    }
+
+    private func updateCropSide(to newSide: CGFloat) {
+        guard newSide > 0 else { return }
+
+        if currentCropSide > 0 {
+            let scale = newSide / currentCropSide
+            let scaledOffset = CGSize(
+                width: imageOffset.width * scale,
+                height: imageOffset.height * scale
+            )
+            imageOffset = constrained(scaledOffset, cropSide: newSide, zoom: zoom)
+            settledImageOffset = imageOffset
+        }
+
+        currentCropSide = newSide
+    }
+
+    private func adjustZoom(_ scale: CGFloat, cropSide: CGFloat) {
+        zoom = min(max(zoom * scale, 1), maximumZoom)
+        imageOffset = constrained(imageOffset, cropSide: cropSide, zoom: zoom)
+        settledZoom = zoom
+        settledImageOffset = imageOffset
+    }
+
+    private func resetImagePosition() {
+        zoom = 1
+        settledZoom = 1
+        imageOffset = .zero
+        settledImageOffset = .zero
     }
 }

@@ -74,12 +74,7 @@ enum L10n {
         static var nameLimit: String { text("profile.name_limit", default: "Name limit") }
         static var email: String { text("profile.email", default: "Email") }
         static var cropTitle: String { text("profile.crop_title", default: "Crop photo") }
-        static var cropInstructions: String {
-            text(
-                "profile.crop_instructions",
-                default: "Drag the square and pinch to resize it. The circle shows how your photo will appear."
-            )
-        }
+        static var startOver: String { text("profile.start_over", default: "Start over") }
         static var choose: String { text("profile.choose", default: "Choose") }
         static var remove: String { text("profile.remove", default: "Remove") }
         static var removeConfirmation: String {
