@@ -21,3 +21,7 @@ Canonical five-role vocabulary, label strings unchanged. See `docs/agents/triage
 ### Domain docs
 
 Single-context: root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
+
+### Xcode metadata
+
+Use the pinned Xcode version and canonicalize string catalogs before committing. See `docs/agents/xcode-metadata.md`.

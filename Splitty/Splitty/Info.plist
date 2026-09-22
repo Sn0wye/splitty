@@ -2,23 +2,29 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>SplittyAPIBaseURL</key>
-	<string>$(SPLITTY_API_BASE_URL)</string>
-	<key>SplittyInviteHost</key>
-	<string>$(SPLITTY_INVITE_HOST)</string>
-	<!-- A Google client id is a public identifier, not a secret: it ships inside every
-	     App Store binary. Security comes from the bundle id plus the server-side code
-	     exchange, so these stay in plaintext and a fresh clone builds. -->
-	<key>GIDClientID</key>
-	<string>978511957932-8f4eqisf6kb01dr8d4ev8s1sgk8ntle5.apps.googleusercontent.com</string>
-	<!-- The Web client id, not the iOS one: this is the audience the API validates. -->
-	<key>GIDServerClientID</key>
-	<string>978511957932-q42ajkjue9hbn86t4caaogr7fda8ap6n.apps.googleusercontent.com</string>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Splitty</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.snowye.Splitty.invite</string>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER).invite</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>splitty</string>
@@ -31,9 +37,15 @@
 			</array>
 		</dict>
 	</array>
-	<!-- Opt into the display's native refresh rate on ProMotion iPhones. iOS still
-	     chooses the cadence; this only removes the 60 Hz cap. -->
-	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>GIDClientID</key>
+	<string>978511957932-8f4eqisf6kb01dr8d4ev8s1sgk8ntle5.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>978511957932-q42ajkjue9hbn86t4caaogr7fda8ap6n.apps.googleusercontent.com</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.finance</string>
+	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
@@ -46,5 +58,33 @@
 			</dict>
 		</dict>
 	</dict>
+	<key>SplittyAPIBaseURL</key>
+	<string>$(SPLITTY_API_BASE_URL)</string>
+	<key>SplittyInviteHost</key>
+	<string>$(SPLITTY_INVITE_HOST)</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<true/>
+		<key>UISceneConfigurations</key>
+		<dict/>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~iphone</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
 </dict>
 </plist>
