@@ -1,0 +1,4 @@
+*.pbxproj text eol=lf
+*.plist text eol=lf
+*.xcconfig text eol=lf
+*.xcstrings text eol=lf
