@@ -50,8 +50,8 @@ struct SettleUpSheet: View {
         .sensoryFeedback(.success, trigger: savedCount)
         .task {
             if shouldLoadDebts {
+                // Loading may suggest a peer, but only a balance-row entry skips the picker.
                 await viewModel.loadDebts()
-                showingAmount = viewModel.selectedPeer != nil && !viewModel.balancesPending
             }
         }
         .sheet(isPresented: $showingDatePicker) {
