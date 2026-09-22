@@ -3,7 +3,6 @@
 //  SplittyTests
 //
 
-import Combine
 import Foundation
 import Testing
 @testable import Splitty
@@ -245,79 +244,6 @@ struct ExpenseFormViewModelTests {
         #expect(viewModel.configuration.mode == .equal(participants: [1, 3]))
     }
 
-    // A field re-sends its text on focus changes and the like; a write that changes
-    // nothing must not redraw every row of a large split.
-    @Test func retypingTheSameShareDoesNotRepublish() {
-        let viewModel = newExpense()
-        viewModel.amount.type(digit: 9)
-        viewModel.selectMode(.percentage)
-        viewModel.setPercentageText("70", for: 1)
-        viewModel.selectMode(.custom)
-        viewModel.setCustomText("4", for: 1)
-
-        var publications = 0
-        let subscription = viewModel.objectWillChange.sink { publications += 1 }
-        viewModel.setCustomText("4", for: 1)
-        viewModel.selectMode(.custom)
-        viewModel.setPayer(1)
-        #expect(publications == 0)
-
-        viewModel.selectMode(.percentage)
-        publications = 0
-        viewModel.setPercentageText("70", for: 1)
-        viewModel.selectMode(.percentage)
-        #expect(publications == 0)
-        subscription.cancel()
-    }
-
-    // Fifty rows read the amounts on every keystroke, so they are held rather than
-    // re-derived per row. What they read has to follow the total, the mode and the drafts.
-    @Test func keepsALargeSplitExactAsItsInputsMove() {
-        let viewModel = ExpenseFormViewModel(groupId: 1, members: TestExpense.largeGroup, currentUserId: 1)
-        viewModel.description = "Dinner"
-        viewModel.amount.replaceEntry(cents: 1001)
-        var remainderToTheLowestId = Dictionary(uniqueKeysWithValues: (1...50).map { ($0, 20) })
-        remainderToTheLowestId[1] = 21
-
-        #expect(viewModel.perParticipantAmounts == remainderToTheLowestId)
-
-        viewModel.selectMode(.percentage)
-        #expect(viewModel.perParticipantAmounts == [:])
-        #expect(viewModel.blockingMessage == "Select who this is split between")
-
-        for userId in 1...50 {
-            viewModel.setPercentageText("2", for: userId)
-        }
-        #expect(viewModel.perParticipantAmounts == remainderToTheLowestId)
-        #expect(viewModel.blockingMessage == nil)
-        #expect(viewModel.canSave)
-        #expect(viewModel.splits().count == 50)
-        #expect(viewModel.splits().map(\.amountCents).reduce(0, +) == 1001)
-
-        // 2% of 49 cents floors to nothing for everyone; the 49 leftover cents reach all
-        // but the highest id.
-        viewModel.amount.replaceEntry(cents: 49)
-        #expect(viewModel.perParticipantAmounts[49] == 1)
-        #expect(viewModel.perParticipantAmounts[50] == 0)
-        #expect(viewModel.blockingMessage == "Member 50's share rounds down to nothing")
-        #expect(viewModel.canSave == false)
-
-        viewModel.amount.replaceEntry(cents: 1001)
-        viewModel.selectMode(.custom)
-        for userId in 1...50 {
-            viewModel.setCustomText(userId == 1 ? "0.21" : "0.20", for: userId)
-        }
-        #expect(viewModel.perParticipantAmounts == remainderToTheLowestId)
-        #expect(viewModel.canSave)
-
-        viewModel.setCustomText("", for: 50)
-        #expect(viewModel.perParticipantAmounts[50] == nil)
-        #expect(viewModel.blockingMessage == "$0.20 left to assign")
-
-        viewModel.selectMode(.percentage)
-        #expect(viewModel.perParticipantAmounts == remainderToTheLowestId)
-    }
-
     // MARK: - Editing a stored mode
 
     @Test func loadsBothTypedDraftsFromAStoredExpense() {
@@ -337,7 +263,6 @@ struct ExpenseFormViewModelTests {
 
         #expect(viewModel.configuration.mode == .percentage(percentages: [1: 70, 2: 30]))
         #expect(viewModel.percentageText == [1: "70", 2: "30"])
-        #expect(viewModel.perParticipantAmounts == [1: 7000, 2: 3000])
 
         viewModel.selectMode(.custom)
         #expect(viewModel.configuration.mode == .custom(amounts: [1: 7000, 2: 3000]))

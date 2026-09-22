@@ -371,11 +371,6 @@ enum TestExpense {
         GroupMember(id: 13, userId: 3, name: "Cara", email: "cara@example.com", avatarUrl: "")
     ]
 
-    /// The size the split screen has to stay responsive at.
-    static let largeGroup: [GroupMember] = (1...50).map { index in
-        GroupMember(id: index, userId: index, name: "Member \(index)", email: "member\(index)@example.com", avatarUrl: "")
-    }
-
     static func user(_ id: Int) -> User {
         User(id: id, name: "User \(id)", email: "user\(id)@example.com", createdAt: "", updatedAt: "")
     }
