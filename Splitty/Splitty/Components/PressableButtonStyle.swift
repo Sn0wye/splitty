@@ -14,20 +14,14 @@ import SwiftUI
 ///
 /// Smaller controls take a deeper dip — a 4% scale on a 56pt disc is a few points of travel
 /// and barely registers, while the same 4% across a full-width card is plenty.
-///
-/// Under Reduce Motion the dip becomes a deeper fade: the press is still answered on the
-/// frame it lands, but nothing changes size.
 struct PressableButtonStyle: ButtonStyle {
     var scale: CGFloat = 0.97
     var pressedOpacity: Double = 0.9
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     func makeBody(configuration: Configuration) -> some View {
-        let motion = MotionPolicy(reduceMotion: reduceMotion)
         configuration.label
-            .scaleEffect(configuration.isPressed ? motion.pressScale(scale) : 1)
-            .opacity(configuration.isPressed ? motion.pressedOpacity(pressedOpacity) : 1)
+            .scaleEffect(configuration.isPressed ? scale : 1)
+            .opacity(configuration.isPressed ? pressedOpacity : 1)
             // In fast, out slow: the press should feel instant and the release should feel
             // like the control settling back rather than snapping.
             .animation(

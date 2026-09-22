@@ -82,4 +82,41 @@ final class PerformanceBaselineUITests: XCTestCase {
         row.swipeLeft(velocity: .fast)
         row.swipeRight(velocity: .fast)
     }
+
+    @MainActor
+    private func enableReduceMotion(_ enabled: Bool) throws {
+        let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
+        settings.terminate()
+        settings.launch()
+
+        if settings.buttons["Back"].exists {
+            settings.buttons["Back"].tap()
+        }
+
+        let search = settings.searchFields.firstMatch
+        if search.waitForExistence(timeout: 5) {
+            search.tap()
+            search.typeText("Reduce Motion")
+            let result = settings.cells.containing(.staticText, identifier: "Reduce Motion").firstMatch
+            if result.waitForExistence(timeout: 5) {
+                result.tap()
+            }
+        } else {
+            XCTAssertTrue(settings.cells["Accessibility"].waitForExistence(timeout: 8))
+            settings.cells["Accessibility"].tap()
+            XCTAssertTrue(settings.cells["Motion"].waitForExistence(timeout: 8))
+            settings.cells["Motion"].tap()
+        }
+
+        let toggle = settings.switches["Reduce Motion"]
+        guard toggle.waitForExistence(timeout: 8) else {
+            throw XCTSkip("Could not reach the Reduce Motion switch on this OS.")
+        }
+
+        let isOn = (toggle.value as? String) == "1"
+        if isOn != enabled {
+            toggle.tap()
+        }
+        settings.terminate()
+    }
 }

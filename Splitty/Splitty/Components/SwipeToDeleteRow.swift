@@ -23,7 +23,6 @@ struct SwipeToDeleteRow<Content: View>: View {
     /// Bumped when a release commits, so the haptic fires with the decision rather than
     /// with the alert that reports it.
     @State private var commitCount = 0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private static var actionWidth: CGFloat { 88 }
     /// Past this, releasing asks. Short of it the row snaps back and nothing happens.
@@ -116,10 +115,8 @@ struct SwipeToDeleteRow<Content: View>: View {
         let release = PerformanceSignpost.begin(.swipeRelease)
 
         // Bounce, and only here: the row is coming home off a throw, and the overshoot is
-        // the momentum the hand put into it. Nothing else in the row animates with bounce,
-        // and under Reduce Motion this does not either. A spring either way, so the settle
-        // starts from where the finger left the row.
-        withAnimation(MotionPolicy(reduceMotion: reduceMotion).settle) {
+        // the momentum the hand put into it. Nothing else in the row animates with bounce.
+        withAnimation(.snappy(duration: 0.3, extraBounce: 0.1)) {
             dragOffset = 0
         } completion: {
             PerformanceSignpost.end(.swipeRelease, release)
@@ -132,7 +129,7 @@ struct SwipeToDeleteRow<Content: View>: View {
     }
 
     private func delete() {
-        withAnimation(MotionPolicy(reduceMotion: reduceMotion).settle) {
+        withAnimation(.snappy(duration: 0.3, extraBounce: 0.1)) {
             dragOffset = 0
         }
         commitCount += 1
