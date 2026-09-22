@@ -5298,6 +5298,35 @@
         }
       }
     },
+    "balances.peer_owes_peer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ owes %2$@ %3$@"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ deve %3$@ a %2$@"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ debe %3$@ a %2$@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ doit %3$@ à %2$@"
+          }
+        }
+      }
+    },
     "invite.creating": {
       "extractionState": "manual",
       "localizations": {

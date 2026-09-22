@@ -291,21 +291,30 @@ struct GroupMembership: Codable, Identifiable {
 }
 
 struct GroupBalanceSummary: Codable {
-    let balances: [Balance]
+    let simplifiedDebts: [SimplifiedDebt]
     /// A display hint only: true while a recomputation is queued or in flight.
     let balancesPending: Bool
 }
 
-struct Balance: Codable {
-    let userId: Int
-    let peerId: Int
+struct SimplifiedDebt: Codable {
+    let from: DebtMember
+    let to: DebtMember
     @DecodedCents var amountCents: Int
-    let user: User
-    let peer: User
 
     private enum CodingKeys: String, CodingKey {
-        case userId, peerId, user, peer
+        case from, to
         case amountCents = "amount"
+    }
+}
+
+struct DebtMember: Codable, Equatable {
+    let id: Int
+    let name: String
+    let avatarUrl: String
+
+    var avatarURL: URL? {
+        guard !avatarUrl.isEmpty else { return nil }
+        return URL(string: avatarUrl)
     }
 }
 

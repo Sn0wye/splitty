@@ -130,11 +130,12 @@ struct BalancesView: View {
         case .balances(let rows):
             LazyVStack(spacing: 0) {
                 ForEach(rows) { row in
-                    if row.direction == .youOwe {
+                    if row.involvement == .youPay {
                         Button { selectedDebt = row } label: {
                             balanceRow(row)
                         }
                         .buttonStyle(.plain)
+                        .disabled(viewModel.balancesPending)
                         .accessibilityHint(L10n.Balances.recordsPayment)
                     } else {
                         balanceRow(row)
@@ -150,42 +151,42 @@ struct BalancesView: View {
     }
 
     private func balanceRow(_ row: BalanceRow) -> some View {
-        BalancePeerRow(row: row, numbersArePending: viewModel.balancesPending)
+        SimplifiedDebtRow(row: row, numbersArePending: viewModel.balancesPending)
     }
 }
 
-private struct BalancePeerRow: View {
+private struct SimplifiedDebtRow: View {
     let row: BalanceRow
     let numbersArePending: Bool
 
     private var directionColor: Color {
-        row.direction == .youOwe ? .red : .green
+        switch row.involvement {
+        case .youPay: .red
+        case .paysYou: .green
+        case .uninvolved: Color("card-foreground")
+        }
     }
 
     var body: some View {
         HStack(spacing: 12) {
-            peerAvatar
+            debtMemberAvatars
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(row.peerName)
+                Text(row.statement)
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Color("card-foreground"))
-
-                Text(row.direction == .youOwe ? L10n.Balances.youOwe : L10n.Balances.owesYou)
-                    .font(.subheadline)
-                    .foregroundStyle(Color("muted-foreground"))
             }
 
             Spacer(minLength: 12)
 
             VStack(alignment: .trailing, spacing: 3) {
-                Text(Money.formatted(cents: row.magnitudeCents))
+                Text(Money.formatted(cents: row.amountCents))
                     .font(.body.weight(.semibold))
                     .monospacedDigit()
                     .foregroundStyle(directionColor)
                     .opacity(numbersArePending ? 0.5 : 1)
 
-                if row.direction == .youOwe {
+                if row.involvement == .youPay {
                     HStack(spacing: 3) {
                         Text(L10n.Balances.settle)
                         Image(systemName: "chevron.right")
@@ -196,14 +197,27 @@ private struct BalancePeerRow: View {
             }
         }
         .padding(.vertical, 12)
+        .padding(.horizontal, row.involvement == .uninvolved ? 0 : 10)
+        .background(
+            row.involvement == .uninvolved ? Color.clear : directionColor.opacity(0.08),
+            in: RoundedRectangle(cornerRadius: 14)
+        )
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(row.statement)
         .accessibilityValue(numbersArePending ? L10n.Common.updating : "")
     }
 
-    private var peerAvatar: some View {
-        CachedAsyncImage(url: row.peerAvatarURL) { image in
+    private var debtMemberAvatars: some View {
+        HStack(spacing: -10) {
+            avatar(url: row.from.avatarURL)
+            avatar(url: row.to.avatarURL)
+        }
+        .frame(width: 54)
+    }
+
+    private func avatar(url: URL?) -> some View {
+        CachedAsyncImage(url: url) { image in
             image.resizable().scaledToFill()
         } placeholder: {
             Image(systemName: "person.crop.circle.fill")
@@ -212,6 +226,7 @@ private struct BalancePeerRow: View {
         }
         .frame(width: 40, height: 40)
         .clipShape(Circle())
+        .overlay(Circle().stroke(Color("background"), lineWidth: 2))
     }
 }
 

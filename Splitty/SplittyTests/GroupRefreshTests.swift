@@ -69,7 +69,7 @@ struct GroupRefreshTests {
             )
         }
         data.summaryForCall = { call in
-            GroupBalanceSummary(balances: [], balancesPending: call < 10)
+            GroupBalanceSummary(simplifiedDebts: [], balancesPending: call < 10)
         }
         data.groupFailureCalls = [2]
         let viewModel = GroupViewModel(dataSource: data.source())
@@ -177,7 +177,7 @@ final class ControlledGroupData {
     var groupForCall: ((Int) -> GroupDetail)?
     var groupFailureCalls: Set<Int> = []
     var summaryForCall: (Int) -> GroupBalanceSummary = { _ in
-        GroupBalanceSummary(balances: [], balancesPending: false)
+        GroupBalanceSummary(simplifiedDebts: [], balancesPending: false)
     }
 
     /// When true, requests answer immediately instead of waiting for `release(call:)`.

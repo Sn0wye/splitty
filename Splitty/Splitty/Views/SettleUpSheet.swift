@@ -31,10 +31,10 @@ struct SettleUpSheet: View {
             preselectedRow: preselectedRow,
             settlement: settlement
         ))
-        let hasFixedPeer = preselectedRow != nil || settlement != nil
-        _showingAmount = State(initialValue: hasFixedPeer)
-        startsWithFixedPeer = hasFixedPeer
-        shouldLoadDebts = preselectedRow == nil && settlement == nil
+        let isEditing = settlement != nil
+        _showingAmount = State(initialValue: preselectedRow != nil || isEditing)
+        startsWithFixedPeer = isEditing
+        shouldLoadDebts = !isEditing
         self.onSaved = onSaved
     }
 
@@ -51,6 +51,7 @@ struct SettleUpSheet: View {
         .task {
             if shouldLoadDebts {
                 await viewModel.loadDebts()
+                showingAmount = viewModel.selectedPeer != nil && !viewModel.balancesPending
             }
         }
         .sheet(isPresented: $showingDatePicker) {
@@ -97,6 +98,9 @@ struct SettleUpSheet: View {
                     .foregroundStyle(Color.expenseForeground)
             }
         }
+        .refreshable {
+            await viewModel.loadDebts()
+        }
     }
 
     private var amountStep: some View {
@@ -121,6 +125,16 @@ struct SettleUpSheet: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 12)
+            }
+
+            if viewModel.balancesPending {
+                Button {
+                    Task { await viewModel.loadDebts() }
+                } label: {
+                    Label(L10n.Common.tryAgain, systemImage: "arrow.clockwise")
+                }
+                .font(.subheadline.weight(.semibold))
+                .padding(.bottom, 12)
             }
 
             if let payAllTitle = viewModel.payAllTitle, !viewModel.isEditing {

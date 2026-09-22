@@ -9,13 +9,12 @@ import Testing
 
 @MainActor
 struct SettleUpViewModelTests {
-    @Test func preselectingABalanceRowStillStartsAtZero() {
+    @Test func preselectingYourSimplifiedDebtPrefillsPayeeAndAmount() {
         let row = BalanceRow(
-            peerId: 2,
-            peerName: "Bob",
-            peerAvatarURL: nil,
-            amountCents: -2_350,
-            direction: .youOwe
+            from: DebtMember(id: 1, name: "You", avatarUrl: ""),
+            to: DebtMember(id: 2, name: "Bob", avatarUrl: ""),
+            amountCents: 2_350,
+            involvement: .youPay
         )
 
         let viewModel = SettleUpViewModel(
@@ -26,13 +25,67 @@ struct SettleUpViewModelTests {
         )
 
         #expect(viewModel.selectedPeer?.userId == 2)
-        #expect(viewModel.amountCents == 0)
+        #expect(viewModel.amountCents == 2_350)
         #expect(viewModel.payAllTitle == "Pay all $23.50")
+    }
+
+    @Test func loadingSummaryPrefillsTheCurrentUsersSuggestedPayment() async {
+        let response = summary([
+            debt(from: 3, to: 2, cents: 7_000),
+            debt(from: 1, to: 2, cents: 2_350)
+        ])
+        let viewModel = SettleUpViewModel(
+            groupId: 7,
+            members: members,
+            currentUserId: 1,
+            dataSource: SettleUpDataSource(
+                summary: { _ in response },
+                create: { _, _, _, _ in },
+                update: { _, _, _, _ in }
+            )
+        )
+
+        await viewModel.loadDebts()
+
+        #expect(viewModel.selectedPeer?.userId == 2)
+        #expect(viewModel.amountCents == 2_350)
+    }
+
+    @Test func onlyPeersOwedByTheGroupArePayable() {
+        let viewModel = makeViewModel(members: members + [
+            GroupMember(id: 30, userId: 3, name: "Cara", email: "cara@example.com", avatarUrl: "")
+        ])
+        viewModel.apply(summary([
+            debt(from: 1, to: 2, cents: 1_200),
+            debt(from: 2, to: 3, cents: 700)
+        ]))
+
+        #expect(viewModel.peers.map(\.userId) == [2, 3])
+    }
+
+    @Test func pendingSummaryCannotBeSubmittedAndSettledRefreshPrefillsThePayment() {
+        let viewModel = makeViewModel()
+        viewModel.apply(GroupBalanceSummary(
+            simplifiedDebts: [debt(from: 1, to: 2, cents: 1_200)],
+            balancesPending: true
+        ))
+
+        #expect(viewModel.balancesPending)
+        #expect(!viewModel.canSubmit)
+        #expect(viewModel.selectedPeer == nil)
+
+        viewModel.apply(summary([debt(from: 1, to: 2, cents: 900)]))
+
+        #expect(!viewModel.balancesPending)
+        #expect(viewModel.selectedPeer?.userId == 2)
+        #expect(viewModel.amountCents == 900)
+        #expect(viewModel.canSubmit)
     }
 
     @Test(arguments: [nil, 0])
     func payAllIsHiddenWhenDebtIsUnknownOrZero(debtCents: Int?) {
         let viewModel = makeViewModel()
+        viewModel.apply(summary([debt(from: 3, to: 2, cents: 700)]))
         viewModel.select(peerId: 2)
         viewModel.setDebt(debtCents, for: 2)
 
@@ -41,29 +94,24 @@ struct SettleUpViewModelTests {
 
     @Test func payAllShowsTheKnownDebt() {
         let viewModel = makeViewModel()
-        viewModel.select(peerId: 2)
-        viewModel.setDebt(1_200, for: 2)
+        viewModel.apply(summary([debt(from: 1, to: 2, cents: 1_200)]))
 
         #expect(viewModel.payAllTitle == "Pay all $12.00")
     }
 
     @Test func duplicateBalanceRowsKeepTheLargestDebtInsteadOfCrashing() {
         let viewModel = makeViewModel()
-        viewModel.apply(GroupBalanceSummary(
-            balances: [
-                balance(peerId: 2, cents: -1_200),
-                balance(peerId: 2, cents: -2_350)
-            ],
-            balancesPending: false
-        ))
+        viewModel.apply(summary([
+            debt(from: 1, to: 2, cents: 1_200),
+            debt(from: 1, to: 2, cents: 2_350)
+        ]))
 
         #expect(viewModel.debtCents(for: 2) == 2_350)
     }
 
     @Test func rejectionNamesTheKnownLowerDebt() {
         let viewModel = makeViewModel()
-        viewModel.select(peerId: 2)
-        viewModel.setDebt(1_200, for: 2)
+        viewModel.apply(summary([debt(from: 1, to: 2, cents: 1_200)]))
         viewModel.amount.replaceEntry(cents: 1_201)
 
         viewModel.recordSubmissionFailure(TestError())
@@ -73,6 +121,7 @@ struct SettleUpViewModelTests {
 
     @Test func rejectionIsGenericWithoutAConflictingKnownDebt() {
         let viewModel = makeViewModel()
+        viewModel.apply(summary([debt(from: 3, to: 2, cents: 700)]))
         viewModel.select(peerId: 2)
         viewModel.amount.replaceEntry(cents: 1_200)
 
@@ -148,17 +197,40 @@ struct SettleUpViewModelTests {
         #expect(viewModel.balancesPending)
     }
 
-    private func makeViewModel() -> SettleUpViewModel {
-        SettleUpViewModel(groupId: 7, members: members, currentUserId: 1)
+    @Test func aServerRejectionProducesARetryableError() async {
+        let viewModel = SettleUpViewModel(
+            groupId: 7,
+            members: members,
+            currentUserId: 1,
+            dataSource: SettleUpDataSource(
+                summary: { _ in self.summary([]) },
+                create: { _, _, _, _ in throw APIError.httpError(400, message: nil) },
+                update: { _, _, _, _ in }
+            )
+        )
+        viewModel.apply(summary([debt(from: 3, to: 2, cents: 700)]))
+        viewModel.select(peerId: 2)
+        viewModel.amount.replaceEntry(cents: 1_200)
+
+        let result = await viewModel.submit()
+
+        #expect(result == nil)
+        #expect(viewModel.errorMessage == "Couldn't record that payment. Pull down to refresh and try again.")
     }
 
-    private func balance(peerId: Int, cents: Int) -> Balance {
-        Balance(
-            userId: 1,
-            peerId: peerId,
+    private func makeViewModel(members: [GroupMember]? = nil) -> SettleUpViewModel {
+        SettleUpViewModel(groupId: 7, members: members ?? self.members, currentUserId: 1)
+    }
+
+    private func summary(_ debts: [SimplifiedDebt]) -> GroupBalanceSummary {
+        GroupBalanceSummary(simplifiedDebts: debts, balancesPending: false)
+    }
+
+    private func debt(from: Int, to: Int, cents: Int) -> SimplifiedDebt {
+        SimplifiedDebt(
+            from: DebtMember(id: from, name: from == 1 ? "You" : "Member \(from)", avatarUrl: ""),
+            to: DebtMember(id: to, name: to == 2 ? "Bob" : "Member \(to)", avatarUrl: ""),
             amountCents: cents,
-            user: User(id: 1, name: "You", email: "you@example.com", createdAt: "", updatedAt: ""),
-            peer: User(id: peerId, name: "Bob", email: "bob@example.com", createdAt: "", updatedAt: "")
         )
     }
 

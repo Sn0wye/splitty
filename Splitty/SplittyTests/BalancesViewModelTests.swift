@@ -9,50 +9,46 @@ import Testing
 
 @MainActor
 struct BalancesViewModelTests {
-    @Test func zeroRowsAreHiddenAndAnAllZeroSummaryIsSettled() {
-        let viewModel = makeViewModel(initialNetCents: 1_200)
-        viewModel.apply(summary([balance(peerId: 2, name: "Ana", cents: 0)]), currentUserId: 1)
-
-        #expect(viewModel.state == .settled)
-        #expect(viewModel.netCents == 0)
-    }
-
     @Test func aSummaryWithNoRowsIsSettled() {
         let viewModel = makeViewModel()
         viewModel.apply(summary([]), currentUserId: 1)
         #expect(viewModel.state == .settled)
     }
 
-    @Test func debtsComeBeforeCreditsAndLargestAmountsComeFirst() {
+    @Test func aChainRendersTheServersSingleSimplifiedDebt() {
         let viewModel = makeViewModel()
         viewModel.apply(summary([
-            balance(peerId: 2, name: "Small credit", cents: 300),
-            balance(peerId: 3, name: "Small debt", cents: -200),
-            balance(peerId: 4, name: "Large credit", cents: 900),
-            balance(peerId: 5, name: "Large debt", cents: -800)
+            debt(fromId: 2, fromName: "John", toId: 4, toName: "Adam", cents: 1_000)
         ]), currentUserId: 1)
 
-        #expect(viewModel.rows.map(\.peerName) == ["Large debt", "Small debt", "Large credit", "Small credit"])
+        #expect(viewModel.rows.count == 1)
+        #expect(viewModel.rows.first?.statement == "John owes Adam $10.00")
     }
 
-    @Test func directionIsWrittenInWords() {
+    @Test func currentUserRowsComeFirstAndStateTheirDirection() {
         let viewModel = makeViewModel()
         viewModel.apply(summary([
-            balance(peerId: 2, name: "Ana", cents: -4_000),
-            balance(peerId: 3, name: "Bob", cents: 1_200)
+            debt(fromId: 2, fromName: "Ana", toId: 3, toName: "Bob", cents: 7_000),
+            debt(fromId: 1, fromName: "You", toId: 4, toName: "Cara", cents: 4_000),
+            debt(fromId: 5, fromName: "Dan", toId: 1, toName: "You", cents: 1_200)
         ]), currentUserId: 1)
 
-        #expect(viewModel.rows.map(\.statement) == ["You owe Ana $40.00", "Bob owes you $12.00"])
+        #expect(viewModel.rows.map(\.involvement) == [.youPay, .paysYou, .uninvolved])
+        #expect(viewModel.rows.map(\.statement) == [
+            "You owe Cara $40.00",
+            "Dan owes you $12.00",
+            "Ana owes Bob $70.00"
+        ])
     }
 
-    @Test func summaryNetReplacesTheAlreadyLoadedGroupNet() {
+    @Test func simplifiedDebtsReplaceTheAlreadyLoadedGroupNet() {
         let viewModel = makeViewModel(initialNetCents: 9_999)
         #expect(viewModel.netCents == 9_999)
 
         viewModel.apply(summary([
-            balance(peerId: 2, name: "Hidden", cents: 0),
-            balance(peerId: 3, name: "Ana", cents: -4_000),
-            balance(peerId: 4, name: "Bob", cents: 1_200)
+            debt(fromId: 1, fromName: "You", toId: 3, toName: "Ana", cents: 4_000),
+            debt(fromId: 4, fromName: "Bob", toId: 1, toName: "You", cents: 1_200),
+            debt(fromId: 4, fromName: "Bob", toId: 3, toName: "Ana", cents: 900)
         ]), currentUserId: 1)
 
         #expect(viewModel.netCents == -2_800)
@@ -68,17 +64,17 @@ struct BalancesViewModelTests {
     @Test func pendingDoesNotChangeWhichRowsAppear() {
         let viewModel = makeViewModel()
         viewModel.apply(
-            summary([balance(peerId: 2, name: "Ana", cents: -4_000)], pending: true),
+            summary([debt(fromId: 1, fromName: "You", toId: 2, toName: "Ana", cents: 4_000)], pending: true),
             currentUserId: 1
         )
 
         #expect(viewModel.balancesPending)
-        #expect(viewModel.rows.map(\.peerName) == ["Ana"])
+        #expect(viewModel.rows.map(\.to.name) == ["Ana"])
     }
 
     @Test func aPendingSummaryRefreshesUntilTheWorkerSettles() async {
-        let pending = summary([balance(peerId: 2, name: "Ana", cents: -4_000)], pending: true)
-        let settled = summary([balance(peerId: 2, name: "Ana", cents: -1_500)])
+        let pending = summary([debt(fromId: 1, fromName: "You", toId: 2, toName: "Ana", cents: 4_000)], pending: true)
+        let settled = summary([debt(fromId: 1, fromName: "You", toId: 2, toName: "Ana", cents: 1_500)])
         let data = ControlledBalanceData(summaries: Array(repeating: pending, count: 9) + [settled])
         let viewModel = BalancesViewModel(
             context: BalanceSheetContext(groupId: 7, initialNetCents: 0, balancesPending: false),
@@ -93,39 +89,28 @@ struct BalancesViewModelTests {
         #expect(!viewModel.balancesPending)
     }
 
-    @Test func onlyTheCurrentUsersRowsContribute() {
-        let viewModel = makeViewModel()
-        viewModel.apply(summary([
-            balance(userId: 9, peerId: 2, name: "Other side", cents: 4_000),
-            balance(peerId: 3, name: "Ana", cents: -1_000)
-        ]), currentUserId: 1)
-
-        #expect(viewModel.rows.map(\.peerName) == ["Ana"])
-        #expect(viewModel.netCents == -1_000)
-    }
-
     private func makeViewModel(initialNetCents: Int = 0) -> BalancesViewModel {
         BalancesViewModel(
             context: BalanceSheetContext(groupId: 7, initialNetCents: initialNetCents, balancesPending: false)
         )
     }
 
-    private func summary(_ balances: [Balance], pending: Bool = false) -> GroupBalanceSummary {
-        GroupBalanceSummary(balances: balances, balancesPending: pending)
+    private func summary(_ debts: [SimplifiedDebt], pending: Bool = false) -> GroupBalanceSummary {
+        GroupBalanceSummary(simplifiedDebts: debts, balancesPending: pending)
     }
 
-    private func balance(userId: Int = 1, peerId: Int, name: String, cents: Int) -> Balance {
-        Balance(
-            userId: userId,
-            peerId: peerId,
+    private func debt(
+        fromId: Int,
+        fromName: String,
+        toId: Int,
+        toName: String,
+        cents: Int
+    ) -> SimplifiedDebt {
+        SimplifiedDebt(
+            from: DebtMember(id: fromId, name: fromName, avatarUrl: ""),
+            to: DebtMember(id: toId, name: toName, avatarUrl: ""),
             amountCents: cents,
-            user: user(id: userId, name: "You"),
-            peer: user(id: peerId, name: name)
         )
-    }
-
-    private func user(id: Int, name: String) -> User {
-        User(id: id, name: name, email: "\(id)@example.com", createdAt: "2026-01-01", updatedAt: "2026-01-01")
     }
 }
 
@@ -159,26 +144,26 @@ private final class ControlledBalanceData {
 }
 
 struct BalanceDecodingTests {
-    @Test func decodesSummaryMoneyAndInlinedPeerAtTheBoundary() throws {
-        let payload = #"{"balances":[{"userId":1,"peerId":2,"amount":-40.25,"user":{"id":1,"name":"You","email":"you@example.com","createdAt":"2026-01-01","updatedAt":"2026-01-01"},"peer":{"id":2,"name":"Ana","email":"ana@example.com","avatarUrl":"https://example.com/ana.png","createdAt":"2026-01-01","updatedAt":"2026-01-01"}}],"balancesPending":true}"#
+    @Test func decodesSimplifiedDebtsAtTheBoundary() throws {
+        let payload = #"{"simplifiedDebts":[{"from":{"id":1,"name":"You","avatarUrl":"https://example.com/you.png"},"to":{"id":2,"name":"Ana","avatarUrl":"https://example.com/ana.png"},"amount":40.25}],"balancesPending":true}"#
 
         let decoded = try JSONDecoder().decode(GroupBalanceSummary.self, from: Data(payload.utf8))
-        let row = try #require(decoded.balances.first)
+        let row = try #require(decoded.simplifiedDebts.first)
 
-        #expect(row.peerId == 2)
-        #expect(row.peer.name == "Ana")
-        #expect(row.peer.avatarURL == URL(string: "https://example.com/ana.png"))
-        #expect(row.amountCents == -4_025)
+        #expect(row.from.id == 1)
+        #expect(row.to.name == "Ana")
+        #expect(row.to.avatarURL == URL(string: "https://example.com/ana.png"))
+        #expect(row.amountCents == 4_025)
         #expect(decoded.balancesPending)
     }
 
     @Test func anEmptyAvatarURLDoesNotRejectTheSummary() throws {
-        let payload = #"{"balances":[{"userId":1,"peerId":2,"amount":12.00,"user":{"id":1,"name":"You","email":"you@example.com","avatarUrl":"","createdAt":"2026-01-01","updatedAt":"2026-01-01"},"peer":{"id":2,"name":"Ana","email":"ana@example.com","avatarUrl":"","createdAt":"2026-01-01","updatedAt":"2026-01-01"}}],"balancesPending":false}"#
+        let payload = #"{"simplifiedDebts":[{"from":{"id":1,"name":"You","avatarUrl":""},"to":{"id":2,"name":"Ana","avatarUrl":""},"amount":12.00}],"balancesPending":false}"#
 
         let decoded = try JSONDecoder().decode(GroupBalanceSummary.self, from: Data(payload.utf8))
-        let row = try #require(decoded.balances.first)
-        #expect(row.user.avatarURL == nil)
-        #expect(row.peer.avatarURL == nil)
+        let row = try #require(decoded.simplifiedDebts.first)
+        #expect(row.from.avatarURL == nil)
+        #expect(row.to.avatarURL == nil)
     }
 
     @Test func decodesGroupNetBalanceToCentsAtTheBoundary() throws {
