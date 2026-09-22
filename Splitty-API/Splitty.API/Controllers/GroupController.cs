@@ -351,7 +351,7 @@ public class GroupController(
 
         return Ok(new GroupBalanceSummaryResponse
         {
-            Balances = await balanceService.GetGroupUserBalance(groupId, int.Parse(userId)),
+            SimplifiedDebts = await balanceService.GetGroupSimplifiedDebts(groupId, int.Parse(userId)),
             BalancesPending = balancesPending
         });
     }

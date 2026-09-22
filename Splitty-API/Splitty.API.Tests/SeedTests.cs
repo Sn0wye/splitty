@@ -48,7 +48,7 @@ public sealed class SeedTests(ApiFactory factory)
             summaries.Add(await client.ReadSummaryAsync(group.Id));
         }
 
-        Assert.Contains(summaries, summary => summary.Balances.Any(balance => balance.Amount != 0m));
+        Assert.Contains(summaries, summary => summary.SimplifiedDebts.Any(balance => balance.Amount != 0m));
     }
 
     [Fact]
@@ -69,19 +69,24 @@ public sealed class SeedTests(ApiFactory factory)
     }
 
     [Fact]
-    public async Task A_seeded_group_holds_a_pair_that_nets_to_zero()
+    public async Task Seeded_simplified_debts_preserve_each_members_group_net()
     {
         await SeedAsync();
 
-        var (client, groups) = await SignInAsync(DatabaseSeeder.PrimaryUserEmail);
-
-        var balances = new List<BalanceEntry>();
-        foreach (var group in groups)
+        foreach (var email in DatabaseSeeder.UserEmails)
         {
-            balances.AddRange((await client.ReadSummaryAsync(group.Id)).Balances);
+            var (client, groups) = await SignInAsync(email);
+            var profile = await client.ReadJsonAsync(await client.GetProfileAsync());
+            var userId = profile.GetProperty("id").GetInt32();
+            foreach (var group in groups)
+            {
+                var debts = (await client.ReadSummaryAsync(group.Id)).SimplifiedDebts;
+                Assert.All(debts, debt => Assert.True(debt.Amount > 0m));
+                var net = debts.Where(d => d.ToUserId == userId).Sum(d => d.Amount)
+                          - debts.Where(d => d.FromUserId == userId).Sum(d => d.Amount);
+                Assert.Equal(group.NetBalance, net);
+            }
         }
-
-        Assert.Contains(balances, balance => balance.Amount == 0m);
     }
 
     [Fact]

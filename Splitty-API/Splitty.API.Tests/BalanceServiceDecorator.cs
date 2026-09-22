@@ -1,4 +1,5 @@
 using Splitty.Domain.Entities;
+using Splitty.DTO.Response;
 using Splitty.Service.Interfaces;
 
 namespace Splitty.API.Tests;
@@ -12,8 +13,8 @@ public abstract class BalanceServiceDecorator(IBalanceService inner) : IBalanceS
     public virtual Task<List<Balance>> CalculateGroupBalances(int groupId) =>
         inner.CalculateGroupBalances(groupId);
 
-    public Task<List<Balance>> GetGroupUserBalance(int groupId, int userId) =>
-        inner.GetGroupUserBalance(groupId, userId);
+    public Task<List<SimplifiedDebtResponse>> GetGroupSimplifiedDebts(int groupId, int userId) =>
+        inner.GetGroupSimplifiedDebts(groupId, userId);
 
     public Task SettleUp(int groupId, int userId, int peerId, decimal amount, DateTime? date) =>
         inner.SettleUp(groupId, userId, peerId, amount, date);

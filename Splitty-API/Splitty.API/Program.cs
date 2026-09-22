@@ -212,6 +212,12 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     await db.Database.MigrateAsync();
+
+    // Migration backfills and interrupted work still go through the sole replay caller.
+    var pendingGroups = await db.Group.Where(g => g.BalancesPending).Select(g => g.Id).ToListAsync();
+    var queue = scope.ServiceProvider.GetRequiredService<IBalanceRecomputeQueue>();
+    foreach (var groupId in pendingGroups)
+        await queue.EnqueueAsync(groupId);
 }
 
 // Configure the HTTP request pipeline.

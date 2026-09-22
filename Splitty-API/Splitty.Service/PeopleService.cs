@@ -13,11 +13,13 @@ public class PeopleService(
     public async Task<PeopleResponse> GetPeopleAsync(int userId)
     {
         var peerMemberships = await groupMembershipRepository.GetPeerMembershipsAsync(userId);
-        var balances = await balanceRepository.GetUserBalancesAsync(userId);
+        var balances = await balanceRepository.GetUserSimplifiedDebtsAsync(userId);
 
         // Keyed by the live memberships below, so a stale row from a group either side has
         // since left is never read.
-        var amounts = balances.ToDictionary(b => (b.PeerId, b.GroupId), b => b.Amount);
+        var amounts = balances.ToDictionary(
+            d => (d.FromUserId == userId ? d.ToUserId : d.FromUserId, d.GroupId),
+            d => d.FromUserId == userId ? -d.Amount : d.Amount);
 
         var peers = peerMemberships
             .GroupBy(m => m.UserId)

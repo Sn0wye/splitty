@@ -19,12 +19,13 @@ public class Group
 
     /// <summary>
     /// Set whenever a balance recomputation is enqueued, cleared by the worker once it replays.
-    /// A display hint only: nothing branches on it for correctness.
+    /// Covers pairwise and simplified debts; pending groups refuse settlements.
     /// </summary>
     public bool BalancesPending { get; set; }
     
     public virtual User CreatedByUser { get; set; }
     
     public virtual ICollection<GroupMembership> Members { get; set; } = new List<GroupMembership>();
+    [JsonIgnore]
     public virtual ICollection<Balance> Balances { get; set; } = new List<Balance>();
 }

@@ -32,14 +32,23 @@ public class BalanceRepository(ApplicationDbContext context) : IBalanceRepositor
             .ToListAsync();
     }
 
-    /// <summary>
-    /// The single row the settle cap is read from. No includes: the cap needs the amount,
-    /// not the users behind it.
-    /// </summary>
-    public async Task<Balance?> GetPairwiseBalanceAsync(int userId, int peerId, int groupId)
+    public Task<List<SimplifiedDebt>> GetSimplifiedDebtsAsync(int groupId) =>
+        context.SimplifiedDebt.AsNoTracking()
+            .Include(d => d.FromUser).Include(d => d.ToUser)
+            .Where(d => d.GroupId == groupId)
+            .OrderBy(d => d.FromUserId).ThenBy(d => d.ToUserId).ToListAsync();
+
+    public Task<List<SimplifiedDebt>> GetUserSimplifiedDebtsAsync(int userId) =>
+        context.SimplifiedDebt.AsNoTracking()
+            .Where(d => d.FromUserId == userId || d.ToUserId == userId).ToListAsync();
+
+    public async Task ReplaceSimplifiedDebtsAsync(int groupId, List<SimplifiedDebt> debts)
     {
-        return await context.Balance
-            .FirstOrDefaultAsync(b => b.UserId == userId && b.PeerId == peerId && b.GroupId == groupId);
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        await context.SimplifiedDebt.Where(d => d.GroupId == groupId).ExecuteDeleteAsync();
+        context.SimplifiedDebt.AddRange(debts);
+        await context.SaveChangesAsync();
+        await transaction.CommitAsync();
     }
 
     public async Task<List<Balance>> UpdateBalancesAsync(List<Balance> balances)

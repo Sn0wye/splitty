@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Splitty.Background;
 using Splitty.Domain.Entities;
+using Splitty.DTO.Response;
 using Splitty.Service.Interfaces;
 
 namespace Splitty.API.Tests;
@@ -56,6 +57,12 @@ public sealed class TransactionDrainTests
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         await factory.Services.GetRequiredService<TransactionProcessedSignal>().WaitAsync(cts.Token);
+
+        // Recover this deliberately failed request so later hosts have no unrelated backlog.
+        await _factory.DrainProcessedAsync();
+        var recovery = ApiClient.Create(_factory, ownerUser.Token);
+        (await recovery.RequestSummaryRefreshAsync(groupId)).EnsureSuccessStatusCode();
+        await _factory.WaitForProcessedAsync();
     }
 
     private sealed class ThrowingCalculateBalanceService : IBalanceService
@@ -63,7 +70,7 @@ public sealed class TransactionDrainTests
         public Task<List<Balance>> CalculateGroupBalances(int groupId) =>
             throw new InvalidOperationException("recompute failed");
 
-        public Task<List<Balance>> GetGroupUserBalance(int groupId, int userId) =>
+        public Task<List<SimplifiedDebtResponse>> GetGroupSimplifiedDebts(int groupId, int userId) =>
             throw new NotSupportedException();
 
         public Task SettleUp(int groupId, int userId, int peerId, decimal amount, DateTime? date) =>

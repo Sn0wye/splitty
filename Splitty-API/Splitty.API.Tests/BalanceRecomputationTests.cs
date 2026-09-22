@@ -67,7 +67,7 @@ public sealed class BalanceRecomputationTests(ApiFactory factory)
         // balance for it is the recomputation the refresh request enqueues.
         await group.InsertExpenseDirectlyAsync(amount: 30m, share: 15m);
 
-        Assert.Empty((await group.Owner.ReadSummaryAsync(group.Id)).Balances);
+        Assert.Empty((await group.Owner.ReadSummaryAsync(group.Id)).SimplifiedDebts);
 
         (await group.Owner.RequestSummaryRefreshAsync(group.Id)).EnsureSuccessStatusCode();
         await factory.WaitForProcessedAsync();
@@ -154,6 +154,11 @@ public sealed class BalanceRecomputationTests(ApiFactory factory)
 
         Assert.Equal(20m, (await healthy.Owner.ReadSummaryAsync(healthy.Id))
             .AmountOwedBy(healthy.OwnerId, healthy.GuestId));
+
+        // Clear the intentionally failed work before another host recovers pending groups.
+        poisonedGroup.Id = 0;
+        (await poisoned.Owner.RequestSummaryRefreshAsync(poisoned.Id)).EnsureSuccessStatusCode();
+        await host.WaitForProcessedAsync();
     }
 
     [Fact]
