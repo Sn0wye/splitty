@@ -5,12 +5,13 @@
 
 import SwiftUI
 
-/// The hero amount, drawn one glyph at a time so a digit can animate in on its own.
+/// The hero amount.
 ///
-/// A `UITextField` renders its text as a single opaque run, so the field that owns the
-/// keypad stays invisible and this draws what it holds: each character is a separate view
-/// with a stable identity, which is what lets SwiftUI move the digits that stayed and
-/// transition only the one that changed.
+/// Drawn by SwiftUI rather than by the `UITextField` that owns the keypad, which stays
+/// invisible. The number is one run of text and never animates: it changes several times
+/// a second while someone types, and every keystroke has to land as the latest value, not
+/// as a transition still catching up with the one before it. The keypad's halo and haptic
+/// are the feedback; the number is the result.
 struct AmountDisplay: View {
     let text: String
     /// Currency is a static glyph — there is no currency field and no conversion.
@@ -19,13 +20,7 @@ struct AmountDisplay: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 0) {
-            ForEach(glyphs, id: \.id) { glyph in
-                Text(glyph.character)
-                    .transition(.asymmetric(
-                        insertion: AnyTransition(BlurPushTransition(from: .below)),
-                        removal: AnyTransition(BlurPushTransition(from: .above))
-                    ))
-            }
+            Text(text)
 
             // Trailing, and the same size as the digits: the symbol is part of the number
             // the way it is written, not a superscript hung off the front of it.
@@ -37,46 +32,9 @@ struct AmountDisplay: View {
         .foregroundStyle(Color.expenseForeground)
         .lineLimit(1)
         .minimumScaleFactor(0.4)
-        .animation(.spring(response: 0.34, dampingFraction: 0.72), value: text)
-    }
-
-    /// Identity is position **and** character: appending leaves the earlier glyphs alone,
-    /// while replacing one retires the old glyph and introduces the new one in its place.
-    private var glyphs: [Glyph] {
-        text.enumerated().map { index, character in
-            Glyph(id: "\(index)-\(character)", character: String(character))
-        }
-    }
-
-    private struct Glyph {
-        let id: String
-        let character: String
-    }
-}
-
-/// A glyph arrives from below and leaves upward, blurring and shrinking at the far end of
-/// the travel — the motion blur a number picks up when it moves that fast.
-struct BlurPushTransition: Transition {
-    enum Origin {
-        case below
-        case above
-
-        var offset: CGFloat {
-            switch self {
-            case .below: return 0.45
-            case .above: return -0.45
-            }
-        }
-    }
-
-    let from: Origin
-
-    func body(content: Content, phase: TransitionPhase) -> some View {
-        content
-            .blur(radius: phase.isIdentity ? 0 : 9)
-            .scaleEffect(phase.isIdentity ? 1 : 0.55, anchor: .center)
-            .offset(y: phase.isIdentity ? 0 : from.offset * 90)
-            .opacity(phase.isIdentity ? 1 : 0)
+        // Whatever animation the keystroke arrived in, the amount does not take part in it.
+        .transaction { $0.animation = nil }
+        .accessibilityElement(children: .combine)
     }
 }
 
