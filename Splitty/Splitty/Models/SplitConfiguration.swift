@@ -64,6 +64,13 @@ enum SplitBlock: Equatable {
     case percentageRoundsToZero(userId: Int)
 }
 
+/// What a split comes to for one total: every participant's amount and whether Save is
+/// blocked, derived together so the percentage check reuses the amounts it depends on.
+struct SplitSnapshot: Equatable {
+    let amounts: [Int: Int]
+    let block: SplitBlock?
+}
+
 /// Who paid and who owes, in integer cents.
 struct SplitConfiguration: Equatable {
     var payerId: Int
@@ -166,7 +173,17 @@ struct SplitConfiguration: Equatable {
         return 100 - percentages.values.filter { $0 > 0 }.reduce(Decimal(0), +)
     }
 
+    func snapshot(totalCents: Int) -> SplitSnapshot {
+        let amounts = amounts(totalCents: totalCents)
+        return SplitSnapshot(amounts: amounts, block: blockingReason(totalCents: totalCents, amounts: amounts))
+    }
+
     func blockingReason(totalCents: Int) -> SplitBlock? {
+        snapshot(totalCents: totalCents).block
+    }
+
+    /// `amounts` is `amounts(totalCents:)`.
+    private func blockingReason(totalCents: Int, amounts: [Int: Int]) -> SplitBlock? {
         guard totalCents > 0 else { return .amountNotPositive }
 
         switch mode {
@@ -184,7 +201,6 @@ struct SplitConfiguration: Equatable {
 
             // Checked against the derived amounts, not the raw share: a share that floors
             // to nothing may still be handed a leftover cent.
-            let amounts = Self.percentageAmounts(totalCents: totalCents, percentages: percentages)
             if let starved = participants.first(where: { (amounts[$0] ?? 0) == 0 }) {
                 return .percentageRoundsToZero(userId: starved)
             }
