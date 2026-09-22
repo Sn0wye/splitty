@@ -29,6 +29,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<Domain.Entities.Invite> Invite { get; set; }
     public DbSet<Domain.Entities.OAuthAccount> OAuthAccount { get; set; }
 
+    public DbSet<Domain.Entities.SimplifiedDebt> SimplifiedDebt { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Domain.Entities.User>(entity =>
@@ -173,6 +175,18 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(es => es.User)
                 .WithMany()
                 .HasForeignKey(es => es.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Domain.Entities.SimplifiedDebt>(entity =>
+        {
+            entity.HasKey(d => new { d.GroupId, d.FromUserId, d.ToUserId });
+            entity.Property(d => d.Amount).HasColumnType("decimal(18,2)");
+            entity.HasOne(d => d.FromUser).WithMany().HasForeignKey(d => d.FromUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.ToUser).WithMany().HasForeignKey(d => d.ToUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(d => d.Group).WithMany().HasForeignKey(d => d.GroupId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

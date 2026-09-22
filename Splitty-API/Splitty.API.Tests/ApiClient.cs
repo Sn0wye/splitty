@@ -149,11 +149,11 @@ public sealed class ApiClient
         response.EnsureSuccessStatusCode();
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(Json);
-        var balances = body.GetProperty("balances")
+        var balances = body.GetProperty("simplifiedDebts")
             .EnumerateArray()
-            .Select(b => new BalanceEntry(
-                b.GetProperty("userId").GetInt32(),
-                b.GetProperty("peerId").GetInt32(),
+            .Select(b => new SimplifiedDebtEntry(
+                b.GetProperty("from").GetProperty("id").GetInt32(),
+                b.GetProperty("to").GetProperty("id").GetInt32(),
                 b.GetProperty("amount").GetDecimal()))
             .ToList();
 
@@ -163,10 +163,11 @@ public sealed class ApiClient
 
 public readonly record struct SignedInUser(int Id, string Name, string Email, string Token);
 
-public sealed record BalanceSummary(IReadOnlyList<BalanceEntry> Balances, bool BalancesPending)
+public sealed record BalanceSummary(IReadOnlyList<SimplifiedDebtEntry> SimplifiedDebts, bool BalancesPending)
 {
     public decimal AmountOwedBy(int userId, int peerId) =>
-        Balances.Single(b => b.UserId == userId && b.PeerId == peerId).Amount;
+        SimplifiedDebts.Where(d => d.FromUserId == peerId && d.ToUserId == userId).Sum(d => d.Amount)
+        - SimplifiedDebts.Where(d => d.FromUserId == userId && d.ToUserId == peerId).Sum(d => d.Amount);
 }
 
-public readonly record struct BalanceEntry(int UserId, int PeerId, decimal Amount);
+public readonly record struct SimplifiedDebtEntry(int FromUserId, int ToUserId, decimal Amount);

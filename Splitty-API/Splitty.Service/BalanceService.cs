@@ -1,4 +1,5 @@
 using Splitty.Domain.Entities;
+using Splitty.DTO.Response;
 using Splitty.Repository.Interfaces;
 using Splitty.Service.Interfaces;
 
@@ -8,7 +9,9 @@ public class BalanceService(
     IBalanceRepository balanceRepository,
     IExpenseRepository expenseRepository,
     IUserRepository userRepository,
-    IGroupMembershipRepository groupMembershipRepository
+    IGroupMembershipRepository groupMembershipRepository,
+    IAvatarResolver avatarResolver,
+    IGroupRepository groupRepository
 ) : IBalanceService
 {
     public async Task<List<Balance>> CalculateGroupBalances(int groupId)
@@ -60,15 +63,46 @@ public class BalanceService(
         }
 
         await balanceRepository.UpdateBalancesAsync(balances);
+
+        var nets = balances.GroupBy(b => b.UserId)
+            .ToDictionary(g => g.Key, g => g.Sum(b => b.Amount));
+        var debts = new List<SimplifiedDebt>();
+        while (true)
+        {
+            var debtor = nets.Where(n => n.Value < 0).OrderBy(n => n.Value).ThenBy(n => n.Key).FirstOrDefault();
+            var creditor = nets.Where(n => n.Value > 0).OrderByDescending(n => n.Value).ThenBy(n => n.Key).FirstOrDefault();
+            if (debtor.Value == 0 || creditor.Value == 0) break;
+
+            var amount = Math.Min(-debtor.Value, creditor.Value);
+            debts.Add(new SimplifiedDebt
+            {
+                GroupId = groupId, FromUserId = debtor.Key, ToUserId = creditor.Key, Amount = amount
+            });
+            nets[debtor.Key] += amount;
+            nets[creditor.Key] -= amount;
+        }
+        await balanceRepository.ReplaceSimplifiedDebtsAsync(groupId, debts);
         
         return balances;
     }
 
-    public async Task<List<Balance>> GetGroupUserBalance(int groupId, int userId)
+    public async Task<List<SimplifiedDebtResponse>> GetGroupSimplifiedDebts(int groupId, int userId)
     {
         await EnsureMemberAsync(groupId, userId);
 
-        return await balanceRepository.GetUserGroupBalances(userId, groupId);
+        var debts = await balanceRepository.GetSimplifiedDebtsAsync(groupId);
+        return debts.Select(d => new SimplifiedDebtResponse
+        {
+            From = new DebtMemberResponse
+            {
+                Id = d.FromUserId, Name = d.FromUser.Name, AvatarUrl = avatarResolver.Resolve(d.FromUser)
+            },
+            To = new DebtMemberResponse
+            {
+                Id = d.ToUserId, Name = d.ToUser.Name, AvatarUrl = avatarResolver.Resolve(d.ToUser)
+            },
+            Amount = d.Amount
+        }).ToList();
     }
 
     public async Task SettleUp(int groupId, int userId, int peerId, decimal amount, DateTime? date)
@@ -231,22 +265,15 @@ public class BalanceService(
         return expense;
     }
 
-    /// <summary>
-    /// What the caller may still settle with this peer, read from the stored pairwise row
-    /// rather than recomputed. The replay credits the payer, so a negative amount on the
-    /// caller's row is what the caller owes; anything else, including a group whose balances
-    /// the worker has not written yet, leaves nothing to settle.
-    /// </summary>
-    /// <param name="excluding">
-    /// A contribution already counted in the stored row that should not bound the caller —
-    /// the settlement being edited.
-    /// </param>
+    // Read both net positions from stored bookkeeping. Excluding an existing payment
+    // restores the payer's debt and the payee's credit before applying the same cap.
     private async Task<decimal> AmountOwedAsync(int groupId, int userId, int peerId, decimal excluding = 0m)
     {
-        var balance = await balanceRepository.GetPairwiseBalanceAsync(userId, peerId, groupId);
-        var amount = (balance?.Amount ?? 0m) - excluding;
-
-        return amount < 0 ? -amount : 0m;
+        if (await groupRepository.GetBalancesPendingAsync(groupId)) return 0m;
+        var balances = await balanceRepository.GetGroupBalancesAsync(groupId);
+        var payerNet = balances.Where(b => b.UserId == userId).Sum(b => b.Amount) - excluding;
+        var payeeNet = balances.Where(b => b.UserId == peerId).Sum(b => b.Amount) + excluding;
+        return Math.Min(Math.Max(0m, -payerNet), Math.Max(0m, payeeNet));
     }
 
     private async Task EnsureMemberAsync(int groupId, int userId)

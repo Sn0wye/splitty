@@ -189,6 +189,7 @@ public sealed class SettlementEditTests(ApiFactory factory)
         var date = new DateTime(2026, 3, 1, 12, 0, 0, DateTimeKind.Utc);
 
         var settlementId = await group.SettleAsync(4m, date);
+        await factory.WaitForProcessedAsync();
 
         Assert.Equal(date, await StoredDateAsync(settlementId));
     }
@@ -214,6 +215,7 @@ public sealed class SettlementEditTests(ApiFactory factory)
         await factory.WaitForProcessedAsync();
         var date = new DateTime(2026, 3, 1, 12, 0, 0, DateTimeKind.Utc);
         var settlementId = await group.SettleAsync(4m, date);
+        await factory.WaitForProcessedAsync();
 
         (await group.Guest.UpdateSettlementAsync(
             group.Id,

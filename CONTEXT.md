@@ -44,7 +44,8 @@ repositories use **primary constructors** for injection — match that style.
 - An `Expense` has one payer (`PaidBy`) and many `ExpenseSplit` rows, one per participant.
 - `ExpenseType` is `Expense` or `Payment`; settlements are recorded as `Payment`.
 - `Balance` is a **pairwise, per-group** row: `(UserId, PeerId, GroupId, Amount)`. Each
-  debt is stored twice, once from each side, with opposite signs.
+  debt is stored twice, once from each side, with opposite signs. These rows are internal
+  bookkeeping; clients receive simplified debts.
 
 **Split mode** is `Expense.SplitMode` — `equal`, `custom`, or `percentage` — stored on the
 row so reopening an expense recovers how it was divided instead of inferring it from the
@@ -113,16 +114,22 @@ These are the rules the domain actually depends on:
    duplicate pairwise rows impossible without a unique index on `(UserId, PeerId, GroupId)`,
    so a second call site reintroduces the duplicates silently. A test pins the caller list;
    this entry is why it exists. Request a recomputation, never perform one.
-5. **Settlements are capped at what the caller currently owes the peer.** Recording a
-   settlement stays unilateral — one member, one request, no counterparty confirmation — but
-   it cannot exceed the debt. The cap reads the eventually-consistent balance table rather
-   than a live aggregate, which is deliberate: an over-tight cap is a retryable `400`, not a
-   wrong number. The consequence is that a group whose balances the worker has not written
-   yet caps at zero and rejects every settlement.
+5. **Settlements are capped at the smaller of the payer's net debt and the payee's net credit
+   in that group.** Both positions come from stored pairwise balances, not from the suggested
+   pairs. Members can pay a net creditor without having shared an expense. Editing excludes
+   the payment's own contribution from both positions. Pending groups cap at zero; the
+   eventually consistent cap can produce a retryable `400`.
 
 ## Language
 
 Terms that mean something specific here, and the words to avoid for them.
+
+**Simplified debt**:
+A directed amount from one debtor to one creditor within a group. Greedy matching of the
+largest net debtor and creditor, with user-id tie breaks, produces at most members minus one
+payments. This is the only debt representation clients receive; it is deterministic, but
+is not guaranteed to use the mathematical minimum number of payments. A settled group has
+no simplified debts. See `docs/adr/0003-debts-are-simplified.md`.
 
 **Settlement**:
 A repayment recorded between two members, stored as an `Expense` with `Type = Payment`.
@@ -180,11 +187,10 @@ reflected. A group's net balance is the sum of the signed-in member's pairwise `
 rows; the overall figure on the groups list is the sum of those group nets.
 
 `Group.BalancesPending`, surfaced as `balancesPending` on the summary response, says a
-recomputation is outstanding. It is a **display hint only**: it exists so a client can show
-a spinner instead of presenting stale numbers as final. Nothing branches on it for
-correctness, and nothing should — it is written and cleared by the queue and the worker, so
-treating it as a lock or a read barrier would be trusting a flag that is itself eventually
-consistent.
+recomputation is outstanding, including simplified debts. The summary serves the whole
+group's stored simplified debts, and People uses those same per-group amounts. Pending
+figures may be stale and settlement creation or editing is refused until recomputation.
+The flag is eventually consistent, not a lock or transaction barrier.
 
 ## Auth
 
