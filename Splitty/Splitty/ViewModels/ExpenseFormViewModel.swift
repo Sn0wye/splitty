@@ -12,11 +12,16 @@ import Foundation
 /// together, decides when Save is available, and turns the result into a request.
 @MainActor
 class ExpenseFormViewModel: ObservableObject {
-    @Published var amount: AmountExpression
+    @Published var amount: AmountExpression {
+        didSet { if amount.resolvedCents != oldValue.resolvedCents { deriveSplit() } }
+    }
     @Published var description: String
     @Published var date: Date
     @Published var category: ExpenseCategory
-    @Published var configuration: SplitConfiguration
+    @Published var configuration: SplitConfiguration {
+        // The payer changes neither the amounts nor what blocks Save.
+        didSet { if configuration.mode != oldValue.mode { deriveSplit() } }
+    }
     @Published var errorMessage: String?
     @Published var isSaving = false
 
@@ -37,6 +42,10 @@ class ExpenseFormViewModel: ObservableObject {
     private var equalParticipants: Set<Int>
     private var customAmounts: [Int: Int] = [:]
     private var percentages: [Int: Decimal] = [:]
+
+    /// Derived once per change to the total or the split, not once per row: every row of
+    /// a fifty-member split reads it on every keystroke.
+    private var split = SplitSnapshot(amounts: [:], block: nil)
 
     private let existingExpenseId: Int?
 
@@ -77,6 +86,13 @@ class ExpenseFormViewModel: ObservableObject {
         if let expense {
             seedTypedDrafts(from: expense)
         }
+
+        // Observers do not run for the assignments above.
+        deriveSplit()
+    }
+
+    private func deriveSplit() {
+        split = configuration.snapshot(totalCents: totalCents)
     }
 
     /// The stored amounts fill the custom draft whatever the mode was — they are the
@@ -119,20 +135,20 @@ class ExpenseFormViewModel: ObservableObject {
     var selectedMode: ExpenseSplitMode { configuration.mode.wireValue }
 
     /// The per-person amounts as they stand, for the split screen's rows.
-    var perParticipantAmounts: [Int: Int] { configuration.amounts(totalCents: totalCents) }
+    var perParticipantAmounts: [Int: Int] { split.amounts }
 
     /// Only locally-provable violations block Save. Everything else — anything that depends
     /// on server state — is left to the server's `400`, rendered inline.
     var canSave: Bool {
         !isSaving
             && !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && configuration.blockingReason(totalCents: totalCents) == nil
+            && split.block == nil
     }
 
     /// What is wrong with the *split*, in words. An amount of zero says so by being an
     /// empty amount field, so it gets no message.
     var blockingMessage: String? {
-        switch configuration.blockingReason(totalCents: totalCents) {
+        switch split.block {
         case .none, .amountNotPositive:
             return nil
         case .noParticipants:
@@ -179,11 +195,11 @@ class ExpenseFormViewModel: ObservableObject {
         PerformanceSignpost.around(.splitEdit) {
             switch mode {
             case .equal:
-                configuration.mode = .equal(participants: equalParticipants)
+                setMode(.equal(participants: equalParticipants))
             case .custom:
-                configuration.mode = .custom(amounts: customAmounts)
+                setMode(.custom(amounts: customAmounts))
             case .percentage:
-                configuration.mode = .percentage(percentages: percentages)
+                setMode(.percentage(percentages: percentages))
             }
         }
     }
@@ -201,7 +217,7 @@ class ExpenseFormViewModel: ObservableObject {
             }
 
             equalParticipants = participants
-            configuration.mode = .equal(participants: participants)
+            setMode(.equal(participants: participants))
         }
     }
 
@@ -209,6 +225,7 @@ class ExpenseFormViewModel: ObservableObject {
     /// to zero: zero would be a share the API refuses, blank is someone left out.
     func setCustomText(_ text: String, for userId: Int) {
         PerformanceSignpost.around(.splitEdit) {
+            guard customText[userId] != text else { return }
             customText[userId] = text
 
             if let cents = Money.cents(fromTypedText: text), cents > 0 {
@@ -218,13 +235,14 @@ class ExpenseFormViewModel: ObservableObject {
             }
 
             if case .custom = configuration.mode {
-                configuration.mode = .custom(amounts: customAmounts)
+                setMode(.custom(amounts: customAmounts))
             }
         }
     }
 
     func setPercentageText(_ text: String, for userId: Int) {
         PerformanceSignpost.around(.splitEdit) {
+            guard percentageText[userId] != text else { return }
             percentageText[userId] = text
 
             if let percent = Percent.value(fromTypedText: text), percent > 0 {
@@ -234,13 +252,21 @@ class ExpenseFormViewModel: ObservableObject {
             }
 
             if case .percentage = configuration.mode {
-                configuration.mode = .percentage(percentages: percentages)
+                setMode(.percentage(percentages: percentages))
             }
         }
     }
 
     func setPayer(_ userId: Int) {
+        guard configuration.payerId != userId else { return }
         configuration.payerId = userId
+    }
+
+    /// Any write to a `@Published` property publishes, equal value or not, and every
+    /// publication redraws every row of the split screen.
+    private func setMode(_ mode: SplitMode) {
+        guard configuration.mode != mode else { return }
+        configuration.mode = mode
     }
 
     // MARK: - Saving
