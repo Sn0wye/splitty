@@ -12,12 +12,43 @@ struct SettleUpResult {
     let isEditing: Bool
 }
 
+struct SettleUpDataSource {
+    var summary: (Int) async throws -> GroupBalanceSummary
+    var create: (Int, Int, Int, Date) async throws -> Void
+    var update: (Int, Int, Int, Date) async throws -> Void
+    var waitForRetry: (Duration) async throws -> Void = { duration in
+        try await Task.sleep(for: duration)
+    }
+
+    static let live = SettleUpDataSource(
+        summary: { try await GroupService.shared.getBalanceSummary(groupId: $0) },
+        create: { groupId, peerId, amountCents, date in
+            try await SettlementService.shared.settleUp(
+                groupId: groupId,
+                withUserId: peerId,
+                amountCents: amountCents,
+                date: date
+            )
+        },
+        update: { groupId, expenseId, amountCents, date in
+            try await SettlementService.shared.updateSettlement(
+                groupId: groupId,
+                expenseId: expenseId,
+                amountCents: amountCents,
+                date: date
+            )
+        }
+    )
+}
+
 @MainActor
 final class SettleUpViewModel: ObservableObject {
     @Published var amount: AmountExpression
     @Published var date: Date
     @Published private(set) var selectedPeerId: Int?
     @Published private(set) var debtsByPeerId: [Int: Int] = [:]
+    @Published private(set) var payablePeerIds: Set<Int> = []
+    @Published private(set) var balancesPending = false
     @Published private(set) var isSubmitting = false
     @Published var errorMessage: String?
 
@@ -26,28 +57,32 @@ final class SettleUpViewModel: ObservableObject {
     let currentUserId: Int
 
     private let settlementId: Int?
+    private let dataSource: SettleUpDataSource
 
     init(
         groupId: Int,
         members: [GroupMember],
         currentUserId: Int,
         preselectedRow: BalanceRow? = nil,
-        settlement: Expense? = nil
+        settlement: Expense? = nil,
+        dataSource: SettleUpDataSource = .live
     ) {
         self.groupId = groupId
         self.members = members
         self.currentUserId = currentUserId
         settlementId = settlement?.id
+        self.dataSource = dataSource
 
         if let settlement {
             amount = AmountExpression(cents: Money.cents(from: settlement.amount))
             date = settlement.effectiveDate ?? Date()
             selectedPeerId = settlement.peer?.id
         } else if let preselectedRow {
-            amount = AmountExpression()
+            amount = AmountExpression(cents: preselectedRow.amountCents)
             date = Date()
-            selectedPeerId = preselectedRow.peerId
-            debtsByPeerId[preselectedRow.peerId] = preselectedRow.magnitudeCents
+            selectedPeerId = preselectedRow.to.id
+            debtsByPeerId[preselectedRow.to.id] = preselectedRow.amountCents
+            payablePeerIds = [preselectedRow.to.id]
         } else {
             amount = AmountExpression()
             date = Date()
@@ -57,7 +92,9 @@ final class SettleUpViewModel: ObservableObject {
 
     var isEditing: Bool { settlementId != nil }
     var amountCents: Int { amount.resolvedCents }
-    var canSubmit: Bool { selectedPeer != nil && amountCents > 0 && !isSubmitting }
+    var canSubmit: Bool {
+        selectedPeer != nil && amountCents > 0 && !isSubmitting && !balancesPending
+    }
 
     var selectedPeer: GroupMember? {
         guard let selectedPeerId else { return nil }
@@ -66,7 +103,7 @@ final class SettleUpViewModel: ObservableObject {
 
     var peers: [GroupMember] {
         members
-            .filter { $0.userId != currentUserId }
+            .filter { $0.userId != currentUserId && (isEditing || payablePeerIds.contains($0.userId)) }
             .sorted { lhs, rhs in
                 let lhsDebt = debtCents(for: lhs.userId) ?? 0
                 let rhsDebt = debtCents(for: rhs.userId) ?? 0
@@ -89,9 +126,16 @@ final class SettleUpViewModel: ObservableObject {
     }
 
     func select(peerId: Int) {
-        guard !isEditing, members.contains(where: { $0.userId == peerId }) else { return }
+        guard !isEditing,
+              payablePeerIds.contains(peerId),
+              members.contains(where: { $0.userId == peerId })
+        else { return }
         selectedPeerId = peerId
-        amount.clear()
+        if let cents = debtCents(for: peerId), cents > 0 {
+            amount.replaceEntry(cents: cents)
+        } else {
+            amount.clear()
+        }
         errorMessage = nil
     }
 
@@ -110,17 +154,55 @@ final class SettleUpViewModel: ObservableObject {
 
     func loadDebts() async {
         guard !isEditing else { return }
-        guard let summary = try? await GroupService.shared.getBalanceSummary(groupId: groupId) else { return }
+        guard let summary = try? await dataSource.summary(groupId) else { return }
         apply(summary)
+
+        guard summary.balancesPending else { return }
+        _ = await BalanceRefreshPolicy.waitUntilPendingClears(
+            groupId: groupId,
+            balancesPending: summary.balancesPending,
+            fetch: dataSource.summary,
+            wait: dataSource.waitForRetry
+        ) { [weak self] summary in
+            self?.apply(summary)
+            return self != nil
+        }
     }
 
     func apply(_ summary: GroupBalanceSummary) {
+        balancesPending = summary.balancesPending
+        guard !summary.balancesPending else { return }
+
+        payablePeerIds = Set(
+            summary.simplifiedDebts
+                .map(\.to.id)
+                .filter { $0 != currentUserId }
+        )
         debtsByPeerId = Dictionary(
-            summary.balances
-                .filter { $0.userId == currentUserId }
-                .map { ($0.peerId, max(-$0.amountCents, 0)) },
+            summary.simplifiedDebts
+                .filter { $0.from.id == currentUserId }
+                .map { ($0.to.id, $0.amountCents) },
             uniquingKeysWith: max
         )
+
+        if let selectedPeerId {
+            guard payablePeerIds.contains(selectedPeerId) else {
+                self.selectedPeerId = nil
+                amount.clear()
+                return
+            }
+            if let cents = debtsByPeerId[selectedPeerId] {
+                amount.replaceEntry(cents: cents)
+            }
+            return
+        }
+
+        guard let suggestion = summary.simplifiedDebts.first(where: { $0.from.id == currentUserId }) else {
+            return
+        }
+
+        selectedPeerId = suggestion.to.id
+        amount.replaceEntry(cents: suggestion.amountCents)
     }
 
     func submit() async -> SettleUpResult? {
@@ -132,19 +214,9 @@ final class SettleUpViewModel: ObservableObject {
 
         do {
             if let settlementId {
-                try await SettlementService.shared.updateSettlement(
-                    groupId: groupId,
-                    expenseId: settlementId,
-                    amountCents: amountCents,
-                    date: date
-                )
+                try await dataSource.update(groupId, settlementId, amountCents, date)
             } else {
-                try await SettlementService.shared.settleUp(
-                    groupId: groupId,
-                    withUserId: peer.userId,
-                    amountCents: amountCents,
-                    date: date
-                )
+                try await dataSource.create(groupId, peer.userId, amountCents, date)
             }
             return SettleUpResult(peer: peer, amountCents: amountCents, date: date, isEditing: isEditing)
         } catch {

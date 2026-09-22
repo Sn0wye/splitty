@@ -517,6 +517,15 @@ enum L10n {
         static func peerOwesYou(_ name: String, _ amount: String) -> String {
             format("balances.peer_owes_you", default: "%1$@ owes you %2$@", name, amount)
         }
+        static func peerOwesPeer(_ fromName: String, _ toName: String, _ amount: String) -> String {
+            format(
+                "balances.peer_owes_peer",
+                default: "%1$@ owes %2$@ %3$@",
+                fromName,
+                toName,
+                amount
+            )
+        }
     }
 
     enum Invite {

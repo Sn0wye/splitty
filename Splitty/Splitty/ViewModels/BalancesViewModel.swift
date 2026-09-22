@@ -35,26 +35,28 @@ struct BalanceDataSource {
 }
 
 struct BalanceRow: Identifiable, Equatable {
-    enum Direction: Equatable {
-        case youOwe
-        case owedToYou
+    enum Involvement: Equatable {
+        case youPay
+        case paysYou
+        case uninvolved
     }
 
-    let peerId: Int
-    let peerName: String
-    let peerAvatarURL: URL?
+    let from: DebtMember
+    let to: DebtMember
     let amountCents: Int
-    let direction: Direction
+    let involvement: Involvement
 
-    var id: Int { peerId }
-    var magnitudeCents: Int { abs(amountCents) }
+    var id: String { "\(from.id)-\(to.id)" }
 
     var statement: String {
-        switch direction {
-        case .youOwe:
-            L10n.Balances.youOwePeer(peerName, Money.formatted(cents: magnitudeCents))
-        case .owedToYou:
-            L10n.Balances.peerOwesYou(peerName, Money.formatted(cents: magnitudeCents))
+        let amount = Money.formatted(cents: amountCents)
+        return switch involvement {
+        case .youPay:
+            L10n.Balances.youOwePeer(to.name, amount)
+        case .paysYou:
+            L10n.Balances.peerOwesYou(from.name, amount)
+        case .uninvolved:
+            L10n.Balances.peerOwesPeer(from.name, to.name, amount)
         }
     }
 }
@@ -129,29 +131,46 @@ final class BalancesViewModel: ObservableObject {
 
     /// Display seam: transforms a decoded API snapshot into exactly what the sheet states.
     func apply(_ summary: GroupBalanceSummary, currentUserId: Int) {
-        let balances = summary.balances.filter { $0.userId == currentUserId }
-        netCents = balances.reduce(0) { $0 + $1.amountCents }
+        netCents = summary.simplifiedDebts.reduce(0) { total, debt in
+            if debt.from.id == currentUserId { return total - debt.amountCents }
+            if debt.to.id == currentUserId { return total + debt.amountCents }
+            return total
+        }
         balancesPending = summary.balancesPending
 
-        let openRows = balances
-            .filter { $0.amountCents != 0 }
-            .map { balance in
+        let openRows = summary.simplifiedDebts
+            .map { debt in
                 BalanceRow(
-                    peerId: balance.peerId,
-                    peerName: balance.peer.name,
-                    peerAvatarURL: balance.peer.avatarURL,
-                    amountCents: balance.amountCents,
-                    direction: balance.amountCents < 0 ? .youOwe : .owedToYou
+                    from: debt.from,
+                    to: debt.to,
+                    amountCents: debt.amountCents,
+                    involvement: involvement(in: debt, currentUserId: currentUserId)
                 )
             }
             .sorted { lhs, rhs in
-                if lhs.direction != rhs.direction {
-                    return lhs.direction == .youOwe
+                let lhsRank = rank(lhs.involvement)
+                let rhsRank = rank(rhs.involvement)
+                if lhsRank != rhsRank {
+                    return lhsRank < rhsRank
                 }
-                return lhs.magnitudeCents > rhs.magnitudeCents
+                return lhs.amountCents > rhs.amountCents
             }
 
         state = openRows.isEmpty ? .settled : .balances(openRows)
+    }
+
+    private func involvement(in debt: SimplifiedDebt, currentUserId: Int) -> BalanceRow.Involvement {
+        if debt.from.id == currentUserId { return .youPay }
+        if debt.to.id == currentUserId { return .paysYou }
+        return .uninvolved
+    }
+
+    private func rank(_ involvement: BalanceRow.Involvement) -> Int {
+        switch involvement {
+        case .youPay: 0
+        case .paysYou: 1
+        case .uninvolved: 2
+        }
     }
 
     func fail(with error: Error) {
