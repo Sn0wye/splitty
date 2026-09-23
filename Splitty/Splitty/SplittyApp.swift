@@ -15,6 +15,7 @@ struct SplittyApp: App {
 }
 
 struct RootView: View {
+    @State private var showingSplash = true
     @StateObject private var authManager = AuthenticationManager.shared
     @StateObject private var inviteCoordinator = InviteLinkCoordinator()
     @StateObject private var appState = AppState()
@@ -36,6 +37,18 @@ struct RootView: View {
             // follow. Scoped to the content: the modifiers below keep their
             // identity so `task` and `onOpenURL` don't re-fire on a switch.
             .id(languageManager.language)
+            .allowsHitTesting(!showingSplash)
+            .accessibilityHidden(showingSplash)
+
+            if showingSplash {
+                SplashView {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        showingSplash = false
+                    }
+                }
+                .transition(.opacity)
+                .zIndex(1)
+            }
         }
         // Set on the root so sheets and the login screen follow the choice too.
         .preferredColorScheme(themeManager.theme.colorScheme)
