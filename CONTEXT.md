@@ -168,8 +168,11 @@ Balances are **derived state, recomputed wholesale** — never incrementally pat
 `BalanceService.CalculateGroupBalances` zeroes every balance for the group, replays all
 expenses and splits, and writes the result back. It's idempotent by construction.
 
-It runs asynchronously. Controllers that mutate money enqueue instead of recomputing
-inline:
+It runs asynchronously. Money writes request a recomputation instead of performing one, and
+the request belongs to the write itself: `ExpenseService` (create, update, delete) and
+`BalanceService` (settle, edit and delete a settlement) enqueue after each successful save,
+so a controller or any other caller cannot persist money and forget the recomputation. A
+rejected write enqueues nothing. The summary-refresh route is the only controller call left:
 
 ```csharp
 await balanceRecomputeQueue.EnqueueAsync(groupId);

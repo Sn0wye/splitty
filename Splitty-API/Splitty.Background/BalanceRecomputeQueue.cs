@@ -1,15 +1,8 @@
 using System.Threading.Channels;
 using Splitty.Repository.Interfaces;
+using Splitty.Service.Interfaces;
 
 namespace Splitty.Background;
-
-/// <summary>
-/// The only supported way to request a balance recomputation.
-/// </summary>
-public interface IBalanceRecomputeQueue
-{
-    Task EnqueueAsync(int groupId, CancellationToken cancellationToken = default);
-}
 
 /// <summary>
 /// Marks the group's balances pending and hands the recomputation to the worker.
