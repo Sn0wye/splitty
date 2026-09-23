@@ -102,7 +102,7 @@ struct GroupView: View {
                     members: viewModel.members,
                     currentUserId: currentUserId
                 ) { result in
-                    insertPendingPayment(from: result, currentUserId: currentUserId)
+                    viewModel.completedPaymentWrite(result, currentUserId: currentUserId, groupId: groupId)
                 }
             }
         }
@@ -117,20 +117,8 @@ struct GroupView: View {
                     currentUserId: currentUserId,
                     members: viewModel.members
                 ) { result in
-                    insertPendingPayment(from: result, currentUserId: currentUserId)
+                    viewModel.completedPaymentWrite(result, currentUserId: currentUserId, groupId: groupId)
                 }
-            }
-        }
-        // A money write enqueues a recomputation, so the header balance is stale on return.
-        // Saved sheets start a refetch and bounded polling; backing out starts neither.
-        .onChange(of: showingSettleUpSheet) { _, isPresented in
-            if !isPresented {
-                viewModel.refreshAfterSheetDismissal(groupId: groupId)
-            }
-        }
-        .onChange(of: showingBalancesSheet) { _, isPresented in
-            if !isPresented {
-                viewModel.refreshAfterSheetDismissal(groupId: groupId)
             }
         }
         // An alert, not a confirmation dialog: deleting is destructive and irreversible,
@@ -156,8 +144,7 @@ struct GroupView: View {
         }
         .onChange(of: appState.savedExpense?.id) { _, _ in
             guard let event = appState.savedExpense, event.groupId == groupId else { return }
-            viewModel.insert(event.expense)
-            viewModel.refreshAfterSheetDismissal(groupId: groupId)
+            viewModel.completedExpenseWrite(event.expense, groupId: groupId)
         }
         .onReceive(viewModel.$expenses) { expenses in
             appState.cacheTimelineExpenses(expenses, groupId: groupId)
@@ -278,16 +265,16 @@ struct GroupView: View {
                     members: viewModel.members,
                     currentUserId: currentUserId,
                     timelineExpenses: viewModel.expenses,
-                    onChanged: { viewModel.beginRefresh(groupId: groupId) },
-                    onDeleted: { viewModel.beginRefresh(groupId: groupId) }
+                    onChanged: { viewModel.completedMoneyWrite(groupId: groupId) },
+                    onDeleted: { viewModel.completedMoneyWrite(groupId: groupId) }
                 )
             case .payment:
                 SettlementDetailView(
                     settlement: expense,
                     members: viewModel.members,
                     currentUserId: currentUserId,
-                    onChanged: { viewModel.beginRefresh(groupId: groupId) },
-                    onDeleted: { viewModel.beginRefresh(groupId: groupId) }
+                    onChanged: { viewModel.completedMoneyWrite(groupId: groupId) },
+                    onDeleted: { viewModel.completedMoneyWrite(groupId: groupId) }
                 )
             }
         }
@@ -383,24 +370,6 @@ struct GroupView: View {
         .padding(.vertical, 20)
     }
     
-    /// A settlement sheet that saved anything owes the screen a refresh, including an
-    /// edit of a row already on screen — which fabricates no new row to insert.
-    private func insertPendingPayment(from result: SettleUpResult, currentUserId: Int) {
-        viewModel.noteSheetWrite()
-
-        guard !result.isEditing,
-              let currentUser = viewModel.members.first(where: { $0.userId == currentUserId })
-        else { return }
-
-        viewModel.insertPendingPayment(
-            groupId: groupId,
-            currentUser: currentUser,
-            peer: result.peer,
-            amountCents: result.amountCents,
-            date: result.date
-        )
-    }
-
     private func dateHeader(for groupedExpense: GroupedExpense) -> some View {
         Text(groupedExpense.dateString)
             .font(.title2.weight(.semibold))
