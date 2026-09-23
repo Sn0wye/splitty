@@ -7,13 +7,15 @@
 
 import Foundation
 
-/// The three requests a group screen is made of, behind closures so a test can control
-/// their timing. The screen still issues them concurrently; this only names them.
+/// The group reads and delete routes behind closures so a test can control their timing.
+/// Each snapshot still issues its three reads concurrently.
 struct GroupDataSource {
     var group: (Int) async throws -> GroupDetail
     var expenses: (Int) async throws -> [Expense]
     var summary: (Int) async throws -> GroupBalanceSummary
     var waitForBalanceRetry: (Duration) async throws -> Void
+    var deleteExpense: (Int, Int) async throws -> Void
+    var deletePayment: (Int, Int) async throws -> Void
 
     init(
         group: @escaping (Int) async throws -> GroupDetail,
@@ -21,12 +23,20 @@ struct GroupDataSource {
         summary: @escaping (Int) async throws -> GroupBalanceSummary,
         waitForBalanceRetry: @escaping (Duration) async throws -> Void = { duration in
             try await Task.sleep(for: duration)
+        },
+        deleteExpense: @escaping (Int, Int) async throws -> Void = { groupId, expenseId in
+            try await ExpenseService.shared.deleteExpense(groupId: groupId, expenseId: expenseId)
+        },
+        deletePayment: @escaping (Int, Int) async throws -> Void = { groupId, expenseId in
+            try await SettlementService.shared.deleteSettlement(groupId: groupId, expenseId: expenseId)
         }
     ) {
         self.group = group
         self.expenses = expenses
         self.summary = summary
         self.waitForBalanceRetry = waitForBalanceRetry
+        self.deleteExpense = deleteExpense
+        self.deletePayment = deletePayment
     }
 
     static let live = GroupDataSource(
@@ -53,21 +63,18 @@ class GroupViewModel: ObservableObject {
     /// number is known to predate the last write.
     @Published var balancesPending = false
 
-    /// Negative ids exist only until a successful expense refetch replaces fabricated
-    /// payment rows with the server's rows.
+    /// Negative ids exist until an expense refetch supplies the matching server rows.
     @Published private(set) var pendingPaymentIds: Set<Int> = []
+    private var knownServerIdsAtPaymentWrite: [Int: Set<Int>] = [:]
     private var nextPendingPaymentId = -1
     private var pendingNetAdjustmentCents = 0
+    private var needsPostWriteSettlement = false
 
     private let dataSource: GroupDataSource
 
     /// The refresh this view model owns, so a new one can cancel the one it replaces
     /// instead of racing it.
     private var refreshTask: Task<Void, Never>?
-
-    /// Set when a money-entry sheet reports a save, cleared by the refresh that answers
-    /// it. A sheet the user backed out of never sets it, so its dismissal costs nothing.
-    private var hasUnrefreshedSheetWrite = false
 
     /// Counts started loads. A load that is no longer the newest publishes nothing:
     /// cancellation is cooperative and a request already past its last suspension point
@@ -87,6 +94,7 @@ class GroupViewModel: ObservableObject {
 
         if let generation {
             await refreshPendingBalance(groupId: groupId, generation: generation)
+            await refreshPendingPayments(groupId: groupId, generation: generation)
         }
     }
 
@@ -101,26 +109,42 @@ class GroupViewModel: ObservableObject {
         await reloadThroughBalanceSettlement(groupId: groupId)
     }
 
-    /// Records that a sheet saved something. `insert` and `insertPendingPayment` call this
-    /// themselves; a caller only needs it for a save that produces no local row, such as
-    /// editing a settlement that is already on screen.
-    func noteSheetWrite() {
-        hasUnrefreshedSheetWrite = true
-    }
-
-    /// Refreshes on a sheet's dismissal, but only if that sheet wrote. Canceling out of
-    /// an expense or settlement sheet changed no data, so it needs no three-request
-    /// refetch.
+    /// A completed write is the screen's only money-entry event. Invalidate an older
+    /// load before showing the saved row, then own the refetch and balance settlement.
     @discardableResult
-    func refreshAfterSheetDismissal(groupId: Int) -> Task<Void, Never>? {
-        guard hasUnrefreshedSheetWrite else { return nil }
-        hasUnrefreshedSheetWrite = false
+    func completedExpenseWrite(_ expense: Expense, groupId: Int) -> Task<Void, Never> {
+        cancelRefresh()
+        needsPostWriteSettlement = true
+        insert(expense)
         return beginRefresh(groupId: groupId)
     }
 
-    /// Starts a refresh the view model owns. A caller that has nothing to await — a
-    /// dismissed sheet, a detail screen reporting a write — uses this rather than
-    /// spawning a `Task` nobody can cancel.
+    @discardableResult
+    func completedPaymentWrite(_ result: SettleUpResult, currentUserId: Int, groupId: Int) -> Task<Void, Never> {
+        cancelRefresh()
+        needsPostWriteSettlement = true
+        if !result.isEditing,
+           let currentUser = members.first(where: { $0.userId == currentUserId }) {
+            insertPendingPayment(
+                groupId: groupId,
+                currentUser: currentUser,
+                peer: result.peer,
+                amountCents: result.amountCents,
+                date: result.date
+            )
+        }
+        return beginRefresh(groupId: groupId)
+    }
+
+    @discardableResult
+    func completedMoneyWrite(groupId: Int) -> Task<Void, Never> {
+        cancelRefresh()
+        needsPostWriteSettlement = true
+        return beginRefresh(groupId: groupId)
+    }
+
+    /// Starts a refresh the view model owns for callers with nothing to await, such as
+    /// group settings, instead of spawning a task nobody can cancel.
     @discardableResult
     func beginRefresh(groupId: Int) -> Task<Void, Never> {
         refreshTask?.cancel()
@@ -141,7 +165,6 @@ class GroupViewModel: ObservableObject {
     /// server returned it — while the *balance* it feeds is not, which is what
     /// `balancesPending` says.
     func insert(_ expense: Expense) {
-        noteSheetWrite()
         expenses.removeAll { $0.id == expense.id }
         expenses.append(expense)
         groupedExpenses = Expense.groupExpensesByDate(expenses)
@@ -150,6 +173,7 @@ class GroupViewModel: ObservableObject {
     private func reloadThroughBalanceSettlement(groupId: Int) async {
         guard let generation = await load(groupId: groupId) else { return }
         await refreshPendingBalance(groupId: groupId, generation: generation)
+        await refreshPendingPayments(groupId: groupId, generation: generation)
     }
 
     private func load(groupId: Int) async -> Int? {
@@ -207,16 +231,17 @@ class GroupViewModel: ObservableObject {
         errorMessage = expensesError ?? groupError ?? ""
 
         if let loadedExpenses {
-            expenses = loadedExpenses
-            groupedExpenses = Expense.groupExpensesByDate(loadedExpenses)
-            pendingPaymentIds.removeAll()
+            publishExpenses(loadedExpenses)
         }
 
-        balancesPending = summary?.balancesPending ?? (pendingNetAdjustmentCents != 0)
+        let displayedNetCents = group?.netBalanceCents
+        // These requests began together. Even a settled summary may have raced ahead
+        // of the group read, so finish a write with a group read after the summary.
+        balancesPending = (summary?.balancesPending ?? balancesPending) || needsPostWriteSettlement
         if var loadedGroup {
             if balancesPending,
                pendingNetAdjustmentCents != 0,
-               let displayedNetCents = group?.netBalanceCents
+               let displayedNetCents
             {
                 // The pending flag cannot say whether this snapshot already includes our
                 // payment. Keep the locally-correct displayed number instead of risking a
@@ -229,6 +254,30 @@ class GroupViewModel: ObservableObject {
         }
 
         return generation
+    }
+
+    private func publishExpenses(_ loadedExpenses: [Expense]) {
+        var visibleExpenses = loadedExpenses
+        var availableRows = loadedExpenses.filter { $0.type == .payment }
+        for pending in expenses where pendingPaymentIds.contains(pending.id) {
+            let knownIds = knownServerIdsAtPaymentWrite[pending.id] ?? []
+            if let index = availableRows.firstIndex(where: { stored in
+                !knownIds.contains(stored.id)
+                    && stored.paidBy == pending.paidBy
+                    && stored.amount == pending.amount
+                    && stored.date.flatMap(Expense.parseTimestamp)
+                        == pending.date.flatMap(Expense.parseTimestamp)
+                    && Set(stored.splits.map(\.userId)) == Set(pending.splits.map(\.userId))
+            }) {
+                availableRows.remove(at: index)
+                pendingPaymentIds.remove(pending.id)
+                knownServerIdsAtPaymentWrite.removeValue(forKey: pending.id)
+            } else {
+                visibleExpenses.append(pending)
+            }
+        }
+        expenses = visibleExpenses
+        groupedExpenses = Expense.groupExpensesByDate(visibleExpenses)
     }
 
     /// The summary endpoint carries the worker's display hint. Fast retries taper to a
@@ -255,6 +304,7 @@ class GroupViewModel: ObservableObject {
                 guard generation == loadGeneration else { return }
 
                 pendingNetAdjustmentCents = 0
+                needsPostWriteSettlement = false
                 group = refreshedGroup
                 balancesPending = false
                 return
@@ -267,6 +317,31 @@ class GroupViewModel: ObservableObject {
             ]
             retryIndex += 1
 
+            do {
+                try await dataSource.waitForBalanceRetry(delay)
+            } catch {
+                if error.isCancellation { return }
+            }
+        }
+    }
+
+    /// A newer load takes over this retry when pull to refresh cancels its predecessor.
+    /// The expense endpoint may lag the settled summary and group reads.
+    private func refreshPendingPayments(groupId: Int, generation: Int) async {
+        var retryIndex = 0
+        while !pendingPaymentIds.isEmpty, generation == loadGeneration {
+            do {
+                let settledExpenses = try await dataSource.expenses(groupId)
+                guard generation == loadGeneration else { return }
+                publishExpenses(settledExpenses)
+            } catch {
+                if error.isCancellation { return }
+            }
+            guard !pendingPaymentIds.isEmpty else { return }
+            let delay = BalanceRefreshPolicy.retryDelays[
+                min(retryIndex, BalanceRefreshPolicy.retryDelays.count - 1)
+            ]
+            retryIndex += 1
             do {
                 try await dataSource.waitForBalanceRetry(delay)
             } catch {
@@ -316,6 +391,7 @@ class GroupViewModel: ObservableObject {
         )
 
         pendingPaymentIds.insert(id)
+        knownServerIdsAtPaymentWrite[id] = Set(expenses.filter { $0.id > 0 }.map(\.id))
         insert(payment)
         pendingNetAdjustmentCents += amountCents
         group?.netBalanceCents += amountCents
@@ -347,14 +423,14 @@ class GroupViewModel: ObservableObject {
         do {
             switch expense.type {
             case .expense:
-                try await ExpenseService.shared.deleteExpense(groupId: groupId, expenseId: expense.id)
+                try await dataSource.deleteExpense(groupId, expense.id)
             case .payment:
-                try await SettlementService.shared.deleteSettlement(groupId: groupId, expenseId: expense.id)
+                try await dataSource.deletePayment(groupId, expense.id)
             }
+            needsPostWriteSettlement = true
             await refresh(groupId: groupId)
         } catch {
-            actionErrorMessage = error.displayMessage
-            await refresh(groupId: groupId)
+            if !error.isCancellation { actionErrorMessage = error.displayMessage }
         }
     }
 }
