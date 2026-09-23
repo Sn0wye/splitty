@@ -5,9 +5,15 @@ using Splitty.Service.Interfaces;
 
 namespace Splitty.Service;
 
+/// <summary>
+/// Every write here changes money, so each one that succeeds requests its own recomputation
+/// rather than leaving that to the caller. A route that saved an expense without it would
+/// leave balances describing rows that no longer exist — invariant 1.
+/// </summary>
 public class ExpenseService(
     IExpenseRepository expenseRepository,
-    IGroupMembershipRepository groupMembershipRepository
+    IGroupMembershipRepository groupMembershipRepository,
+    IBalanceRecomputeQueue balanceRecomputeQueue
     ): IExpenseService
 {
     public async Task<Expense> CreateAsync(CreateExpenseDTO dto, int userId)
@@ -49,6 +55,7 @@ public class ExpenseService(
         };
 
         await expenseRepository.CreateAsync(expense);
+        await balanceRecomputeQueue.EnqueueAsync(expense.GroupId);
         
         return (await expenseRepository.FindByIdAsync(expense.Id))!;
     }
@@ -83,6 +90,7 @@ public class ExpenseService(
         }
 
         await expenseRepository.DeleteAsync(expense);
+        await balanceRecomputeQueue.EnqueueAsync(groupId);
     }
     
     public async Task<List<Expense>> FindExpensesByGroupId(int groupId, int userId)
@@ -184,6 +192,7 @@ public class ExpenseService(
         }
         
         await expenseRepository.UpdateAsync(expense);
+        await balanceRecomputeQueue.EnqueueAsync(expense.GroupId);
         return expense;
     }
 

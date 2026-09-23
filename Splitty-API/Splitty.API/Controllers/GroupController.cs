@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Splitty.Background;
 using Splitty.Domain.Entities;
 using Splitty.DTO.Internal;
 using Splitty.DTO.Request;
@@ -217,8 +216,6 @@ public class GroupController(
         };
 
         var expense = await expenseService.CreateAsync(dto, int.Parse(userId));
-        
-        await balanceRecomputeQueue.EnqueueAsync(groupId);
 
         return Ok(expense);
     }
@@ -256,17 +253,10 @@ public class GroupController(
         };
 
         var expense = await expenseService.UpdateAsync(dto, int.Parse(userId));
-        
-        await balanceRecomputeQueue.EnqueueAsync(groupId);
-        
+
         return Ok(expense);
     }
     
-    /// <summary>
-    /// Deleting removes splits, so the group's balances no longer follow from the rows that
-    /// remain. Skipping the recomputation would leave the deleted expense's money in the
-    /// balance table with nothing backing it — invariant 1.
-    /// </summary>
     [HttpDelete("{groupId}/expenses/{expenseId:int}")]
     public async Task<ActionResult> DeleteExpense(int groupId, int expenseId)
     {
@@ -277,8 +267,6 @@ public class GroupController(
         if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
 
         await expenseService.DeleteAsync(groupId, expenseId, int.Parse(userId));
-
-        await balanceRecomputeQueue.EnqueueAsync(groupId);
 
         return NoContent();
     }
@@ -297,8 +285,6 @@ public class GroupController(
 
         await balanceService.UpdateSettlement(groupId, expenseId, int.Parse(userId), request.Amount, request.Date);
 
-        await balanceRecomputeQueue.EnqueueAsync(groupId);
-
         return NoContent();
     }
 
@@ -312,8 +298,6 @@ public class GroupController(
         if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
 
         await balanceService.DeleteSettlement(groupId, expenseId, int.Parse(userId));
-
-        await balanceRecomputeQueue.EnqueueAsync(groupId);
 
         return NoContent();
     }
@@ -371,8 +355,6 @@ public class GroupController(
             request.WithUserId,
             request.Amount,
             request.Date);
-
-        await balanceRecomputeQueue.EnqueueAsync(groupId);
 
         return Ok();
     }

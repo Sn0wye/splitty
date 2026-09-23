@@ -5,13 +5,18 @@ using Splitty.Service.Interfaces;
 
 namespace Splitty.Service;
 
+/// <summary>
+/// Owns the balance replay and the settlement writes. A settlement write that succeeds requests
+/// its own recomputation, the same as an expense write; only the worker replays.
+/// </summary>
 public class BalanceService(
     IBalanceRepository balanceRepository,
     IExpenseRepository expenseRepository,
     IUserRepository userRepository,
     IGroupMembershipRepository groupMembershipRepository,
     IAvatarResolver avatarResolver,
-    IGroupRepository groupRepository
+    IGroupRepository groupRepository,
+    IBalanceRecomputeQueue balanceRecomputeQueue
 ) : IBalanceService
 {
     public async Task<List<Balance>> CalculateGroupBalances(int groupId)
@@ -168,6 +173,7 @@ public class BalanceService(
             settleExpense.Splits.Select(s => new SplitShape(s.Amount, s.Percentage)));
 
         await expenseRepository.CreateAsync(settleExpense);
+        await balanceRecomputeQueue.EnqueueAsync(groupId);
     }
 
     /// <summary>
@@ -233,6 +239,7 @@ public class BalanceService(
             settlement.Splits.Select(s => new SplitShape(s.Amount, s.Percentage)));
 
         await expenseRepository.UpdateAsync(settlement);
+        await balanceRecomputeQueue.EnqueueAsync(groupId);
     }
 
     public async Task DeleteSettlement(int groupId, int expenseId, int userId)
@@ -240,6 +247,7 @@ public class BalanceService(
         await EnsureMemberAsync(groupId, userId);
 
         await expenseRepository.DeleteAsync(await FindSettlementAsync(groupId, expenseId));
+        await balanceRecomputeQueue.EnqueueAsync(groupId);
     }
 
     /// <summary>
