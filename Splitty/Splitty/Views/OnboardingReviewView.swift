@@ -94,7 +94,11 @@ struct OnboardingReviewView: View {
             }
         case .peopleEmpty:
             VStack(spacing: 0) {
-                PeopleView(isReview: true) { selectedScreen = nil }
+                PeopleView(
+                    isReview: true,
+                    onReviewDone: { selectedScreen = nil },
+                    onShowGroups: { selectedScreen = .groupsEmpty }
+                )
                     .environmentObject(AppState())
                 BottomBar(
                     selection: $peoplePreviewTab,
@@ -195,7 +199,11 @@ private struct OnboardingGroupReviewView: View {
                             }
                             .background(Color("card"))
                         } else {
-                            GroupEmptyState(memberCount: 1) { showingInvite = true }
+                            GroupEmptyState(
+                                memberCount: 1,
+                                onAddExpense: { showingAddInfo = true },
+                                onInvite: { showingInvite = true }
+                            )
                         }
                     }
                 }

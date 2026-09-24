@@ -195,7 +195,7 @@ enum L10n {
         }
         static var invitePeople: String { text("onboarding.invite_people", default: "Invite people") }
         static var firstExpenseHint: String {
-            text("onboarding.first_expense_hint", default: "Tap + below to add the first expense. Choose who paid and how to split it.")
+            text("onboarding.first_expense_hint", default: "Add the first expense, then choose who paid and how to split it.")
         }
         static var balanceHint: String {
             text("onboarding.balance_hint", default: "Balances show who owes whom. Record a payment when you settle up.")
@@ -228,7 +228,7 @@ enum L10n {
             format("group.error", default: "Error: %@", message)
         }
         static var noExpenses: String {
-            text("group.no_expenses", default: "No expenses yet. Add the first one.")
+            text("group.no_expenses", default: "No expenses yet")
         }
         static var loadingBalance: String { text("group.loading_balance", default: "Loading balance...") }
         static var settleUp: String { text("group.settle_up", default: "Settle up") }
@@ -319,6 +319,7 @@ enum L10n {
         static var emptyMessage: String {
             text("people.empty_message", default: "People you share a group with will appear here.")
         }
+        static var viewGroups: String { text("people.view_groups", default: "View groups") }
         static var opensGroup: String { text("people.opens_group", default: "Opens this group") }
         static func youOwe(_ amount: String) -> String {
             format("people.you_owe", default: "You owe %@", amount)

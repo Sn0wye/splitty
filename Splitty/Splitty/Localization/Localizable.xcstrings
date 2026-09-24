@@ -4241,25 +4241,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No expenses yet. Add the first one."
+            "value" : "No expenses yet"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Todavía no hay gastos. Añade el primero."
+            "value" : "Todavía no hay gastos"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucune dépense pour le moment. Ajoutez la première."
+            "value" : "Aucune dépense pour le moment"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenhuma despesa ainda. Adicione a primeira."
+            "value" : "Nenhuma despesa ainda"
           }
         }
       }
@@ -6580,25 +6580,25 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tap + below to add the first expense. Choose who paid and how to split it."
+            "value" : "Add the first expense, then choose who paid and how to split it."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toca + abajo para agregar el primer gasto. Elige quién pagó y cómo dividirlo."
+            "value" : "Agrega el primer gasto y elige quién pagó y cómo dividirlo."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Touchez + ci-dessous pour ajouter la première dépense. Choisissez qui a payé et comment la partager."
+            "value" : "Ajoutez la première dépense, puis choisissez qui a payé et comment la partager."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Toque em + abaixo para adicionar a primeira despesa. Escolha quem pagou e como dividi-la."
+            "value" : "Adicione a primeira despesa e escolha quem pagou e como dividi-la."
           }
         }
       }
@@ -7005,6 +7005,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pessoas"
+          }
+        }
+      }
+    },
+    "people.view_groups" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "View groups"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver grupos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voir les groupes"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver grupos"
           }
         }
       }

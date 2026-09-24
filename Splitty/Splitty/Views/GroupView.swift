@@ -9,6 +9,7 @@ import SwiftUI
 
 struct GroupView: View {
     let groupId: Int
+    var onAddExpense: () -> Void = {}
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = GroupViewModel()
     @StateObject private var authManager = AuthenticationManager.shared
@@ -217,6 +218,7 @@ struct GroupView: View {
         } else if viewModel.expenses.isEmpty {
             GroupEmptyState(
                 memberCount: viewModel.members.count,
+                onAddExpense: onAddExpense,
                 onInvite: { showingInviteSheet = true }
             )
             .disabled(viewModel.group == nil)
@@ -400,29 +402,20 @@ struct GroupView: View {
 
 struct GroupEmptyState: View {
     let memberCount: Int
+    let onAddExpense: () -> Void
     let onInvite: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(L10n.Group.noExpenses)
-                .font(.headline)
-                .foregroundStyle(Color("card-foreground"))
-            Text(L10n.Onboarding.firstExpenseHint)
-                .font(.subheadline)
-                .foregroundStyle(Color("muted-foreground"))
+        EmptyStateView(
+            symbol: "receipt",
+            title: L10n.Group.noExpenses,
+            detail: L10n.Onboarding.firstExpenseHint
+        ) {
+            PrimaryButton(title: L10n.Tabs.addExpense, action: onAddExpense)
             if memberCount < 2 {
-                ActionButton(
-                    title: L10n.Onboarding.invitePeople,
-                    color: Color("foreground"),
-                    textColor: Color("background"),
-                    action: onInvite
-                )
-                .padding(.top, 4)
+                OnboardingSecondaryButton(title: L10n.Onboarding.invitePeople, action: onInvite)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(20)
-        .background(Color("card"))
     }
 }
 

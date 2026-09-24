@@ -152,29 +152,14 @@ struct GroupsEmptyState: View {
     let onJoin: () -> Void
 
     var body: some View {
-        VStack(spacing: 14) {
-            Image(systemName: "person.2")
-                .font(.system(size: 34, weight: .light))
-                .foregroundStyle(Color("foreground"))
-                .padding(.bottom, 6)
-
-            Text(L10n.Onboarding.emptyGroupsTitle)
-                .font(.title2.weight(.bold))
-                .foregroundStyle(Color("foreground"))
-
-            Text(L10n.Onboarding.emptyGroupsDetail)
-                .font(.subheadline)
-                .foregroundStyle(Color("muted-foreground"))
-                .multilineTextAlignment(.center)
-
+        EmptyStateView(
+            symbol: "person.2",
+            title: L10n.Onboarding.emptyGroupsTitle,
+            detail: L10n.Onboarding.emptyGroupsDetail
+        ) {
             PrimaryButton(title: L10n.Onboarding.createGroup, action: onCreate)
-                .padding(.top, 8)
-
             OnboardingSecondaryButton(title: L10n.Groups.joinWithCode, action: onJoin)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 20)
-        .padding(.top, 44)
     }
 }
 
