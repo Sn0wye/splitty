@@ -18,6 +18,38 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 Section {
+                    if let user = authManager.currentUser {
+                        NavigationLink {
+                            ProfileView(user: user)
+                        } label: {
+                            HStack(spacing: 12) {
+                                MemberAvatar(display: MemberDisplay(user), size: 36)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(user.name)
+                                    Text(user.email)
+                                        .font(.caption)
+                                        .foregroundStyle(Color("muted-foreground"))
+                                }
+                            }
+                            .frame(minHeight: 44)
+                        }
+                    }
+
+                    Button(action: {
+                        showingLogoutAlert = true
+                    }) {
+                        HStack {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                                .foregroundColor(.red)
+                            Text(L10n.Settings.logOut)
+                                .foregroundColor(.red)
+                        }
+                    }
+                } header: {
+                    Text(L10n.Settings.account)
+                }
+
+                Section {
                     NavigationLink {
                         AppearanceView()
                     } label: {
@@ -57,40 +89,8 @@ struct SettingsView: View {
                     Text(L10n.Settings.preferences)
                 }
 
-                Section {
-                    if let user = authManager.currentUser {
-                        NavigationLink {
-                            ProfileView(user: user)
-                        } label: {
-                            HStack(spacing: 12) {
-                                MemberAvatar(display: MemberDisplay(user), size: 36)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(user.name)
-                                    Text(user.email)
-                                        .font(.caption)
-                                        .foregroundStyle(Color("muted-foreground"))
-                                }
-                            }
-                            .frame(minHeight: 44)
-                        }
-                    }
-
-                    Button(action: {
-                        showingLogoutAlert = true
-                    }) {
-                        HStack {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                                .foregroundColor(.red)
-                            Text(L10n.Settings.logOut)
-                                .foregroundColor(.red)
-                        }
-                    }
-                } header: {
-                    Text(L10n.Settings.account)
-                }
-
                 #if DEBUG
-                Section("Design review") {
+                Section("Development") {
                     Button {
                         showingOnboardingReview = true
                     } label: {
