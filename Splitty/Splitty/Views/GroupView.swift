@@ -16,6 +16,7 @@ struct GroupView: View {
     @State private var showingSettings = false
     @State private var showingSettleUpSheet = false
     @State private var showingBalancesSheet = false
+    @State private var showingInviteSheet = false
     @State private var pendingDeletion: Expense?
     @State private var selectedExpenseId: Int?
 
@@ -121,6 +122,18 @@ struct GroupView: View {
                 }
             }
         }
+        .sheet(isPresented: $showingInviteSheet) {
+            if let group = viewModel.group {
+                NavigationStack {
+                    InviteView(groupId: group.id, groupName: group.name)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button(L10n.Common.done) { showingInviteSheet = false }
+                            }
+                        }
+                }
+            }
+        }
         // An alert, not a confirmation dialog: deleting is destructive and irreversible,
         // and the question is worth a modal that names what it is about.
         .alert(
@@ -202,13 +215,16 @@ struct GroupView: View {
                 .padding(20)
                 .background(Color("card"))
         } else if viewModel.expenses.isEmpty {
-            Text(L10n.Group.noExpenses)
-                .foregroundColor(Color("muted-foreground"))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(20)
-                .background(Color("card"))
+            GroupEmptyState(
+                memberCount: viewModel.members.count,
+                onInvite: { showingInviteSheet = true }
+            )
+            .disabled(viewModel.group == nil)
         } else {
             LazyVStack(spacing: 0) {
+                if viewModel.expenses.count == 1 {
+                    FirstBalanceTip()
+                }
                 ForEach(viewModel.groupedExpenses) { groupedExpense in
                     dateHeader(for: groupedExpense)
                     ForEach(groupedExpense.expenses) { expense in
@@ -379,6 +395,44 @@ struct GroupView: View {
             .padding(.top, 18)
             .padding(.bottom, 8)
             .background(Color("card"))
+    }
+}
+
+struct GroupEmptyState: View {
+    let memberCount: Int
+    let onInvite: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L10n.Group.noExpenses)
+                .font(.headline)
+                .foregroundStyle(Color("card-foreground"))
+            Text(L10n.Onboarding.firstExpenseHint)
+                .font(.subheadline)
+                .foregroundStyle(Color("muted-foreground"))
+            if memberCount < 2 {
+                ActionButton(
+                    title: L10n.Onboarding.invitePeople,
+                    color: Color("foreground"),
+                    textColor: Color("background"),
+                    action: onInvite
+                )
+                .padding(.top, 4)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(20)
+        .background(Color("card"))
+    }
+}
+
+struct FirstBalanceTip: View {
+    var body: some View {
+        Label(L10n.Onboarding.balanceHint, systemImage: "lightbulb")
+            .font(.subheadline)
+            .foregroundStyle(Color("muted-foreground"))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(20)
     }
 }
 

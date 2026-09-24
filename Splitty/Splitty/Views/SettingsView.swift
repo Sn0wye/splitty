@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @State private var showingLogoutAlert = false
+    @State private var showingOnboardingReview = false
     @StateObject private var authManager = AuthenticationManager.shared
     @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject private var languageManager = LanguageManager.shared
@@ -87,10 +88,23 @@ struct SettingsView: View {
                 } header: {
                     Text(L10n.Settings.account)
                 }
+
+                #if DEBUG
+                Section("Design review") {
+                    Button {
+                        showingOnboardingReview = true
+                    } label: {
+                        Label("Review onboarding", systemImage: "rectangle.on.rectangle")
+                    }
+                }
+                #endif
             }
             .scrollContentBackground(.hidden)
             .background(Color("background"))
             .navigationTitle(Text(L10n.Settings.title))
+            .fullScreenCover(isPresented: $showingOnboardingReview) {
+                OnboardingReviewView()
+            }
             .alert(Text(L10n.Settings.logOut), isPresented: $showingLogoutAlert) {
                 Button(role: .cancel) { } label: { Text(L10n.Common.cancel) }
                 Button(role: .destructive) {

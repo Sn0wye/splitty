@@ -1,8 +1,19 @@
 import SwiftUI
 
 struct PeopleView: View {
-    @StateObject private var viewModel = PeopleViewModel()
+    var isReview = false
+    var onReviewDone: (() -> Void)?
+
+    @StateObject private var viewModel: PeopleViewModel
     @EnvironmentObject private var appState: AppState
+
+    init(isReview: Bool = false, onReviewDone: (() -> Void)? = nil) {
+        self.isReview = isReview
+        self.onReviewDone = onReviewDone
+        _viewModel = StateObject(wrappedValue: PeopleViewModel(
+            loadPeople: isReview ? { .empty } : GroupService.shared.getPeople
+        ))
+    }
 
     var body: some View {
         NavigationStack {
@@ -10,6 +21,13 @@ struct PeopleView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color("background"))
                 .navigationTitle(Text(L10n.People.title))
+                .toolbar {
+                    if isReview {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(L10n.Common.done) { onReviewDone?() }
+                        }
+                    }
+                }
                 .task { await viewModel.load() }
         }
     }

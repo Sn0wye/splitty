@@ -9,16 +9,18 @@ struct GroupFormSheet: View {
     @StateObject private var viewModel: GroupFormViewModel
     @Environment(\.dismiss) private var dismiss
     @FocusState private var nameFocused: Bool
+    private let isReview: Bool
     
     private let onSaved: (Int) -> Void
     
-    init(group: GroupDetail? = nil, onSaved: @escaping (Int) -> Void) {
+    init(group: GroupDetail? = nil, isReview: Bool = false, onSaved: @escaping (Int) -> Void) {
         _viewModel = StateObject(wrappedValue: GroupFormViewModel(
             existingGroupId: group?.id,
             name: group?.name ?? "",
             description: group?.description ?? ""
         ))
         self.onSaved = onSaved
+        self.isReview = isReview
     }
     
     var body: some View {
@@ -66,11 +68,11 @@ struct GroupFormSheet: View {
                         } label: {
                             Text(viewModel.isEditing ? L10n.Common.save : L10n.Common.create)
                         }
-                        .disabled(!viewModel.canSave)
+                        .disabled(isReview || !viewModel.canSave)
                     }
                 }
             }
-            .onAppear { nameFocused = true }
+            .onAppear { nameFocused = !isReview }
         }
     }
 

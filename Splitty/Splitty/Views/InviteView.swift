@@ -4,6 +4,7 @@ import UIKit
 struct InviteView: View {
     let groupId: Int
     let groupName: String
+    var isReview = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var state = CreationState.idle
@@ -38,6 +39,10 @@ struct InviteView: View {
         .task {
             guard !hasStartedCreation else { return }
             hasStartedCreation = true
+            if isReview {
+                state = .created(code: "SPLTTY")
+                return
+            }
             await createInvite()
         }
     }
@@ -64,6 +69,7 @@ struct InviteView: View {
 
             VStack(spacing: 12) {
                 shareLink(code: code, text: text)
+                    .disabled(isReview)
 
                 Button {
                     guard !isCopied else { return }
@@ -84,6 +90,7 @@ struct InviteView: View {
                         .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.bordered)
+                .disabled(isReview)
                 .tint(isCopied ? .green : .accentColor)
             }
         }

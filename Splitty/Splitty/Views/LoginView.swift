@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct LoginView: View {
+    @State private var showingOnboardingReview = false
     @State private var isLoading = false
     @State private var errorMessage = ""
     @StateObject private var authManager = AuthenticationManager.shared
@@ -108,10 +109,19 @@ struct LoginView: View {
                     DevSignInPicker(isLoading: $isLoading, errorMessage: $errorMessage)
                         .padding(.horizontal, 20)
                         .padding(.top, 8)
+
+                    Button("Review onboarding") {
+                        showingOnboardingReview = true
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(.white.opacity(0.65))
                     #endif
                 }
                 .padding(.bottom, 50)
             }
+        }
+        .fullScreenCover(isPresented: $showingOnboardingReview) {
+            OnboardingReviewView()
         }
     }
 

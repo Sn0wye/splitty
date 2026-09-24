@@ -29,6 +29,7 @@ class GroupsViewModel: ObservableObject {
             return
         }
         isLoading = true
+        errorMessage = nil
         defer { isLoading = false }
         do {
             groups = try await GroupService.shared.getGroups()
