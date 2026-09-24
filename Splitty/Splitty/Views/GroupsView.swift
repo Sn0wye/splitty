@@ -8,6 +8,9 @@
 import SwiftUI
 
 struct GroupsView: View {
+    var isReview = false
+    var onReviewDone: (() -> Void)?
+
     @StateObject private var viewModel = GroupsViewModel()
     @StateObject private var authManager = AuthenticationManager.shared
     @EnvironmentObject private var appState: AppState
@@ -61,9 +64,28 @@ struct GroupsView: View {
                 
                 ScrollView(.vertical) {
                     VStack(spacing: 10) {
-                        ForEach(viewModel.groups) { group in
-                            GroupCard(group: group) {
-                                appState.openGroup(group.id)
+                        if let errorMessage = viewModel.errorMessage, viewModel.groups.isEmpty {
+                            VStack(spacing: 16) {
+                                Text(errorMessage)
+                                    .foregroundStyle(Color("muted-foreground"))
+                                    .multilineTextAlignment(.center)
+                                Button(L10n.Common.tryAgain) {
+                                    Task { await viewModel.loadGroups() }
+                                }
+                                .buttonStyle(.bordered)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(28)
+                        } else if !viewModel.isLoading && viewModel.groups.isEmpty {
+                            GroupsEmptyState(
+                                onCreate: { showingCreateSheet = true },
+                                onJoin: { showingJoinSheet = true }
+                            )
+                        } else {
+                            ForEach(viewModel.groups) { group in
+                                GroupCard(group: group) {
+                                    appState.openGroup(group.id)
+                                }
                             }
                         }
                     }
@@ -71,14 +93,21 @@ struct GroupsView: View {
                 .accessibilityIdentifier("groups.scroll")
                 .performanceScrollSignpost(.groupsScroll)
                 .refreshable {
-                    await viewModel.loadGroups()
+                    if !isReview { await viewModel.loadGroups() }
                 }
                 
                 Spacer()
             }
             .background(Color("background").ignoresSafeArea())
+            .toolbar {
+                if isReview {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(L10n.Common.done) { onReviewDone?() }
+                    }
+                }
+            }
             .task {
-                await viewModel.loadGroups()
+                if !isReview { await viewModel.loadGroups() }
             }
             .onAppear {
                 removeExitedGroup()
@@ -88,12 +117,12 @@ struct GroupsView: View {
             }
             .onChange(of: appState.selectedTab) { _, newTab in
                 // Coming back from a group picks up any edit made in there.
-                if newTab == .groups {
+                if newTab == .groups && !isReview {
                     Task { await viewModel.loadGroups() }
                 }
             }
             .sheet(isPresented: $showingCreateSheet) {
-                GroupFormSheet { groupId in
+                GroupFormSheet(isReview: isReview) { groupId in
                     Task {
                         await viewModel.loadGroups()
                         appState.openGroup(groupId)
@@ -101,7 +130,7 @@ struct GroupsView: View {
                 }
             }
             .sheet(isPresented: $showingJoinSheet) {
-                JoinGroupSheet { group in
+                JoinGroupSheet(isReview: isReview) { group in
                     Task {
                         await viewModel.loadGroups()
                         appState.openGroup(group.id)
@@ -114,6 +143,23 @@ struct GroupsView: View {
     private func removeExitedGroup() {
         guard let exitedGroupId = appState.exitedGroupId else { return }
         viewModel.removeGroup(id: exitedGroupId)
+    }
+
+}
+
+struct GroupsEmptyState: View {
+    let onCreate: () -> Void
+    let onJoin: () -> Void
+
+    var body: some View {
+        EmptyStateView(
+            symbol: "person.2",
+            title: L10n.Onboarding.emptyGroupsTitle,
+            detail: L10n.Onboarding.emptyGroupsDetail
+        ) {
+            PrimaryButton(title: L10n.Onboarding.createGroup, action: onCreate)
+            OnboardingSecondaryButton(title: L10n.Groups.joinWithCode, action: onJoin)
+        }
     }
 }
 

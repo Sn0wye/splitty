@@ -25,7 +25,9 @@ struct ContentView: View {
                 case .groups:
                     GroupsView()
                 case .group:
-                    CurrentGroupView()
+                    CurrentGroupView {
+                        Task { await beginAddingExpense() }
+                    }
                 case .people:
                     PeopleView()
                 case .settings:
@@ -155,10 +157,11 @@ private struct ExpenseGroupPicker: View {
 /// The "Group" tab: renders whichever group was last opened.
 private struct CurrentGroupView: View {
     @EnvironmentObject private var appState: AppState
+    let onAddExpense: () -> Void
 
     var body: some View {
         if let groupId = appState.currentGroupId {
-            GroupView(groupId: groupId)
+            GroupView(groupId: groupId, onAddExpense: onAddExpense)
                 .id(groupId)
         } else {
             VStack(spacing: 8) {

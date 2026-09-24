@@ -30,6 +30,7 @@ enum L10n {
     }
 
     enum Common {
+        static var back: String { text("common.back", default: "Back") }
         static var cancel: String { text("common.cancel", default: "Cancel") }
         static var ok: String { text("common.ok", default: "OK") }
         static var save: String { text("common.save", default: "Save") }
@@ -167,6 +168,40 @@ enum L10n {
         }
     }
 
+    enum Onboarding {
+        static var skip: String { text("onboarding.skip", default: "Skip") }
+        static var title: String { text("onboarding.title", default: "Share the cost. Keep it clear.") }
+        static var detail: String {
+            text("onboarding.detail", default: "Add what someone paid. Splitty shows each person's share and who owes whom.")
+        }
+        static var continueButton: String { text("onboarding.continue", default: "Continue") }
+        static var setupTitle: String { text("onboarding.setup_title", default: "Start with your people") }
+        static var setupDetail: String {
+            text("onboarding.setup_detail", default: "Create a group for shared expenses, or join one with an invite.")
+        }
+        static var createGroup: String { text("onboarding.create_group", default: "Create a group") }
+        static var joinGroup: String { text("onboarding.join_group", default: "Join a group") }
+        static var exampleExpense: String { text("onboarding.example_expense", default: "Coffee for two") }
+        static var examplePayer: String { text("onboarding.example_payer", default: "You paid") }
+        static var exampleResult: String {
+            text("onboarding.example_result", default: "The other person owes you $15.00")
+        }
+        static var illustration: String {
+            text("onboarding.illustration", default: "A $30 coffee expense paid by you is split equally. The other person owes you $15.")
+        }
+        static var emptyGroupsTitle: String { text("onboarding.empty_groups_title", default: "Start sharing expenses") }
+        static var emptyGroupsDetail: String {
+            text("onboarding.empty_groups_detail", default: "Create a group or join one to keep track together.")
+        }
+        static var invitePeople: String { text("onboarding.invite_people", default: "Invite people") }
+        static var firstExpenseHint: String {
+            text("onboarding.first_expense_hint", default: "Add the first expense, then choose who paid and how to split it.")
+        }
+        static var balanceHint: String {
+            text("onboarding.balance_hint", default: "Balances show who owes whom. Record a payment when you settle up.")
+        }
+    }
+
     enum Groups {
         static var title: String { text("groups.title", default: "Groups") }
         static var newGroup: String { text("groups.new", default: "New group") }
@@ -193,7 +228,7 @@ enum L10n {
             format("group.error", default: "Error: %@", message)
         }
         static var noExpenses: String {
-            text("group.no_expenses", default: "No expenses yet. Add the first one.")
+            text("group.no_expenses", default: "No expenses yet")
         }
         static var loadingBalance: String { text("group.loading_balance", default: "Loading balance...") }
         static var settleUp: String { text("group.settle_up", default: "Settle up") }
@@ -284,6 +319,7 @@ enum L10n {
         static var emptyMessage: String {
             text("people.empty_message", default: "People you share a group with will appear here.")
         }
+        static var viewGroups: String { text("people.view_groups", default: "View groups") }
         static var opensGroup: String { text("people.opens_group", default: "Opens this group") }
         static func youOwe(_ amount: String) -> String {
             format("people.you_owe", default: "You owe %@", amount)

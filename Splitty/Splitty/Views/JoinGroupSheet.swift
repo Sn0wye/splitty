@@ -6,6 +6,7 @@
 import SwiftUI
 
 struct JoinGroupSheet: View {
+    var isReview = false
     @StateObject private var viewModel = JoinGroupViewModel()
     @Environment(\.dismiss) private var dismiss
     @State private var codeFocused = false
@@ -57,7 +58,7 @@ struct JoinGroupSheet: View {
                     }
                 }
             }
-            .onAppear { codeFocused = true }
+            .onAppear { codeFocused = !isReview }
             .onChange(of: viewModel.submissionFailureRevision) { _, _ in
                 codeFocused = true
                 guard !reduceMotion else { return }
@@ -75,7 +76,7 @@ struct JoinGroupSheet: View {
                 InviteCodeInputField(
                     text: viewModel.code,
                     isFocused: $codeFocused,
-                    isEnabled: !viewModel.isRedeeming
+                    isEnabled: !viewModel.isRedeeming && !isReview
                 ) { proposedText, source in
                     guard viewModel.updateCode(proposedText, source: source) else { return }
                     Task { await submit() }
@@ -154,6 +155,7 @@ struct JoinGroupSheet: View {
     }
 
     private func submit() async {
+        guard !isReview else { return }
         if let group = await viewModel.redeem() {
             onJoined(group)
             dismiss()

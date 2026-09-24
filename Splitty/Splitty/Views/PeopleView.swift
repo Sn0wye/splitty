@@ -1,8 +1,25 @@
 import SwiftUI
 
 struct PeopleView: View {
-    @StateObject private var viewModel = PeopleViewModel()
+    var isReview = false
+    var onReviewDone: (() -> Void)?
+    var onShowGroups: (() -> Void)?
+
+    @StateObject private var viewModel: PeopleViewModel
     @EnvironmentObject private var appState: AppState
+
+    init(
+        isReview: Bool = false,
+        onReviewDone: (() -> Void)? = nil,
+        onShowGroups: (() -> Void)? = nil
+    ) {
+        self.isReview = isReview
+        self.onReviewDone = onReviewDone
+        self.onShowGroups = onShowGroups
+        _viewModel = StateObject(wrappedValue: PeopleViewModel(
+            loadPeople: isReview ? { .empty } : GroupService.shared.getPeople
+        ))
+    }
 
     var body: some View {
         NavigationStack {
@@ -10,6 +27,13 @@ struct PeopleView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color("background"))
                 .navigationTitle(Text(L10n.People.title))
+                .toolbar {
+                    if isReview {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(L10n.Common.done) { onReviewDone?() }
+                        }
+                    }
+                }
                 .task { await viewModel.load() }
         }
     }
@@ -69,18 +93,19 @@ struct PeopleView: View {
     }
 
     private var emptyState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "arrow.left.arrow.right")
-                .font(.system(size: 34, weight: .light))
-            Text(L10n.People.emptyTitle)
-                .font(.headline)
-            Text(L10n.People.emptyMessage)
-                .font(.subheadline)
-                .foregroundStyle(Color("muted-foreground"))
-                .multilineTextAlignment(.center)
+        EmptyStateView(
+            symbol: "arrow.left.arrow.right",
+            title: L10n.People.emptyTitle,
+            detail: L10n.People.emptyMessage
+        ) {
+            PrimaryButton(title: L10n.People.viewGroups) {
+                if let onShowGroups {
+                    onShowGroups()
+                } else {
+                    appState.selectedTab = .groups
+                }
+            }
         }
-        .foregroundStyle(Color("foreground"))
-        .padding(32)
     }
 
     @ViewBuilder

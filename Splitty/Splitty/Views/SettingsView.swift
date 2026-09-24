@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @State private var showingLogoutAlert = false
+    @State private var showingOnboardingReview = false
     @StateObject private var authManager = AuthenticationManager.shared
     @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject private var languageManager = LanguageManager.shared
@@ -16,6 +17,38 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    if let user = authManager.currentUser {
+                        NavigationLink {
+                            ProfileView(user: user)
+                        } label: {
+                            HStack(spacing: 12) {
+                                MemberAvatar(display: MemberDisplay(user), size: 36)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(user.name)
+                                    Text(user.email)
+                                        .font(.caption)
+                                        .foregroundStyle(Color("muted-foreground"))
+                                }
+                            }
+                            .frame(minHeight: 44)
+                        }
+                    }
+
+                    Button(action: {
+                        showingLogoutAlert = true
+                    }) {
+                        HStack {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                                .foregroundColor(.red)
+                            Text(L10n.Settings.logOut)
+                                .foregroundColor(.red)
+                        }
+                    }
+                } header: {
+                    Text(L10n.Settings.account)
+                }
+
                 Section {
                     NavigationLink {
                         AppearanceView()
@@ -56,41 +89,22 @@ struct SettingsView: View {
                     Text(L10n.Settings.preferences)
                 }
 
-                Section {
-                    if let user = authManager.currentUser {
-                        NavigationLink {
-                            ProfileView(user: user)
-                        } label: {
-                            HStack(spacing: 12) {
-                                MemberAvatar(display: MemberDisplay(user), size: 36)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(user.name)
-                                    Text(user.email)
-                                        .font(.caption)
-                                        .foregroundStyle(Color("muted-foreground"))
-                                }
-                            }
-                            .frame(minHeight: 44)
-                        }
+                #if DEBUG
+                Section("Development") {
+                    Button {
+                        showingOnboardingReview = true
+                    } label: {
+                        Label("Review onboarding", systemImage: "rectangle.on.rectangle")
                     }
-
-                    Button(action: {
-                        showingLogoutAlert = true
-                    }) {
-                        HStack {
-                            Image(systemName: "rectangle.portrait.and.arrow.right")
-                                .foregroundColor(.red)
-                            Text(L10n.Settings.logOut)
-                                .foregroundColor(.red)
-                        }
-                    }
-                } header: {
-                    Text(L10n.Settings.account)
                 }
+                #endif
             }
             .scrollContentBackground(.hidden)
             .background(Color("background"))
             .navigationTitle(Text(L10n.Settings.title))
+            .fullScreenCover(isPresented: $showingOnboardingReview) {
+                OnboardingReviewView()
+            }
             .alert(Text(L10n.Settings.logOut), isPresented: $showingLogoutAlert) {
                 Button(role: .cancel) { } label: { Text(L10n.Common.cancel) }
                 Button(role: .destructive) {
