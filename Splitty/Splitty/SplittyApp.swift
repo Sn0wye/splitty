@@ -9,7 +9,19 @@ struct SplittyApp: App {
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            // PROTOTYPE: `-chartsPrototype` opens the throwaway charts screen on fixtures.
+            if ChartsPrototypeFixtures.isRequested {
+                ChartsPrototypeView(
+                    expenses: ChartsPrototypeFixtures.expenses,
+                    currentUserId: ChartsPrototypeFixtures.currentUserId
+                )
+            } else {
+                RootView()
+            }
+            #else
             RootView()
+            #endif
         }
     }
 }

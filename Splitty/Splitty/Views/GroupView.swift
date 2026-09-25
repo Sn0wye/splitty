@@ -16,6 +16,7 @@ struct GroupView: View {
     @State private var showingSettings = false
     @State private var showingSettleUpSheet = false
     @State private var showingBalancesSheet = false
+    @State private var showingChartsSheet = false
     @State private var pendingDeletion: Expense?
     @State private var selectedExpenseId: Int?
 
@@ -119,6 +120,12 @@ struct GroupView: View {
                 ) { result in
                     viewModel.completedPaymentWrite(result, currentUserId: currentUserId, groupId: groupId)
                 }
+            }
+        }
+        // PROTOTYPE: throwaway charts screen, see ChartsPrototypeView.
+        .sheet(isPresented: $showingChartsSheet) {
+            if let currentUserId {
+                ChartsPrototypeView(expenses: viewModel.expenses, currentUserId: currentUserId)
             }
         }
         // An alert, not a confirmation dialog: deleting is destructive and irreversible,
@@ -357,8 +364,9 @@ struct GroupView: View {
                 .disabled(viewModel.group == nil || currentUserId == nil)
 
                 ActionButton(title: L10n.Group.charts, color: Color("muted"), textColor: Color("foreground")) {
-                    // TODO: Charts action
+                    showingChartsSheet = true
                 }
+                .disabled(currentUserId == nil)
 
                 ActionButton(title: L10n.Group.export, color: Color("muted"), textColor: Color("foreground")) {
                     // TODO: Export action
