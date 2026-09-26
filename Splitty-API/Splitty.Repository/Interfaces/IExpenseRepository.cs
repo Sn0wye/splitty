@@ -10,4 +10,5 @@ public interface IExpenseRepository
     Task<Expense> UpdateAsync(Expense expense);
     Task DeleteAsync(Expense expense);
     Task<List<Expense>> FindExpensesByGroupId(int groupId);
+    Task<List<Expense>> FindExpensesInRangeAsync(int groupId, DateTime? from, DateTime? to);
 }

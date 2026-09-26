@@ -155,6 +155,12 @@ headings (Food and drink, Transportation, …) for display only; the heading is 
 `general` means nobody chose. `payment` is the category every settlement carries.
 _Avoid_: tag, label, type (`ExpenseType` already owns "type")
 
+**Group spend** / **Share**:
+The two halves of the stats route. Group spend counts every expense at its full amount; a
+share counts only expenses the caller has a split in, at the split amount. Neither counts
+settlements.
+_Avoid_: cost, contribution (the payer's outlay is a different figure)
+
 **Peer**:
 A member of a group you are also in, seen from your side. Already the domain word — it is
 the `Balance.PeerId` column. The code and API say peer; the screen listing them is called
@@ -194,6 +200,23 @@ recomputation is outstanding, including simplified debts. The summary serves the
 group's stored simplified debts, and People uses those same per-group amounts. Pending
 figures may be stale and settlement creation or editing is refused until recomputation.
 The flag is eventually consistent, not a lock or transaction barrier.
+
+## Group stats
+
+`GET /group/{groupId}/stats?from=&to=&tz=` answers the Charts screen: group spend and the
+caller's share for a range, per category, each with its five largest expenses. It reads
+the `Type = Expense` rows directly, never `Balance`, so it is current the moment an expense
+is saved and ignores `BalancesPending`.
+
+The range is `[from, to)` between local midnights in `tz`, an IANA zone id the client must
+send. Rows are filed by `Date ?? CreatedAt`, like the expense list. Either bound may be
+omitted; omitting both is all time, future-dated rows included. A midnight skipped by a
+daylight-saving jump resolves to the first instant after it. The server has no named
+ranges — "this month" is two dates the client computes in its own zone.
+
+Categories are returned per leaf, not per heading, so regrouping leaves is a client-only
+change. The five-per-category cap is exactly enough for the client to derive the top five
+overall or under any heading.
 
 ## Auth
 

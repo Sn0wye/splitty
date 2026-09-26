@@ -181,6 +181,7 @@ builder.Services.AddScoped<IInviteService, InviteService>();
 builder.Services.AddScoped<IOAuthService, OAuthService>();
 builder.Services.AddScoped<IPeopleService, PeopleService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
+builder.Services.AddScoped<IGroupStatsService, GroupStatsService>();
 
 // Utils
 builder.Services.AddScoped<IJwtTokenIssuer, JwtTokenIssuer>();

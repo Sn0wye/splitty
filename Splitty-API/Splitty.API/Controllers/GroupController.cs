@@ -5,6 +5,7 @@ using Splitty.Domain.Entities;
 using Splitty.DTO.Internal;
 using Splitty.DTO.Request;
 using Splitty.DTO.Response;
+using Splitty.Service;
 using Splitty.Service.Interfaces;
 
 namespace Splitty.API.Controllers;
@@ -17,6 +18,7 @@ public class GroupController(
     IExpenseService expenseService,
     IBalanceService balanceService,
     IInviteService inviteService,
+    IGroupStatsService groupStatsService,
     IBalanceRecomputeQueue balanceRecomputeQueue
 ) : ControllerBase
 {
@@ -340,6 +342,31 @@ public class GroupController(
         });
     }
     
+    /// <summary>
+    /// Spend for <c>[from, to)</c> between local midnights in <c>tz</c>. The client computes
+    /// calendar ranges such as "this month" itself; the server never names a range.
+    /// </summary>
+    [HttpGet("{groupId}/stats")]
+    public async Task<ActionResult<GroupStatsResponse>> GetStats(
+        int groupId,
+        [FromQuery] string? from,
+        [FromQuery] string? to,
+        [FromQuery] string? tz)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
+        if (!StatsRange.TryParse(from, to, tz, out var range, out var error))
+        {
+            return BadRequest(Error(400, error));
+        }
+
+        return Ok(await groupStatsService.GetStatsAsync(groupId, int.Parse(userId), range));
+    }
+
     [HttpPost("{groupId}/settle")]
     public async Task<ActionResult> SettleUp(int groupId, [FromBody] SettleUpRequest request)
     {
