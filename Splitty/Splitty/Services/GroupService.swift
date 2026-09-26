@@ -34,6 +34,21 @@ class GroupService {
         try await APIClient.shared.request(endpoint: "/group/\(groupId)/expenses/summary")
     }
 
+    /// Group spend and the caller's share over `query`'s local dates, which the server
+    /// resolves in `query.timeZone`. Omitted dates leave that end open.
+    func getStats(groupId: Int, query: StatsQuery) async throws -> GroupStats {
+        var components = URLComponents()
+        components.queryItems = [
+            query.from.map { URLQueryItem(name: "from", value: $0) },
+            query.to.map { URLQueryItem(name: "to", value: $0) },
+            URLQueryItem(name: "tz", value: query.timeZone)
+        ].compactMap { $0 }
+        // `URLComponents` leaves `+` alone, which a server reads as a space: `Etc/GMT+3`.
+        let queryString = components.percentEncodedQuery?
+            .replacingOccurrences(of: "+", with: "%2B") ?? ""
+        return try await APIClient.shared.request(endpoint: "/group/\(groupId)/stats?\(queryString)")
+    }
+
     func getPeople() async throws -> PeopleResponse {
         try await APIClient.shared.request(endpoint: "/people")
     }

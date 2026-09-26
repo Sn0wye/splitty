@@ -17,6 +17,7 @@ struct GroupView: View {
     @State private var showingSettings = false
     @State private var showingSettleUpSheet = false
     @State private var showingBalancesSheet = false
+    @State private var showingChartsSheet = false
     @State private var showingInviteSheet = false
     @State private var pendingDeletion: Expense?
     @State private var selectedExpenseId: Int?
@@ -120,6 +121,18 @@ struct GroupView: View {
                     members: viewModel.members
                 ) { result in
                     viewModel.completedPaymentWrite(result, currentUserId: currentUserId, groupId: groupId)
+                }
+            }
+        }
+        .sheet(isPresented: $showingChartsSheet) {
+            if let currentUserId {
+                ChartsView(
+                    groupId: groupId,
+                    currentUserId: currentUserId,
+                    members: viewModel.members,
+                    expenses: viewModel.expenses
+                ) {
+                    viewModel.completedMoneyWrite(groupId: groupId)
                 }
             }
         }
@@ -374,8 +387,11 @@ struct GroupView: View {
                 }
                 .disabled(viewModel.group == nil || currentUserId == nil)
 
-                ActionButton(title: L10n.Group.charts, color: Color("muted"), textColor: Color("foreground")) {
-                    // TODO: Charts action
+                if viewModel.hasExpenses {
+                    ActionButton(title: L10n.Group.charts, color: Color("muted"), textColor: Color("foreground")) {
+                        showingChartsSheet = true
+                    }
+                    .disabled(currentUserId == nil)
                 }
 
                 ActionButton(title: L10n.Group.export, color: Color("muted"), textColor: Color("foreground")) {
