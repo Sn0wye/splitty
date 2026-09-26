@@ -59,4 +59,20 @@ public class ExpenseRepository(ApplicationDbContext context): IExpenseRepository
             .ThenByDescending(e => e.Id)
             .ToListAsync();
     }
+
+    /// <summary>
+    /// The group's <see cref="ExpenseType.Expense"/> rows whose <c>Date ?? CreatedAt</c> falls
+    /// in <c>[from, to)</c>, with their splits. A null bound leaves that end open. Settlements
+    /// are left out: paying someone back is not spending.
+    /// </summary>
+    public async Task<List<Expense>> FindExpensesInRangeAsync(int groupId, DateTime? from, DateTime? to)
+    {
+        return await context.Expense
+            .AsNoTracking()
+            .Include(e => e.Splits)
+            .Where(e => e.GroupId == groupId && e.Type == ExpenseType.Expense)
+            .Where(e => from == null || (e.Date ?? e.CreatedAt) >= from)
+            .Where(e => to == null || (e.Date ?? e.CreatedAt) < to)
+            .ToListAsync();
+    }
 }

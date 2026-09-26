@@ -120,6 +120,10 @@ public sealed class ApiClient
     public Task<HttpResponseMessage> GetSummaryAsync(int groupId) =>
         _http.GetAsync($"/group/{groupId}/expenses/summary");
 
+    /// The query goes through verbatim so a test can send a malformed or missing parameter.
+    public Task<HttpResponseMessage> GetStatsAsync(int groupId, string query) =>
+        _http.GetAsync($"/group/{groupId}/stats?{query}");
+
     public Task<HttpResponseMessage> GetProfileAsync() =>
         _http.GetAsync("/profile");
 
