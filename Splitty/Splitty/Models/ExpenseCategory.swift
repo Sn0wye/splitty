@@ -26,6 +26,11 @@ enum ExpenseCategoryHeading: CaseIterable, Identifiable {
     var categories: [ExpenseCategory] {
         ExpenseCategory.selectableCases.filter { $0.heading == self }
     }
+
+    /// Every category under a heading shares its tint.
+    var tint: Color {
+        categories.first?.tint ?? Color("category-uncategorized")
+    }
 }
 
 /// The server's closed category list. Raw values are the wire tokens and display text is

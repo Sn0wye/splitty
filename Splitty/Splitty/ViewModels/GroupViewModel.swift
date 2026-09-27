@@ -87,6 +87,12 @@ class GroupViewModel: ObservableObject {
 
     var members: [GroupMember] { group?.members ?? [] }
 
+    /// Charts only has something to chart once an expense exists, and asks for one until
+    /// then: settlements count in neither group spend nor share.
+    var hasExpenses: Bool {
+        expenses.contains { $0.type == .expense }
+    }
+
     func loadGroupData(groupId: Int) async {
         isLoading = true
         let generation = await load(groupId: groupId)

@@ -155,11 +155,21 @@ headings (Food and drink, Transportation, …) for display only; the heading is 
 `general` means nobody chose. `payment` is the category every settlement carries.
 _Avoid_: tag, label, type (`ExpenseType` already owns "type")
 
-**Group spend** / **Share**:
-The two halves of the stats route. Group spend counts every expense at its full amount; a
-share counts only expenses the caller has a split in, at the split amount. Neither counts
-settlements.
-_Avoid_: cost, contribution (the payer's outlay is a different figure)
+**Group spend**:
+The sum of a group's expense totals, each at its full amount. Settlements are not spend and
+never count toward it.
+_Avoid_: spending, total cost
+
+**Paid**:
+What a member put up as the payer of expenses — money that left their pocket, regardless of
+who it was for.
+_Avoid_: spent, contributed, contribution
+
+**Share**:
+A member's split amount on an expense — what the expense cost *them*. Only expenses the member
+has a split in count toward it, and settlements never do. "Mine" on screen means share, never
+paid.
+_Avoid_: portion, cut, my spending, cost
 
 **Peer**:
 A member of a group you are also in, seen from your side. Already the domain word — it is

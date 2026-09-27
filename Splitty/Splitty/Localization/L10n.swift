@@ -564,6 +564,41 @@ enum L10n {
         }
     }
 
+    enum Charts {
+        static var lensLabel: String { text("charts.lens_label", default: "Show") }
+        static var lensGroup: String { text("charts.lens_group", default: "Group") }
+        static var lensMine: String { text("charts.lens_mine", default: "Mine") }
+        static var rangeLabel: String { text("charts.range_label", default: "Period") }
+        static var rangeMonth: String { text("charts.range_month", default: "Month") }
+        static var rangeThreeMonths: String { text("charts.range_three_months", default: "3 months") }
+        static var rangeYear: String { text("charts.range_year", default: "Year") }
+        static var rangeAllTime: String { text("charts.range_all_time", default: "All time") }
+        static var byCategory: String { text("charts.by_category", default: "By category") }
+        static var biggestExpenses: String { text("charts.biggest_expenses", default: "Biggest expenses") }
+        static var nothingInRange: String { text("charts.nothing_in_range", default: "Nothing in this range") }
+        static var loading: String { text("charts.loading", default: "Loading charts…") }
+        static var showAllCategories: String {
+            text("charts.show_all_categories", default: "Show all categories")
+        }
+        static var filterHint: String {
+            text("charts.filter_hint", default: "Filters biggest expenses to this category")
+        }
+        static func expenseCount(_ count: Int) -> String {
+            text("charts.expense_count", default: "\(count) expenses")
+        }
+        static var amount: String { text("charts.amount", default: "Amount") }
+        static var noExpensesTitle: String { text("charts.no_expenses_title", default: "No charts yet") }
+        static var noExpensesDetail: String {
+            text(
+                "charts.no_expenses_detail",
+                default: "Add an expense to see what the group spends its money on."
+            )
+        }
+        static func amountAndPercent(_ amount: String, _ percent: String) -> String {
+            format("charts.amount_and_percent", default: "%1$@, %2$@", amount, percent)
+        }
+    }
+
     enum Invite {
         static var creating: String { text("invite.creating", default: "Creating invite…") }
         static var title: String { text("invite.title", default: "Invite people") }
