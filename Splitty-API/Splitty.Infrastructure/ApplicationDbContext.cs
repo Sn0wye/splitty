@@ -70,6 +70,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(g => g.CreatedAt).IsRequired();
             entity.Property(g => g.CreatedBy).IsRequired();
             entity.Property(g => g.BalancesPending).IsRequired().HasDefaultValue(false);
+            entity.Property(g => g.BalancesPendingGeneration).IsRequired().HasDefaultValue(0);
 
             entity.HasOne(g => g.CreatedByUser)
                 .WithMany()

@@ -23,6 +23,7 @@ public sealed class GroupFixture
         int id,
         ApiClient owner,
         int ownerId,
+        string ownerToken,
         ApiClient guest,
         int guestId,
         string guestToken)
@@ -31,6 +32,7 @@ public sealed class GroupFixture
         Id = id;
         Owner = owner;
         OwnerId = ownerId;
+        OwnerToken = ownerToken;
         Guest = guest;
         GuestId = guestId;
         GuestToken = guestToken;
@@ -41,6 +43,9 @@ public sealed class GroupFixture
     public int OwnerId { get; }
     public ApiClient Guest { get; }
     public int GuestId { get; }
+
+    /// The owner's counterpart to <see cref="GuestToken"/>.
+    public string OwnerToken { get; }
 
     /// <summary>
     /// Lets a test reach the same guest through a differently configured host, which is how
@@ -59,7 +64,7 @@ public sealed class GroupFixture
         var guest = ApiClient.Create(factory, guestUser.Token);
         (await guest.AcceptInviteAsync(code)).EnsureSuccessStatusCode();
 
-        return new GroupFixture(factory, groupId, owner, ownerUser.Id, guest, guestUser.Id, guestUser.Token);
+        return new GroupFixture(factory, groupId, owner, ownerUser.Id, ownerUser.Token, guest, guestUser.Id, guestUser.Token);
     }
 
     public async Task<int> CreateExpenseAsync(

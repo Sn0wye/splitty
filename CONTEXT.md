@@ -56,7 +56,9 @@ the client keeps ownership of where the remainder cent lands. Per-split shares l
 expense and null everywhere else — percentages sent under any other mode are nulled on
 write rather than refused. The column is nullable because a settlement has no mode; the
 service is what keeps it non-null for every `Type = Expense` row. Splits and mode are one
-fact, so an update sending `Splits` must send `SplitMode` too.
+fact, so an update sending `Splits` must send `SplitMode` too. The server owns split
+identity: an update sending `Splits` deletes the expense's rows and inserts new ones, and
+a split `id` in the request is ignored, so an edit can never re-point another expense's row.
 
 **Category** is `Expense.Category` — one value from a closed, server-defined list, stored as
 text, `NOT NULL`, defaulting to `general`. It is descriptive: no amount, balance, or invariant
@@ -209,7 +211,10 @@ rows; the overall figure on the groups list is the sum of those group nets.
 recomputation is outstanding, including simplified debts. The summary serves the whole
 group's stored simplified debts, and People uses those same per-group amounts. Pending
 figures may be stale and settlement creation or editing is refused until recomputation.
-The flag is eventually consistent, not a lock or transaction barrier.
+The flag is eventually consistent, not a lock or transaction barrier. It clears only when
+the finishing replay saw the latest pending generation: marking pending bumps
+`Group.BalancesPendingGeneration`, and the worker's clear matches only the generation it
+read before loading rows.
 
 ## Group stats
 

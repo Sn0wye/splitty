@@ -10,6 +10,12 @@ public interface IGroupRepository
     Task UpdateAsync(Group group);
     Task DeleteAsync(Group group);
     Task MarkBalancesPendingAsync(int groupId);
-    Task MarkBalancesRecomputedAsync(int groupId);
+    Task<int> GetBalancesPendingGenerationAsync(int groupId);
+
+    /// <summary>
+    /// Clears the pending flag only if the group is still at <paramref name="generation"/>,
+    /// the value read before the replay loaded any rows.
+    /// </summary>
+    Task MarkBalancesRecomputedAsync(int groupId, int generation);
     Task<bool> GetBalancesPendingAsync(int groupId);
 }

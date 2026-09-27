@@ -21,11 +21,16 @@ public class TransactionBackgroundService(
             try
             {
                 using var scope = serviceScopeFactory.CreateScope();
+                var groupRepository = scope.ServiceProvider.GetRequiredService<IGroupRepository>();
+
+                // Read before the replay loads any rows: a write that lands after this bumps
+                // the generation, so the clear below misses and that write's replay clears it.
+                var generation = await groupRepository.GetBalancesPendingGenerationAsync(request.groupId);
+
                 var balanceService = scope.ServiceProvider.GetRequiredService<IBalanceService>();
                 await balanceService.CalculateGroupBalances(request.groupId);
 
-                var groupRepository = scope.ServiceProvider.GetRequiredService<IGroupRepository>();
-                await groupRepository.MarkBalancesRecomputedAsync(request.groupId);
+                await groupRepository.MarkBalancesRecomputedAsync(request.groupId, generation);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

@@ -100,6 +100,47 @@ public sealed class MoneyMutationRecomputationTests(ApiFactory factory)
         Assert.Equal(10m, (await group.Owner.ReadSummaryAsync(group.Id)).AmountOwedBy(group.OwnerId, group.GuestId));
     }
 
+    /// <summary>
+    /// A replay that started before a newer write has not seen it, so finishing must not
+    /// clear the flag: the settlement cap would read positions that predate the write.
+    /// </summary>
+    [Fact]
+    public async Task A_replay_that_started_before_a_newer_write_leaves_the_group_pending()
+    {
+        var (group, _, _) = await SettledAsync();
+
+        using var gate = new RecomputeGate(group.Id);
+        await using var gated = factory.WithGate(gate);
+        var owner = ApiClient.Create(gated, group.OwnerToken);
+        var guest = ApiClient.Create(gated, group.GuestToken);
+
+        (await owner.CreateExpenseAsync(group.Id, Dinner(group, (group.OwnerId, 10m), (group.GuestId, 10m), paidBy: group.OwnerId)))
+            .EnsureSuccessStatusCode();
+        await gate.WaitForEntryAsync(1);
+
+        (await owner.CreateExpenseAsync(group.Id, Dinner(group, (group.OwnerId, 10m), (group.GuestId, 10m), paidBy: group.OwnerId)))
+            .EnsureSuccessStatusCode();
+
+        // Replays of other groups recovered at startup queue ahead of this group's first, so
+        // they are done by now; dropping their completions leaves the next one to be replay 1.
+        await gated.DrainProcessedAsync();
+        gate.Release(1);
+        await gated.WaitForProcessedAsync();
+
+        Assert.True((await group.Owner.ReadSummaryAsync(group.Id)).BalancesPending);
+        await ErrorResponseAssertions.AssertErrorAsync(
+            await guest.SettleUpAsync(group.Id, new { withUserId = group.OwnerId, amount = 1m }),
+            HttpStatusCode.BadRequest);
+
+        await gate.WaitForEntryAsync(2);
+        gate.Release(2);
+        await gated.WaitForProcessedAsync();
+
+        var summary = await group.Owner.ReadSummaryAsync(group.Id);
+        Assert.False(summary.BalancesPending);
+        Assert.Equal(26m, summary.AmountOwedBy(group.OwnerId, group.GuestId));
+    }
+
     [Fact]
     public async Task An_expense_with_a_nonmember_split_is_rejected_without_a_recomputation()
     {
@@ -194,9 +235,9 @@ public sealed class MoneyMutationRecomputationTests(ApiFactory factory)
     private static ApiClient Guest(WebApplicationFactory<Program> host, GroupFixture group) =>
         ApiClient.Create(host, group.GuestToken);
 
-    private static object Dinner(GroupFixture group, (int UserId, decimal Amount) first, (int UserId, decimal Amount) second, string? category = null) => new
+    private static object Dinner(GroupFixture group, (int UserId, decimal Amount) first, (int UserId, decimal Amount) second, string? category = null, int? paidBy = null) => new
     {
-        paidBy = group.GuestId,
+        paidBy = paidBy ?? group.GuestId,
         amount = first.Amount + second.Amount,
         description = "Dinner",
         category,

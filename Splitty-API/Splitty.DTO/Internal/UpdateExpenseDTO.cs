@@ -15,9 +15,13 @@ public class UpdateExpenseDTO
     public List<UpdateExpenseSplitDTO>? ExpenseSplits { get; set; }
 }
 
+/// <summary>
+/// Carries no id: the server owns split identity. An edit that sends splits replaces the
+/// expense's rows, so a client-sent id — dropped on deserialization like any unknown
+/// property — can never point the edit at a row of another expense.
+/// </summary>
 public partial class UpdateExpenseSplitDTO
 {
-    public int Id { get; set; }
     public int UserId { get; set; }
     public Decimal Amount { get; set; }
 
