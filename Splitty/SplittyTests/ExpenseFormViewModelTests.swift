@@ -43,6 +43,33 @@ struct ExpenseFormViewModelTests {
         #expect(viewModel.canSave == false)
     }
 
+    @Test func saveAttemptExplainsMissingDescriptionUntilItIsFilled() {
+        let viewModel = newExpense()
+        viewModel.amount.type(digit: 9)
+
+        #expect(viewModel.descriptionRequiredMessage == nil)
+        #expect(viewModel.attemptSave() == false)
+        #expect(viewModel.descriptionRequiredMessage == "Enter what this expense was for")
+
+        viewModel.description = "   "
+        #expect(viewModel.descriptionRequiredMessage != nil)
+
+        viewModel.description = "Taxi"
+        #expect(viewModel.descriptionRequiredMessage == nil)
+        #expect(viewModel.attemptSave())
+    }
+
+    @Test func saveAttemptStillBlocksAnInvalidSplit() {
+        let viewModel = newExpense()
+        viewModel.amount.type(digit: 9)
+        viewModel.description = "Taxi"
+        viewModel.configuration.mode = .equal(participants: [])
+
+        #expect(viewModel.attemptSave() == false)
+        #expect(viewModel.descriptionRequiredMessage == nil)
+        #expect(viewModel.blockingMessage == "Select who this is split between")
+    }
+
     @Test func blocksWhenEveryMemberIsUnchecked() {
         let viewModel = newExpense()
         viewModel.amount.type(digit: 9)

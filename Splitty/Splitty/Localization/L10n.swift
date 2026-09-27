@@ -335,6 +335,9 @@ enum L10n {
         static var newExpense: String { text("expense.new", default: "New expense") }
         static var editExpense: String { text("expense.edit", default: "Edit expense") }
         static var whatFor: String { text("expense.what_for", default: "What was it for?") }
+        static var descriptionRequired: String {
+            text("expense.description_required", default: "Enter what this expense was for")
+        }
         static var selectSplit: String {
             text("expense.select_split", default: "Select who this is split between")
         }
