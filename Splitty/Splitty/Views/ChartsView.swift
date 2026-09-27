@@ -46,6 +46,9 @@ struct ChartsView: View {
     /// Reduce Motion keeps every change and drops the movement.
     private var motion: Animation? { reduceMotion ? nil : .snappy }
 
+    /// Expense rows move into their new ranks when a range arrives.
+    private var dataMotion: Animation { reduceMotion ? .easeOut(duration: 0.15) : .snappy(duration: 0.25, extraBounce: 0) }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -95,11 +98,9 @@ struct ChartsView: View {
                 if hasExpenses, viewModel.state == .loading { await viewModel.load() }
             }
             .animation(motion, value: viewModel.lens)
-            .animation(motion, value: viewModel.range)
             .animation(motion, value: viewModel.state)
             .animation(motion, value: viewModel.isUpdating)
             .animation(motion, value: viewModel.selectedHeading)
-            .animation(motion, value: viewModel.slices)
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
@@ -182,7 +183,9 @@ struct ChartsView: View {
             }
 
             ChartsCard(title: L10n.Charts.biggestExpenses) {
-                BiggestExpenses(rows: viewModel.topExpenses) { selectedExpenseId = $0 }
+                BiggestExpenses(rows: viewModel.topExpenses, motion: reduceMotion ? nil : dataMotion) {
+                    selectedExpenseId = $0
+                }
             }
             .opacity(updatingOpacity)
         }
@@ -199,12 +202,20 @@ private struct HeadingDonut: View {
     let motion: Animation?
 
     @Environment(\.locale) private var locale
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var angleSelection: Int?
+    @State private var chartSlices: [HeadingSlice]
 
     private let innerRadiusRatio = 0.62
 
+    init(viewModel: ChartsViewModel, motion: Animation?) {
+        self.viewModel = viewModel
+        self.motion = motion
+        _chartSlices = State(initialValue: viewModel.slices)
+    }
+
     var body: some View {
-        Chart(viewModel.slices) { slice in
+        Chart(chartSlices) { slice in
             SectorMark(
                 angle: .value(L10n.Charts.amount, slice.cents),
                 innerRadius: .ratio(innerRadiusRatio),
@@ -231,6 +242,7 @@ private struct HeadingDonut: View {
                     .font(.title3.weight(.bold))
                     .monospacedDigit()
                     .contentTransition(.numericText())
+                    .animation(motion, value: viewModel.totalCents)
                     .foregroundStyle(Color("card-foreground"))
                 Text(L10n.Charts.expenseCount(viewModel.expenseCount))
                     .font(.caption)
@@ -244,6 +256,11 @@ private struct HeadingDonut: View {
                 withAnimation(motion) { viewModel.toggle(heading) }
             }
             angleSelection = nil
+        }
+        .onChange(of: viewModel.slices) { _, slices in
+            withAnimation(reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 1)) {
+                chartSlices = slices
+            }
         }
     }
 
@@ -327,8 +344,12 @@ private struct HeadingLegend: View {
     private func figures(_ row: ChartsLegendRow) -> some View {
         HStack(spacing: 10) {
             Text(row.fraction, format: .percent.precision(.fractionLength(0)))
+                .contentTransition(.numericText())
+                .animation(motion, value: row.fraction)
                 .foregroundStyle(Color("muted-foreground"))
             Text(Money.formatted(cents: row.cents))
+                .contentTransition(.numericText())
+                .animation(motion, value: row.cents)
                 .foregroundStyle(Color("card-foreground"))
                 .frame(minWidth: 80, alignment: .trailing)
         }
@@ -366,6 +387,7 @@ private struct SelectionChip: View {
 
 private struct BiggestExpenses: View {
     let rows: [ChartsTopExpense]
+    let motion: Animation?
     let onOpen: (Int) -> Void
 
     var body: some View {
@@ -395,6 +417,7 @@ private struct BiggestExpenses: View {
                         Spacer(minLength: 8)
                         Text(Money.formatted(cents: row.cents))
                             .monospacedDigit()
+                            .contentTransition(.numericText())
                             .foregroundStyle(Color("card-foreground"))
                     }
                     .font(.subheadline)
@@ -402,8 +425,10 @@ private struct BiggestExpenses: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityElement(children: .combine)
+                .transition(.opacity)
             }
         }
+        .animation(motion, value: rows)
     }
 }
 
