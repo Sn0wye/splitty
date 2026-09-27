@@ -59,17 +59,20 @@ final class ExpenseSheetKeyboardTests: XCTestCase {
         )
     }
 
-    /// Save is the commit, and it stays blocked until the expense is actually saveable.
+    /// Save explains a missing description when pressed, then clears the feedback as it is filled.
     @MainActor
-    func testSaveIsBlockedUntilThereIsADescription() throws {
+    func testSaveExplainsMissingDescription() throws {
         let app = try enterDetails(try launchOnAnExpenseSheet())
         XCTAssertTrue(waitForFocus(app.textFields["expense.description"]))
 
         let save = app.buttons["expense.save"]
-        XCTAssertFalse(save.isEnabled, "Save should be blocked without a description.")
+        XCTAssertTrue(save.isEnabled)
+        save.tap()
+        XCTAssertTrue(app.staticTexts["expense.description-error"].exists)
 
+        app.textFields["expense.description"].tap()
         app.typeText("dinner")
-        XCTAssertTrue(save.isEnabled, "Save should open up once the expense is complete.")
+        XCTAssertFalse(app.staticTexts["expense.description-error"].exists)
     }
 
     /// Pushing to the split screen and popping back lands on the details step with what was

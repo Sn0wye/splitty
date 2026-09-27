@@ -113,7 +113,7 @@ struct ExpenseSheet: View {
     }
 
     private func save() {
-        guard viewModel.canSave else { return }
+        guard viewModel.attemptSave() else { return }
 
         Task {
             if let expense = await viewModel.save() {

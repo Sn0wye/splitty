@@ -22,16 +22,22 @@ struct ExpenseDetailsStep: View {
         ScrollView {
             VStack(spacing: 12) {
                 descriptionRow
+                if let message = viewModel.descriptionRequiredMessage {
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("expense.description-error")
+                }
                 categoryRow
                 splitRow
-                dateRow
-
                 if let message = viewModel.blockingMessage {
                     Text(message)
                         .font(.subheadline)
                         .foregroundStyle(.orange)
-                        .padding(.top, 4)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                dateRow
 
                 if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
@@ -51,7 +57,7 @@ struct ExpenseDetailsStep: View {
         // screen does not opt out of that, so there is nothing left to measure.
         .safeAreaInset(edge: .bottom) {
             PrimaryButton(title: L10n.Common.save, isLoading: viewModel.isSaving, action: onSave)
-                .disabled(!viewModel.canSave)
+                .disabled(viewModel.isSaving)
                 .accessibilityIdentifier("expense.save")
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -88,6 +94,11 @@ struct ExpenseDetailsStep: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
+        .overlay {
+            if viewModel.descriptionRequiredMessage != nil {
+                RoundedRectangle(cornerRadius: 14).stroke(.red, lineWidth: 1)
+            }
+        }
     }
 
     private var splitRow: some View {

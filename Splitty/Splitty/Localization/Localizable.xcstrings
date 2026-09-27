@@ -3645,6 +3645,35 @@
         }
       }
     },
+    "expense.description_required" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enter what this expense was for"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indica para qué fue este gasto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indiquez à quoi correspond cette dépense"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Informe para que foi esta despesa"
+          }
+        }
+      }
+    },
     "expense.edit" : {
       "extractionState" : "manual",
       "localizations" : {

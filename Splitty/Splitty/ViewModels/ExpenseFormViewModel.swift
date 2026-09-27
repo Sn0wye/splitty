@@ -19,6 +19,7 @@ class ExpenseFormViewModel: ObservableObject {
     @Published var configuration: SplitConfiguration
     @Published var errorMessage: String?
     @Published var isSaving = false
+    @Published private(set) var hasAttemptedSave = false
 
     let groupId: Int
     let members: [GroupMember]
@@ -127,6 +128,17 @@ class ExpenseFormViewModel: ObservableObject {
         !isSaving
             && !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && configuration.blockingReason(totalCents: totalCents) == nil
+    }
+
+    var descriptionRequiredMessage: String? {
+        hasAttemptedSave && description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? L10n.Expense.descriptionRequired
+            : nil
+    }
+
+    func attemptSave() -> Bool {
+        hasAttemptedSave = true
+        return canSave
     }
 
     /// What is wrong with the *split*, in words. An amount of zero says so by being an
