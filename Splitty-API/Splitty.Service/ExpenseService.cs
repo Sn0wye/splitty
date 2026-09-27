@@ -173,11 +173,13 @@ public class ExpenseService(
         expense.Date = ExpenseDate.Normalize(dto.Date) ?? expense.Date;
         expense.UpdatedAt = DateTime.UtcNow;
         
+        // Sent splits replace the stored rows outright: the old rows are orphaned and deleted,
+        // the new ones inserted. A row is never re-pointed, so an edit cannot reach another
+        // expense's split however the request is shaped.
         if (dto.ExpenseSplits is not null)
         {
             expense.Splits = dto.ExpenseSplits.Zip(resultingPercentages, (s, percentage) => new ExpenseSplit
             {
-                Id = s.Id,
                 Amount = s.Amount,
                 UserId = s.UserId,
                 Percentage = percentage,
