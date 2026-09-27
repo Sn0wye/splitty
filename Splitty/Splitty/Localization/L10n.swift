@@ -587,6 +587,13 @@ enum L10n {
             text("charts.expense_count", default: "\(count) expenses")
         }
         static var amount: String { text("charts.amount", default: "Amount") }
+        static var noExpensesTitle: String { text("charts.no_expenses_title", default: "No charts yet") }
+        static var noExpensesDetail: String {
+            text(
+                "charts.no_expenses_detail",
+                default: "Add an expense to see what the group spends its money on."
+            )
+        }
         static func amountAndPercent(_ amount: String, _ percent: String) -> String {
             format("charts.amount_and_percent", default: "%1$@, %2$@", amount, percent)
         }

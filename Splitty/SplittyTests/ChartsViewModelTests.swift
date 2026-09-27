@@ -316,15 +316,16 @@ struct ChartsViewModelTests {
 }
 
 @MainActor
-struct ChartsButtonGatingTests {
-    @Test func aGroupWithOnlySettlementsHasNoCharts() {
+/// Charts is always reachable; without an expense it asks for one instead of charting.
+struct ChartsEmptyGroupTests {
+    @Test func aGroupWithOnlySettlementsAsksForAnExpense() {
         let viewModel = GroupViewModel()
         viewModel.insert(TestExpense.make(id: 1, paidBy: 1, amount: 10, splitAmounts: [1: 10, 2: -10], type: .payment))
 
         #expect(!viewModel.hasExpenses)
     }
 
-    @Test func oneExpenseIsEnoughForCharts() {
+    @Test func oneExpenseIsEnoughToChart() {
         let viewModel = GroupViewModel()
         viewModel.insert(TestExpense.make(id: 1, paidBy: 1, amount: 10, splitAmounts: [1: 10, 2: -10], type: .payment))
         viewModel.insert(TestExpense.make(id: 2, paidBy: 1, amount: 30, splitAmounts: [1: 15, 2: 15]))
@@ -332,7 +333,7 @@ struct ChartsButtonGatingTests {
         #expect(viewModel.hasExpenses)
     }
 
-    @Test func anEmptyGroupHasNoCharts() {
+    @Test func anEmptyGroupAsksForAnExpense() {
         #expect(!GroupViewModel().hasExpenses)
     }
 }

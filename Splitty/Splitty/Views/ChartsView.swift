@@ -13,6 +13,10 @@ struct ChartsView: View {
     let members: [GroupMember]
     /// The group screen's loaded list, which a biggest expense opens from when it can.
     let expenses: [Expense]
+    /// Without an expense there is nothing to chart, so the sheet asks for one instead.
+    let hasExpenses: Bool
+    /// Asks the group screen to open the expense form once this sheet is gone.
+    let onAddExpense: () -> Void
     let onMoneyWrite: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -25,12 +29,16 @@ struct ChartsView: View {
         currentUserId: Int,
         members: [GroupMember],
         expenses: [Expense],
+        hasExpenses: Bool,
+        onAddExpense: @escaping () -> Void,
         dataSource: ChartsDataSource = .live,
         onMoneyWrite: @escaping () -> Void
     ) {
         self.currentUserId = currentUserId
         self.members = members
         self.expenses = expenses
+        self.hasExpenses = hasExpenses
+        self.onAddExpense = onAddExpense
         self.onMoneyWrite = onMoneyWrite
         _viewModel = StateObject(wrappedValue: ChartsViewModel(groupId: groupId, dataSource: dataSource))
     }
@@ -41,13 +49,26 @@ struct ChartsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    controls
-                    content
+                if hasExpenses {
+                    VStack(alignment: .leading, spacing: 16) {
+                        controls
+                        content
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 32)
+                } else {
+                    EmptyStateView(
+                        symbol: "chart.pie",
+                        title: L10n.Charts.noExpensesTitle,
+                        detail: L10n.Charts.noExpensesDetail
+                    ) {
+                        PrimaryButton(title: L10n.Tabs.addExpense) {
+                            onAddExpense()
+                            dismiss()
+                        }
+                    }
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 12)
-                .padding(.bottom, 32)
             }
             .background(Color("background"))
             .navigationTitle(Text(L10n.Group.charts))
@@ -70,8 +91,8 @@ struct ChartsView: View {
                 )
             }
             // The root reappears after every pushed detail; only a first load is owed then.
-            .task {
-                if viewModel.state == .loading { await viewModel.load() }
+            .task(id: hasExpenses) {
+                if hasExpenses, viewModel.state == .loading { await viewModel.load() }
             }
             .animation(motion, value: viewModel.lens)
             .animation(motion, value: viewModel.range)
@@ -517,6 +538,8 @@ extension ChartsRange {
         currentUserId: 1,
         members: [],
         expenses: [],
+        hasExpenses: true,
+        onAddExpense: {},
         dataSource: ChartsDataSource(stats: { _, _ in GroupStats(group: group, mine: group) }),
         onMoneyWrite: {}
     )
