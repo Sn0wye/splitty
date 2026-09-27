@@ -8,10 +8,11 @@
 import SwiftUI
 
 struct GroupView: View {
-    let groupId: Int
+    let session: GroupSession
     var onAddExpense: () -> Void = {}
     @EnvironmentObject private var appState: AppState
-    @StateObject private var viewModel = GroupViewModel()
+    @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var viewModel: GroupViewModel
     @StateObject private var authManager = AuthenticationManager.shared
     @State private var isTitleCollapsed = false
     @State private var showingSettings = false
@@ -23,10 +24,19 @@ struct GroupView: View {
     @State private var showingInviteSheet = false
     @State private var pendingDeletion: Expense?
     @State private var selectedExpenseId: Int?
+    @State private var backgroundedAt: Date?
 
     /// Roughly the height of the in-list title, so the toolbar picks the name up
     /// as the header leaves rather than while it is still readable.
     private let titleCollapseOffset: CGFloat = 52
+
+    private var groupId: Int { session.groupId }
+
+    init(session: GroupSession, onAddExpense: @escaping () -> Void = {}) {
+        self.session = session
+        self.onAddExpense = onAddExpense
+        _viewModel = ObservedObject(wrappedValue: session.snapshot)
+    }
 
     var body: some View {
         NavigationStack {
@@ -175,17 +185,17 @@ struct GroupView: View {
             Text(L10n.Group.deleteUndone)
         }
         .task {
-            await viewModel.loadGroupData(groupId: groupId)
+            await session.appear().value
         }
-        .onChange(of: appState.savedExpense?.id) { _, _ in
-            guard let event = appState.savedExpense, event.groupId == groupId else { return }
-            viewModel.completedExpenseWrite(event.expense, groupId: groupId)
-        }
-        .onReceive(viewModel.$expenses) { expenses in
-            appState.cacheTimelineExpenses(expenses, groupId: groupId)
-        }
-        .onDisappear {
-            viewModel.cancelRefresh()
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background {
+                backgroundedAt = .now
+            } else if phase == .active, let backgroundedAt {
+                self.backgroundedAt = nil
+                if Date.now.timeIntervalSince(backgroundedAt) >= 60 {
+                    session.appear()
+                }
+            }
         }
     }
 
@@ -236,6 +246,10 @@ struct GroupView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
                 .background(Color("card"))
+        } else if !viewModel.hasLoadedExpenses {
+            ProgressView { Text(L10n.Common.loading) }
+                .frame(maxWidth: .infinity)
+                .padding(32)
         } else if viewModel.expenses.isEmpty {
             GroupEmptyState(
                 memberCount: viewModel.members.count,
@@ -623,6 +637,6 @@ struct ExpenseRow: View {
 
 
 #Preview {
-    GroupView(groupId: 1)
+    GroupView(session: GroupSessionStore().open(1))
         .environmentObject(AppState())
 }

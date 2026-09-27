@@ -24,7 +24,7 @@ class ExpenseFormViewModel: ObservableObject {
     let groupId: Int
     let members: [GroupMember]
     let currentUserId: Int
-    let timelineExpenses: [Expense]
+    @Published private(set) var timelineExpenses: [Expense]
 
     /// Each mode keeps its own draft for as long as the **sheet** is open. The split
     /// screen is pushed and popped constantly while composing, so holding the drafts there
@@ -106,6 +106,10 @@ class ExpenseFormViewModel: ObservableObject {
 
     var categorySuggestions: [ExpenseCategory] {
         ExpenseCategory.chipSuggestions(from: timelineExpenses, selected: category)
+    }
+
+    func updateTimelineExpenses(_ expenses: [Expense]) {
+        timelineExpenses = expenses
     }
 
     /// The whole expression's value, pending operation included: Save auto-evaluates rather
