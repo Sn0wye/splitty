@@ -21,9 +21,16 @@ struct ContentView: View {
         // (the add button) behind the bar with it. Stacked, the bar owns its space.
         VStack(spacing: 0) {
             ZStack {
+                // Keep the list and its header alive while viewing a group. Recreating
+                // the header on every tab switch flashes the avatar and add menu.
+                GroupsView()
+                    .opacity(appState.selectedTab == .groups ? 1 : 0)
+                    .allowsHitTesting(appState.selectedTab == .groups)
+                    .accessibilityHidden(appState.selectedTab != .groups)
+
                 switch appState.selectedTab {
                 case .groups:
-                    GroupsView()
+                    EmptyView()
                 case .group:
                     CurrentGroupView {
                         Task { await beginAddingExpense() }
