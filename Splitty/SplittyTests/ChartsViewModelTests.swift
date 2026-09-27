@@ -60,12 +60,35 @@ struct ChartsViewModelTests {
         let viewModel = makeViewModel(data)
         await viewModel.load()
 
-        await viewModel.select(.month)
+        await viewModel.select(.month).value
 
         #expect(data.queries.dropFirst() == [
             StatsQuery(from: "2026-03-01", to: "2026-04-01", timeZone: "America/Sao_Paulo")
         ])
         #expect(viewModel.range == .month)
+    }
+
+    // The picker moves at once, and the old numbers stay put rather than blanking the
+    // screen while the new range loads.
+    @Test func changingTheRangeKeepsTheNumbersOnScreenUntilTheNewOnesArrive() async {
+        let data = ControlledStatsData(answer: stats(group: spend([category(.groceries, cents: 9_000)])))
+        let viewModel = makeViewModel(data)
+        await viewModel.load()
+        data.holdsRequests = true
+
+        let month = viewModel.select(.month)
+
+        #expect(viewModel.range == .month)
+        await data.waitForCall(2)
+        #expect(viewModel.state == .loaded)
+        #expect(viewModel.totalCents == 9_000)
+        #expect(viewModel.isUpdating)
+
+        data.release(call: 2, with: stats(group: spend([category(.groceries, cents: 2_000)])))
+        await month.value
+
+        #expect(viewModel.totalCents == 2_000)
+        #expect(!viewModel.isUpdating)
     }
 
     // A slow Year answer arriving after the Month one must not overwrite it.
@@ -74,9 +97,9 @@ struct ChartsViewModelTests {
         data.holdsRequests = true
         let viewModel = makeViewModel(data)
 
-        let year = Task { await viewModel.select(.year) }
+        let year = viewModel.select(.year)
         await data.waitForCall(1)
-        let month = Task { await viewModel.select(.month) }
+        let month = viewModel.select(.month)
         await data.waitForCall(2)
 
         data.release(call: 2, with: stats(group: spend([category(.groceries, cents: 2_000)])))
@@ -252,11 +275,11 @@ struct ChartsViewModelTests {
         viewModel.toggle(.foodAndDrink)
 
         data.answer = stats(group: spend([category(.diningOut, cents: 1_000), category(.taxi, cents: 500)]))
-        await viewModel.select(.year)
+        await viewModel.select(.year).value
         #expect(viewModel.selectedHeading == .foodAndDrink)
 
         data.answer = stats(group: spend([category(.taxi, cents: 500)]))
-        await viewModel.select(.month)
+        await viewModel.select(.month).value
         #expect(viewModel.selectedHeading == nil)
     }
 

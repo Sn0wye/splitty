@@ -74,8 +74,11 @@ struct ChartsView: View {
                 if viewModel.state == .loading { await viewModel.load() }
             }
             .animation(motion, value: viewModel.lens)
+            .animation(motion, value: viewModel.range)
             .animation(motion, value: viewModel.state)
+            .animation(motion, value: viewModel.isUpdating)
             .animation(motion, value: viewModel.selectedHeading)
+            .animation(motion, value: viewModel.slices)
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
@@ -101,10 +104,7 @@ struct ChartsView: View {
             .pickerStyle(.segmented)
 
             Picker(
-                selection: Binding(
-                    get: { viewModel.range },
-                    set: { range in Task { await viewModel.select(range) } }
-                )
+                selection: Binding(get: { viewModel.range }, set: { viewModel.select($0) })
             ) {
                 ForEach(ChartsRange.allCases) { range in
                     Text(range.title).tag(range)
@@ -151,6 +151,7 @@ struct ChartsView: View {
                     .frame(height: 220)
                 HeadingLegend(viewModel: viewModel, motion: motion)
             }
+            .opacity(updatingOpacity)
 
             if let heading = viewModel.selectedHeading {
                 SelectionChip(heading: heading) {
@@ -162,8 +163,12 @@ struct ChartsView: View {
             ChartsCard(title: L10n.Charts.biggestExpenses) {
                 BiggestExpenses(rows: viewModel.topExpenses) { selectedExpenseId = $0 }
             }
+            .opacity(updatingOpacity)
         }
     }
+
+    /// The previous range's numbers stay in place, greyed, until the new ones land.
+    private var updatingOpacity: Double { viewModel.isUpdating ? 0.5 : 1 }
 }
 
 // MARK: - By category

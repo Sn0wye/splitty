@@ -87,6 +87,8 @@ final class ChartsViewModel: ObservableObject {
     /// Expands the heading in the legend and filters Biggest expenses to it.
     @Published private(set) var selectedHeading: ExpenseCategoryHeading?
     @Published private var phase: Phase = .loading
+    /// A load is in flight while the previous numbers stay on screen.
+    @Published private(set) var isUpdating = false
 
     private let dataSource: ChartsDataSource
     private let now: () -> Date
@@ -95,6 +97,9 @@ final class ChartsViewModel: ObservableObject {
     /// Counts started loads. A load that is no longer the newest publishes nothing, so a
     /// slow answer for an earlier range never replaces a newer one.
     private var loadGeneration = 0
+
+    /// The load a range change started, cancelled when the next change supersedes it.
+    private var rangeTask: Task<Void, Never>?
 
     init(
         groupId: Int,
@@ -230,27 +235,38 @@ final class ChartsViewModel: ObservableObject {
         dropEmptySelection()
     }
 
-    func select(_ range: ChartsRange) async {
-        guard range != self.range else { return }
-        self.range = range
-        phase = .loading
-        await load()
+    /// Moves the range at once, so the picker never snaps back, and owns the fetch for it.
+    @discardableResult
+    func select(_ range: ChartsRange) -> Task<Void, Never> {
+        if range != self.range {
+            self.range = range
+            rangeTask?.cancel()
+            rangeTask = Task { [weak self] in await self?.load() }
+        }
+        return rangeTask ?? Task {}
     }
 
-    /// Fetches the current range. Whatever is on screen stays there until the answer
-    /// arrives, so a refresh after a write does not blank the sheet.
+    /// Fetches the current range. Loaded numbers stay on screen until the answer arrives,
+    /// so neither a range change nor a refresh after a write blanks the sheet.
     func load() async {
         loadGeneration += 1
         let generation = loadGeneration
+        if case .ready = phase {
+            isUpdating = true
+        } else {
+            phase = .loading
+        }
         let query = range.query(now: now(), calendar: calendar)
         do {
             let stats = try await dataSource.stats(groupId, query)
             guard generation == loadGeneration else { return }
             phase = .ready(stats)
+            isUpdating = false
             dropEmptySelection()
         } catch {
             guard generation == loadGeneration, !error.isCancellation else { return }
             phase = .failed(error.displayMessage)
+            isUpdating = false
         }
     }
 }
