@@ -56,7 +56,9 @@ the client keeps ownership of where the remainder cent lands. Per-split shares l
 expense and null everywhere else — percentages sent under any other mode are nulled on
 write rather than refused. The column is nullable because a settlement has no mode; the
 service is what keeps it non-null for every `Type = Expense` row. Splits and mode are one
-fact, so an update sending `Splits` must send `SplitMode` too.
+fact, so an update sending `Splits` must send `SplitMode` too. The server owns split
+identity: an update sending `Splits` deletes the expense's rows and inserts new ones, and
+a split `id` in the request is ignored, so an edit can never re-point another expense's row.
 
 **Category** is `Expense.Category` — one value from a closed, server-defined list, stored as
 text, `NOT NULL`, defaulting to `general`. It is descriptive: no amount, balance, or invariant
