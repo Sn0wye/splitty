@@ -32,6 +32,27 @@ public sealed class GroupReadTests
         Assert.Equal("Cabin", group.Name);
     }
 
+    /// Some routes still return the Group entity, so its internal bookkeeping must be kept
+    /// off the wire by the entity itself.
+    [Fact]
+    public async Task Group_responses_omit_the_pending_generation()
+    {
+        var owner = ApiClient.Create(_factory);
+        var user = await owner.SignInAsync();
+        owner = ApiClient.Create(_factory, user.Token);
+        var groupId = await owner.CreateGroupAsync();
+
+        var created = await owner.Http.PostAsJsonAsync("/group", new { name = "Other", description = "test" });
+        var single = await owner.GetGroupAsync(groupId);
+        var list = await owner.Http.GetAsync("/group");
+
+        foreach (var response in new[] { created, single, list })
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.DoesNotContain("pendingGeneration", await response.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
     [Fact]
     public async Task Non_member_receives_404()
     {

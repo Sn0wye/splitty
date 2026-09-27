@@ -209,7 +209,10 @@ rows; the overall figure on the groups list is the sum of those group nets.
 recomputation is outstanding, including simplified debts. The summary serves the whole
 group's stored simplified debts, and People uses those same per-group amounts. Pending
 figures may be stale and settlement creation or editing is refused until recomputation.
-The flag is eventually consistent, not a lock or transaction barrier.
+The flag is eventually consistent, not a lock or transaction barrier. It clears only when
+the finishing replay saw the latest pending generation: marking pending bumps
+`Group.BalancesPendingGeneration`, and the worker's clear matches only the generation it
+read before loading rows.
 
 ## Group stats
 

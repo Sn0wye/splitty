@@ -18,10 +18,20 @@ public class Group
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Set whenever a balance recomputation is enqueued, cleared by the worker once it replays.
+    /// Set whenever a balance recomputation is enqueued, cleared by the worker once a replay
+    /// has seen every write made so far (see <see cref="BalancesPendingGeneration"/>).
     /// Covers pairwise and simplified debts; pending groups refuse settlements.
     /// </summary>
     public bool BalancesPending { get; set; }
+
+    /// <summary>
+    /// Bumped each time the group is marked pending. The worker reads it before a replay and
+    /// clears <see cref="BalancesPending"/> only if it is unchanged afterwards, so a replay
+    /// that started before a newer write leaves the flag for that write's own replay.
+    /// Internal bookkeeping, never sent to clients.
+    /// </summary>
+    [JsonIgnore]
+    public int BalancesPendingGeneration { get; set; }
     
     public virtual User CreatedByUser { get; set; }
     
