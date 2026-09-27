@@ -156,6 +156,38 @@ struct GroupSessionTests {
         #expect(store.current == nil)
     }
 
+    @Test func reopeningEarlierGroupShowsCachedRowsWhileRefreshing() async {
+        let data = ControlledGroupData()
+        data.expensesForCall = { call in
+            [TestExpense.make(id: call, paidBy: 1, amount: 10, splitAmounts: [1: 10])]
+        }
+        let store = GroupSessionStore(dataSource: { data.source() })
+
+        let first = store.open(1)
+        let firstLoad = first.appear()
+        await data.waitForExpenseCall(1)
+        data.release(call: 1)
+        await firstLoad.value
+
+        let secondLoad = store.open(2).appear()
+        await data.waitForExpenseCall(2)
+        data.release(call: 2)
+        await secondLoad.value
+
+        let reopened = store.open(1)
+        #expect(reopened === first)
+        #expect(reopened.snapshot.expenses.map(\.id) == [1])
+        #expect(reopened.snapshot.hasLoadedExpenses)
+
+        let refresh = reopened.appear()
+        await data.waitForExpenseCall(3)
+        #expect(!reopened.snapshot.isLoading)
+        #expect(reopened.snapshot.expenses.map(\.id) == [1])
+        data.release(call: 3)
+        await refresh.value
+        #expect(reopened.snapshot.expenses.map(\.id) == [3])
+    }
+
     @Test func signOutAndLeaveDiscardTheCurrentGroup() {
         let appState = AppState(groupSessions: GroupSessionStore(dataSource: {
             ControlledGroupData().source()

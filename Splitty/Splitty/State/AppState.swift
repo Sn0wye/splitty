@@ -110,7 +110,7 @@ final class AppState: ObservableObject {
 
     func leaveUnavailableGroup(message: String) {
         groupNotice = message
-        groupSessions.discard()
+        if let currentGroupId { groupSessions.remove(currentGroupId) }
         currentGroupId = nil
         selectedTab = .groups
     }
@@ -118,7 +118,7 @@ final class AppState: ObservableObject {
     func exitGroup(_ id: Int, message: String? = nil) {
         groupNotice = message
         exitedGroupId = id
-        groupSessions.discard()
+        groupSessions.remove(id)
         currentGroupId = nil
         selectedTab = .groups
     }

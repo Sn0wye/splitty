@@ -44,6 +44,9 @@ final class GroupSession {
 final class GroupSessionStore: ObservableObject {
     @Published private(set) var current: GroupSession?
     private let dataSource: () -> GroupDataSource
+    private var sessions: [Int: GroupSession] = [:]
+    private var recentGroupIds: [Int] = []
+    private let cacheLimit = 8
 
     init(dataSource: @escaping () -> GroupDataSource = { .live }) {
         self.dataSource = dataSource
@@ -51,15 +54,33 @@ final class GroupSessionStore: ObservableObject {
 
     @discardableResult
     func open(_ groupId: Int, seed: Group? = nil) -> GroupSession {
-        if let current, current.groupId == groupId { return current }
-        discard()
+        if let session = sessions[groupId] {
+            recentGroupIds.removeAll { $0 == groupId }
+            recentGroupIds.append(groupId)
+            current = session
+            return session
+        }
         let session = GroupSession(groupId: groupId, seed: seed, dataSource: dataSource())
+        sessions[groupId] = session
+        recentGroupIds.append(groupId)
         current = session
+        if recentGroupIds.count > cacheLimit {
+            let oldest = recentGroupIds.removeFirst()
+            sessions.removeValue(forKey: oldest)?.discard()
+        }
         return session
     }
 
+    func remove(_ groupId: Int) {
+        sessions.removeValue(forKey: groupId)?.discard()
+        recentGroupIds.removeAll { $0 == groupId }
+        if current?.groupId == groupId { current = nil }
+    }
+
     func discard() {
-        current?.discard()
+        for session in sessions.values { session.discard() }
+        sessions.removeAll()
+        recentGroupIds.removeAll()
         current = nil
     }
 }

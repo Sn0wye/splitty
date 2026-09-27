@@ -10,6 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var authManager = AuthenticationManager.shared
+    @StateObject private var peopleViewModel = PeopleViewModel()
     @State private var addDestination: AddExpenseDestination?
     @State private var pendingExpenseGroup: Group?
     @State private var isResolvingAdd = false
@@ -36,7 +37,7 @@ struct ContentView: View {
                         Task { await beginAddingExpense() }
                     }
                 case .people:
-                    PeopleView()
+                    PeopleView(viewModel: peopleViewModel)
                 case .settings:
                     SettingsView()
                 }

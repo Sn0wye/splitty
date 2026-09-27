@@ -11,12 +11,13 @@ struct PeopleView: View {
     init(
         isReview: Bool = false,
         onReviewDone: (() -> Void)? = nil,
-        onShowGroups: (() -> Void)? = nil
+        onShowGroups: (() -> Void)? = nil,
+        viewModel: PeopleViewModel? = nil
     ) {
         self.isReview = isReview
         self.onReviewDone = onReviewDone
         self.onShowGroups = onShowGroups
-        _viewModel = StateObject(wrappedValue: PeopleViewModel(
+        _viewModel = StateObject(wrappedValue: viewModel ?? PeopleViewModel(
             loadPeople: isReview ? { .empty } : GroupService.shared.getPeople
         ))
     }
