@@ -67,38 +67,50 @@ enum AddExpenseDestination: Equatable {
 /// "Group" tab is currently pointing at.
 @MainActor
 final class AppState: ObservableObject {
-    private static let currentGroupKey = "currentGroupId"
+    private static func currentGroupKey(userId: Int) -> String { "currentGroupId.\(userId)" }
 
     @Published var selectedTab: AppTab = .groups
     @Published var groupNotice: String?
     @Published private(set) var exitedGroupId: Int?
-    @Published private(set) var savedExpense: SavedExpenseEvent?
-    private var timelineExpensesByGroupID: [Int: [Expense]] = [:]
+    let groupSessions: GroupSessionStore
+    @Published private(set) var signedInUserId: Int?
 
     @Published var currentGroupId: Int? {
         didSet {
-            if let id = currentGroupId {
-                UserDefaults.standard.set(id, forKey: Self.currentGroupKey)
-            } else {
-                UserDefaults.standard.removeObject(forKey: Self.currentGroupKey)
-            }
+            guard let signedInUserId else { return }
+            let key = Self.currentGroupKey(userId: signedInUserId)
+            if let id = currentGroupId { UserDefaults.standard.set(id, forKey: key) }
+            else { UserDefaults.standard.removeObject(forKey: key) }
         }
     }
 
-    init() {
-        let stored = UserDefaults.standard.object(forKey: Self.currentGroupKey) as? Int
-        currentGroupId = stored
+    init(groupSessions: GroupSessionStore? = nil) {
+        self.groupSessions = groupSessions ?? GroupSessionStore()
+        currentGroupId = nil
     }
 
-    func openGroup(_ id: Int) {
+    func setSignedInUser(_ userId: Int?) {
+        guard signedInUserId != userId else { return }
+        groupSessions.discard()
+        signedInUserId = userId
+        currentGroupId = userId.flatMap {
+            UserDefaults.standard.object(forKey: Self.currentGroupKey(userId: $0)) as? Int
+        }
+        if let currentGroupId { groupSessions.open(currentGroupId).appear() }
+        selectedTab = .groups
+    }
+
+    func openGroup(_ id: Int, seed: Group? = nil) {
         groupNotice = nil
         exitedGroupId = nil
+        groupSessions.open(id, seed: seed)
         currentGroupId = id
         selectedTab = .group
     }
 
     func leaveUnavailableGroup(message: String) {
         groupNotice = message
+        if let currentGroupId { groupSessions.remove(currentGroupId) }
         currentGroupId = nil
         selectedTab = .groups
     }
@@ -106,25 +118,24 @@ final class AppState: ObservableObject {
     func exitGroup(_ id: Int, message: String? = nil) {
         groupNotice = message
         exitedGroupId = id
+        groupSessions.remove(id)
         currentGroupId = nil
         selectedTab = .groups
     }
 
     func recordSavedExpense(_ expense: Expense, groupId: Int) {
-        savedExpense = SavedExpenseEvent(groupId: groupId, expense: expense)
+        guard let current = groupSessions.current, current.groupId == groupId else { return }
+        current.snapshot.completedExpenseWrite(expense, groupId: groupId)
     }
 
-    func cacheTimelineExpenses(_ expenses: [Expense], groupId: Int) {
-        timelineExpensesByGroupID[groupId] = expenses
+    func resolveAddExpenseDestination(
+        fetchGroups: () async throws -> [Group]
+    ) async throws -> AddExpenseDestination {
+        if let current = groupSessions.current,
+           current.groupId == currentGroupId,
+           let group = current.snapshot.group {
+            return .resolve(groups: [group], currentGroupId: currentGroupId)
+        }
+        return .resolve(groups: try await fetchGroups(), currentGroupId: currentGroupId)
     }
-
-    func timelineExpenses(groupId: Int) -> [Expense] {
-        timelineExpensesByGroupID[groupId] ?? []
-    }
-}
-
-struct SavedExpenseEvent: Identifiable {
-    let id = UUID()
-    let groupId: Int
-    let expense: Expense
 }

@@ -10,6 +10,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var authManager = AuthenticationManager.shared
+    @StateObject private var peopleViewModel = PeopleViewModel()
     @State private var addDestination: AddExpenseDestination?
     @State private var pendingExpenseGroup: Group?
     @State private var isResolvingAdd = false
@@ -21,15 +22,22 @@ struct ContentView: View {
         // (the add button) behind the bar with it. Stacked, the bar owns its space.
         VStack(spacing: 0) {
             ZStack {
+                // Keep the list and its header alive while viewing a group. Recreating
+                // the header on every tab switch flashes the avatar and add menu.
+                GroupsView()
+                    .opacity(appState.selectedTab == .groups ? 1 : 0)
+                    .allowsHitTesting(appState.selectedTab == .groups)
+                    .accessibilityHidden(appState.selectedTab != .groups)
+
                 switch appState.selectedTab {
                 case .groups:
-                    GroupsView()
+                    EmptyView()
                 case .group:
                     CurrentGroupView {
                         Task { await beginAddingExpense() }
                     }
                 case .people:
-                    PeopleView()
+                    PeopleView(viewModel: peopleViewModel)
                 case .settings:
                     SettingsView()
                 }
@@ -54,13 +62,26 @@ struct ContentView: View {
                 }
             case .expense(let group):
                 if let currentUserId = authManager.currentUser?.id {
-                    ExpenseSheet(
-                        groupId: group.id,
-                        members: group.members,
-                        currentUserId: currentUserId,
-                        timelineExpenses: appState.timelineExpenses(groupId: group.id)
-                    ) { saved in
-                        appState.recordSavedExpense(saved, groupId: group.id)
+                    if let session = appState.groupSessions.current,
+                       session.groupId == group.id {
+                        SessionExpenseSheet(
+                            group: group,
+                            currentUserId: currentUserId,
+                            snapshot: session.snapshot
+                        ) { saved in
+                            appState.recordSavedExpense(saved, groupId: group.id)
+                        }
+                    } else {
+                        ExpenseSheet(
+                            groupId: group.id,
+                            members: group.members,
+                            currentUserId: currentUserId,
+                            loadTimelineExpenses: {
+                                try await ExpenseService.shared.getExpenses(groupId: group.id)
+                            }
+                        ) { saved in
+                            appState.recordSavedExpense(saved, groupId: group.id)
+                        }
                     }
                 }
             case .chooseGroup(let groups):
@@ -89,12 +110,13 @@ struct ContentView: View {
         defer { isResolvingAdd = false }
 
         do {
-            let groups = if PerformanceScenarioLaunch.isEnabled {
-                PerformanceScenarios.groups
-            } else {
-                try await GroupService.shared.getGroups()
+            addDestination = try await appState.resolveAddExpenseDestination {
+                if PerformanceScenarioLaunch.isEnabled {
+                    PerformanceScenarios.groups
+                } else {
+                    try await GroupService.shared.getGroups()
+                }
             }
-            addDestination = .resolve(groups: groups, currentGroupId: appState.currentGroupId)
         } catch where error.isCancellation {
             return
         } catch {
@@ -106,6 +128,23 @@ struct ContentView: View {
         guard let group = pendingExpenseGroup else { return }
         pendingExpenseGroup = nil
         addDestination = .expense(group)
+    }
+}
+
+private struct SessionExpenseSheet: View {
+    let group: Group
+    let currentUserId: Int
+    @ObservedObject var snapshot: GroupViewModel
+    let onSaved: (Expense) -> Void
+
+    var body: some View {
+        ExpenseSheet(
+            groupId: group.id,
+            members: group.members,
+            currentUserId: currentUserId,
+            timelineExpenses: snapshot.expenses,
+            onSaved: onSaved
+        )
     }
 }
 
@@ -160,8 +199,10 @@ private struct CurrentGroupView: View {
     let onAddExpense: () -> Void
 
     var body: some View {
-        if let groupId = appState.currentGroupId {
-            GroupView(groupId: groupId, onAddExpense: onAddExpense)
+        if let groupId = appState.currentGroupId,
+           let session = appState.groupSessions.current,
+           session.groupId == groupId {
+            GroupView(session: session, onAddExpense: onAddExpense)
                 .id(groupId)
         } else {
             VStack(spacing: 8) {

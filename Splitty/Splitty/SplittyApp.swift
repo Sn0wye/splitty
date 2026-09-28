@@ -43,7 +43,8 @@ struct RootView: View {
                     }
                 } else if authManager.isAuthenticated,
                           let user = authManager.currentUser,
-                          (resolvedOnboardingUserId != user.id || onboardingState == .checking) {
+                          (resolvedOnboardingUserId != user.id || onboardingState == .checking
+                           || appState.signedInUserId != user.id) {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(Color("background"))
@@ -81,6 +82,9 @@ struct RootView: View {
         }
         .task(id: authManager.currentUser?.id) {
             await resolveOnboarding()
+        }
+        .onChange(of: authManager.currentUser?.id, initial: true) { _, userId in
+            appState.setSignedInUser(userId)
         }
         .onOpenURL(perform: handle)
         .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in

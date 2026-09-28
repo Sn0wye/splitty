@@ -57,6 +57,24 @@ struct PeopleViewModelTests {
         #expect(viewModel.activePeers.map(\.name) == ["Ana"])
     }
 
+    @Test func refreshKeepsCachedPeopleVisibleUntilNewResponse() async {
+        let loader = HeldPeopleRefresh()
+        let viewModel = PeopleViewModel { await loader.load() }
+
+        await viewModel.load()
+        #expect(viewModel.state == .loaded)
+        #expect(viewModel.activePeers.map(\.name) == ["Cached"])
+
+        let refresh = Task { await viewModel.load() }
+        await loader.waitForRefresh()
+        #expect(viewModel.state == .loaded)
+        #expect(viewModel.activePeers.map(\.name) == ["Cached"])
+
+        await loader.releaseRefresh()
+        await refresh.value
+        #expect(viewModel.activePeers.map(\.name) == ["Updated"])
+    }
+
     @Test func decodesMoneyAndBreakdownAtTheBoundary() throws {
         let payload = #"{"peers":[{"userId":2,"name":"Ana","avatarUrl":"https://example.com/ana.png","netAmount":-12.34,"groups":[{"groupId":7,"groupName":"Home","amount":-10.00},{"groupId":8,"groupName":"Trip","amount":-2.34}]}],"balancesPending":true}"#
 
@@ -83,6 +101,36 @@ private actor SequencedPeopleLoader {
 
     func load() throws -> PeopleResponse {
         try results.removeFirst().get()
+    }
+}
+
+private actor HeldPeopleRefresh {
+    private var calls = 0
+    private var refreshStarted: CheckedContinuation<Void, Never>?
+    private var refreshResponse: CheckedContinuation<PeopleResponse, Never>?
+
+    func load() async -> PeopleResponse {
+        calls += 1
+        if calls == 1 { return response(name: "Cached") }
+        refreshStarted?.resume()
+        refreshStarted = nil
+        return await withCheckedContinuation { refreshResponse = $0 }
+    }
+
+    func waitForRefresh() async {
+        if calls > 1 { return }
+        await withCheckedContinuation { refreshStarted = $0 }
+    }
+
+    func releaseRefresh() {
+        refreshResponse?.resume(returning: response(name: "Updated"))
+        refreshResponse = nil
+    }
+
+    private func response(name: String) -> PeopleResponse {
+        PeopleResponse(peers: [
+            Peer(userId: 1, name: name, avatarURL: nil, netAmountCents: 100, groups: [])
+        ], balancesPending: false)
     }
 }
 

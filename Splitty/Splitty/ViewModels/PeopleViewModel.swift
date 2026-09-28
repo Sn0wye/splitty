@@ -15,23 +15,31 @@ final class PeopleViewModel: ObservableObject {
     @Published private(set) var balancesPending = false
 
     private let loadPeople: () async throws -> PeopleResponse
+    private var hasCachedResponse = false
+    private var loadGeneration = 0
 
     init(loadPeople: @escaping () async throws -> PeopleResponse = GroupService.shared.getPeople) {
         self.loadPeople = loadPeople
     }
 
     func load() async {
-        state = .loading
+        loadGeneration += 1
+        let generation = loadGeneration
+        if !hasCachedResponse { state = .loading }
         do {
-            apply(try await loadPeople())
+            let response = try await loadPeople()
+            guard !Task.isCancelled, generation == loadGeneration else { return }
+            apply(response)
         } catch where error.isCancellation {
             return
         } catch {
-            state = .error(error.displayMessage)
+            guard generation == loadGeneration else { return }
+            if !hasCachedResponse { state = .error(error.displayMessage) }
         }
     }
 
     func apply(_ response: PeopleResponse) {
+        hasCachedResponse = true
         balancesPending = response.balancesPending
         activePeers = response.peers
             .filter { $0.netAmountCents != 0 }

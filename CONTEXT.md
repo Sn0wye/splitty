@@ -382,6 +382,10 @@ SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
   and fetched once on a cold launch that restored a Keychain token. Everything that says
   "you" reads it. Not cached in UserDefaults — a second copy of the profile can go stale, a
   Keychain token cannot. The profile route is `GET /profile`.
+- **Group sessions** — up to eight recently opened group snapshots live above the tab
+  switch. Reopening one shows its cached data while a fresh read runs; leaving or losing
+  access removes that group, and sign-out clears every session. The People screen likewise
+  keeps its last successful response visible during a refetch, including an empty response.
 
 **Money is integer cents everywhere on the client**, converted to `Double` once at the
 request boundary (`Money`). The API validates that splits sum *exactly* to the total against

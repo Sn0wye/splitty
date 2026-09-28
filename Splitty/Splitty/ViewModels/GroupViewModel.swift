@@ -52,6 +52,8 @@ class GroupViewModel: ObservableObject {
     @Published var expenses: [Expense] = []
     @Published var groupedExpenses: [GroupedExpense] = []
     @Published var isLoading = false
+    @Published private(set) var hasLoadedExpenses = false
+    private(set) var hasCompletedInitialRead = false
     @Published var errorMessage = ""
 
     /// A failed delete belongs next to the list, not in place of it: `errorMessage` blanks
@@ -94,9 +96,10 @@ class GroupViewModel: ObservableObject {
     }
 
     func loadGroupData(groupId: Int) async {
-        isLoading = true
+        isLoading = group == nil
         let generation = await load(groupId: groupId)
         isLoading = false
+        hasCompletedInitialRead = true
 
         if let generation {
             await refreshPendingBalance(groupId: groupId, generation: generation)
@@ -191,6 +194,7 @@ class GroupViewModel: ObservableObject {
                 ?? PerformanceScenarios.groups[0]
             expenses = PerformanceScenarios.timeline
             groupedExpenses = Expense.groupExpensesByDate(expenses)
+            hasLoadedExpenses = true
             errorMessage = ""
             return nil
         }
@@ -234,10 +238,12 @@ class GroupViewModel: ObservableObject {
         // one, and an older answer arriving late must not replace it.
         guard generation == loadGeneration else { return nil }
 
-        errorMessage = expensesError ?? groupError ?? ""
+        // A failed background read cannot replace a timeline already on screen.
+        errorMessage = hasLoadedExpenses ? "" : (expensesError ?? (group == nil ? groupError : nil) ?? "")
 
         if let loadedExpenses {
             publishExpenses(loadedExpenses)
+            hasLoadedExpenses = true
         }
 
         let displayedNetCents = group?.netBalanceCents
@@ -284,6 +290,10 @@ class GroupViewModel: ObservableObject {
         }
         expenses = visibleExpenses
         groupedExpenses = Expense.groupExpensesByDate(visibleExpenses)
+    }
+
+    func seed(_ group: Group) {
+        self.group = group
     }
 
     /// The summary endpoint carries the worker's display hint. Fast retries taper to a

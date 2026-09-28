@@ -84,7 +84,7 @@ struct GroupsView: View {
                         } else {
                             ForEach(viewModel.groups) { group in
                                 GroupCard(group: group) {
-                                    appState.openGroup(group.id)
+                                    appState.openGroup(group.id, seed: group)
                                 }
                             }
                         }
@@ -133,7 +133,7 @@ struct GroupsView: View {
                 JoinGroupSheet(isReview: isReview) { group in
                     Task {
                         await viewModel.loadGroups()
-                        appState.openGroup(group.id)
+                        appState.openGroup(group.id, seed: group)
                     }
                 }
             }

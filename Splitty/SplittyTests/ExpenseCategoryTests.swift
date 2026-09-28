@@ -71,4 +71,20 @@ struct ExpenseCategoryTests {
                 == [.water, .games, .movies, .music, .sports]
         )
     }
+
+    @MainActor
+    @Test func chipsUpdateWhenTheSessionTimelineArrivesAfterSheetCreation() {
+        let form = ExpenseFormViewModel(
+            groupId: 1,
+            members: TestExpense.members,
+            currentUserId: 1
+        )
+        #expect(!form.categorySuggestions.contains(.games))
+
+        form.updateTimelineExpenses([
+            TestExpense.make(paidBy: 1, amount: 1, splitAmounts: [1: 1], category: .games)
+        ])
+
+        #expect(form.categorySuggestions.first == .games)
+    }
 }
