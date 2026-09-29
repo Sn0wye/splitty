@@ -75,6 +75,24 @@ struct PeopleViewModelTests {
         #expect(viewModel.activePeers.map(\.name) == ["Updated"])
     }
 
+    @Test func pendingPeoplePollsUntilTheWorkerSettles() async {
+        let loader = PendingPeopleLoader()
+        let retry = PeopleRetryGate()
+        let viewModel = PeopleViewModel(
+            loadPeople: { await loader.load() },
+            waitForRetry: { _ in await retry.wait() }
+        )
+
+        await viewModel.load()
+        #expect(viewModel.balancesPending)
+        await retry.waitForStart()
+        #expect(loader.callCount == 1)
+        retry.release()
+        for _ in 0..<100 where viewModel.balancesPending { await Task.yield() }
+        #expect(!viewModel.balancesPending)
+        #expect(loader.callCount == 2)
+    }
+
     @Test func decodesMoneyAndBreakdownAtTheBoundary() throws {
         let payload = #"{"peers":[{"userId":2,"name":"Ana","avatarUrl":"https://example.com/ana.png","netAmount":-12.34,"groups":[{"groupId":7,"groupName":"Home","amount":-10.00},{"groupId":8,"groupName":"Trip","amount":-2.34}]}],"balancesPending":true}"#
 
@@ -136,4 +154,38 @@ private actor HeldPeopleRefresh {
 
 private struct TestFailure: LocalizedError {
     var errorDescription: String? { "Could not load people" }
+}
+
+@MainActor
+private final class PendingPeopleLoader {
+    private(set) var callCount = 0
+
+    func load() -> PeopleResponse {
+        callCount += 1
+        return PeopleResponse(peers: [], balancesPending: callCount == 1)
+    }
+}
+
+@MainActor
+private final class PeopleRetryGate {
+    private var started = false
+    private var startWaiter: CheckedContinuation<Void, Never>?
+    private var retryWaiter: CheckedContinuation<Void, Never>?
+
+    func wait() async {
+        started = true
+        startWaiter?.resume()
+        startWaiter = nil
+        await withCheckedContinuation { retryWaiter = $0 }
+    }
+
+    func waitForStart() async {
+        if started { return }
+        await withCheckedContinuation { startWaiter = $0 }
+    }
+
+    func release() {
+        retryWaiter?.resume()
+        retryWaiter = nil
+    }
 }

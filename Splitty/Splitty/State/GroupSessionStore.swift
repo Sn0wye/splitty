@@ -1,5 +1,12 @@
 import Foundation
 
+enum GroupMoneyWrite {
+    case expenseCreated(Expense)
+    case expenseEdited(Expense)
+    case paymentRecorded(payee: GroupMember, amountCents: Int, date: Date, currentUserId: Int)
+    case paymentEdited(id: Int, amountCents: Int, date: Date)
+}
+
 /// One group's snapshot and its work, independent of the Group tab's view lifetime.
 @MainActor
 final class GroupSession {
@@ -37,6 +44,16 @@ final class GroupSession {
     func discard() {
         initialLoad?.cancel()
         snapshot.cancelRefresh()
+    }
+
+    @discardableResult
+    func report(_ write: GroupMoneyWrite) -> Task<Void, Never> {
+        snapshot.report(write, groupId: groupId)
+    }
+
+    @discardableResult
+    func delete(_ row: Expense) -> Task<Bool, Never> {
+        snapshot.delete(row, groupId: groupId)
     }
 }
 
@@ -82,5 +99,15 @@ final class GroupSessionStore: ObservableObject {
         sessions.removeAll()
         recentGroupIds.removeAll()
         current = nil
+    }
+
+    func report(_ write: GroupMoneyWrite, groupId: Int) {
+        guard let current, current.groupId == groupId else { return }
+        current.report(write)
+    }
+
+    func delete(_ row: Expense, groupId: Int) -> Task<Bool, Never>? {
+        guard let current, current.groupId == groupId else { return nil }
+        return current.delete(row)
     }
 }

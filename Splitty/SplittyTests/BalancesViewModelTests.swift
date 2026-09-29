@@ -22,7 +22,9 @@ struct BalancesViewModelTests {
         ]), currentUserId: 1)
 
         #expect(viewModel.rows.count == 1)
-        #expect(viewModel.rows.first?.statement == "John owes Adam $10.00")
+        #expect(viewModel.rows.first?.from.name == "John")
+        #expect(viewModel.rows.first?.to.name == "Adam")
+        #expect(viewModel.rows.first?.amountCents == 1_000)
     }
 
     @Test func currentUserRowsComeFirstAndStateTheirDirection() {
@@ -34,24 +36,8 @@ struct BalancesViewModelTests {
         ]), currentUserId: 1)
 
         #expect(viewModel.rows.map(\.involvement) == [.youPay, .paysYou, .uninvolved])
-        #expect(viewModel.rows.map(\.statement) == [
-            "You owe Cara $40.00",
-            "Dan owes you $12.00",
-            "Ana owes Bob $70.00"
-        ])
-    }
-
-    @Test func simplifiedDebtsReplaceTheAlreadyLoadedGroupNet() {
-        let viewModel = makeViewModel(initialNetCents: 9_999)
-        #expect(viewModel.netCents == 9_999)
-
-        viewModel.apply(summary([
-            debt(fromId: 1, fromName: "You", toId: 3, toName: "Ana", cents: 4_000),
-            debt(fromId: 4, fromName: "Bob", toId: 1, toName: "You", cents: 1_200),
-            debt(fromId: 4, fromName: "Bob", toId: 3, toName: "Ana", cents: 900)
-        ]), currentUserId: 1)
-
-        #expect(viewModel.netCents == -2_800)
+        #expect(viewModel.rows.map(\.amountCents) == [4_000, 1_200, 7_000])
+        #expect(viewModel.rows.map(\.to.name) == ["Cara", "You", "Bob"])
     }
 
     @Test func aFailureIsDistinctFromSettled() {
@@ -68,31 +54,11 @@ struct BalancesViewModelTests {
             currentUserId: 1
         )
 
-        #expect(viewModel.balancesPending)
         #expect(viewModel.rows.map(\.to.name) == ["Ana"])
     }
 
-    @Test func aPendingSummaryRefreshesUntilTheWorkerSettles() async {
-        let pending = summary([debt(fromId: 1, fromName: "You", toId: 2, toName: "Ana", cents: 4_000)], pending: true)
-        let settled = summary([debt(fromId: 1, fromName: "You", toId: 2, toName: "Ana", cents: 1_500)])
-        let data = ControlledBalanceData(summaries: Array(repeating: pending, count: 9) + [settled])
-        let viewModel = BalancesViewModel(
-            context: BalanceSheetContext(groupId: 7, initialNetCents: 0, balancesPending: false),
-            dataSource: data.source()
-        )
-
-        await viewModel.load(currentUserId: 1)
-
-        #expect(data.summaryCallCount == 10)
-        #expect(data.retryCount == 9)
-        #expect(viewModel.netCents == -1_500)
-        #expect(!viewModel.balancesPending)
-    }
-
-    private func makeViewModel(initialNetCents: Int = 0) -> BalancesViewModel {
-        BalancesViewModel(
-            context: BalanceSheetContext(groupId: 7, initialNetCents: initialNetCents, balancesPending: false)
-        )
+    private func makeViewModel() -> BalancesViewModel {
+        BalancesViewModel(groupId: 7)
     }
 
     private func summary(_ debts: [SimplifiedDebt], pending: Bool = false) -> GroupBalanceSummary {
@@ -111,35 +77,6 @@ struct BalancesViewModelTests {
             to: DebtMember(id: toId, name: toName, avatarUrl: ""),
             amountCents: cents,
         )
-    }
-}
-
-@MainActor
-private final class ControlledBalanceData {
-    private let summaries: [GroupBalanceSummary]
-    private(set) var summaryCallCount = 0
-    private(set) var retryCount = 0
-
-    init(summaries: [GroupBalanceSummary]) {
-        self.summaries = summaries
-    }
-
-    func source() -> BalanceDataSource {
-        BalanceDataSource(
-            summary: { [self] _ in await nextSummary() },
-            requestRefresh: { _ in },
-            waitForRetry: { [self] _ in await noteRetry() }
-        )
-    }
-
-    private func nextSummary() -> GroupBalanceSummary {
-        let index = min(summaryCallCount, summaries.count - 1)
-        summaryCallCount += 1
-        return summaries[index]
-    }
-
-    private func noteRetry() {
-        retryCount += 1
     }
 }
 

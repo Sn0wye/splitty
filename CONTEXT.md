@@ -386,6 +386,9 @@ SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
   switch. Reopening one shows its cached data while a fresh read runs; leaving or losing
   access removes that group, and sign-out clears every session. The People screen likewise
   keeps its last successful response visible during a refetch, including an empty response.
+  Money writes enter the current group session as one value, and deletes go through its
+  single optimistic path. One pending-balance watcher per session supplies the header,
+  Balances and Settle-up with the same summary and pending status.
 
 **Money is integer cents everywhere on the client**, converted to `Double` once at the
 request boundary (`Money`). The API validates that splits sum *exactly* to the total against

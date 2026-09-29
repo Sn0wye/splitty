@@ -42,4 +42,25 @@ enum BalanceRefreshPolicy {
 
         return true
     }
+
+    @MainActor
+    static func poll<Response>(
+        fetch: () async throws -> Response,
+        wait: (Duration) async throws -> Void,
+        isPending: (Response) -> Bool,
+        receive: (Response) -> Bool
+    ) async {
+        var retryIndex = 0
+        while !Task.isCancelled {
+            let delay = retryDelays[min(retryIndex, retryDelays.count - 1)]
+            retryIndex += 1
+            do {
+                try await wait(delay)
+                let response = try await fetch()
+                guard receive(response), isPending(response) else { return }
+            } catch {
+                if error.isCancellation { return }
+            }
+        }
+    }
 }

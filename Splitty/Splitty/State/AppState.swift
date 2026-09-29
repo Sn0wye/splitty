@@ -123,11 +123,6 @@ final class AppState: ObservableObject {
         selectedTab = .groups
     }
 
-    func recordSavedExpense(_ expense: Expense, groupId: Int) {
-        guard let current = groupSessions.current, current.groupId == groupId else { return }
-        current.snapshot.completedExpenseWrite(expense, groupId: groupId)
-    }
-
     func resolveAddExpenseDestination(
         fetchGroups: () async throws -> [Group]
     ) async throws -> AddExpenseDestination {

@@ -9,16 +9,13 @@ struct SettleUpResult {
     let peer: GroupMember
     let amountCents: Int
     let date: Date
-    let isEditing: Bool
+    let settlementId: Int?
 }
 
 struct SettleUpDataSource {
     var summary: (Int) async throws -> GroupBalanceSummary
     var create: (Int, Int, Int, Date) async throws -> Void
     var update: (Int, Int, Int, Date) async throws -> Void
-    var waitForRetry: (Duration) async throws -> Void = { duration in
-        try await Task.sleep(for: duration)
-    }
 
     static let live = SettleUpDataSource(
         summary: { try await GroupService.shared.getBalanceSummary(groupId: $0) },
@@ -156,22 +153,10 @@ final class SettleUpViewModel: ObservableObject {
         guard !isEditing else { return }
         guard let summary = try? await dataSource.summary(groupId) else { return }
         apply(summary)
-
-        guard summary.balancesPending else { return }
-        _ = await BalanceRefreshPolicy.waitUntilPendingClears(
-            groupId: groupId,
-            balancesPending: summary.balancesPending,
-            fetch: dataSource.summary,
-            wait: dataSource.waitForRetry
-        ) { [weak self] summary in
-            self?.apply(summary)
-            return self != nil
-        }
     }
 
     func apply(_ summary: GroupBalanceSummary) {
         balancesPending = summary.balancesPending
-        guard !summary.balancesPending else { return }
 
         payablePeerIds = Set(
             summary.simplifiedDebts
@@ -205,6 +190,10 @@ final class SettleUpViewModel: ObservableObject {
         amount.replaceEntry(cents: suggestion.amountCents)
     }
 
+    func setPending(_ pending: Bool) {
+        balancesPending = pending
+    }
+
     func submit() async -> SettleUpResult? {
         guard canSubmit, let peer = selectedPeer else { return nil }
 
@@ -218,7 +207,7 @@ final class SettleUpViewModel: ObservableObject {
             } else {
                 try await dataSource.create(groupId, peer.userId, amountCents, date)
             }
-            return SettleUpResult(peer: peer, amountCents: amountCents, date: date, isEditing: isEditing)
+            return SettleUpResult(peer: peer, amountCents: amountCents, date: date, settlementId: settlementId)
         } catch {
             recordSubmissionFailure(error)
             return nil
