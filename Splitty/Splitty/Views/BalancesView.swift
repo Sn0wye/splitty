@@ -6,6 +6,8 @@
 import SwiftUI
 
 struct BalancesView: View {
+    let session: GroupSession
+    @ObservedObject private var snapshot: GroupViewModel
     let currentUserId: Int
     let members: [GroupMember]
     let onSettled: (SettleUpResult) -> Void
@@ -15,15 +17,21 @@ struct BalancesView: View {
     @State private var selectedDebt: BalanceRow?
 
     init(
-        context: BalanceSheetContext,
+        session: GroupSession,
         currentUserId: Int,
         members: [GroupMember],
         onSettled: @escaping (SettleUpResult) -> Void
     ) {
+        self.session = session
+        _snapshot = ObservedObject(wrappedValue: session.snapshot)
         self.currentUserId = currentUserId
         self.members = members
         self.onSettled = onSettled
-        _viewModel = StateObject(wrappedValue: BalancesViewModel(context: context))
+        let model = BalancesViewModel(groupId: session.groupId)
+        if let summary = session.snapshot.latestSummary {
+            model.apply(summary, currentUserId: currentUserId)
+        }
+        _viewModel = StateObject(wrappedValue: model)
     }
 
     var body: some View {
@@ -48,17 +56,27 @@ struct BalancesView: View {
                 }
             }
             .refreshable {
-                await viewModel.refresh(currentUserId: currentUserId)
+                await viewModel.refresh(session: session)
+            }
+            .onReceive(snapshot.$latestSummary) { summary in
+                if let summary { viewModel.apply(summary, currentUserId: currentUserId) }
             }
             .task {
-                await viewModel.load(currentUserId: currentUserId)
+                guard snapshot.latestSummary == nil else { return }
+                do {
+                    let summary = try await snapshot.summary(groupId: session.groupId)
+                    viewModel.apply(summary, currentUserId: currentUserId)
+                } catch {
+                    viewModel.fail(with: error)
+                }
             }
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .sheet(item: $selectedDebt) { row in
             SettleUpSheet(
-                groupId: viewModel.groupId,
+                session: session,
+                groupId: session.groupId,
                 members: members,
                 currentUserId: currentUserId,
                 preselectedRow: row
@@ -76,13 +94,13 @@ struct BalancesView: View {
                 .foregroundStyle(Color("muted-foreground"))
 
             HStack(spacing: 10) {
-                Text(Money.formatted(cents: abs(viewModel.netCents)))
+                Text(Money.formatted(cents: abs(snapshot.group?.netBalanceCents ?? 0)))
                     .font(.largeTitle.weight(.bold))
                     .monospacedDigit()
                     .foregroundStyle(Color("foreground"))
-                    .opacity(viewModel.balancesPending ? 0.5 : 1)
+                    .opacity(snapshot.balancesPending ? 0.5 : 1)
 
-                if viewModel.balancesPending {
+                if snapshot.balancesPending {
                     ProgressView()
                         .controlSize(.small)
                 }
@@ -92,8 +110,8 @@ struct BalancesView: View {
     }
 
     private var netLabel: String {
-        if viewModel.netCents > 0 { return L10n.Balances.owedOverall }
-        if viewModel.netCents < 0 { return L10n.Balances.oweOverall }
+        if (snapshot.group?.netBalanceCents ?? 0) > 0 { return L10n.Balances.owedOverall }
+        if (snapshot.group?.netBalanceCents ?? 0) < 0 { return L10n.Balances.oweOverall }
         return L10n.Balances.yourBalance
     }
 
@@ -119,7 +137,7 @@ struct BalancesView: View {
                     .foregroundStyle(.red)
 
                 Button {
-                    Task { await viewModel.load(currentUserId: currentUserId) }
+                    Task { await viewModel.refresh(session: session) }
                 } label: {
                     Text(L10n.Common.tryAgain)
                 }
@@ -135,7 +153,7 @@ struct BalancesView: View {
                             balanceRow(row)
                         }
                         .buttonStyle(.plain)
-                        .disabled(viewModel.balancesPending)
+                        .disabled(snapshot.balancesPending)
                         .accessibilityHint(L10n.Balances.recordsPayment)
                     } else {
                         balanceRow(row)
@@ -151,7 +169,7 @@ struct BalancesView: View {
     }
 
     private func balanceRow(_ row: BalanceRow) -> some View {
-        SimplifiedDebtRow(row: row, numbersArePending: viewModel.balancesPending)
+        SimplifiedDebtRow(row: row, numbersArePending: snapshot.balancesPending)
     }
 }
 
@@ -244,7 +262,7 @@ enum BalanceCopy {
 
 #Preview {
     BalancesView(
-        context: BalanceSheetContext(groupId: 1, initialNetCents: -23_585, balancesPending: false),
+        session: GroupSessionStore().open(1),
         currentUserId: 4,
         members: [],
         onSettled: { _ in }

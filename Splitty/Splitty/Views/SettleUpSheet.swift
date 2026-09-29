@@ -6,6 +6,8 @@
 import SwiftUI
 
 struct SettleUpSheet: View {
+    @EnvironmentObject private var appState: AppState
+    @ObservedObject private var snapshot: GroupViewModel
     @StateObject private var viewModel: SettleUpViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showingAmount: Bool
@@ -17,6 +19,7 @@ struct SettleUpSheet: View {
     private let onSaved: (SettleUpResult) -> Void
 
     init(
+        session: GroupSession,
         groupId: Int,
         members: [GroupMember],
         currentUserId: Int,
@@ -24,13 +27,25 @@ struct SettleUpSheet: View {
         settlement: Expense? = nil,
         onSaved: @escaping (SettleUpResult) -> Void
     ) {
-        _viewModel = StateObject(wrappedValue: SettleUpViewModel(
+        _snapshot = ObservedObject(wrappedValue: session.snapshot)
+        var dataSource = SettleUpDataSource.live
+        dataSource.summary = { [weak snapshot = session.snapshot] groupId in
+            guard let snapshot else { throw CancellationError() }
+            return try await snapshot.summary(groupId: groupId, force: !snapshot.balancesPending)
+        }
+        let model = SettleUpViewModel(
             groupId: groupId,
             members: members,
             currentUserId: currentUserId,
             preselectedRow: preselectedRow,
-            settlement: settlement
-        ))
+            settlement: settlement,
+            dataSource: dataSource
+        )
+        if let summary = session.snapshot.latestSummary, settlement == nil {
+            model.apply(summary)
+        }
+        model.setPending(session.snapshot.balancesPending)
+        _viewModel = StateObject(wrappedValue: model)
         let isEditing = settlement != nil
         _showingAmount = State(initialValue: preselectedRow != nil || isEditing)
         startsWithFixedPeer = isEditing
@@ -51,8 +66,17 @@ struct SettleUpSheet: View {
         .task {
             if shouldLoadDebts {
                 // Loading may suggest a peer, but only a balance-row entry skips the picker.
-                await viewModel.loadDebts()
+                await refreshDebts()
             }
+        }
+        .onReceive(snapshot.$latestSummary) { summary in
+            if let summary, !viewModel.isEditing {
+                viewModel.apply(summary)
+                viewModel.setPending(snapshot.balancesPending)
+            }
+        }
+        .onReceive(snapshot.$balancesPending) { pending in
+            viewModel.setPending(pending)
         }
         .sheet(isPresented: $showingDatePicker) {
             ExpenseDatePicker(date: $viewModel.date)
@@ -99,7 +123,7 @@ struct SettleUpSheet: View {
             }
         }
         .refreshable {
-            await viewModel.loadDebts()
+            await refreshDebts()
         }
     }
 
@@ -129,7 +153,7 @@ struct SettleUpSheet: View {
 
             if viewModel.balancesPending {
                 Button {
-                    Task { await viewModel.loadDebts() }
+                    Task { await refreshDebts() }
                 } label: {
                     Label(L10n.Common.tryAgain, systemImage: "arrow.clockwise")
                 }
@@ -216,10 +240,29 @@ struct SettleUpSheet: View {
         Task {
             if let result = await viewModel.submit() {
                 savedCount += 1
+                if let id = result.settlementId {
+                    appState.groupSessions.report(
+                        .paymentEdited(id: id, amountCents: result.amountCents, date: result.date),
+                        groupId: viewModel.groupId
+                    )
+                } else {
+                    appState.groupSessions.report(
+                        .paymentRecorded(
+                            payee: result.peer, amountCents: result.amountCents,
+                            date: result.date, currentUserId: viewModel.currentUserId
+                        ),
+                        groupId: viewModel.groupId
+                    )
+                }
                 onSaved(result)
                 dismiss()
             }
         }
+    }
+
+    private func refreshDebts() async {
+        await viewModel.loadDebts()
+        viewModel.setPending(snapshot.balancesPending)
     }
 
     private func peerAvatar(_ peer: GroupMember) -> some View {

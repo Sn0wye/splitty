@@ -17,7 +17,6 @@ struct ChartsView: View {
     let hasExpenses: Bool
     /// Asks the group screen to open the expense form once this sheet is gone.
     let onAddExpense: () -> Void
-    let onMoneyWrite: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -31,15 +30,13 @@ struct ChartsView: View {
         expenses: [Expense],
         hasExpenses: Bool,
         onAddExpense: @escaping () -> Void,
-        dataSource: ChartsDataSource = .live,
-        onMoneyWrite: @escaping () -> Void
+        dataSource: ChartsDataSource = .live
     ) {
         self.currentUserId = currentUserId
         self.members = members
         self.expenses = expenses
         self.hasExpenses = hasExpenses
         self.onAddExpense = onAddExpense
-        self.onMoneyWrite = onMoneyWrite
         _viewModel = StateObject(wrappedValue: ChartsViewModel(groupId: groupId, dataSource: dataSource))
     }
 
@@ -106,9 +103,8 @@ struct ChartsView: View {
         .presentationDragIndicator(.visible)
     }
 
-    /// The group screen owns the write's refresh; the charts refetch their own range.
+    /// The detail reports to the group session; Charts reloads its own range.
     private func completedMoneyWrite() {
-        onMoneyWrite()
         Task { await viewModel.load() }
     }
 
@@ -565,7 +561,6 @@ extension ChartsRange {
         expenses: [],
         hasExpenses: true,
         onAddExpense: {},
-        dataSource: ChartsDataSource(stats: { _, _ in GroupStats(group: group, mine: group) }),
-        onMoneyWrite: {}
+        dataSource: ChartsDataSource(stats: { _, _ in GroupStats(group: group, mine: group) })
     )
 }

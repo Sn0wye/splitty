@@ -14,6 +14,7 @@ struct SettlementDetailView: View {
     let onDeleted: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
     @State private var showingDeleteConfirmation = false
     @State private var showingEditSheet = false
     @State private var isDeleting = false
@@ -73,13 +74,17 @@ struct SettlementDetailView: View {
             }
         }
         .sheet(isPresented: $showingEditSheet) {
-            SettleUpSheet(
+            if let session = appState.groupSessions.current,
+               session.groupId == settlement.groupId {
+                SettleUpSheet(
+                session: session,
                 groupId: settlement.groupId,
                 members: members,
                 currentUserId: currentUserId,
                 settlement: settlement
             ) { _ in
                 onChanged()
+            }
             }
         }
         .confirmationDialog(
@@ -142,18 +147,11 @@ struct SettlementDetailView: View {
 
         Task {
             defer { isDeleting = false }
-            do {
-                try await SettlementService.shared.deleteSettlement(
-                    groupId: settlement.groupId,
-                    expenseId: settlement.id
-                )
-            } catch {
-                guard error.isAlreadyGone else {
-                    errorMessage = error.displayMessage
-                    return
-                }
+            guard let deletion = appState.groupSessions.delete(settlement, groupId: settlement.groupId),
+                  await deletion.value else {
+                errorMessage = appState.groupSessions.current?.snapshot.actionErrorMessage
+                return
             }
-
             onDeleted()
             dismiss()
         }

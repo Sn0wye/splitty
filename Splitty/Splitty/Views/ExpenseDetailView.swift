@@ -16,6 +16,7 @@ struct ExpenseDetailView: View {
     let onDeleted: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
     @State private var showingEditSheet = false
     @State private var showingDeleteConfirmation = false
     @State private var isDeleting = false
@@ -110,7 +111,8 @@ struct ExpenseDetailView: View {
                 currentUserId: currentUserId,
                 expense: expense,
                 timelineExpenses: timelineExpenses
-            ) { _ in
+            ) { saved in
+                appState.groupSessions.report(.expenseEdited(saved), groupId: expense.groupId)
                 onChanged()
                 dismiss()
             }
@@ -177,18 +179,11 @@ struct ExpenseDetailView: View {
 
         Task {
             defer { isDeleting = false }
-            do {
-                try await ExpenseService.shared.deleteExpense(
-                    groupId: expense.groupId,
-                    expenseId: expense.id
-                )
-            } catch {
-                guard error.isAlreadyGone else {
-                    errorMessage = error.displayMessage
-                    return
-                }
+            guard let deletion = appState.groupSessions.delete(expense, groupId: expense.groupId),
+                  await deletion.value else {
+                errorMessage = appState.groupSessions.current?.snapshot.actionErrorMessage
+                return
             }
-
             onDeleted()
             dismiss()
         }

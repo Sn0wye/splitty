@@ -15,15 +15,14 @@ struct GroupRefreshTests {
     @Test func aSavedSheetRefreshesOnceAndOnlyOnce() async {
         let data = ControlledGroupData()
         data.autoRelease = true
-        data.expensesForCall = { call in [TestExpense.make(id: call, paidBy: 1, amount: 10, splitAmounts: [1: 10])] }
-        let viewModel = GroupViewModel(dataSource: data.source())
-
         let saved = TestExpense.make(id: 9, paidBy: 1, amount: 10, splitAmounts: [1: 10])
-        let task = viewModel.completedExpenseWrite(saved, groupId: 1)
+        data.expensesForCall = { _ in [saved] }
+        let viewModel = GroupViewModel(dataSource: data.source())
+        let task = viewModel.report(.expenseCreated(saved), groupId: 1)
         #expect(viewModel.expenses.map(\.id) == [9])
         await task.value
 
-        #expect(viewModel.expenses.map(\.id) == [1])
+        #expect(viewModel.expenses.map(\.id) == [9])
         #expect(data.expenseCallCount == 1)
 
         // Dismissal has no write event and does not start another load.
@@ -64,6 +63,7 @@ struct GroupRefreshTests {
         let viewModel = GroupViewModel(dataSource: data.source())
 
         await viewModel.refresh(groupId: 1)
+        for _ in 0..<1_000 where viewModel.balancesPending { await Task.yield() }
 
         #expect(data.summaryCallCount == 10)
         #expect(data.balanceRetryCount == 10)
@@ -88,14 +88,7 @@ struct GroupRefreshTests {
         let data = ControlledGroupData()
         data.autoRelease = true
         let viewModel = GroupViewModel(dataSource: data.source())
-        let result = SettleUpResult(
-            peer: TestExpense.members[1],
-            amountCents: 500,
-            date: Date(),
-            isEditing: true
-        )
-
-        await viewModel.completedPaymentWrite(result, currentUserId: 1, groupId: 1).value
+        await viewModel.report(.paymentEdited(id: 18, amountCents: 500, date: Date()), groupId: 1).value
 
         #expect(viewModel.expenses.isEmpty)
         #expect(data.expenseCallCount == 1)
@@ -120,16 +113,17 @@ struct GroupRefreshTests {
         )
         data.expensesForCall = { call in call < 5 ? [] : [stored] }
         let viewModel = GroupViewModel(dataSource: data.source())
-        let result = SettleUpResult(peer: TestExpense.members[1], amountCents: 500, date: paymentDate, isEditing: false)
 
         await viewModel.refresh(groupId: 1)
-        await viewModel.completedPaymentWrite(result, currentUserId: 1, groupId: 1).value
+        await viewModel.report(.paymentRecorded(payee: TestExpense.members[1], amountCents: 500, date: paymentDate, currentUserId: 1), groupId: 1).value
         let pending = try #require(viewModel.expenses.first)
         #expect(pending.id < 0)
         #expect(viewModel.isPendingPayment(pending))
         #expect(!viewModel.balancesPending)
 
         await viewModel.refresh(groupId: 1)
+        await data.waitForExpenseCall(5)
+        for _ in 0..<1_000 where !viewModel.pendingPaymentIds.isEmpty { await Task.yield() }
         #expect(viewModel.expenses.map(\.id) == [42])
         #expect(viewModel.pendingPaymentIds.isEmpty)
     }
@@ -164,8 +158,7 @@ struct GroupRefreshTests {
         let viewModel = GroupViewModel(dataSource: data.source())
         await viewModel.refresh(groupId: 1)
 
-        let result = SettleUpResult(peer: TestExpense.members[1], amountCents: 500, date: paymentDate, isEditing: false)
-        await viewModel.completedPaymentWrite(result, currentUserId: 1, groupId: 1).value
+        await viewModel.report(.paymentRecorded(payee: TestExpense.members[1], amountCents: 500, date: paymentDate, currentUserId: 1), groupId: 1).value
 
         #expect(viewModel.expenses.map(\.id) == [42])
         #expect(viewModel.pendingPaymentIds.isEmpty)
@@ -202,8 +195,7 @@ struct GroupRefreshTests {
         let viewModel = GroupViewModel(dataSource: data.source())
         await viewModel.refresh(groupId: 1)
 
-        let result = SettleUpResult(peer: TestExpense.members[1], amountCents: 500, date: paymentDate, isEditing: false)
-        await viewModel.completedPaymentWrite(result, currentUserId: 1, groupId: 1).value
+        await viewModel.report(.paymentRecorded(payee: TestExpense.members[1], amountCents: 500, date: paymentDate, currentUserId: 1), groupId: 1).value
 
         #expect(data.groupCallCount == 3)
         #expect(viewModel.group?.netBalanceCents == finalNetCents)
@@ -228,7 +220,7 @@ struct GroupRefreshTests {
         let viewModel = GroupViewModel(dataSource: data.source())
         await viewModel.refresh(groupId: 1)
 
-        await viewModel.completedExpenseWrite(row, groupId: 1).value
+        await viewModel.report(.expenseCreated(row), groupId: 1).value
 
         #expect(data.groupCallCount == 3)
         #expect(viewModel.group?.netBalanceCents == 400)
@@ -263,14 +255,14 @@ struct GroupRefreshTests {
         let row = TestExpense.make(id: 4, paidBy: 1, amount: 10, splitAmounts: [1: 10])
         viewModel.insert(row)
 
-        await viewModel.delete(row, groupId: 1)
+        #expect(!(await viewModel.delete(row, groupId: 1).value))
 
         #expect(viewModel.expenses.map(\.id) == [4])
         #expect(viewModel.actionErrorMessage != nil)
         #expect(data.expenseCallCount == 0)
     }
 
-    @Test func aSuccessfulDeleteWaitsForTheSettledGroupBalance() async {
+    @Test func aSuccessfulDeleteReturnsAfterTheRouteAndRefreshesInBackground() async {
         let data = ControlledGroupData()
         data.autoRelease = true
         data.groupForCall = { call in
@@ -287,11 +279,10 @@ struct GroupRefreshTests {
         let row = TestExpense.make(id: 4, paidBy: 1, amount: 10, splitAmounts: [1: 10])
         viewModel.insert(row)
 
-        await viewModel.delete(row, groupId: 1)
+        #expect(await viewModel.delete(row, groupId: 1).value)
 
         #expect(viewModel.expenses.isEmpty)
-        #expect(viewModel.group?.netBalanceCents == -300)
-        #expect(!viewModel.balancesPending)
+        #expect(data.expenseDeleteCount == 1)
     }
 
     // Rapid refreshes can finish out of order. Whichever started last is the snapshot the
@@ -377,6 +368,7 @@ final class ControlledGroupData {
     var groupFailureCalls: Set<Int> = []
     var summaryFailureCalls: Set<Int> = []
     var deleteError: Error?
+    var holdDelete = false
     var cancelBalanceRetry = false
     var cancelBalanceRetryCalls: Set<Int> = []
     var summaryForCall: (Int) -> GroupBalanceSummary = { _ in
@@ -390,10 +382,14 @@ final class ControlledGroupData {
     private(set) var expenseCallCount = 0
     private(set) var summaryCallCount = 0
     private(set) var balanceRetryCount = 0
+    private(set) var expenseDeleteCount = 0
+    private(set) var paymentDeleteCount = 0
 
     private var waitingForOutcome: [Int: CheckedContinuation<Outcome, Never>] = [:]
     private var outcomes: [Int: Outcome] = [:]
     private var waitingForCall: [Int: CheckedContinuation<Void, Never>] = [:]
+    private var waitingForDelete: CheckedContinuation<Void, Never>?
+    private var deleteCallWaiter: CheckedContinuation<Void, Never>?
 
     func source() -> GroupDataSource {
         GroupDataSource(
@@ -407,8 +403,8 @@ final class ControlledGroupData {
             },
             summary: { [self] _ in try await noteSummaryCall() },
             waitForBalanceRetry: { [self] _ in try await noteBalanceRetry() },
-            deleteExpense: { [self] _, _ in if let deleteError { throw deleteError } },
-            deletePayment: { [self] _, _ in if let deleteError { throw deleteError } }
+            deleteExpense: { [self] _, _ in try await noteDelete(payment: false) },
+            deletePayment: { [self] _, _ in try await noteDelete(payment: true) }
         )
     }
 
@@ -427,6 +423,27 @@ final class ControlledGroupData {
         await withCheckedContinuation { continuation in
             waitingForCall[call] = continuation
         }
+    }
+
+    func waitForDeleteCall() async {
+        if expenseDeleteCount + paymentDeleteCount > 0 { return }
+        await withCheckedContinuation { deleteCallWaiter = $0 }
+    }
+
+    func releaseDelete() {
+        waitingForDelete?.resume()
+        waitingForDelete = nil
+    }
+
+    private func noteDelete(payment: Bool) async throws {
+        if payment { paymentDeleteCount += 1 }
+        else { expenseDeleteCount += 1 }
+        deleteCallWaiter?.resume()
+        deleteCallWaiter = nil
+        if holdDelete {
+            await withCheckedContinuation { waitingForDelete = $0 }
+        }
+        if let deleteError { throw deleteError }
     }
 
     private func resolve(call: Int, with outcome: Outcome) {

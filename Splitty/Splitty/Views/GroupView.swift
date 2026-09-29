@@ -24,6 +24,7 @@ struct GroupView: View {
     @State private var showingInviteSheet = false
     @State private var pendingDeletion: Expense?
     @State private var selectedExpenseId: Int?
+    @State private var selectedExpense: Expense?
     @State private var backgroundedAt: Date?
 
     /// Roughly the height of the in-list title, so the toolbar picks the name up
@@ -113,27 +114,20 @@ struct GroupView: View {
         .sheet(isPresented: $showingSettleUpSheet) {
             if let currentUserId {
                 SettleUpSheet(
+                    session: session,
                     groupId: groupId,
                     members: viewModel.members,
                     currentUserId: currentUserId
-                ) { result in
-                    viewModel.completedPaymentWrite(result, currentUserId: currentUserId, groupId: groupId)
-                }
+                ) { _ in }
             }
         }
         .sheet(isPresented: $showingBalancesSheet) {
-            if let group = viewModel.group, let currentUserId {
+            if viewModel.group != nil, let currentUserId {
                 BalancesView(
-                    context: BalanceSheetContext(
-                        groupId: groupId,
-                        initialNetCents: group.netBalanceCents,
-                        balancesPending: viewModel.balancesPending
-                    ),
+                    session: session,
                     currentUserId: currentUserId,
                     members: viewModel.members
-                ) { result in
-                    viewModel.completedPaymentWrite(result, currentUserId: currentUserId, groupId: groupId)
-                }
+                ) { _ in }
             }
         }
         .sheet(isPresented: $showingChartsSheet, onDismiss: {
@@ -149,9 +143,7 @@ struct GroupView: View {
                     expenses: viewModel.expenses,
                     hasExpenses: viewModel.hasExpenses,
                     onAddExpense: { addExpenseAfterCharts = true }
-                ) {
-                    viewModel.completedMoneyWrite(groupId: groupId)
-                }
+                )
             }
         }
         .sheet(isPresented: $showingInviteSheet) {
@@ -178,7 +170,7 @@ struct GroupView: View {
         ) { expense in
             Button(role: .destructive) {
                 pendingDeletion = nil
-                Task { await viewModel.delete(expense, groupId: groupId) }
+                session.delete(expense)
             } label: { Text(L10n.Common.delete) }
             Button(role: .cancel) { pendingDeletion = nil } label: { Text(L10n.Common.cancel) }
         } message: { _ in
@@ -299,6 +291,7 @@ struct GroupView: View {
                 .accessibilityValue(L10n.Common.updating)
         } else {
             SwipeToDeleteRow {
+                selectedExpense = expense
                 selectedExpenseId = expense.id
             } onDelete: {
                 pendingDeletion = expense
@@ -310,7 +303,8 @@ struct GroupView: View {
 
     @ViewBuilder
     private func detail(for expenseId: Int, currentUserId: Int) -> some View {
-        if let expense = viewModel.expenses.first(where: { $0.id == expenseId }) {
+        if let expense = viewModel.expenses.first(where: { $0.id == expenseId })
+            ?? (selectedExpense?.id == expenseId ? selectedExpense : nil) {
             switch expense.type {
             case .expense:
                 ExpenseDetailView(
@@ -318,16 +312,16 @@ struct GroupView: View {
                     members: viewModel.members,
                     currentUserId: currentUserId,
                     timelineExpenses: viewModel.expenses,
-                    onChanged: { viewModel.completedMoneyWrite(groupId: groupId) },
-                    onDeleted: { viewModel.completedMoneyWrite(groupId: groupId) }
+                    onChanged: {},
+                    onDeleted: {}
                 )
             case .payment:
                 SettlementDetailView(
                     settlement: expense,
                     members: viewModel.members,
                     currentUserId: currentUserId,
-                    onChanged: { viewModel.completedMoneyWrite(groupId: groupId) },
-                    onDeleted: { viewModel.completedMoneyWrite(groupId: groupId) }
+                    onChanged: {},
+                    onDeleted: {}
                 )
             }
         }

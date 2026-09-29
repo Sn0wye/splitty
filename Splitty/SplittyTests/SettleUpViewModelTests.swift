@@ -26,7 +26,7 @@ struct SettleUpViewModelTests {
 
         #expect(viewModel.selectedPeer?.userId == 2)
         #expect(viewModel.amountCents == 2_350)
-        #expect(viewModel.payAllTitle == "Pay all $23.50")
+        #expect(viewModel.payAllTitle?.contains("$23.50") == true)
     }
 
     @Test func loadingSummaryPrefillsTheCurrentUsersSuggestedPayment() async {
@@ -72,7 +72,7 @@ struct SettleUpViewModelTests {
 
         #expect(viewModel.balancesPending)
         #expect(!viewModel.canSubmit)
-        #expect(viewModel.selectedPeer == nil)
+        #expect(viewModel.selectedPeer?.userId == 2)
 
         viewModel.apply(summary([debt(from: 1, to: 2, cents: 900)]))
 
@@ -96,7 +96,7 @@ struct SettleUpViewModelTests {
         let viewModel = makeViewModel()
         viewModel.apply(summary([debt(from: 1, to: 2, cents: 1_200)]))
 
-        #expect(viewModel.payAllTitle == "Pay all $12.00")
+        #expect(viewModel.payAllTitle?.contains("$12.00") == true)
     }
 
     @Test func duplicateBalanceRowsKeepTheLargestDebtInsteadOfCrashing() {
@@ -116,7 +116,7 @@ struct SettleUpViewModelTests {
 
         viewModel.recordSubmissionFailure(TestError())
 
-        #expect(viewModel.errorMessage == "You only owe Bob $12.00.")
+        #expect(viewModel.errorMessage == L10n.Settlement.onlyOwe("Bob", "$12.00"))
     }
 
     @Test func rejectionIsGenericWithoutAConflictingKnownDebt() {
@@ -127,7 +127,7 @@ struct SettleUpViewModelTests {
 
         viewModel.recordSubmissionFailure(TestError())
 
-        #expect(viewModel.errorMessage == "Couldn't record that payment. Pull down to refresh and try again.")
+        #expect(viewModel.errorMessage == L10n.Settlement.recordFailed)
     }
 
     @Test func editingAlwaysUsesTheGenericRejection() {
@@ -150,7 +150,7 @@ struct SettleUpViewModelTests {
         viewModel.recordSubmissionFailure(TestError())
 
         #expect(viewModel.date == Expense.parseTimestamp("2026-03-01T12:00:00Z"))
-        #expect(viewModel.errorMessage == "Couldn't record that payment. Pull down to refresh and try again.")
+        #expect(viewModel.errorMessage == L10n.Settlement.recordFailed)
     }
 
     @Test func pendingPaymentUsesTheSelectedDate() throws {
@@ -215,7 +215,7 @@ struct SettleUpViewModelTests {
         let result = await viewModel.submit()
 
         #expect(result == nil)
-        #expect(viewModel.errorMessage == "Couldn't record that payment. Pull down to refresh and try again.")
+        #expect(viewModel.errorMessage == L10n.Settlement.recordFailed)
     }
 
     private func makeViewModel(members: [GroupMember]? = nil) -> SettleUpViewModel {

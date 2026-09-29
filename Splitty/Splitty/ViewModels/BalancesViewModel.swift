@@ -5,31 +5,16 @@
 
 import Foundation
 
-struct BalanceSheetContext {
-    let groupId: Int
-    let initialNetCents: Int
-    let balancesPending: Bool
-}
-
 struct BalanceDataSource {
-    var summary: (Int) async throws -> GroupBalanceSummary
     var requestRefresh: (Int) async throws -> Void
-    var waitForRetry: (Duration) async throws -> Void
 
     init(
-        summary: @escaping (Int) async throws -> GroupBalanceSummary,
-        requestRefresh: @escaping (Int) async throws -> Void,
-        waitForRetry: @escaping (Duration) async throws -> Void = { duration in
-            try await Task.sleep(for: duration)
-        }
+        requestRefresh: @escaping (Int) async throws -> Void
     ) {
-        self.summary = summary
         self.requestRefresh = requestRefresh
-        self.waitForRetry = waitForRetry
     }
 
     static let live = BalanceDataSource(
-        summary: { try await GroupService.shared.getBalanceSummary(groupId: $0) },
         requestRefresh: { try await GroupService.shared.requestBalanceRecomputation(groupId: $0) }
     )
 }
@@ -73,14 +58,10 @@ final class BalancesViewModel: ObservableObject {
     let groupId: Int
 
     @Published private(set) var state: BalancesDisplayState = .loading
-    @Published private(set) var netCents: Int
-    @Published private(set) var balancesPending: Bool
     private let dataSource: BalanceDataSource
 
-    init(context: BalanceSheetContext, dataSource: BalanceDataSource = .live) {
-        groupId = context.groupId
-        netCents = context.initialNetCents
-        balancesPending = context.balancesPending
+    init(groupId: Int, dataSource: BalanceDataSource = .live) {
+        self.groupId = groupId
         self.dataSource = dataSource
     }
 
@@ -89,55 +70,17 @@ final class BalancesViewModel: ObservableObject {
         return rows
     }
 
-    func load(currentUserId: Int) async {
-        do {
-            let summary = try await dataSource.summary(groupId)
-            apply(summary, currentUserId: currentUserId)
-            await refreshPendingBalance(startingWith: summary, currentUserId: currentUserId)
-        } catch {
-            fail(with: error)
-        }
-    }
-
-    /// Requests a replay, then refreshes until the worker returns a settled snapshot or the
-    /// view cancels the task.
-    func refresh(currentUserId: Int) async {
+    func refresh(session: GroupSession) async {
         do {
             try await dataSource.requestRefresh(groupId)
-            let summary = try await dataSource.summary(groupId)
-            apply(summary, currentUserId: currentUserId)
-            await refreshPendingBalance(startingWith: summary, currentUserId: currentUserId)
+            await session.snapshot.refresh(groupId: groupId)
         } catch {
             fail(with: error)
-        }
-    }
-
-    private func refreshPendingBalance(
-        startingWith initialSummary: GroupBalanceSummary,
-        currentUserId: Int
-    ) async {
-        guard initialSummary.balancesPending else { return }
-
-        _ = await BalanceRefreshPolicy.waitUntilPendingClears(
-            groupId: groupId,
-            balancesPending: initialSummary.balancesPending,
-            fetch: dataSource.summary,
-            wait: dataSource.waitForRetry
-        ) { [weak self] summary in
-            self?.apply(summary, currentUserId: currentUserId)
-            return self != nil
         }
     }
 
     /// Display seam: transforms a decoded API snapshot into exactly what the sheet states.
     func apply(_ summary: GroupBalanceSummary, currentUserId: Int) {
-        netCents = summary.simplifiedDebts.reduce(0) { total, debt in
-            if debt.from.id == currentUserId { return total - debt.amountCents }
-            if debt.to.id == currentUserId { return total + debt.amountCents }
-            return total
-        }
-        balancesPending = summary.balancesPending
-
         let openRows = summary.simplifiedDebts
             .map { debt in
                 BalanceRow(

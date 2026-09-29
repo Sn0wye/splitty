@@ -69,7 +69,7 @@ struct ContentView: View {
                             currentUserId: currentUserId,
                             snapshot: session.snapshot
                         ) { saved in
-                            appState.recordSavedExpense(saved, groupId: group.id)
+                            appState.groupSessions.report(.expenseCreated(saved), groupId: group.id)
                         }
                     } else {
                         ExpenseSheet(
@@ -80,7 +80,7 @@ struct ContentView: View {
                                 try await ExpenseService.shared.getExpenses(groupId: group.id)
                             }
                         ) { saved in
-                            appState.recordSavedExpense(saved, groupId: group.id)
+                            appState.groupSessions.report(.expenseCreated(saved), groupId: group.id)
                         }
                     }
                 }
