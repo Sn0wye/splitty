@@ -456,10 +456,13 @@ group through `IBalanceRecomputeQueue`, waits until no seeded group is pending, 
 host, and exits non-zero if that wait times out. The seeder never calls
 `CalculateGroupBalances` itself — invariant 4.
 
-The data set is **fixed, not random**: six users, a six-member group with amounts from
-$4.20 to $1,240, a two-member group, one group where `john@example.com` owes and one where
-he is owed, a pair settled to exactly zero, and a `Payment` row. `SeedData` holds it, and
-`DatabaseSeeder.Validate` rejects a row the API would have refused from a client.
+The data set is **fixed, not random**: eight users across seven groups (two to six
+members), about six months of dated rows with monthly bills pinned to calendar days for
+the Charts screen, amounts from $4.20 to $2,340, groups where `john@example.com` owes and
+groups where he is owed, a pair settled to exactly zero, equal, custom and percentage
+splits, one future-dated row, `Payment` rows, and every category at least once.
+`SeedData` holds it; `DatabaseSeeder.Validate` rejects a row the API would have refused
+from a client, and `ValidateSettlements` rejects a payment larger than the settle bound.
 
 Re-running is safe because the command **clears the tables it owns first** — every
 `User`, `Group`, `Expense`, `ExpenseSplit`, `GroupMembership`, `Invite`, `OAuthAccount` and

@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Splitty.DTO.Internal;
+using Splitty.Domain.Entities;
 using Splitty.Seeder;
 
 namespace Splitty.API.Tests;
@@ -131,6 +132,30 @@ public sealed class SeedTests(ApiFactory factory)
 
         Assert.True(categories.Distinct().Count() > 3, $"Only {categories.Distinct().Count()} categories seeded.");
         Assert.Contains("general", categories);
+    }
+
+    /// <summary>
+    /// The picker and the Charts screen should both have something to show for every leaf,
+    /// so a category added to the list without a seeded row fails here.
+    /// </summary>
+    [Fact]
+    public async Task Seeded_expenses_cover_every_category_the_picker_offers()
+    {
+        await SeedAsync();
+
+        var categories = new HashSet<string>();
+        foreach (var (_, expenses) in await SeededExpensesAsync())
+        {
+            categories.UnionWith(expenses.Select(expense => expense.GetProperty("category").GetString()!));
+        }
+
+        var missing = Enum.GetValues<ExpenseCategory>()
+            .Where(category => category is not ExpenseCategory.Payment)
+            .Select(category => JsonNamingPolicy.SnakeCaseLower.ConvertName(category.ToString()))
+            .Where(category => !categories.Contains(category))
+            .ToList();
+
+        Assert.True(missing.Count == 0, $"No seeded expense is categorized as {string.Join(", ", missing)}.");
     }
 
     [Fact]

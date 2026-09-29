@@ -53,6 +53,8 @@ public sealed class DatabaseSeeder(ApplicationDbContext context, IBalanceRecompu
                     .ToList()
             };
 
+            ValidateSettlements(seededGroup);
+
             context.Group.Add(group);
             await context.SaveChangesAsync(cancellationToken);
 
@@ -109,6 +111,41 @@ public sealed class DatabaseSeeder(ApplicationDbContext context, IBalanceRecompu
         await context.Group.ExecuteDeleteAsync(cancellationToken);
         await context.OAuthAccount.ExecuteDeleteAsync(cancellationToken);
         await context.User.ExecuteDeleteAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// The bound <c>BalanceService</c> puts on editing a settlement, checked against the
+    /// finished group: with every other row replayed, the payer must still owe at least the
+    /// amount and the payee must still be owed it. A seeded payment outside that bound is
+    /// one the app would refuse to re-save.
+    /// </summary>
+    private static void ValidateSettlements(SeedGroup group)
+    {
+        foreach (var settlement in group.Entries.Where(entry => entry.Type is ExpenseType.Payment))
+        {
+            var nets = new Dictionary<string, decimal>();
+
+            // The same walk as the balance replay: whoever paid is owed each other split.
+            foreach (var entry in group.Entries.Where(entry => !ReferenceEquals(entry, settlement)))
+            {
+                foreach (var split in entry.Splits.Where(split => split.Email != entry.PaidBy))
+                {
+                    nets[entry.PaidBy] = nets.GetValueOrDefault(entry.PaidBy) + Math.Abs(split.Amount);
+                    nets[split.Email] = nets.GetValueOrDefault(split.Email) - Math.Abs(split.Amount);
+                }
+            }
+
+            var peer = settlement.Splits.Single(split => split.Email != settlement.PaidBy).Email;
+            var owed = Math.Min(
+                Math.Max(0m, -nets.GetValueOrDefault(settlement.PaidBy)),
+                Math.Max(0m, nets.GetValueOrDefault(peer)));
+
+            if (settlement.Amount > owed)
+            {
+                throw new InvalidOperationException(
+                    $"Seeded settlement '{settlement.Description}' in '{group.Name}' exceeds the {owed} owed.");
+            }
+        }
     }
 
     /// <summary>
