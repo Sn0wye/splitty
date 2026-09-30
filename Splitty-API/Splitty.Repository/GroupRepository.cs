@@ -13,27 +13,6 @@ public class GroupRepository(ApplicationDbContext context): IGroupRepository
         await context.SaveChangesAsync();
     }
 
-    public async Task<Group?> GetGroupByIdAsync(int groupId)
-    {
-        return await context.Group
-            .Include(g => g.CreatedByUser)
-            .Include(g => g.Members)
-            .ThenInclude(gm => gm.User)
-            .Include(g => g.Balances)
-            .FirstOrDefaultAsync(g => g.Id == groupId);
-    }
-
-    public async Task<List<Group>> GetGroupsByUserId(int userId)
-    {
-        return await context.Group
-            .Where(g => g.Members.Any(gm => gm.UserId == userId))
-            .Include(g => g.CreatedByUser)
-            .Include(g => g.Members)
-            .ThenInclude(gm => gm.User)
-            .Include(g => g.Balances)
-            .ToListAsync();
-    }
-
     // Written in the database, so a rename never saves back the pending columns or the
     // balances it would have read alongside them. A null field keeps its stored value.
     public async Task RenameAsync(int groupId, string? name, string? description)
@@ -45,10 +24,9 @@ public class GroupRepository(ApplicationDbContext context): IGroupRepository
                 .SetProperty(g => g.Description, g => description ?? g.Description));
     }
 
-    public async Task DeleteAsync(Group group)
+    public async Task DeleteAsync(int groupId)
     {
-        context.Group.Remove(group);
-        await context.SaveChangesAsync();
+        await context.Group.Where(g => g.Id == groupId).ExecuteDeleteAsync();
     }
 
     // Written in the database rather than through a tracked entity, so the flag can be set

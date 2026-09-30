@@ -17,6 +17,7 @@ Two deliverables in one repo:
 
 ```
 API ──> Service ──> Repository ──> Infrastructure (DbContext)
+ │         └───────────────────> Infrastructure (read projections)
  │         │             │
  └─────────┴─────────────┴──────> Domain (entities), DTO
 ```
@@ -24,8 +25,8 @@ API ──> Service ──> Repository ──> Infrastructure (DbContext)
 | Project | Contains |
 |---|---|
 | `Splitty.API` | Controllers, `Program.cs` wiring, middleware |
-| `Splitty.Service` | Business rules, authorization decisions |
-| `Splitty.Repository` | EF Core queries, one repository per aggregate |
+| `Splitty.Service` | Business rules, authorization decisions, read models |
+| `Splitty.Repository` | EF Core persistence, one repository per aggregate |
 | `Splitty.Infrastructure` | `ApplicationDbContext`, migrations |
 | `Splitty.Domain` | Entities only, no behavior |
 | `Splitty.DTO` | `Request/`, `Response/`, `Internal/` |
@@ -34,6 +35,11 @@ API ──> Service ──> Repository ──> Infrastructure (DbContext)
 
 Everything is registered scoped in `Program.cs`, interface-first. Services and
 repositories use **primary constructors** for injection — match that style.
+
+Read services can query `ApplicationDbContext` directly to shape response projections.
+`GroupReadModel` owns group and expense responses; `GroupStatsService` owns the stats
+read. Group and expense repositories persist writes and load rows needed by mutations
+or the balance replay, without loading member or user graphs for response mapping.
 
 ## Domain model
 
@@ -93,8 +99,10 @@ no route for recording that someone paid *you*, and no counterparty confirmation
 
 Entities use `[Table("Name")]` (singular, PascalCase — so do the Postgres tables),
 `[DatabaseGenerated(Identity)]` int keys, and `[JsonIgnore]` on back-references to stop
-serialization cycles. Entities are returned directly from some endpoints, so anything
-that must not reach a client needs `[JsonIgnore]`.
+serialization cycles. Group and expense routes return explicit response types shaped by
+`GroupReadModel`, using untracked scalar projections and the shared avatar resolver. Entity
+properties are not part of those API contracts. Group nets are aggregated in the database
+over only the caller's pairwise rows; members are projected separately from balances.
 
 ### Invariants
 

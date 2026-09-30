@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Splitty.Domain.Entities;
 using Splitty.DTO.Internal;
 using Splitty.DTO.Request;
 using Splitty.DTO.Response;
@@ -15,6 +14,7 @@ namespace Splitty.API.Controllers;
 [Authorize]
 public class GroupController(
     IGroupService groupService,
+    IGroupReadModel readModel,
     IExpenseService expenseService,
     IBalanceService balanceService,
     IInviteService inviteService,
@@ -23,7 +23,7 @@ public class GroupController(
 ) : ControllerBase
 {
     [HttpPost]
-    public async Task<ActionResult<Group>> CreateGroup([FromBody] CreateGroupRequest request)
+    public async Task<ActionResult<GroupDTO>> CreateGroup([FromBody] CreateGroupRequest request)
     {
         if (!ModelState.IsValid)
         {
@@ -47,7 +47,7 @@ public class GroupController(
 
         if (userId is null) return Unauthorized();
 
-        var groups = await groupService.GetGroupsByUserId(int.Parse(userId));
+        var groups = await readModel.GetGroupsByUserId(int.Parse(userId));
 
         return Ok(groups);
     }
@@ -59,7 +59,7 @@ public class GroupController(
 
         if (userId is null) return Unauthorized();
 
-        var group = await groupService.GetGroupAsync(groupId, int.Parse(userId));
+        var group = await readModel.GetGroupAsync(groupId, int.Parse(userId));
 
         if (group is null) return NotFound(Error(404, "Group not found"));
 
@@ -67,7 +67,7 @@ public class GroupController(
     }
 
     [HttpPut("{groupId}")]
-    public async Task<ActionResult<Group>> UpdateGroup(int groupId, [FromBody] UpdateGroupRequest request)
+    public async Task<ActionResult<GroupDTO>> UpdateGroup(int groupId, [FromBody] UpdateGroupRequest request)
     {
         if (request.Name is null && request.Description is null)
         {
@@ -163,7 +163,7 @@ public class GroupController(
     };
 
     [HttpGet("{groupId}/expenses")]
-    public async Task<ActionResult<List<Expense>>> GetExpensesByGroupId(int groupId)
+    public async Task<ActionResult<List<ExpenseResponse>>> GetExpensesByGroupId(int groupId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -171,13 +171,13 @@ public class GroupController(
 
         if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
 
-        var expenses = await expenseService.FindExpensesByGroupId(groupId, int.Parse(userId));
+        var expenses = await readModel.GetExpensesAsync(groupId, int.Parse(userId));
 
         return Ok(expenses);
     }
 
     [HttpGet("{groupId}/expenses/{expenseId:int}")]
-    public async Task<ActionResult<Expense>> GetExpenseById(int groupId, int expenseId)
+    public async Task<ActionResult<ExpenseResponse>> GetExpenseById(int groupId, int expenseId)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -185,11 +185,11 @@ public class GroupController(
 
         if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
 
-        return Ok(await expenseService.FindByIdAsync(groupId, expenseId, int.Parse(userId)));
+        return Ok(await readModel.GetExpenseAsync(groupId, expenseId, int.Parse(userId)));
     }
 
     [HttpPost("{groupId}/expenses")]
-    public async Task<ActionResult<Expense>> CreateExpense(
+    public async Task<ActionResult<ExpenseResponse>> CreateExpense(
         [FromBody] CreateExpenseRequest request,
         int groupId
     )
@@ -223,7 +223,7 @@ public class GroupController(
     }
 
     [HttpPut("{groupId}/expenses/{expenseId:int}")]
-    public async Task<ActionResult<Expense>> UpdateExpense(
+    public async Task<ActionResult<ExpenseResponse>> UpdateExpense(
         [FromBody] UpdateExpenseRequest request,
         int groupId,
         int expenseId

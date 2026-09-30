@@ -13,7 +13,7 @@ namespace Splitty.API.Controllers;
 [Authorize]
 public class InviteController(
     IInviteService inviteService,
-    IGroupService groupService
+    IGroupReadModel readModel
 ) : ControllerBase
 {
     /// Read-only: describes the invite so the client can confirm before joining.
@@ -60,7 +60,7 @@ public class InviteController(
             case RedeemInviteStatus.Success:
             case RedeemInviteStatus.AlreadyMember:
             {
-                var group = await groupService.GetGroupAsync(result.GroupId, int.Parse(userId));
+                var group = await readModel.GetGroupAsync(result.GroupId, int.Parse(userId));
                 if (group is null)
                 {
                     return NotFound(new ErrorResponse { StatusCode = 404, Message = "Group not found" });

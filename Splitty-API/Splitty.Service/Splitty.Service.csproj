@@ -9,6 +9,7 @@
     <ItemGroup>
       <ProjectReference Include="..\Splitty.Domain\Splitty.Domain.csproj" />
       <ProjectReference Include="..\Splitty.DTO\Splitty.DTO.csproj" />
+      <ProjectReference Include="..\Splitty.Infrastructure\Splitty.Infrastructure.csproj" />
       <ProjectReference Include="..\Splitty.Repository\Splitty.Repository.csproj" />
     </ItemGroup>
 

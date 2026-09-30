@@ -6,4 +6,5 @@ public interface IAvatarResolver
 {
     /// The single absolute URL a client is given for this user's avatar.
     string Resolve(User user);
+    string Resolve(int userId, string? avatarKey, string? providerUrl);
 }

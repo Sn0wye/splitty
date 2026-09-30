@@ -20,19 +20,21 @@ public class AvatarResolver(IAvatarStorage storage) : IAvatarResolver
     /// </summary>
     private const string DiceBearVersion = "11.x";
 
-    public string Resolve(User user)
+    public string Resolve(User user) => Resolve(user.Id, user.AvatarKey, user.AvatarUrl);
+
+    public string Resolve(int userId, string? avatarKey, string? providerUrl)
     {
-        if (!string.IsNullOrWhiteSpace(user.AvatarKey))
+        if (!string.IsNullOrWhiteSpace(avatarKey))
         {
-            return storage.PublicUrl(user.AvatarKey);
+            return storage.PublicUrl(avatarKey);
         }
 
-        if (!string.IsNullOrWhiteSpace(user.AvatarUrl))
+        if (!string.IsNullOrWhiteSpace(providerUrl))
         {
-            return user.AvatarUrl;
+            return providerUrl;
         }
 
-        return Generated(user.Id);
+        return Generated(userId);
     }
 
     /// <summary>

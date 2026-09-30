@@ -7,7 +7,7 @@ namespace Splitty.Service;
 
 public class InviteService(
     IInviteRepository inviteRepository,
-    IGroupRepository groupRepository,
+    IGroupReadModel readModel,
     IGroupMembershipRepository groupMembershipRepository
 ) : IInviteService
 {
@@ -22,11 +22,9 @@ public class InviteService(
     {
         if (maxUses is <= 0) return new CreateInviteResult(CreateInviteStatus.InvalidMaxUses);
 
-        var group = await groupRepository.GetGroupByIdAsync(groupId);
+        if (!await readModel.GroupExistsAsync(groupId)) return new CreateInviteResult(CreateInviteStatus.GroupNotFound);
 
-        if (group is null) return new CreateInviteResult(CreateInviteStatus.GroupNotFound);
-
-        if (await groupMembershipRepository.GetGroupMembershipByUserIdAndGroupId(userId, groupId) is null)
+        if (!await readModel.IsMemberAsync(groupId, userId))
         {
             return new CreateInviteResult(CreateInviteStatus.NotAMember);
         }
@@ -65,7 +63,7 @@ public class InviteService(
 
         if (invite.ExpiresAt <= DateTime.UtcNow) return new RedeemInviteResult(RedeemInviteStatus.Expired);
 
-        if (await groupMembershipRepository.GetGroupMembershipByUserIdAndGroupId(userId, invite.GroupId) is not null)
+        if (await readModel.IsMemberAsync(invite.GroupId, userId))
         {
             return new RedeemInviteResult(RedeemInviteStatus.AlreadyMember, invite.GroupId);
         }
@@ -97,7 +95,7 @@ public class InviteService(
         if (invite.ExpiresAt <= DateTime.UtcNow) return new DescribeInviteResult(DescribeInviteStatus.Expired);
 
         var alreadyMember =
-            await groupMembershipRepository.GetGroupMembershipByUserIdAndGroupId(userId, invite.GroupId) is not null;
+            await readModel.IsMemberAsync(invite.GroupId, userId);
 
         // Membership before exhaustion, as in RedeemAsync: a member holding an exhausted
         // code gets 200 from accept, so describe must not answer 409 to the same person.
