@@ -25,16 +25,15 @@ struct ExpenseSheet: View {
     @State private var savedCount = 0
 
     private let onSaved: (Expense) -> Void
-    private let timelineExpenses: [Expense]
-    private let loadTimelineExpenses: (() async throws -> [Expense])?
+    private let timelineExpenses: [Expense]?
+    private let groupId: Int
 
     init(
         groupId: Int,
         members: [GroupMember],
         currentUserId: Int,
         expense: Expense? = nil,
-        timelineExpenses: [Expense] = [],
-        loadTimelineExpenses: (() async throws -> [Expense])? = nil,
+        timelineExpenses: [Expense]? = nil,
         onSaved: @escaping (Expense) -> Void
     ) {
         _viewModel = StateObject(wrappedValue: ExpenseFormViewModel(
@@ -42,10 +41,10 @@ struct ExpenseSheet: View {
             members: members,
             currentUserId: currentUserId,
             expense: expense,
-            timelineExpenses: timelineExpenses
+            timelineExpenses: timelineExpenses ?? []
         ))
         self.timelineExpenses = timelineExpenses
-        self.loadTimelineExpenses = loadTimelineExpenses
+        self.groupId = groupId
         self.onSaved = onSaved
     }
 
@@ -59,13 +58,13 @@ struct ExpenseSheet: View {
         .presentationCornerRadius(28)
         .presentationBackground(Color.expenseBackground)
         .sensoryFeedback(.success, trigger: savedCount)
-        .onChange(of: timelineExpenses.map(\.category)) { _, _ in
-            viewModel.updateTimelineExpenses(timelineExpenses)
+        .onChange(of: timelineExpenses?.map(\.category)) { _, _ in
+            if let timelineExpenses { viewModel.updateTimelineExpenses(timelineExpenses) }
         }
         .task {
-            guard let loadTimelineExpenses else { return }
+            guard timelineExpenses == nil else { return }
             do {
-                let expenses = try await loadTimelineExpenses()
+                let expenses = try await ExpenseService.shared.getExpenses(groupId: groupId)
                 if !Task.isCancelled { viewModel.updateTimelineExpenses(expenses) }
             } catch {
                 // Suggestions are optional; saving an expense must still work offline.

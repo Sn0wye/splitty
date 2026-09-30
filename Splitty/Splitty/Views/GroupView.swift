@@ -8,11 +8,10 @@
 import SwiftUI
 
 struct GroupView: View {
-    let session: GroupSession
+    @ObservedObject var session: GroupSession
     var onAddExpense: () -> Void = {}
     @EnvironmentObject private var appState: AppState
     @Environment(\.scenePhase) private var scenePhase
-    @ObservedObject private var viewModel: GroupViewModel
     @StateObject private var authManager = AuthenticationManager.shared
     @State private var isTitleCollapsed = false
     @State private var showingSettings = false
@@ -36,7 +35,6 @@ struct GroupView: View {
     init(session: GroupSession, onAddExpense: @escaping () -> Void = {}) {
         self.session = session
         self.onAddExpense = onAddExpense
-        _viewModel = ObservedObject(wrappedValue: session.snapshot)
     }
 
     var body: some View {
@@ -47,7 +45,7 @@ struct GroupView: View {
 
     private var groupScreen: some View {
         ZStack {
-            if viewModel.isLoading {
+            if session.isLoading {
                 SplittyLoader()
             } else {
                 content
@@ -75,7 +73,7 @@ struct GroupView: View {
             }
 
             ToolbarItem(placement: .principal) {
-                Text(viewModel.group?.name ?? "")
+                Text(session.group?.name ?? "")
                     .font(.headline)
                     .foregroundColor(Color("foreground"))
                     .opacity(isTitleCollapsed ? 1 : 0)
@@ -89,17 +87,17 @@ struct GroupView: View {
                         .font(.system(size: 17, weight: .regular))
                         .foregroundColor(Color("foreground"))
                 }
-                .disabled(viewModel.group == nil || currentUserId == nil)
+                .disabled(session.group == nil || currentUserId == nil)
                 .accessibilityLabel(L10n.Group.settings)
             }
         }
         .navigationDestination(isPresented: $showingSettings) {
-            if let group = viewModel.group, let currentUserId {
+            if let group = session.group, let currentUserId {
                 GroupSettingsView(
                     group: group,
                     currentUserId: currentUserId,
                     onGroupSaved: {
-                        viewModel.beginRefresh(groupId: groupId)
+                        session.appear()
                     },
                     onGroupUnavailable: { message in
                         appState.leaveUnavailableGroup(message: message)
@@ -114,19 +112,16 @@ struct GroupView: View {
             if let currentUserId {
                 SettleUpSheet(
                     session: session,
-                    groupId: groupId,
-                    members: viewModel.members,
                     currentUserId: currentUserId
-                ) { _ in }
+                )
             }
         }
         .sheet(isPresented: $showingBalancesSheet) {
-            if viewModel.group != nil, let currentUserId {
+            if session.group != nil, let currentUserId {
                 BalancesView(
                     session: session,
-                    currentUserId: currentUserId,
-                    members: viewModel.members
-                ) { _ in }
+                    currentUserId: currentUserId
+                )
             }
         }
         .sheet(isPresented: $showingChartsSheet, onDismiss: {
@@ -138,15 +133,15 @@ struct GroupView: View {
                 ChartsView(
                     groupId: groupId,
                     currentUserId: currentUserId,
-                    members: viewModel.members,
-                    expenses: viewModel.expenses,
-                    hasExpenses: viewModel.hasExpenses,
+                    members: session.members,
+                    expenses: session.expenses,
+                    hasExpenses: session.hasExpenses,
                     onAddExpense: { addExpenseAfterCharts = true }
                 )
             }
         }
         .sheet(isPresented: $showingInviteSheet) {
-            if let group = viewModel.group {
+            if let group = session.group {
                 NavigationStack {
                     InviteView(groupId: group.id, groupName: group.name)
                         .toolbar {
@@ -198,7 +193,7 @@ struct GroupView: View {
                 headerSection
                 actionButtonsSection
 
-                if let actionErrorMessage = viewModel.actionErrorMessage {
+                if let actionErrorMessage = session.actionErrorMessage {
                     Text(actionErrorMessage)
                         .foregroundColor(.red)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -213,7 +208,7 @@ struct GroupView: View {
         .accessibilityIdentifier("group.timeline")
         .performanceScrollSignpost(.timelineScroll)
         .refreshable {
-            await viewModel.refresh(groupId: groupId)
+            await session.refresh()
         }
         // The title lives in the scroll content, so the toolbar picks it up as it leaves.
         .onScrollGeometryChange(for: Bool.self) { geometry in
@@ -231,29 +226,29 @@ struct GroupView: View {
 
     @ViewBuilder
     private var timeline: some View {
-        if !viewModel.errorMessage.isEmpty {
-            Text(L10n.Group.error(viewModel.errorMessage))
+        if !session.errorMessage.isEmpty {
+            Text(L10n.Group.error(session.errorMessage))
                 .foregroundColor(.red)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
                 .background(Color("card"))
-        } else if !viewModel.hasLoadedExpenses {
+        } else if !session.hasLoadedExpenses {
             SplittyLoader(size: 32)
                 .frame(maxWidth: .infinity)
                 .padding(32)
-        } else if viewModel.expenses.isEmpty {
+        } else if session.expenses.isEmpty {
             GroupEmptyState(
-                memberCount: viewModel.members.count,
+                memberCount: session.members.count,
                 onAddExpense: onAddExpense,
                 onInvite: { showingInviteSheet = true }
             )
-            .disabled(viewModel.group == nil)
+            .disabled(session.group == nil)
         } else {
             LazyVStack(spacing: 0) {
-                if viewModel.expenses.count == 1 {
+                if session.expenses.count == 1 {
                     FirstBalanceTip()
                 }
-                ForEach(viewModel.groupedExpenses) { groupedExpense in
+                ForEach(session.groupedExpenses) { groupedExpense in
                     dateHeader(for: groupedExpense)
                     ForEach(groupedExpense.expenses) { expense in
                         expenseRow(expense)
@@ -284,7 +279,7 @@ struct GroupView: View {
     /// boundary in the system.
     @ViewBuilder
     private func expenseRow(_ expense: Expense, currentUserId: Int) -> some View {
-        if viewModel.isPendingPayment(expense) {
+        if session.isPendingPayment(expense) {
             ExpenseRow(expense: expense, currentUserId: currentUserId)
                 .opacity(0.6)
                 .accessibilityValue(L10n.Common.updating)
@@ -302,25 +297,22 @@ struct GroupView: View {
 
     @ViewBuilder
     private func detail(for expenseId: Int, currentUserId: Int) -> some View {
-        if let expense = viewModel.expenses.first(where: { $0.id == expenseId })
+        if let expense = session.expenses.first(where: { $0.id == expenseId })
             ?? (selectedExpense?.id == expenseId ? selectedExpense : nil) {
             switch expense.type {
             case .expense:
                 ExpenseDetailView(
                     expense: expense,
-                    members: viewModel.members,
+                    members: session.members,
                     currentUserId: currentUserId,
-                    timelineExpenses: viewModel.expenses,
-                    onChanged: {},
-                    onDeleted: {}
+                    timelineExpenses: session.expenses
                 )
             case .payment:
                 SettlementDetailView(
                     settlement: expense,
-                    members: viewModel.members,
+                    members: session.members,
                     currentUserId: currentUserId,
-                    onChanged: {},
-                    onDeleted: {}
+                    session: session
                 )
             }
         }
@@ -335,12 +327,12 @@ struct GroupView: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(viewModel.group?.name ?? L10n.Common.loading)
+            Text(session.group?.name ?? L10n.Common.loading)
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .foregroundColor(Color("foreground"))
 
-            if let group = viewModel.group {
+            if let group = session.group {
                 Button {
                     showingSettings = true
                 } label: {
@@ -365,15 +357,15 @@ struct GroupView: View {
     
     @ViewBuilder
     private var balanceText: some View {
-        if let balanceCents = viewModel.group?.netBalanceCents {
+        if let balanceCents = session.group?.netBalanceCents {
             HStack(spacing: 6) {
                 Text(BalanceCopy.overall(cents: balanceCents))
                 // A recomputation is outstanding, so this number predates the last write.
                 // Greyed with a spinner rather than presented as final.
                 .foregroundColor(Color("muted-foreground"))
-                .opacity(viewModel.balancesPending ? 0.5 : 1)
+                .opacity(session.balancesPending ? 0.5 : 1)
 
-                if viewModel.balancesPending {
+                if session.balancesPending {
                     ProgressView()
                         .controlSize(.mini)
                 }
@@ -390,7 +382,7 @@ struct GroupView: View {
         // so the inset doesn't clip the first and last pill mid-scroll.
         ScrollView(.horizontal) {
             LazyHStack(spacing: 12) {
-                if viewModel.members.count >= 2 {
+                if session.members.count >= 2 {
                     ActionButton(title: L10n.Group.settleUp, color: Color("foreground"), textColor: Color("background")) {
                         showingSettleUpSheet = true
                     }
@@ -400,12 +392,12 @@ struct GroupView: View {
                 ActionButton(title: L10n.Group.balances, color: Color("muted"), textColor: Color("foreground")) {
                     showingBalancesSheet = true
                 }
-                .disabled(viewModel.group == nil || currentUserId == nil)
+                .disabled(session.group == nil || currentUserId == nil)
 
                 ActionButton(title: L10n.Group.charts, color: Color("muted"), textColor: Color("foreground")) {
                     showingChartsSheet = true
                 }
-                .disabled(viewModel.group == nil || currentUserId == nil)
+                .disabled(session.group == nil || currentUserId == nil)
 
                 ActionButton(title: L10n.Group.export, color: Color("muted"), textColor: Color("foreground")) {
                     // TODO: Export action

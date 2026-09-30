@@ -10,11 +10,9 @@ struct SettlementDetailView: View {
     let settlement: Expense
     let members: [GroupMember]
     let currentUserId: Int
-    let onChanged: () -> Void
-    let onDeleted: () -> Void
+    @ObservedObject var session: GroupSession
 
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var appState: AppState
     @State private var showingDeleteConfirmation = false
     @State private var showingEditSheet = false
     @State private var isDeleting = false
@@ -74,18 +72,11 @@ struct SettlementDetailView: View {
             }
         }
         .sheet(isPresented: $showingEditSheet) {
-            if let session = appState.groupSessions.current,
-               session.groupId == settlement.groupId {
-                SettleUpSheet(
+            SettleUpSheet(
                 session: session,
-                groupId: settlement.groupId,
-                members: members,
                 currentUserId: currentUserId,
                 settlement: settlement
-            ) { _ in
-                onChanged()
-            }
-            }
+            )
         }
         .confirmationDialog(
             L10n.Settlement.deleteTitle(Money.formatted(amount: settlement.amount), payerName, payeeName),
@@ -147,12 +138,13 @@ struct SettlementDetailView: View {
 
         Task {
             defer { isDeleting = false }
-            guard let deletion = appState.groupSessions.delete(settlement, groupId: settlement.groupId),
-                  await deletion.value else {
-                errorMessage = appState.groupSessions.current?.snapshot.actionErrorMessage
+            switch await session.delete(settlement).value {
+            case .failed(let message):
+                errorMessage = message
                 return
+            case .deleted, .alreadyGone:
+                break
             }
-            onDeleted()
             dismiss()
         }
     }

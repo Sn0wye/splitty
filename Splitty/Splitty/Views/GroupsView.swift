@@ -83,7 +83,7 @@ struct GroupsView: View {
                             )
                         } else {
                             ForEach(viewModel.groups) { group in
-                                GroupCard(group: group) {
+                                GroupCard(group: group, liveBalance: appState.groupSessions.liveBalance(for: group.id)) {
                                     appState.openGroup(group.id, seed: group)
                                 }
                             }

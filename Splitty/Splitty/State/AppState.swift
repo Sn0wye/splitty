@@ -3,6 +3,7 @@
 //  Splitty
 //
 
+import Combine
 import SwiftUI
 
 enum AppTab: Int {
@@ -67,36 +68,25 @@ enum AddExpenseDestination: Equatable {
 /// "Group" tab is currently pointing at.
 @MainActor
 final class AppState: ObservableObject {
-    private static func currentGroupKey(userId: Int) -> String { "currentGroupId.\(userId)" }
-
     @Published var selectedTab: AppTab = .groups
     @Published var groupNotice: String?
     @Published private(set) var exitedGroupId: Int?
     let groupSessions: GroupSessionStore
-    @Published private(set) var signedInUserId: Int?
+    private var sessionChanges: AnyCancellable?
 
-    @Published var currentGroupId: Int? {
-        didSet {
-            guard let signedInUserId else { return }
-            let key = Self.currentGroupKey(userId: signedInUserId)
-            if let id = currentGroupId { UserDefaults.standard.set(id, forKey: key) }
-            else { UserDefaults.standard.removeObject(forKey: key) }
-        }
-    }
+    var signedInUserId: Int? { groupSessions.signedInUserId }
+    var currentGroupId: Int? { groupSessions.currentGroupId }
 
     init(groupSessions: GroupSessionStore? = nil) {
         self.groupSessions = groupSessions ?? GroupSessionStore()
-        currentGroupId = nil
+        sessionChanges = self.groupSessions.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
     }
 
     func setSignedInUser(_ userId: Int?) {
         guard signedInUserId != userId else { return }
-        groupSessions.discard()
-        signedInUserId = userId
-        currentGroupId = userId.flatMap {
-            UserDefaults.standard.object(forKey: Self.currentGroupKey(userId: $0)) as? Int
-        }
-        if let currentGroupId { groupSessions.open(currentGroupId).appear() }
+        groupSessions.setSignedInUser(userId)
         selectedTab = .groups
     }
 
@@ -104,14 +94,12 @@ final class AppState: ObservableObject {
         groupNotice = nil
         exitedGroupId = nil
         groupSessions.open(id, seed: seed)
-        currentGroupId = id
         selectedTab = .group
     }
 
     func leaveUnavailableGroup(message: String) {
         groupNotice = message
         if let currentGroupId { groupSessions.remove(currentGroupId) }
-        currentGroupId = nil
         selectedTab = .groups
     }
 
@@ -119,7 +107,6 @@ final class AppState: ObservableObject {
         groupNotice = message
         exitedGroupId = id
         groupSessions.remove(id)
-        currentGroupId = nil
         selectedTab = .groups
     }
 
@@ -127,8 +114,7 @@ final class AppState: ObservableObject {
         fetchGroups: () async throws -> [Group]
     ) async throws -> AddExpenseDestination {
         if let current = groupSessions.current,
-           current.groupId == currentGroupId,
-           let group = current.snapshot.group {
+           let group = current.group {
             return .resolve(groups: [group], currentGroupId: currentGroupId)
         }
         return .resolve(groups: try await fetchGroups(), currentGroupId: currentGroupId)

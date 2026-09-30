@@ -62,12 +62,11 @@ struct ContentView: View {
                 }
             case .expense(let group):
                 if let currentUserId = authManager.currentUser?.id {
-                    if let session = appState.groupSessions.current,
-                       session.groupId == group.id {
+                    if let session = appState.groupSessions.session(for: group.id) {
                         SessionExpenseSheet(
                             group: group,
                             currentUserId: currentUserId,
-                            snapshot: session.snapshot
+                            session: session
                         ) { saved in
                             appState.groupSessions.report(.expenseCreated(saved), groupId: group.id)
                         }
@@ -75,10 +74,7 @@ struct ContentView: View {
                         ExpenseSheet(
                             groupId: group.id,
                             members: group.members,
-                            currentUserId: currentUserId,
-                            loadTimelineExpenses: {
-                                try await ExpenseService.shared.getExpenses(groupId: group.id)
-                            }
+                            currentUserId: currentUserId
                         ) { saved in
                             appState.groupSessions.report(.expenseCreated(saved), groupId: group.id)
                         }
@@ -134,7 +130,7 @@ struct ContentView: View {
 private struct SessionExpenseSheet: View {
     let group: Group
     let currentUserId: Int
-    @ObservedObject var snapshot: GroupViewModel
+    @ObservedObject var session: GroupSession
     let onSaved: (Expense) -> Void
 
     var body: some View {
@@ -142,7 +138,7 @@ private struct SessionExpenseSheet: View {
             groupId: group.id,
             members: group.members,
             currentUserId: currentUserId,
-            timelineExpenses: snapshot.expenses,
+            timelineExpenses: session.expenses,
             onSaved: onSaved
         )
     }
@@ -199,11 +195,9 @@ private struct CurrentGroupView: View {
     let onAddExpense: () -> Void
 
     var body: some View {
-        if let groupId = appState.currentGroupId,
-           let session = appState.groupSessions.current,
-           session.groupId == groupId {
+        if let session = appState.groupSessions.current {
             GroupView(session: session, onAddExpense: onAddExpense)
-                .id(groupId)
+                .id(session.groupId)
         } else {
             VStack(spacing: 8) {
                 BrandBadge(symbol: "person.2")
