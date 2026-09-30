@@ -83,6 +83,17 @@ struct ExpenseSplit: Codable, Identifiable {
     let user: User
 }
 
+// MARK: - Involvement
+/// How one member stands on a timeline row. Only `lent` and `borrowed` move money
+/// between people, so only they carry an amount.
+enum ExpenseInvolvement: Equatable {
+    case lent(Double)
+    case borrowed(Double)
+    case paidForYourself
+    case notInvolved
+    case payment
+}
+
 // MARK: - Grouped Expenses by Date
 /// One day of the timeline. Identified by the normalized day rather than by
 /// `dateString`: two days in different years share a label ("Apr 12, Sat"), and a
@@ -198,6 +209,18 @@ extension Expense {
         }
     }
     
+    /// Where `userId` stands on this row. A payer whose lent amount is zero paid only for
+    /// themselves, which is not a loan.
+    func involvement(of userId: Int) -> ExpenseInvolvement {
+        let isPayer = paidBy == userId
+        guard isPayer || splits.contains(where: { $0.userId == userId }) else { return .notInvolved }
+        if type == .payment { return .payment }
+
+        let split = getUserSplit(currentUserId: userId)
+        if isPayer { return split == 0 ? .paidForYourself : .lent(split) }
+        return .borrowed(-split)
+    }
+
     // Get display information for UI
     func getDisplayInfo(currentUserId: Int) -> (isUserPaid: Bool, userSplit: Double) {
         let isUserPaid = paidBy == currentUserId

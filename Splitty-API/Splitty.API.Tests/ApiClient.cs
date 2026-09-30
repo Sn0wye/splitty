@@ -78,6 +78,9 @@ public sealed class ApiClient
     public Task<HttpResponseMessage> GetGroupAsync(int groupId) =>
         _http.GetAsync($"/group/{groupId}");
 
+    public Task<HttpResponseMessage> UpdateGroupAsync(int groupId, object body) =>
+        _http.PutAsJsonAsync($"/group/{groupId}", body);
+
     public Task<HttpResponseMessage> AcceptInviteAsync(string code) =>
         _http.PostAsync($"/invite/{code}/accept", null);
 

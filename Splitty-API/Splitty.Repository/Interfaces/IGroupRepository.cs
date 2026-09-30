@@ -7,7 +7,7 @@ public interface IGroupRepository
     Task CreateAsync(Group group);
     Task<Group?> GetGroupByIdAsync(int groupId);
     Task<List<Group>> GetGroupsByUserId(int userId);
-    Task UpdateAsync(Group group);
+    Task RenameAsync(int groupId, string? name, string? description);
     Task DeleteAsync(Group group);
     Task MarkBalancesPendingAsync(int groupId);
     Task<int> GetBalancesPendingGenerationAsync(int groupId);

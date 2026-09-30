@@ -251,6 +251,7 @@ enum L10n {
         static var notInvolved: String { text("group.not_involved", default: "not involved") }
         static var youLent: String { text("group.you_lent", default: "you lent") }
         static var youBorrowed: String { text("group.you_borrowed", default: "you borrowed") }
+        static var youPaidForYourself: String { text("group.you_paid_for_yourself", default: "you paid for yourself") }
         static func deletePayment(_ amount: String) -> String {
             format("group.delete_payment", default: "Delete the %@ payment?", amount)
         }

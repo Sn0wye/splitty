@@ -5182,6 +5182,35 @@
         }
       }
     },
+    "group.you_paid_for_yourself" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "you paid for yourself"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "has pagado para ti"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vous avez payé pour vous"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "você pagou só para você"
+          }
+        }
+      }
+    },
     "group.you_paid_peer" : {
       "extractionState" : "manual",
       "localizations" : {
