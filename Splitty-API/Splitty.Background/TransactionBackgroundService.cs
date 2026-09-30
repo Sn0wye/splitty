@@ -1,14 +1,18 @@
-﻿using System.Threading.Channels;
+using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Splitty.Repository.Interfaces;
 using Splitty.Service.Interfaces;
 
 namespace Splitty.Background;
 
+/// <summary>
+/// Drains the group ledger's queue, handing each request to the ledger in a fresh scope. The
+/// protocol, including which requests are skipped, lives in the ledger; this loop only keeps
+/// one failed group from stopping the rest and signals every message it read.
+/// </summary>
 public class TransactionBackgroundService(
-    Channel<TransactionRequest> channel,
+    ChannelReader<LedgerRequest> requests,
     IServiceScopeFactory serviceScopeFactory,
     TransactionProcessedSignal processed,
     ILogger<TransactionBackgroundService> logger
@@ -16,25 +20,16 @@ public class TransactionBackgroundService(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await foreach (var request in channel.Reader.ReadAllAsync(stoppingToken))
+        await foreach (var request in requests.ReadAllAsync(stoppingToken))
         {
             try
             {
                 using var scope = serviceScopeFactory.CreateScope();
-                var groupRepository = scope.ServiceProvider.GetRequiredService<IGroupRepository>();
-
-                // Read before the replay loads any rows: a write that lands after this bumps
-                // the generation, so the clear below misses and that write's replay clears it.
-                var generation = await groupRepository.GetBalancesPendingGenerationAsync(request.groupId);
-
-                var balanceService = scope.ServiceProvider.GetRequiredService<IBalanceService>();
-                await balanceService.CalculateGroupBalances(request.groupId);
-
-                await groupRepository.MarkBalancesRecomputedAsync(request.groupId, generation);
+                await scope.ServiceProvider.GetRequiredService<IGroupLedger>().ProcessAsync(request, stoppingToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogError(ex, "Failed to recompute balances for group {GroupId}", request.groupId);
+                logger.LogError(ex, "Failed to recompute balances for group {GroupId}", request.GroupId);
             }
             finally
             {
@@ -43,7 +38,3 @@ public class TransactionBackgroundService(
         }
     }
 }
-
-public record TransactionRequest(
-    int groupId
-    );

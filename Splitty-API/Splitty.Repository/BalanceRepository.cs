@@ -7,15 +7,6 @@ namespace Splitty.Repository;
 
 public class BalanceRepository(ApplicationDbContext context) : IBalanceRepository
 {
-    // No user navigations: the replay saves these rows back, and nothing it saves may
-    // reach a member's user row.
-    public async Task<List<Balance>> GetGroupBalancesAsync(int groupId)
-    {
-        return await context.Balance
-            .Where(b => b.GroupId == groupId)
-            .ToListAsync();
-    }
-
     public async Task<List<Balance>> GetUserGroupBalances(int userId, int groupId)
     {
         return await context.Balance
@@ -41,20 +32,4 @@ public class BalanceRepository(ApplicationDbContext context) : IBalanceRepositor
     public Task<List<SimplifiedDebt>> GetUserSimplifiedDebtsAsync(int userId) =>
         context.SimplifiedDebt.AsNoTracking()
             .Where(d => d.FromUserId == userId || d.ToUserId == userId).ToListAsync();
-
-    public async Task ReplaceSimplifiedDebtsAsync(int groupId, List<SimplifiedDebt> debts)
-    {
-        await using var transaction = await context.Database.BeginTransactionAsync();
-        await context.SimplifiedDebt.Where(d => d.GroupId == groupId).ExecuteDeleteAsync();
-        context.SimplifiedDebt.AddRange(debts);
-        await context.SaveChangesAsync();
-        await transaction.CommitAsync();
-    }
-
-    public async Task<List<Balance>> UpdateBalancesAsync(List<Balance> balances)
-    {
-        context.Balance.UpdateRange(balances);
-        await context.SaveChangesAsync();
-        return balances;
-    }
 }

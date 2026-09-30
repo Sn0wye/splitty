@@ -6,8 +6,8 @@ using Splitty.Service.Interfaces;
 namespace Splitty.Service;
 
 /// <summary>
-/// Owns the balance replay and the settlement writes. A settlement write that succeeds requests
-/// its own recomputation, the same as an expense write; only the worker replays.
+/// Owns the settlement writes and the simplified-debt read. A settlement write that succeeds
+/// requests its own recomputation through the group ledger, the same as an expense write.
 /// </summary>
 public class BalanceService(
     IBalanceRepository balanceRepository,
@@ -15,82 +15,9 @@ public class BalanceService(
     IUserRepository userRepository,
     IGroupMembershipRepository groupMembershipRepository,
     IAvatarResolver avatarResolver,
-    IGroupRepository groupRepository,
-    IBalanceRecomputeQueue balanceRecomputeQueue
+    IGroupLedger groupLedger
 ) : IBalanceService
 {
-    public async Task<List<Balance>> CalculateGroupBalances(int groupId)
-    {
-        var balances = await balanceRepository.GetGroupBalancesAsync(groupId);
-        var expenses = await expenseRepository.GetForReplayAsync(groupId);
-        
-        foreach (var balance in balances)
-        {
-            balance.Amount = 0;
-        }
-
-        foreach (var expense in expenses)
-        {
-            foreach (var split in expense.Splits)
-            {
-                if (split.UserId == expense.PaidBy)
-                    continue;
-                    
-                var payer = balances.Find(b => b.UserId == expense.PaidBy && b.PeerId == split.UserId);
-                if (payer == null)
-                {
-                    payer = new Balance
-                    {
-                        UserId = expense.PaidBy,
-                        GroupId = groupId,
-                        PeerId = split.UserId,
-                        Amount = 0
-                    };
-                    balances.Add(payer);
-                }
-                payer.Amount += Math.Abs(split.Amount);
-
-                var payee = balances.Find(b => b.UserId == split.UserId && b.PeerId == expense.PaidBy);
-                if (payee == null)
-                {
-                    payee = new Balance
-                    {
-                        UserId = split.UserId,
-                        GroupId = groupId,
-                        PeerId = expense.PaidBy,
-                        Amount = 0
-                    };
-                    balances.Add(payee);
-                }
-                payee.Amount -= Math.Abs(split.Amount);
-
-            }
-        }
-
-        await balanceRepository.UpdateBalancesAsync(balances);
-
-        var nets = balances.GroupBy(b => b.UserId)
-            .ToDictionary(g => g.Key, g => g.Sum(b => b.Amount));
-        var debts = new List<SimplifiedDebt>();
-        while (true)
-        {
-            var debtor = nets.Where(n => n.Value < 0).OrderBy(n => n.Value).ThenBy(n => n.Key).FirstOrDefault();
-            var creditor = nets.Where(n => n.Value > 0).OrderByDescending(n => n.Value).ThenBy(n => n.Key).FirstOrDefault();
-            if (debtor.Value == 0 || creditor.Value == 0) break;
-
-            var amount = Math.Min(-debtor.Value, creditor.Value);
-            debts.Add(new SimplifiedDebt
-            {
-                GroupId = groupId, FromUserId = debtor.Key, ToUserId = creditor.Key, Amount = amount
-            });
-            nets[debtor.Key] += amount;
-            nets[creditor.Key] -= amount;
-        }
-        await balanceRepository.ReplaceSimplifiedDebtsAsync(groupId, debts);
-        
-        return balances;
-    }
-
     public async Task<List<SimplifiedDebtResponse>> GetGroupSimplifiedDebts(int groupId, int userId)
     {
         await EnsureMemberAsync(groupId, userId);
@@ -132,7 +59,7 @@ public class BalanceService(
             throw new KeyNotFoundException("User not found");
         }
 
-        var owed = await AmountOwedAsync(groupId, userId, peerId);
+        var owed = await groupLedger.SettlementCapAsync(groupId, userId, peerId);
 
         if (amount > owed)
         {
@@ -173,7 +100,7 @@ public class BalanceService(
             settleExpense.Splits.Select(s => new SplitShape(s.Amount, s.Percentage)));
 
         await expenseRepository.CreateAsync(settleExpense);
-        await balanceRecomputeQueue.EnqueueAsync(groupId);
+        await groupLedger.RequestRecomputationAsync(groupId);
     }
 
     /// <summary>
@@ -211,7 +138,7 @@ public class BalanceService(
         // that contribution removed — otherwise every edit is measured against a debt the
         // row being edited has already paid down, and even a decrease is rejected. The
         // contribution is read off the split, since that is what the replay sums.
-        var owed = await AmountOwedAsync(
+        var owed = await groupLedger.SettlementCapAsync(
             groupId, payerId, peerSplit.UserId, excluding: Math.Abs(peerSplit.Amount));
 
         if (amount > owed)
@@ -239,7 +166,7 @@ public class BalanceService(
             settlement.Splits.Select(s => new SplitShape(s.Amount, s.Percentage)));
 
         await expenseRepository.UpdateAsync(settlement);
-        await balanceRecomputeQueue.EnqueueAsync(groupId);
+        await groupLedger.RequestRecomputationAsync(groupId);
     }
 
     public async Task DeleteSettlement(int groupId, int expenseId, int userId)
@@ -247,7 +174,7 @@ public class BalanceService(
         await EnsureMemberAsync(groupId, userId);
 
         await expenseRepository.DeleteAsync(await FindSettlementAsync(groupId, expenseId));
-        await balanceRecomputeQueue.EnqueueAsync(groupId);
+        await groupLedger.RequestRecomputationAsync(groupId);
     }
 
     /// <summary>
@@ -271,17 +198,6 @@ public class BalanceService(
         }
 
         return expense;
-    }
-
-    // Read both net positions from stored bookkeeping. Excluding an existing payment
-    // restores the payer's debt and the payee's credit before applying the same cap.
-    private async Task<decimal> AmountOwedAsync(int groupId, int userId, int peerId, decimal excluding = 0m)
-    {
-        if (await groupRepository.GetBalancesPendingAsync(groupId)) return 0m;
-        var balances = await balanceRepository.GetGroupBalancesAsync(groupId);
-        var payerNet = balances.Where(b => b.UserId == userId).Sum(b => b.Amount) - excluding;
-        var payeeNet = balances.Where(b => b.UserId == peerId).Sum(b => b.Amount) + excluding;
-        return Math.Min(Math.Max(0m, -payerNet), Math.Max(0m, payeeNet));
     }
 
     private async Task EnsureMemberAsync(int groupId, int userId)

@@ -1,10 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
-using Splitty.Domain.Entities;
-using Splitty.Service;
-using Splitty.Service.Interfaces;
 
 namespace Splitty.API.Tests;
 
@@ -177,9 +172,8 @@ public sealed class SimplifiedDebtTests(ApiFactory factory)
     {
         await factory.DrainProcessedAsync();
         GroupFixture group;
-        await using (var failed = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
-            services.AddScoped<IBalanceService>(provider => new FailedReplay(
-                ActivatorUtilities.CreateInstance<BalanceService>(provider))))))
+        await using (var failed = factory.WithReplay((_, _) =>
+            Task.FromException(new InvalidOperationException("Leave work pending for restart"))))
         {
             group = await GroupFixture.CreateAsync(failed);
             await group.CreateExpenseAsync(20m, 10m);
@@ -227,12 +221,6 @@ public sealed class SimplifiedDebtTests(ApiFactory factory)
         await factory.WaitForProcessedAsync();
         Assert.Equal(new SimplifiedDebtEntry(group.GuestId, third.Id, 10m),
             Assert.Single((await group.Owner.ReadSummaryAsync(group.Id)).SimplifiedDebts));
-    }
-
-    private sealed class FailedReplay(IBalanceService inner) : BalanceServiceDecorator(inner)
-    {
-        public override Task<List<Balance>> CalculateGroupBalances(int groupId) =>
-            throw new InvalidOperationException("Leave work pending for restart");
     }
 
     private async Task<(GroupFixture Group, ApiClient Creditor, int CreditorId)> ChainAsync(decimal debt = 10m, decimal credit = 10m)

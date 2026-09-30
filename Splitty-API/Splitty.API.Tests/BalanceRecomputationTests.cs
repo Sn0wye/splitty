@@ -4,9 +4,6 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Splitty.Domain.Entities;
-using Splitty.Service;
-using Splitty.Service.Interfaces;
 
 namespace Splitty.API.Tests;
 
@@ -127,14 +124,12 @@ public sealed class BalanceRecomputationTests(ApiFactory factory)
         var logs = new CapturingLoggerProvider();
         var poisonedGroup = new PoisonedGroup();
 
-        await using var host = factory.WithWebHostBuilder(builder =>
-            builder.ConfigureTestServices(services =>
-            {
-                services.AddSingleton<ILoggerProvider>(logs);
-                services.AddScoped<IBalanceService>(provider => new PoisonedBalanceService(
-                    ActivatorUtilities.CreateInstance<BalanceService>(provider),
-                    poisonedGroup));
-            }));
+        await using var host = factory
+            .WithReplay((groupId, replay) => groupId == poisonedGroup.Id
+                ? Task.FromException(new InvalidOperationException("recompute failed"))
+                : replay())
+            .WithWebHostBuilder(builder =>
+                builder.ConfigureTestServices(services => services.AddSingleton<ILoggerProvider>(logs)));
 
         var poisoned = await GroupFixture.CreateAsync(host);
         var healthy = await GroupFixture.CreateAsync(host);
@@ -145,6 +140,9 @@ public sealed class BalanceRecomputationTests(ApiFactory factory)
         await host.WaitForProcessedAsync();
 
         Assert.Contains(logs.Errors, entry => entry.Contains(poisoned.Id.ToString()));
+        // Nothing half-written: the failed group stays pending rather than serving new figures.
+        Assert.True((await poisoned.Owner.ReadSummaryAsync(poisoned.Id)).BalancesPending);
+        Assert.Empty((await poisoned.Owner.ReadSummaryAsync(poisoned.Id)).SimplifiedDebts);
 
         // The host is still up: another endpoint serves, and another group still recomputes.
         Assert.Equal(HttpStatusCode.OK, (await healthy.Owner.GetGroupAsync(healthy.Id)).StatusCode);
@@ -188,24 +186,6 @@ public sealed class BalanceRecomputationTests(ApiFactory factory)
     }
 
     /// <summary>
-    /// Skipping a unique index on the balance triple is only safe while the worker is the sole
-    /// replayer. Nothing at the call site enforces that, so it is enforced here.
-    /// </summary>
-    [Fact]
-    public void The_balance_replay_has_exactly_one_caller()
-    {
-        var callers = SolutionSource.FilesCalling("CalculateGroupBalances")
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}Splitty.API.Tests{Path.DirectorySeparatorChar}"))
-            .Where(path => !path.EndsWith("IBalanceService.cs", StringComparison.Ordinal))
-            .Where(path => !path.EndsWith("BalanceService.cs", StringComparison.Ordinal))
-            .ToList();
-
-        Assert.Equal(
-            ["TransactionBackgroundService.cs"],
-            callers.Select(Path.GetFileName).Order().ToList());
-    }
-
-    /// <summary>
     /// The group under test is chosen after the host is built, so the worker thread reads
     /// what the test thread wrote.
     /// </summary>
@@ -218,14 +198,5 @@ public sealed class BalanceRecomputationTests(ApiFactory factory)
             get => Volatile.Read(ref _id);
             set => Volatile.Write(ref _id, value);
         }
-    }
-
-    private sealed class PoisonedBalanceService(IBalanceService inner, PoisonedGroup poisoned)
-        : BalanceServiceDecorator(inner)
-    {
-        public override Task<List<Balance>> CalculateGroupBalances(int groupId) =>
-            groupId == poisoned.Id
-                ? throw new InvalidOperationException("recompute failed")
-                : base.CalculateGroupBalances(groupId);
     }
 }

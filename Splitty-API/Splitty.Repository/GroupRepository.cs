@@ -28,42 +28,4 @@ public class GroupRepository(ApplicationDbContext context): IGroupRepository
     {
         await context.Group.Where(g => g.Id == groupId).ExecuteDeleteAsync();
     }
-
-    // Written in the database rather than through a tracked entity, so the flag can be set
-    // without loading the group's members and balances. The tracker is left untouched: a Group
-    // already loaded in this scope keeps its old values, so callers must not save one back
-    // after marking it.
-    public async Task MarkBalancesPendingAsync(int groupId)
-    {
-        await context.Group
-            .Where(g => g.Id == groupId)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(g => g.BalancesPending, true)
-                .SetProperty(g => g.BalancesPendingGeneration, g => g.BalancesPendingGeneration + 1));
-    }
-
-    public async Task<int> GetBalancesPendingGenerationAsync(int groupId)
-    {
-        return await context.Group
-            .Where(g => g.Id == groupId)
-            .Select(g => g.BalancesPendingGeneration)
-            .FirstOrDefaultAsync();
-    }
-
-    // Matches no row once a newer write has bumped the generation, leaving the flag set for
-    // that write's own replay to clear.
-    public async Task MarkBalancesRecomputedAsync(int groupId, int generation)
-    {
-        await context.Group
-            .Where(g => g.Id == groupId && g.BalancesPendingGeneration == generation)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(g => g.BalancesPending, false));
-    }
-
-    public async Task<bool> GetBalancesPendingAsync(int groupId)
-    {
-        return await context.Group
-            .Where(g => g.Id == groupId)
-            .Select(g => g.BalancesPending)
-            .FirstOrDefaultAsync();
-    }
 }

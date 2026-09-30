@@ -13,7 +13,7 @@ namespace Splitty.Service;
 /// </summary>
 public class ExpenseService(
     IExpenseRepository expenseRepository,
-    IBalanceRecomputeQueue balanceRecomputeQueue,
+    IGroupLedger groupLedger,
     IGroupReadModel readModel
     ): IExpenseService
 {
@@ -56,7 +56,7 @@ public class ExpenseService(
         };
 
         await expenseRepository.CreateAsync(expense);
-        await balanceRecomputeQueue.EnqueueAsync(expense.GroupId);
+        await groupLedger.RequestRecomputationAsync(expense.GroupId);
         
         return await readModel.GetExpenseAsync(expense.GroupId, expense.Id, userId);
     }
@@ -79,7 +79,7 @@ public class ExpenseService(
         }
 
         await expenseRepository.DeleteAsync(expense);
-        await balanceRecomputeQueue.EnqueueAsync(groupId);
+        await groupLedger.RequestRecomputationAsync(groupId);
     }
     
     public async Task<ExpenseResponse> UpdateAsync(UpdateExpenseDTO dto, int userId)
@@ -176,7 +176,7 @@ public class ExpenseService(
         }
         
         await expenseRepository.UpdateAsync(expense);
-        await balanceRecomputeQueue.EnqueueAsync(expense.GroupId);
+        await groupLedger.RequestRecomputationAsync(expense.GroupId);
         return await readModel.GetExpenseAsync(expense.GroupId, expense.Id, userId);
     }
 
