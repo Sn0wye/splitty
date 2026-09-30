@@ -1,7 +1,8 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Splitty.Domain.Entities;
 using Splitty.DTO.Response;
-using Splitty.Repository.Interfaces;
+using Splitty.Infrastructure;
 using Splitty.Service.Interfaces;
 
 namespace Splitty.Service;
@@ -10,13 +11,18 @@ namespace Splitty.Service;
 /// Aggregates straight off the expense rows rather than the balances, so an expense counts
 /// the moment it is saved and nothing waits on the recomputation worker.
 /// </summary>
-public class GroupStatsService(IExpenseRepository expenseRepository) : IGroupStatsService
+public class GroupStatsService(ApplicationDbContext context) : IGroupStatsService
 {
     private const int TopPerCategory = 5;
 
     public async Task<GroupStatsResponse> GetStatsAsync(int groupId, int userId, StatsRange range)
     {
-        var expenses = await expenseRepository.FindExpensesInRangeAsync(groupId, range.Start, range.End);
+        var expenses = await context.Expense.AsNoTracking()
+            .Include(e => e.Splits)
+            .Where(e => e.GroupId == groupId && e.Type == ExpenseType.Expense)
+            .Where(e => range.Start == null || (e.Date ?? e.CreatedAt) >= range.Start)
+            .Where(e => range.End == null || (e.Date ?? e.CreatedAt) < range.End)
+            .ToListAsync();
 
         return new GroupStatsResponse
         {

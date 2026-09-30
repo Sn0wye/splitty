@@ -175,6 +175,7 @@ builder.Services.AddScoped<IOAuthAccountRepository, OAuthAccountRepository>();
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IGroupService, GroupService>();
+builder.Services.AddScoped<IGroupReadModel, GroupReadModel>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<IBalanceService, BalanceService>();
 builder.Services.AddScoped<IInviteService, InviteService>();

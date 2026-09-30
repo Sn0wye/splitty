@@ -5,10 +5,8 @@ namespace Splitty.Repository.Interfaces;
 public interface IGroupRepository
 {
     Task CreateAsync(Group group);
-    Task<Group?> GetGroupByIdAsync(int groupId);
-    Task<List<Group>> GetGroupsByUserId(int userId);
     Task RenameAsync(int groupId, string? name, string? description);
-    Task DeleteAsync(Group group);
+    Task DeleteAsync(int groupId);
     Task MarkBalancesPendingAsync(int groupId);
     Task<int> GetBalancesPendingGenerationAsync(int groupId);
 

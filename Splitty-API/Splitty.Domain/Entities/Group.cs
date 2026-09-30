@@ -30,7 +30,6 @@ public class Group
     /// that started before a newer write leaves the flag for that write's own replay.
     /// Internal bookkeeping, never sent to clients.
     /// </summary>
-    [JsonIgnore]
     public int BalancesPendingGeneration { get; set; }
     
     public virtual User CreatedByUser { get; set; }

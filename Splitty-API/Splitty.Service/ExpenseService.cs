@@ -1,5 +1,6 @@
 using Splitty.Domain.Entities;
 using Splitty.DTO.Internal;
+using Splitty.DTO.Response;
 using Splitty.Repository.Interfaces;
 using Splitty.Service.Interfaces;
 
@@ -12,11 +13,11 @@ namespace Splitty.Service;
 /// </summary>
 public class ExpenseService(
     IExpenseRepository expenseRepository,
-    IGroupMembershipRepository groupMembershipRepository,
-    IBalanceRecomputeQueue balanceRecomputeQueue
+    IBalanceRecomputeQueue balanceRecomputeQueue,
+    IGroupReadModel readModel
     ): IExpenseService
 {
-    public async Task<Expense> CreateAsync(CreateExpenseDTO dto, int userId)
+    public async Task<ExpenseResponse> CreateAsync(CreateExpenseDTO dto, int userId)
     {
         // Percentages are meaningless off a percentage expense, so they are dropped rather
         // than refused: a client that sends both a mode and leftover percentages is
@@ -57,19 +58,7 @@ public class ExpenseService(
         await expenseRepository.CreateAsync(expense);
         await balanceRecomputeQueue.EnqueueAsync(expense.GroupId);
         
-        return (await expenseRepository.FindByIdAsync(expense.Id))!;
-    }
-
-    public async Task<Expense?> FindByIdAsync(int id)
-    {
-        return await expenseRepository.FindByIdAsync(id);
-    }
-
-    public async Task<Expense> FindByIdAsync(int groupId, int expenseId, int userId)
-    {
-        await EnsureMemberAsync(groupId, userId);
-
-        return await FindInGroupAsync(groupId, expenseId);
+        return await readModel.GetExpenseAsync(expense.GroupId, expense.Id, userId);
     }
 
     /// <summary>
@@ -93,14 +82,7 @@ public class ExpenseService(
         await balanceRecomputeQueue.EnqueueAsync(groupId);
     }
     
-    public async Task<List<Expense>> FindExpensesByGroupId(int groupId, int userId)
-    {
-        await EnsureMemberAsync(groupId, userId);
-
-        return await expenseRepository.FindExpensesByGroupId(groupId);
-    }
-    
-    public async Task<Expense> UpdateAsync(UpdateExpenseDTO dto, int userId)
+    public async Task<ExpenseResponse> UpdateAsync(UpdateExpenseDTO dto, int userId)
     {
         // The rows and the mode naming them are one fact. Accepting new splits without a
         // mode would leave the stored mode describing rows it has never seen.
@@ -109,7 +91,7 @@ public class ExpenseService(
             throw new ArgumentException("An update that changes the splits must also send the split mode.");
         }
 
-        var expense = await expenseRepository.FindByIdAsync(dto.Id);
+        var expense = await expenseRepository.GetForUpdateAsync(dto.Id);
 
         if (expense is null)
         {
@@ -195,7 +177,7 @@ public class ExpenseService(
         
         await expenseRepository.UpdateAsync(expense);
         await balanceRecomputeQueue.EnqueueAsync(expense.GroupId);
-        return expense;
+        return await readModel.GetExpenseAsync(expense.GroupId, expense.Id, userId);
     }
 
     /// <summary>
@@ -227,7 +209,7 @@ public class ExpenseService(
     /// member of group A could read or delete an expense of group B.
     private async Task<Expense> FindInGroupAsync(int groupId, int expenseId)
     {
-        var expense = await expenseRepository.FindByIdAsync(expenseId);
+        var expense = await expenseRepository.GetForUpdateAsync(expenseId);
 
         if (expense is null || expense.GroupId != groupId)
         {
@@ -239,9 +221,7 @@ public class ExpenseService(
 
     private async Task EnsureMemberAsync(int groupId, int userId)
     {
-        var membership = await groupMembershipRepository.GetGroupMembershipByUserIdAndGroupId(userId, groupId);
-
-        if (membership is null)
+        if (!await readModel.IsMemberAsync(groupId, userId))
         {
             throw new UnauthorizedAccessException("User is not a member of the group");
         }

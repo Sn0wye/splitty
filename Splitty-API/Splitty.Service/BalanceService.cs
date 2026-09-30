@@ -22,7 +22,7 @@ public class BalanceService(
     public async Task<List<Balance>> CalculateGroupBalances(int groupId)
     {
         var balances = await balanceRepository.GetGroupBalancesAsync(groupId);
-        var expenses = await expenseRepository.FindExpensesByGroupId(groupId);
+        var expenses = await expenseRepository.GetForReplayAsync(groupId);
         
         foreach (var balance in balances)
         {
@@ -257,7 +257,7 @@ public class BalanceService(
     /// </summary>
     private async Task<Expense> FindSettlementAsync(int groupId, int expenseId)
     {
-        var expense = await expenseRepository.FindByIdAsync(expenseId);
+        var expense = await expenseRepository.GetForUpdateAsync(expenseId);
 
         if (expense is null || expense.GroupId != groupId)
         {

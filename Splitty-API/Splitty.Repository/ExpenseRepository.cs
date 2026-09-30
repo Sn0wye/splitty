@@ -23,12 +23,10 @@ public class ExpenseRepository(ApplicationDbContext context): IExpenseRepository
         return expenses;
     }
 
-    public async Task<Expense?> FindByIdAsync(int id)
+    public async Task<Expense?> GetForUpdateAsync(int id)
     {
         return await context.Expense
-            .Include(e => e.PaidByUser)
             .Include(e => e.Splits)
-            .ThenInclude(es => es.User)
             .FirstOrDefaultAsync(e => e.Id == id);
     }
 
@@ -46,33 +44,16 @@ public class ExpenseRepository(ApplicationDbContext context): IExpenseRepository
         await context.SaveChangesAsync();
     }
 
-    /// Newest first by the date the user gave, falling back to the audit timestamp for rows
-    /// written before the column existed. The client groups by the same expression.
-    public async Task<List<Expense>> FindExpensesByGroupId(int groupId)
+    /// Loads only expenses and splits needed by the balance replay, with no user graph.
+    public async Task<List<Expense>> GetForReplayAsync(int groupId)
     {
         return await context.Expense
+            .AsNoTracking()
             .Include(e => e.Splits)
-            .ThenInclude(es => es.User)
-            .Include(e => e.PaidByUser)
             .Where(e => e.GroupId == groupId)
             .OrderByDescending(e => e.Date ?? e.CreatedAt)
             .ThenByDescending(e => e.Id)
             .ToListAsync();
     }
 
-    /// <summary>
-    /// The group's <see cref="ExpenseType.Expense"/> rows whose <c>Date ?? CreatedAt</c> falls
-    /// in <c>[from, to)</c>, with their splits. A null bound leaves that end open. Settlements
-    /// are left out: paying someone back is not spending.
-    /// </summary>
-    public async Task<List<Expense>> FindExpensesInRangeAsync(int groupId, DateTime? from, DateTime? to)
-    {
-        return await context.Expense
-            .AsNoTracking()
-            .Include(e => e.Splits)
-            .Where(e => e.GroupId == groupId && e.Type == ExpenseType.Expense)
-            .Where(e => from == null || (e.Date ?? e.CreatedAt) >= from)
-            .Where(e => to == null || (e.Date ?? e.CreatedAt) < to)
-            .ToListAsync();
-    }
 }

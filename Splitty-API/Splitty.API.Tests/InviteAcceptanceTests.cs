@@ -2,7 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using Splitty.Domain.Entities;
+using Splitty.DTO.Response;
 using Splitty.DTO.Internal;
 using Splitty.Service;
 using Splitty.Service.Interfaces;
@@ -44,20 +44,19 @@ public sealed class InviteAcceptanceTests
     [Fact]
     public async Task Accepting_an_invite_returns_404_when_the_joined_group_cannot_be_read()
     {
+        var ownerUser = await ApiClient.Create(_factory).SignInAsync();
+        var owner = ApiClient.Create(_factory, ownerUser.Token);
+        var groupId = await owner.CreateGroupAsync("Dinner");
+        var code = await owner.CreateInviteAsync(groupId);
+
         await using var factory = _factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureTestServices(services =>
             {
-                services.AddScoped<IGroupService>(sp =>
-                    new NullGroupReadService(ActivatorUtilities.CreateInstance<GroupService>(sp)));
+                services.AddScoped<IGroupReadModel>(sp =>
+                    new NullGroupReadModel(ActivatorUtilities.CreateInstance<GroupReadModel>(sp)));
             });
         });
-
-        var owner = ApiClient.Create(factory);
-        var ownerUser = await owner.SignInAsync();
-        owner = ApiClient.Create(factory, ownerUser.Token);
-        var groupId = await owner.CreateGroupAsync("Dinner");
-        var code = await owner.CreateInviteAsync(groupId);
 
         var guest = ApiClient.Create(factory);
         var guestUser = await guest.SignInAsync();
@@ -68,30 +67,16 @@ public sealed class InviteAcceptanceTests
         await ErrorResponseAssertions.AssertErrorAsync(response, HttpStatusCode.NotFound);
     }
 
-    private sealed class NullGroupReadService(IGroupService inner) : IGroupService
+    private sealed class NullGroupReadModel(IGroupReadModel inner) : IGroupReadModel
     {
-        public Task<Group> CreateAsync(int userId, string name, string? description) =>
-            inner.CreateAsync(userId, name, description);
-
         public Task<GroupDTO?> GetGroupAsync(int groupId, int userId) =>
             Task.FromResult<GroupDTO?>(null);
 
-        public Task<List<GroupDTO>> GetGroupsByUserId(int userId) =>
-            inner.GetGroupsByUserId(userId);
-
-        public Task<Group> UpdateAsync(int groupId, int userId, string name, string? description) =>
-            inner.UpdateAsync(groupId, userId, name, description);
-
-        public Task<MembershipRemovalStatus> LeaveAsync(int groupId, int userId) =>
-            inner.LeaveAsync(groupId, userId);
-
-        public Task<MembershipRemovalStatus> RemoveMemberAsync(int groupId, int actorId, int targetUserId) =>
-            inner.RemoveMemberAsync(groupId, actorId, targetUserId);
-
-        public Task<bool> AreBalancesPendingAsync(int groupId) =>
-            inner.AreBalancesPendingAsync(groupId);
-
-        public Task<bool> IsMemberAsync(int groupId, int userId) =>
-            inner.IsMemberAsync(groupId, userId);
+        public Task<List<GroupDTO>> GetGroupsByUserId(int userId) => inner.GetGroupsByUserId(userId);
+        public Task<List<ExpenseResponse>> GetExpensesAsync(int groupId, int userId) => inner.GetExpensesAsync(groupId, userId);
+        public Task<ExpenseResponse> GetExpenseAsync(int groupId, int expenseId, int userId) => inner.GetExpenseAsync(groupId, expenseId, userId);
+        public Task<bool> GroupExistsAsync(int groupId) => inner.GroupExistsAsync(groupId);
+        public Task<bool> IsMemberAsync(int groupId, int userId) => inner.IsMemberAsync(groupId, userId);
+        public Task<decimal> GetMemberNetAsync(int groupId, int userId) => inner.GetMemberNetAsync(groupId, userId);
     }
 }
