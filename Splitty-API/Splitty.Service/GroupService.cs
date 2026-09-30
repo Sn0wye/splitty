@@ -95,7 +95,8 @@ public class GroupService(
             string.IsNullOrEmpty(name) ? null : name,
             string.IsNullOrEmpty(description) ? null : description);
 
-        return (await groupRepository.GetGroupByIdAsync(groupId))!;
+        return await groupRepository.GetGroupByIdAsync(groupId)
+            ?? throw new KeyNotFoundException("Group not found");
     }
 
     public async Task<MembershipRemovalStatus> LeaveAsync(int groupId, int userId)
