@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Splitty.Domain.Entities;
+using Splitty.DTO.Internal;
 using Splitty.Infrastructure;
 using Splitty.Repository.Interfaces;
 
@@ -29,11 +30,11 @@ internal sealed class LedgerRepository(ApplicationDbContext context) : ILedgerRe
             .Select(g => (int?)g.BalancesPendingGeneration)
             .FirstOrDefaultAsync(cancellationToken);
 
-    public Task<bool> IsPendingAsync(int groupId) =>
+    public Task<bool> IsPendingAsync(int groupId, CancellationToken cancellationToken) =>
         context.Group
             .Where(g => g.Id == groupId)
             .Select(g => g.BalancesPending)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync(cancellationToken);
 
     public Task<List<int>> GetPendingGroupIdsAsync(CancellationToken cancellationToken) =>
         context.Group
@@ -43,23 +44,23 @@ internal sealed class LedgerRepository(ApplicationDbContext context) : ILedgerRe
 
     // Aggregated in the database, so the cost grows with pairs of members rather than with
     // the group's history.
-    public Task<List<LedgerPosition>> GetPositionsAsync(int groupId, CancellationToken cancellationToken) =>
+    public Task<List<PairwisePosition<int>>> GetPositionsAsync(int groupId, CancellationToken cancellationToken) =>
         context.ExpenseSplit
             .Where(s => s.Expense.GroupId == groupId && s.UserId != s.Expense.PaidBy)
             .GroupBy(s => new { s.Expense.PaidBy, s.UserId })
-            .Select(pair => new LedgerPosition(pair.Key.PaidBy, pair.Key.UserId, pair.Sum(s => Math.Abs(s.Amount))))
+            .Select(pair => new PairwisePosition<int>(pair.Key.PaidBy, pair.Key.UserId, pair.Sum(s => Math.Abs(s.Amount))))
             .ToListAsync(cancellationToken);
 
-    public Task<List<LedgerBalance>> GetBalancesAsync(int groupId) =>
+    public Task<List<PairwiseBalance<int>>> GetBalancesAsync(int groupId, CancellationToken cancellationToken) =>
         context.Balance.AsNoTracking()
             .Where(b => b.GroupId == groupId)
-            .Select(b => new LedgerBalance(b.UserId, b.PeerId, b.Amount))
-            .ToListAsync();
+            .Select(b => new PairwiseBalance<int>(b.UserId, b.PeerId, b.Amount))
+            .ToListAsync(cancellationToken);
 
     public async Task WriteReplayAsync(
         int groupId,
         int generation,
-        IReadOnlyCollection<LedgerBalance> balances,
+        IReadOnlyCollection<PairwiseBalance<int>> balances,
         IReadOnlyCollection<SimplifiedDebt> debts,
         CancellationToken cancellationToken)
     {
@@ -88,10 +89,10 @@ internal sealed class LedgerRepository(ApplicationDbContext context) : ILedgerRe
     /// </summary>
     private async Task StageBalancesAsync(
         int groupId,
-        IReadOnlyCollection<LedgerBalance> balances,
+        IReadOnlyCollection<PairwiseBalance<int>> balances,
         CancellationToken cancellationToken)
     {
-        var derived = balances.ToDictionary(b => (b.UserId, b.PeerId), b => b.Amount);
+        var derived = balances.ToDictionary(b => (b.User, b.Peer), b => b.Amount);
         var stored = await context.Balance
             .Where(b => b.GroupId == groupId)
             .ToListAsync(cancellationToken);
@@ -110,7 +111,7 @@ internal sealed class LedgerRepository(ApplicationDbContext context) : ILedgerRe
 
         context.Balance.AddRange(derived.Select(pair => new Balance
         {
-            GroupId = groupId, UserId = pair.Key.UserId, PeerId = pair.Key.PeerId, Amount = pair.Value
+            GroupId = groupId, UserId = pair.Key.User, PeerId = pair.Key.Peer, Amount = pair.Value
         }));
     }
 }

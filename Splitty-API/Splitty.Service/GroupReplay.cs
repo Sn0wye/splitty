@@ -23,14 +23,13 @@ internal sealed class GroupReplay(ILedgerRepository ledgerRepository) : IGroupRe
     {
         var positions = await ledgerRepository.GetPositionsAsync(groupId, cancellationToken);
 
-        var balances = LedgerCore.Balances(
-            positions.Select(p => new PairwisePosition<int>(p.PayerId, p.ParticipantId, p.Amount)));
+        var balances = LedgerCore.Balances(positions);
         var debts = LedgerCore.Simplify(LedgerCore.Nets(balances));
 
         await ledgerRepository.WriteReplayAsync(
             groupId,
             generation,
-            balances.Select(b => new LedgerBalance(b.User, b.Peer, b.Amount)).ToList(),
+            balances,
             debts.Select(d => new SimplifiedDebt
             {
                 GroupId = groupId, FromUserId = d.From, ToUserId = d.To, Amount = d.Amount

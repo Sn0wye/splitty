@@ -46,18 +46,26 @@ internal sealed class GroupLedger(
         await queue.Writer.WriteAsync(new LedgerRequest(groupId, generation.Value), cancellationToken);
     }
 
-    public async Task<LedgerRead<T>> ReadAsync<T>(int groupId, Func<Task<T>> read)
+    public async Task<LedgerRead<T>> ReadAsync<T>(
+        int groupId,
+        Func<Task<T>> read,
+        CancellationToken cancellationToken = default)
     {
-        var pending = await ledgerRepository.IsPendingAsync(groupId);
+        var pending = await ledgerRepository.IsPendingAsync(groupId, cancellationToken);
         return new LedgerRead<T>(await read(), pending);
     }
 
-    public async Task<decimal> SettlementCapAsync(int groupId, int payerId, int payeeId, decimal excluding = 0m)
+    public async Task<decimal> SettlementCapAsync(
+        int groupId,
+        int payerId,
+        int payeeId,
+        decimal excluding = 0m,
+        CancellationToken cancellationToken = default)
     {
-        if (await ledgerRepository.IsPendingAsync(groupId)) return 0m;
+        if (await ledgerRepository.IsPendingAsync(groupId, cancellationToken)) return 0m;
 
-        var balances = await ledgerRepository.GetBalancesAsync(groupId);
-        var nets = LedgerCore.Nets(balances.Select(b => new PairwiseBalance<int>(b.UserId, b.PeerId, b.Amount)));
+        var balances = await ledgerRepository.GetBalancesAsync(groupId, cancellationToken);
+        var nets = LedgerCore.Nets(balances);
 
         return LedgerCore.Cap(nets, payerId, payeeId, excluding);
     }

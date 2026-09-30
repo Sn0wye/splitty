@@ -1,3 +1,4 @@
+using Splitty.DTO.Internal;
 using Splitty.Service;
 
 namespace Splitty.API.Tests;

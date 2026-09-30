@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Splitty.DTO.Internal;
 using Splitty.Service;
 
 namespace Splitty.API.Tests;
@@ -111,6 +112,55 @@ public sealed class GroupLedgerTests(ApiFactory factory)
         Assert.NotEmpty(expected);
         Assert.Equal(expected, stored);
     }
+
+    /// <summary>
+    /// Fails the replay's last statement, the pending clear, after balances and simplified
+    /// debts have been saved in the same transaction. None of it may survive the rollback.
+    /// </summary>
+    [Fact]
+    public async Task A_replay_that_fails_mid_write_leaves_the_last_figures_and_the_group_pending()
+    {
+        var group = await SettledGroupAsync();
+        var interceptor = new CommandInterceptor();
+        await using var host = factory.WithInterceptor(interceptor);
+        await host.DrainProcessedAsync();
+        var owner = ApiClient.Create(host, group.OwnerToken);
+
+        // Fired completes only when a hook returns, so this one reports that it ran itself.
+        var failedWrite = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        interceptor.Before(IsPendingClear, () =>
+        {
+            failedWrite.TrySetResult();
+            throw new InvalidOperationException("fail mid-write");
+        });
+
+        (await owner.CreateExpenseAsync(group.Id, Dinner(group))).EnsureSuccessStatusCode();
+        await host.WaitForProcessedAsync();
+        Assert.True(failedWrite.Task.IsCompleted, "The pending clear was never attempted.");
+
+        var failed = await owner.ReadSummaryAsync(group.Id);
+        Assert.True(failed.BalancesPending);
+        Assert.Equal(10m, failed.AmountOwedBy(group.OwnerId, group.GuestId));
+        Assert.Equal(-10m, await GuestNetAsync(host, group));
+
+        // The hook has disarmed, so the next replay goes through.
+        (await owner.RequestSummaryRefreshAsync(group.Id)).EnsureSuccessStatusCode();
+        await host.WaitForProcessedAsync();
+
+        var recovered = await owner.ReadSummaryAsync(group.Id);
+        Assert.False(recovered.BalancesPending);
+        Assert.Equal(20m, recovered.AmountOwedBy(group.OwnerId, group.GuestId));
+        Assert.Equal(-20m, await GuestNetAsync(host, group));
+    }
+
+    private static bool IsPendingClear(string sql) =>
+        sql.Contains("UPDATE \"Group\"", StringComparison.Ordinal)
+        && sql.Contains("\"BalancesPending\" = FALSE", StringComparison.Ordinal);
+
+    private static Task<decimal> GuestNetAsync(WebApplicationFactory<Program> host, GroupFixture group) =>
+        host.UseDbAsync(db => db.Balance
+            .Where(b => b.GroupId == group.Id && b.UserId == group.GuestId)
+            .SumAsync(b => b.Amount));
 
     /// The owner has paid 20 split evenly and it has been replayed: the guest owes 10.
     private async Task<GroupFixture> SettledGroupAsync()

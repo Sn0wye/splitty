@@ -25,11 +25,11 @@ API ──> Service ──> Repository ──> Infrastructure (DbContext)
 | Project | Contains |
 |---|---|
 | `Splitty.API` | Controllers, `Program.cs` wiring, middleware |
-| `Splitty.Service` | Business rules, authorization decisions, read models |
+| `Splitty.Service` | Business rules, authorization decisions, read models, the group ledger and its startup recovery |
 | `Splitty.Repository` | EF Core persistence, one repository per aggregate |
 | `Splitty.Infrastructure` | `ApplicationDbContext`, migrations |
 | `Splitty.Domain` | Entities only, no behavior |
-| `Splitty.DTO` | `Request/`, `Response/`, `Internal/` |
+| `Splitty.DTO` | `Request/`, `Response/`, `Internal/` (including the group ledger's values) |
 | `Splitty.Background` | `TransactionBackgroundService` — drains the group ledger's queue |
 | `Splitty.Seeder` | `DatabaseSeeder` and `SeedCommand`, run via `dotnet run seed` |
 
@@ -37,7 +37,10 @@ Everything is registered scoped in `Program.cs`, interface-first. The group ledg
 one exception: `AddGroupLedger()` registers it from `Splitty.Service`, because its replay and
 its `LedgerRepository` are `internal` and `Program.cs` cannot name them. `LedgerRepository`
 is visible only to `Splitty.Service` (`InternalsVisibleTo`), so nothing but the ledger can
-mark a group pending or clear it (see Balance recomputation). Services and
+mark a group pending or clear it (see Balance recomputation). It also registers the concrete
+`GroupLedger`, because the startup recovery calls `RequeuePendingAsync`, which is not on
+`IGroupLedger`. The recovery is an `IHostedService` in `Splitty.Service`, not in
+`Splitty.Background`, because it needs the ledger's internal types. Services and
 repositories use **primary constructors** for injection — match that style.
 
 Read services can query `ApplicationDbContext` directly to shape response projections.
@@ -127,8 +130,9 @@ These are the rules the domain actually depends on:
    duplicate pairwise rows impossible without a unique index on `(UserId, PeerId, GroupId)`,
    so a second call site would reintroduce the duplicates silently. Visibility enforces it:
    the replay is `internal` to `Splitty.Service` and reached only through `GroupLedger`,
-   which runs it only for a message the background worker hands it. Request a
-   recomputation, never perform one.
+   which runs it only for a message the background worker hands it. The one exception is
+   the test project, which `InternalsVisibleTo` lets wrap the replay step to hold or fail
+   it; no production code can. Request a recomputation, never perform one.
 5. **Settlements are capped at the smaller of the payer's net debt and the payee's net credit
    in that group.** Both positions come from stored pairwise balances, not from the suggested
    pairs. Members can pay a net creditor without having shared an expense. Editing excludes

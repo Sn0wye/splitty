@@ -1,13 +1,6 @@
+using Splitty.DTO.Internal;
+
 namespace Splitty.Service;
-
-/// <summary>What one participant's split puts on the payer's side: the payer is owed it.</summary>
-public readonly record struct PairwisePosition<TMember>(TMember Payer, TMember Participant, decimal Amount);
-
-/// <summary>One side of a pairwise balance, positive when <see cref="Peer"/> owes <see cref="User"/>.</summary>
-public readonly record struct PairwiseBalance<TMember>(TMember User, TMember Peer, decimal Amount);
-
-/// <summary>A directed amount from one debtor to one creditor.</summary>
-public readonly record struct SimplifiedPayment<TMember>(TMember From, TMember To, decimal Amount);
 
 /// <summary>
 /// The group ledger's math, free of the database. Members are an opaque identity the caller

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Splitty.DTO.Internal;
 using Splitty.Service;
 using Splitty.Service.Interfaces;
 using Splitty.Domain.Entities;

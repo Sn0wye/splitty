@@ -1,4 +1,5 @@
 using Splitty.Domain.Entities;
+using Splitty.DTO.Internal;
 
 namespace Splitty.Repository.Interfaces;
 
@@ -18,7 +19,7 @@ internal interface ILedgerRepository
     /// <summary>The group's current generation, or null when the group does not exist.</summary>
     Task<int?> GetPendingGenerationAsync(int groupId, CancellationToken cancellationToken);
 
-    Task<bool> IsPendingAsync(int groupId);
+    Task<bool> IsPendingAsync(int groupId, CancellationToken cancellationToken);
 
     Task<List<int>> GetPendingGroupIdsAsync(CancellationToken cancellationToken);
 
@@ -26,10 +27,10 @@ internal interface ILedgerRepository
     /// Per (payer, participant) pair with participant ≠ payer, the sum of absolute split
     /// amounts over every expense and payment in the group. Untracked.
     /// </summary>
-    Task<List<LedgerPosition>> GetPositionsAsync(int groupId, CancellationToken cancellationToken);
+    Task<List<PairwisePosition<int>>> GetPositionsAsync(int groupId, CancellationToken cancellationToken);
 
     /// <summary>The group's stored pairwise balances. Untracked.</summary>
-    Task<List<LedgerBalance>> GetBalancesAsync(int groupId);
+    Task<List<PairwiseBalance<int>>> GetBalancesAsync(int groupId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Writes a replay's result in one transaction: inserts new pairs, updates changed pairs,
@@ -39,11 +40,7 @@ internal interface ILedgerRepository
     Task WriteReplayAsync(
         int groupId,
         int generation,
-        IReadOnlyCollection<LedgerBalance> balances,
+        IReadOnlyCollection<PairwiseBalance<int>> balances,
         IReadOnlyCollection<SimplifiedDebt> debts,
         CancellationToken cancellationToken);
 }
-
-internal readonly record struct LedgerPosition(int PayerId, int ParticipantId, decimal Amount);
-
-internal readonly record struct LedgerBalance(int UserId, int PeerId, decimal Amount);

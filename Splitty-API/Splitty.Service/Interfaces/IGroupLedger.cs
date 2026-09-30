@@ -18,7 +18,10 @@ public interface IGroupLedger
     /// flag goes first so a replay landing between the two reports fresh figures as pending,
     /// never stale figures as settled.
     /// </summary>
-    Task<LedgerRead<T>> ReadAsync<T>(int groupId, Func<Task<T>> read);
+    Task<LedgerRead<T>> ReadAsync<T>(
+        int groupId,
+        Func<Task<T>> read,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// The most <paramref name="payerId"/> may settle with <paramref name="payeeId"/> right
@@ -26,7 +29,12 @@ public interface IGroupLedger
     /// net debt and the payee's net credit over stored balances, with an edited payment's own
     /// contribution passed as <paramref name="excluding"/>.
     /// </summary>
-    Task<decimal> SettlementCapAsync(int groupId, int payerId, int payeeId, decimal excluding = 0m);
+    Task<decimal> SettlementCapAsync(
+        int groupId,
+        int payerId,
+        int payeeId,
+        decimal excluding = 0m,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Handles one queued request. Called only by the background worker, once per message it
