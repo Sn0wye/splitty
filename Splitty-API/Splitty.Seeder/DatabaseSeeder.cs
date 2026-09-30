@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Splitty.DTO.Internal;
+using Splitty.Service;
 using Splitty.Service.Interfaces;
 using Splitty.Domain.Entities;
 using Splitty.Infrastructure;
@@ -8,11 +10,11 @@ namespace Splitty.Seeder;
 /// <summary>
 /// Writes the development data set and asks for its balances.
 ///
-/// It requests a recomputation per group through <see cref="IBalanceRecomputeQueue"/> and
-/// never replays balances itself: invariant 4 says the replay has exactly one caller, the
-/// background worker, and a test pins that caller list.
+/// It requests a recomputation per group through <see cref="IGroupLedger"/> and never
+/// replays balances itself: invariant 4 says the replay has exactly one caller, and the
+/// replay is internal to the ledger.
 /// </summary>
-public sealed class DatabaseSeeder(ApplicationDbContext context, IBalanceRecomputeQueue queue)
+public sealed class DatabaseSeeder(ApplicationDbContext context, IGroupLedger groupLedger)
 {
     /// <summary>The seeded addresses, in seed order. `POST /auth/dev-login` takes any of them.</summary>
     public static IReadOnlyList<string> UserEmails { get; } =
@@ -89,7 +91,7 @@ public sealed class DatabaseSeeder(ApplicationDbContext context, IBalanceRecompu
 
         foreach (var groupId in groupIds)
         {
-            await queue.EnqueueAsync(groupId, cancellationToken);
+            await groupLedger.RequestRecomputationAsync(groupId, cancellationToken);
         }
 
         return groupIds;
@@ -115,31 +117,24 @@ public sealed class DatabaseSeeder(ApplicationDbContext context, IBalanceRecompu
     }
 
     /// <summary>
-    /// The bound <c>BalanceService</c> puts on editing a settlement, checked against the
-    /// finished group: with every other row replayed, the payer must still owe at least the
-    /// amount and the payee must still be owed it. A seeded payment outside that bound is
-    /// one the app would refuse to re-save.
+    /// The bound the API puts on editing a settlement, checked against the finished group:
+    /// with every other row replayed, the payer must still owe at least the amount and the
+    /// payee must still be owed it. A seeded payment outside that bound is one the app would
+    /// refuse to re-save. The positions and the cap come from the ledger core the API uses,
+    /// keyed by email, so this cannot drift from the real rule.
     /// </summary>
     private static void ValidateSettlements(SeedGroup group)
     {
         foreach (var settlement in group.Entries.Where(entry => entry.Type is ExpenseType.Payment))
         {
-            var nets = new Dictionary<string, decimal>();
-
-            // The same walk as the balance replay: whoever paid is owed each other split.
-            foreach (var entry in group.Entries.Where(entry => !ReferenceEquals(entry, settlement)))
-            {
-                foreach (var split in entry.Splits.Where(split => split.Email != entry.PaidBy))
-                {
-                    nets[entry.PaidBy] = nets.GetValueOrDefault(entry.PaidBy) + Math.Abs(split.Amount);
-                    nets[split.Email] = nets.GetValueOrDefault(split.Email) - Math.Abs(split.Amount);
-                }
-            }
+            var positions = group.Entries
+                .Where(entry => !ReferenceEquals(entry, settlement))
+                .SelectMany(entry => entry.Splits.Select(split =>
+                    new PairwisePosition<string>(entry.PaidBy, split.Email, split.Amount)));
+            var nets = LedgerCore.Nets(LedgerCore.Balances(positions));
 
             var peer = settlement.Splits.Single(split => split.Email != settlement.PaidBy).Email;
-            var owed = Math.Min(
-                Math.Max(0m, -nets.GetValueOrDefault(settlement.PaidBy)),
-                Math.Max(0m, nets.GetValueOrDefault(peer)));
+            var owed = LedgerCore.Cap(nets, settlement.PaidBy, peer);
 
             if (settlement.Amount > owed)
             {

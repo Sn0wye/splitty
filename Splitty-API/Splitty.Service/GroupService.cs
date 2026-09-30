@@ -85,9 +85,4 @@ public class GroupService(
 
     public Task<bool> IsMemberAsync(int groupId, int userId) =>
         readModel.IsMemberAsync(groupId, userId);
-
-    public async Task<bool> AreBalancesPendingAsync(int groupId)
-    {
-        return await groupRepository.GetBalancesPendingAsync(groupId);
-    }
 }

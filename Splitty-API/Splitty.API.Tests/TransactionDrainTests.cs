@@ -1,10 +1,6 @@
 using System.Net;
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Splitty.Background;
-using Splitty.Domain.Entities;
-using Splitty.DTO.Response;
-using Splitty.Service.Interfaces;
 
 namespace Splitty.API.Tests;
 
@@ -21,13 +17,8 @@ public sealed class TransactionDrainTests
     [Fact]
     public async Task Worker_signals_completion_when_recompute_throws()
     {
-        await using var factory = _factory.WithWebHostBuilder(builder =>
-        {
-            builder.ConfigureTestServices(services =>
-            {
-                services.AddScoped<IBalanceService, ThrowingCalculateBalanceService>();
-            });
-        });
+        await using var factory = _factory.WithReplay((_, _) =>
+            Task.FromException(new InvalidOperationException("recompute failed")));
 
         var owner = ApiClient.Create(factory);
         var ownerUser = await owner.SignInAsync();
@@ -63,23 +54,5 @@ public sealed class TransactionDrainTests
         var recovery = ApiClient.Create(_factory, ownerUser.Token);
         (await recovery.RequestSummaryRefreshAsync(groupId)).EnsureSuccessStatusCode();
         await _factory.WaitForProcessedAsync();
-    }
-
-    private sealed class ThrowingCalculateBalanceService : IBalanceService
-    {
-        public Task<List<Balance>> CalculateGroupBalances(int groupId) =>
-            throw new InvalidOperationException("recompute failed");
-
-        public Task<List<SimplifiedDebtResponse>> GetGroupSimplifiedDebts(int groupId, int userId) =>
-            throw new NotSupportedException();
-
-        public Task SettleUp(int groupId, int userId, int peerId, decimal amount, DateTime? date) =>
-            throw new NotSupportedException();
-
-        public Task UpdateSettlement(int groupId, int expenseId, int userId, decimal amount, DateTime? date) =>
-            throw new NotSupportedException();
-
-        public Task DeleteSettlement(int groupId, int expenseId, int userId) =>
-            throw new NotSupportedException();
     }
 }

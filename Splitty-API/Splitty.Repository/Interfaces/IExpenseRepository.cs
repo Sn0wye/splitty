@@ -9,5 +9,4 @@ public interface IExpenseRepository
     Task<Expense?> GetForUpdateAsync(int id);
     Task<Expense> UpdateAsync(Expense expense);
     Task DeleteAsync(Expense expense);
-    Task<List<Expense>> GetForReplayAsync(int groupId);
 }

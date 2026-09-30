@@ -25,15 +25,22 @@ API ──> Service ──> Repository ──> Infrastructure (DbContext)
 | Project | Contains |
 |---|---|
 | `Splitty.API` | Controllers, `Program.cs` wiring, middleware |
-| `Splitty.Service` | Business rules, authorization decisions, read models |
+| `Splitty.Service` | Business rules, authorization decisions, read models, the group ledger and its startup recovery |
 | `Splitty.Repository` | EF Core persistence, one repository per aggregate |
 | `Splitty.Infrastructure` | `ApplicationDbContext`, migrations |
 | `Splitty.Domain` | Entities only, no behavior |
-| `Splitty.DTO` | `Request/`, `Response/`, `Internal/` |
-| `Splitty.Background` | `TransactionBackgroundService` — balance recomputation |
+| `Splitty.DTO` | `Request/`, `Response/`, `Internal/` (including the group ledger's values) |
+| `Splitty.Background` | `TransactionBackgroundService` — drains the group ledger's queue |
 | `Splitty.Seeder` | `DatabaseSeeder` and `SeedCommand`, run via `dotnet run seed` |
 
-Everything is registered scoped in `Program.cs`, interface-first. Services and
+Everything is registered scoped in `Program.cs`, interface-first. The group ledger is the
+one exception: `AddGroupLedger()` registers it from `Splitty.Service`, because its replay and
+its `LedgerRepository` are `internal` and `Program.cs` cannot name them. `LedgerRepository`
+is visible only to `Splitty.Service` (`InternalsVisibleTo`), so nothing but the ledger can
+mark a group pending or clear it (see Balance recomputation). It also registers the concrete
+`GroupLedger`, because the startup recovery calls `RequeuePendingAsync`, which is not on
+`IGroupLedger`. The recovery is an `IHostedService` in `Splitty.Service`, not in
+`Splitty.Background`, because it needs the ledger's internal types. Services and
 repositories use **primary constructors** for injection — match that style.
 
 Read services can query `ApplicationDbContext` directly to shape response projections.
@@ -119,11 +126,13 @@ These are the rules the domain actually depends on:
 3. **Every group sub-resource checks membership.** Controller actions under
    `/group/{groupId}/...` call `groupService.IsMemberAsync(...)` and return `Forbid()`.
    Adding an endpoint without that check is the failure mode to watch for.
-4. **The balance replay has exactly one caller: the background worker.** Nothing in the
-   code enforces this — no visibility modifier, no analyzer, no constraint. It is what makes
+4. **The balance replay has exactly one caller: the group ledger.** It is what makes
    duplicate pairwise rows impossible without a unique index on `(UserId, PeerId, GroupId)`,
-   so a second call site reintroduces the duplicates silently. A test pins the caller list;
-   this entry is why it exists. Request a recomputation, never perform one.
+   so a second call site would reintroduce the duplicates silently. Visibility enforces it:
+   the replay is `internal` to `Splitty.Service` and reached only through `GroupLedger`,
+   which runs it only for a message the background worker hands it. The one exception is
+   the test project, which `InternalsVisibleTo` lets wrap the replay step to hold or fail
+   it; no production code can. Request a recomputation, never perform one.
 5. **Settlements are capped at the smaller of the payer's net debt and the payee's net credit
    in that group.** Both positions come from stored pairwise balances, not from the suggested
    pairs. Members can pay a net creditor without having shared an expense. Editing excludes
@@ -191,24 +200,33 @@ _Avoid_: friend, contact, counterparty
 
 Balances are **derived state, recomputed wholesale** — never incrementally patched.
 
-`BalanceService.CalculateGroupBalances` zeroes every balance for the group, replays all
-expenses and splits, and writes the result back. It's idempotent by construction.
+One module owns this: the **group ledger** (`IGroupLedger`, `GroupLedger` in
+`Splitty.Service`). It requests recomputations, handles the queued ones, replays groups,
+reads pending state and the settlement cap, and re-requests pending groups on start. The
+replay sums every expense and payment split into pairwise positions with one aggregate
+query, then `LedgerCore` — pure, keyed by any member identity — turns those into pairwise
+balances, nets, simplified debts and settlement caps. The replay inserts new pairs, updates
+changed ones and zeroes pairs that disappeared, replaces the simplified debts and clears
+the pending flag, **all in one transaction**. It's idempotent by construction; a replay
+that throws leaves the group pending with nothing written.
 
 It runs asynchronously. Money writes request a recomputation instead of performing one, and
 the request belongs to the write itself: `ExpenseService` (create, update, delete) and
-`BalanceService` (settle, edit and delete a settlement) enqueue after each successful save,
+`BalanceService` (settle, edit and delete a settlement) request after each successful save,
 so a controller or any other caller cannot persist money and forget the recomputation. A
-rejected write enqueues nothing. The summary-refresh route is the only controller call left:
+rejected write requests nothing. The summary-refresh route and the seeder request through
+the same call:
 
 ```csharp
-await balanceRecomputeQueue.EnqueueAsync(groupId);
+await groupLedger.RequestRecomputationAsync(groupId);
 ```
 
-`IBalanceRecomputeQueue` is the only supported way to ask for a recomputation — it marks
-the group pending and then writes to the channel, in that order, since queueing first lets
-the worker clear a flag the caller has not set yet. `Channel<TransactionRequest>` is an
-unbounded singleton with `SingleReader = true`; `TransactionBackgroundService` drains it,
-resolving a fresh scope per message.
+It marks the group pending, bumping `Group.BalancesPendingGeneration` in the same
+statement, and then queues a message carrying the new generation — in that order, since
+queueing first lets the worker clear a flag the caller has not set yet. The queue is an
+unbounded single-reader channel; `TransactionBackgroundService` is a thin loop that hands
+each message to the ledger in a fresh scope, logs a failure without stopping, and signals
+every message it read, skipped ones included.
 
 So **balances are eventually consistent** — right after creating an expense, a read may
 still return pre-expense numbers. The client must not assume a write is immediately
@@ -219,11 +237,16 @@ rows; the overall figure on the groups list is the sum of those group nets.
 recomputation is outstanding, including simplified debts. The summary serves the whole
 group's stored simplified debts, and People uses those same per-group amounts. Pending
 figures may be stale and settlement creation or editing is refused until recomputation.
-The flag is eventually consistent, not a lock or transaction barrier. It clears only when
-the finishing replay saw the latest pending generation: marking pending bumps
-`Group.BalancesPendingGeneration`, and the worker's clear matches only the generation it
-read before loading rows. Those two writes are the only ones that touch the flag or the
-generation; a group rename sets its name and description in place.
+The flag is eventually consistent, not a lock or transaction barrier. The summary reads it
+through the ledger before the debts, so a replay landing between the reads reports fresh
+figures as pending rather than stale ones as settled.
+
+**Superseded requests are skipped.** A queued message whose generation is behind the
+group's was overtaken by a newer write whose own message is queued, so it does not replay.
+A burst of writes therefore costs the replay already running plus one, and the flag clears
+only when a replay that saw the latest generation finishes: its clear matches only its own
+generation. Requesting and the replay's clear are the only writes that touch the flag or
+the generation; a group rename sets its name and description in place.
 
 ## Group stats
 
@@ -461,9 +484,9 @@ OpenAPI is at `/openapi/v1.json` with Scalar UI at `/scalar`.
 The seed command **starts the host** rather than seeding and returning: balances are
 written by a hosted service, so a process that enqueued and exited would leave every group
 `balancesPending` with no worker to clear it. It seeds, requests one recomputation per
-group through `IBalanceRecomputeQueue`, waits until no seeded group is pending, stops the
-host, and exits non-zero if that wait times out. The seeder never calls
-`CalculateGroupBalances` itself — invariant 4.
+group through `IGroupLedger`, waits until no seeded group is pending, stops the host, and
+exits non-zero if that wait times out. The seeder never replays balances itself —
+invariant 4.
 
 The data set is **fixed, not random**: eight users across seven groups (two to six
 members), about six months of dated rows with monthly bills pinned to calendar days for
@@ -471,7 +494,8 @@ the Charts screen, amounts from $4.20 to $2,340, groups where `john@example.com`
 groups where he is owed, a pair settled to exactly zero, equal, custom and percentage
 splits, one future-dated row, `Payment` rows, and every category at least once.
 `SeedData` holds it; `DatabaseSeeder.Validate` rejects a row the API would have refused
-from a client, and `ValidateSettlements` rejects a payment larger than the settle bound.
+from a client, and `ValidateSettlements` rejects a payment larger than the settle bound, computed by
+the same `LedgerCore` the API uses, keyed by email.
 
 Re-running is safe because the command **clears the tables it owns first** — every
 `User`, `Group`, `Expense`, `ExpenseSplit`, `GroupMembership`, `Invite`, `OAuthAccount` and

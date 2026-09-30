@@ -19,7 +19,7 @@ public class GroupController(
     IBalanceService balanceService,
     IInviteService inviteService,
     IGroupStatsService groupStatsService,
-    IBalanceRecomputeQueue balanceRecomputeQueue
+    IGroupLedger groupLedger
 ) : ControllerBase
 {
     [HttpPost]
@@ -317,7 +317,7 @@ public class GroupController(
 
         if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
 
-        await balanceRecomputeQueue.EnqueueAsync(groupId);
+        await groupLedger.RequestRecomputationAsync(groupId);
 
         return Accepted();
     }
@@ -331,14 +331,14 @@ public class GroupController(
 
         if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
 
-        // Read before the balances: a drain landing between the two reads then reports
-        // fresh balances as pending, rather than stale balances as settled.
-        var balancesPending = await groupService.AreBalancesPendingAsync(groupId);
+        var summary = await groupLedger.ReadAsync(
+            groupId,
+            () => balanceService.GetGroupSimplifiedDebts(groupId, int.Parse(userId)));
 
         return Ok(new GroupBalanceSummaryResponse
         {
-            SimplifiedDebts = await balanceService.GetGroupSimplifiedDebts(groupId, int.Parse(userId)),
-            BalancesPending = balancesPending
+            SimplifiedDebts = summary.Value,
+            BalancesPending = summary.Pending
         });
     }
     

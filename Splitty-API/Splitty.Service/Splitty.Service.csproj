@@ -22,9 +22,15 @@
     <ItemGroup>
       <PackageReference Include="AWSSDK.S3" Version="4.0.103.2" />
       <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
+      <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.2" />
       <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.0" />
       <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.3.0" />
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.3.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <!-- The recompute tests hold and fail the replay, which is internal so it has one caller. -->
+      <InternalsVisibleTo Include="Splitty.API.Tests" />
     </ItemGroup>
 
 </Project>

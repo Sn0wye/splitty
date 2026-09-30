@@ -1,14 +1,9 @@
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
-using Splitty.Domain.Entities;
-using Splitty.Service;
-using Splitty.Service.Interfaces;
 
 namespace Splitty.API.Tests;
 
 /// <summary>
-/// Holds a recomputation open so a test can observe the window in which balances are
+/// Holds a replay open so a test can observe the window in which balances are
 /// pending, instead of guessing whether the worker has already drained.
 ///
 /// Scoped to one group, it holds only that group's replays and lets every other group's
@@ -24,6 +19,9 @@ public sealed class RecomputeGate(int? groupId = null) : IDisposable
     private int _entries;
 
     public Task WaitForEntryAsync(int replay = 1) => ReplayAt(replay).Entered.Task.WaitAsync(EntryTimeout);
+
+    /// How many replays have entered so far. A request the ledger skips never enters.
+    public int Entries => Volatile.Read(ref _entries);
 
     /// Releases every replay, held or still to come.
     public void Release() => _releasedAll.TrySetResult();
@@ -63,19 +61,9 @@ public static class RecomputeGateExtensions
     public static WebApplicationFactory<Program> WithGate(
         this WebApplicationFactory<Program> factory,
         RecomputeGate gate) =>
-        factory.WithWebHostBuilder(builder =>
-            builder.ConfigureTestServices(services =>
-                services.AddScoped<IBalanceService>(provider => new GatedBalanceService(
-                    ActivatorUtilities.CreateInstance<BalanceService>(provider),
-                    gate))));
-
-    private sealed class GatedBalanceService(IBalanceService inner, RecomputeGate gate)
-        : BalanceServiceDecorator(inner)
-    {
-        public override async Task<List<Balance>> CalculateGroupBalances(int groupId)
+        factory.WithReplay(async (groupId, replay) =>
         {
             await gate.EnterAsync(groupId);
-            return await base.CalculateGroupBalances(groupId);
-        }
-    }
+            await replay();
+        });
 }

@@ -43,17 +43,4 @@ public class ExpenseRepository(ApplicationDbContext context): IExpenseRepository
         context.Expense.Remove(expense);
         await context.SaveChangesAsync();
     }
-
-    /// Loads only expenses and splits needed by the balance replay, with no user graph.
-    public async Task<List<Expense>> GetForReplayAsync(int groupId)
-    {
-        return await context.Expense
-            .AsNoTracking()
-            .Include(e => e.Splits)
-            .Where(e => e.GroupId == groupId)
-            .OrderByDescending(e => e.Date ?? e.CreatedAt)
-            .ThenByDescending(e => e.Id)
-            .ToListAsync();
-    }
-
 }

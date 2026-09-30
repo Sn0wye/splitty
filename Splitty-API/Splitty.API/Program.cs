@@ -3,7 +3,6 @@ using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading.Channels;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
@@ -194,17 +193,9 @@ builder.Services.AddScoped<IAvatarStorage, R2AvatarStorage>();
 builder.Services.AddScoped<IAvatarResolver, AvatarResolver>();
 
 // Background
-builder.Services.AddScoped<IBalanceRecomputeQueue, BalanceRecomputeQueue>();
+builder.Services.AddGroupLedger();
 builder.Services.AddSingleton<TransactionProcessedSignal>();
 builder.Services.AddHostedService<TransactionBackgroundService>();
-
-builder.Services.AddSingleton<Channel<TransactionRequest>>(
-    _ => Channel.CreateUnbounded<TransactionRequest>(new UnboundedChannelOptions
-    {
-        SingleReader = true,
-        AllowSynchronousContinuations = false
-    })
-    );
 
 var app = builder.Build();
 
@@ -213,13 +204,8 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    // Before the host starts, so the ledger's startup recovery sees backfilled pending flags.
     await db.Database.MigrateAsync();
-
-    // Migration backfills and interrupted work still go through the sole replay caller.
-    var pendingGroups = await db.Group.Where(g => g.BalancesPending).Select(g => g.Id).ToListAsync();
-    var queue = scope.ServiceProvider.GetRequiredService<IBalanceRecomputeQueue>();
-    foreach (var groupId in pendingGroups)
-        await queue.EnqueueAsync(groupId);
 }
 
 // Configure the HTTP request pipeline.

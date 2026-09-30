@@ -12,7 +12,13 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Splitty.Domain\Splitty.Domain.csproj" />
+      <ProjectReference Include="..\Splitty.DTO\Splitty.DTO.csproj" />
       <ProjectReference Include="..\Splitty.Infrastructure\Splitty.Infrastructure.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <!-- The ledger's queries include clearing the pending flag, so only the group ledger may reach them. -->
+      <InternalsVisibleTo Include="Splitty.Service" />
     </ItemGroup>
 
 </Project>
