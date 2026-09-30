@@ -7,11 +7,11 @@ namespace Splitty.Repository;
 
 public class BalanceRepository(ApplicationDbContext context) : IBalanceRepository
 {
+    // No user navigations: the replay saves these rows back, and nothing it saves may
+    // reach a member's user row.
     public async Task<List<Balance>> GetGroupBalancesAsync(int groupId)
     {
         return await context.Balance
-            .Include(b => b.User)
-            .Include(b => b.Peer)
             .Where(b => b.GroupId == groupId)
             .ToListAsync();
     }

@@ -50,6 +50,34 @@ struct ExpenseReadingTests {
         #expect(expense.getUserSplit(currentUserId: 2) == -20)
     }
 
+    // Paying only for yourself moves no money, so it must not read as a loan of zero.
+    @Test func aSoloPayerPaidForThemselves() {
+        let expense = TestExpense.make(paidBy: 1, amount: 30, splitAmounts: [1: 30])
+        #expect(expense.involvement(of: 1) == .paidForYourself)
+    }
+
+    @Test func aPayerSplittingWithOthersLentTheirShares() {
+        let expense = TestExpense.make(paidBy: 1, amount: 30, splitAmounts: [1: 10, 2: 20])
+        #expect(expense.involvement(of: 1) == .lent(20))
+    }
+
+    @Test func aParticipantBorrowedTheirShare() {
+        let expense = TestExpense.make(paidBy: 1, amount: 30, splitAmounts: [1: 10, 2: 20])
+        #expect(expense.involvement(of: 2) == .borrowed(20))
+    }
+
+    @Test func aNonParticipantIsNotInvolved() {
+        let expense = TestExpense.make(paidBy: 1, amount: 30, splitAmounts: [1: 10, 2: 20])
+        #expect(expense.involvement(of: 3) == .notInvolved)
+    }
+
+    @Test func aSettlementReadsAsAPaymentOnlyToItsTwoSides() {
+        let settlement = TestExpense.make(paidBy: 2, amount: 10, splitAmounts: [2: 10, 3: -10], type: .payment)
+        #expect(settlement.involvement(of: 2) == .payment)
+        #expect(settlement.involvement(of: 3) == .payment)
+        #expect(settlement.involvement(of: 1) == .notInvolved)
+    }
+
     // Files under the user-supplied date when there is one, the audit timestamp otherwise.
     @Test func fallsBackToTheAuditTimestampWithoutADate() {
         let undated = TestExpense.make(paidBy: 1, amount: 10, splitAmounts: [1: 10])

@@ -104,6 +104,7 @@ public sealed class DatabaseSeeder(ApplicationDbContext context, IBalanceRecompu
     {
         // Child rows first: nothing relies on a cascade being configured.
         await context.Balance.ExecuteDeleteAsync(cancellationToken);
+        await context.SimplifiedDebt.ExecuteDeleteAsync(cancellationToken);
         await context.ExpenseSplit.ExecuteDeleteAsync(cancellationToken);
         await context.Expense.ExecuteDeleteAsync(cancellationToken);
         await context.Invite.ExecuteDeleteAsync(cancellationToken);

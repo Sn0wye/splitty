@@ -544,9 +544,7 @@ struct ExpenseRow: View {
 
     private var isUserPaid: Bool { expense.paidBy == currentUserId }
 
-    private var isUserInvolved: Bool {
-        isUserPaid || expense.splits.contains { $0.userId == currentUserId }
-    }
+    private var involvement: ExpenseInvolvement { expense.involvement(of: currentUserId) }
 
     private var paidByDisplay: MemberDisplay {
         MemberDisplay(expense.paidByUser)
@@ -594,18 +592,27 @@ struct ExpenseRow: View {
     
     @ViewBuilder
     private var balanceLabel: some View {
-        if !isUserInvolved {
+        switch involvement {
+        case .notInvolved:
             Text(L10n.Group.notInvolved)
                 .font(.caption)
                 .foregroundColor(Color("muted-foreground"))
-        } else if expense.type == .payment {
+        case .payment:
             Text(L10n.Group.payment)
                 .font(.caption)
                 .foregroundColor(Color("muted-foreground"))
-        } else {
-            Text(isUserPaid ? L10n.Group.youLent : L10n.Group.youBorrowed)
+        case .paidForYourself:
+            Text(L10n.Group.youPaidForYourself)
                 .font(.caption)
-                .foregroundColor(isUserPaid ? Color.green : Color.red)
+                .foregroundColor(Color("muted-foreground"))
+        case .lent:
+            Text(L10n.Group.youLent)
+                .font(.caption)
+                .foregroundColor(Color.green)
+        case .borrowed:
+            Text(L10n.Group.youBorrowed)
+                .font(.caption)
+                .foregroundColor(Color.red)
         }
     }
     
@@ -617,18 +624,21 @@ struct ExpenseRow: View {
             Text(Money.formatted(amount: expense.amount))
                 .font(.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(Color(isUserInvolved ? "card-foreground" : "muted-foreground"))
-        } else if isUserInvolved {
-            // Signed: what the payer lent is the total less their own share, and what
-            // anyone else borrowed is their share.
-            Text(Money.formatted(amount: abs(expense.getUserSplit(currentUserId: currentUserId))))
+                .foregroundColor(Color(involvement == .notInvolved ? "muted-foreground" : "card-foreground"))
+        } else if case .lent(let amount) = involvement {
+            // What the payer lent is the total less their own share.
+            Text(Money.formatted(amount: amount))
                 .font(.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(isUserPaid ? Color.green : Color.red)
+                .foregroundColor(Color.green)
+        } else if case .borrowed(let amount) = involvement {
+            Text(Money.formatted(amount: amount))
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(Color.red)
         }
     }
 }
-
 
 #Preview {
     GroupView(session: GroupSessionStore().open(1))

@@ -80,31 +80,23 @@ public class GroupService(
 
     public async Task<Group> UpdateAsync(int groupId, int userId, string? name, string? description)
     {
-        var group = await groupRepository.GetGroupByIdAsync(groupId);
-
-        if (group is null)
+        if (!await IsMemberAsync(groupId, userId))
         {
-            throw new KeyNotFoundException("Group not found");
-        }
+            if (await groupRepository.GetGroupByIdAsync(groupId) is null)
+            {
+                throw new KeyNotFoundException("Group not found");
+            }
 
-        if (group.Members.All(gm => gm.UserId != userId))
-        {
             throw new UnauthorizedAccessException("User is not a member of the group");
         }
 
-        if (!string.IsNullOrEmpty(name))
-        {
-            group.Name = name;
-        }
+        await groupRepository.RenameAsync(
+            groupId,
+            string.IsNullOrEmpty(name) ? null : name,
+            string.IsNullOrEmpty(description) ? null : description);
 
-        if (!string.IsNullOrEmpty(description))
-        {
-            group.Description = description;
-        }
-
-        await groupRepository.UpdateAsync(group);
-
-        return group;
+        return await groupRepository.GetGroupByIdAsync(groupId)
+            ?? throw new KeyNotFoundException("Group not found");
     }
 
     public async Task<MembershipRemovalStatus> LeaveAsync(int groupId, int userId)

@@ -214,7 +214,8 @@ figures may be stale and settlement creation or editing is refused until recompu
 The flag is eventually consistent, not a lock or transaction barrier. It clears only when
 the finishing replay saw the latest pending generation: marking pending bumps
 `Group.BalancesPendingGeneration`, and the worker's clear matches only the generation it
-read before loading rows.
+read before loading rows. Those two writes are the only ones that touch the flag or the
+generation; a group rename sets its name and description in place.
 
 ## Group stats
 
