@@ -15,4 +15,9 @@
       <ProjectReference Include="..\Splitty.Infrastructure\Splitty.Infrastructure.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <!-- The ledger's queries include clearing the pending flag, so only the group ledger may reach them. -->
+      <InternalsVisibleTo Include="Splitty.Service" />
+    </ItemGroup>
+
 </Project>

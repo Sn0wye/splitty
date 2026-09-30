@@ -1,8 +1,8 @@
 using System.Threading.Channels;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Splitty.Infrastructure;
+using Splitty.Repository;
+using Splitty.Repository.Interfaces;
 using Splitty.Service.Interfaces;
 
 namespace Splitty.Service;
@@ -31,14 +31,14 @@ namespace Splitty.Service;
 /// it single-caller (invariant 4) without a unique index on the balance triple.
 /// </summary>
 internal sealed class GroupLedger(
-    ApplicationDbContext context,
+    ILedgerRepository ledgerRepository,
     LedgerQueue queue,
     IGroupReplay replay
 ) : IGroupLedger
 {
     public async Task RequestRecomputationAsync(int groupId, CancellationToken cancellationToken = default)
     {
-        var generation = await MarkPendingAsync(groupId, cancellationToken);
+        var generation = await ledgerRepository.MarkPendingAsync(groupId, cancellationToken);
 
         // A deleted group has nothing left to derive.
         if (generation is null) return;
@@ -48,28 +48,23 @@ internal sealed class GroupLedger(
 
     public async Task<LedgerRead<T>> ReadAsync<T>(int groupId, Func<Task<T>> read)
     {
-        var pending = await IsPendingAsync(groupId);
+        var pending = await ledgerRepository.IsPendingAsync(groupId);
         return new LedgerRead<T>(await read(), pending);
     }
 
     public async Task<decimal> SettlementCapAsync(int groupId, int payerId, int payeeId, decimal excluding = 0m)
     {
-        if (await IsPendingAsync(groupId)) return 0m;
+        if (await ledgerRepository.IsPendingAsync(groupId)) return 0m;
 
-        var balances = await context.Balance.AsNoTracking()
-            .Where(b => b.GroupId == groupId)
-            .Select(b => new PairwiseBalance<int>(b.UserId, b.PeerId, b.Amount))
-            .ToListAsync();
+        var balances = await ledgerRepository.GetBalancesAsync(groupId);
+        var nets = LedgerCore.Nets(balances.Select(b => new PairwiseBalance<int>(b.UserId, b.PeerId, b.Amount)));
 
-        return LedgerCore.Cap(LedgerCore.Nets(balances), payerId, payeeId, excluding);
+        return LedgerCore.Cap(nets, payerId, payeeId, excluding);
     }
 
     public async Task ProcessAsync(LedgerRequest request, CancellationToken cancellationToken = default)
     {
-        var current = await context.Group
-            .Where(g => g.Id == request.GroupId)
-            .Select(g => (int?)g.BalancesPendingGeneration)
-            .FirstOrDefaultAsync(cancellationToken);
+        var current = await ledgerRepository.GetPendingGenerationAsync(request.GroupId, cancellationToken);
 
         // Superseded, or the group is gone.
         if (current != request.Generation) return;
@@ -80,36 +75,9 @@ internal sealed class GroupLedger(
     /// <summary>Re-requests every group left pending, by a stop mid-replay or a migration backfill.</summary>
     public async Task RequeuePendingAsync(CancellationToken cancellationToken)
     {
-        var pending = await context.Group
-            .Where(g => g.BalancesPending)
-            .Select(g => g.Id)
-            .ToListAsync(cancellationToken);
-
-        foreach (var groupId in pending)
+        foreach (var groupId in await ledgerRepository.GetPendingGroupIdsAsync(cancellationToken))
             await RequestRecomputationAsync(groupId, cancellationToken);
     }
-
-    // One statement, so the generation returned is the one this request produced even when
-    // requests for the group race. Written in the database: a Group already tracked in this
-    // scope keeps its old values, so callers must not save one back after requesting.
-    private async Task<int?> MarkPendingAsync(int groupId, CancellationToken cancellationToken)
-    {
-        var generations = await context.Database.SqlQuery<int>($"""
-            UPDATE "Group"
-            SET "BalancesPending" = TRUE,
-                "BalancesPendingGeneration" = "BalancesPendingGeneration" + 1
-            WHERE "Id" = {groupId}
-            RETURNING "BalancesPendingGeneration" AS "Value"
-            """).ToListAsync(cancellationToken);
-
-        return generations.Count == 0 ? null : generations[0];
-    }
-
-    private Task<bool> IsPendingAsync(int groupId) =>
-        context.Group
-            .Where(g => g.Id == groupId)
-            .Select(g => g.BalancesPending)
-            .FirstOrDefaultAsync();
 }
 
 /// <summary>
@@ -147,11 +115,13 @@ internal sealed class GroupLedgerRecovery(IServiceScopeFactory serviceScopeFacto
 public static class GroupLedgerServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the ledger, its queue and its startup recovery. The worker that drains the
+    /// Registers the ledger, its repository, its queue and its startup recovery. They are
+    /// internal, so <c>Program.cs</c> cannot name them. The worker that drains the
     /// queue reads <see cref="ChannelReader{T}"/> of <see cref="LedgerRequest"/>.
     /// </summary>
     public static IServiceCollection AddGroupLedger(this IServiceCollection services)
     {
+        services.AddScoped<ILedgerRepository, LedgerRepository>();
         services.AddSingleton<LedgerQueue>();
         services.AddSingleton(provider => provider.GetRequiredService<LedgerQueue>().Reader);
         services.AddScoped<IGroupReplay, GroupReplay>();

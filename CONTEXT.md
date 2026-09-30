@@ -34,10 +34,10 @@ API ──> Service ──> Repository ──> Infrastructure (DbContext)
 | `Splitty.Seeder` | `DatabaseSeeder` and `SeedCommand`, run via `dotnet run seed` |
 
 Everything is registered scoped in `Program.cs`, interface-first. The group ledger is the
-one exception: `AddGroupLedger()` registers it from `Splitty.Service`, because its replay is
-`internal` and `Program.cs` cannot name it. For the same reason the ledger queries
-`ApplicationDbContext` itself rather than going through a repository — the pending protocol
-and the replay's single transaction are the ledger's to own (see Balance recomputation). Services and
+one exception: `AddGroupLedger()` registers it from `Splitty.Service`, because its replay and
+its `LedgerRepository` are `internal` and `Program.cs` cannot name them. `LedgerRepository`
+is visible only to `Splitty.Service` (`InternalsVisibleTo`), so nothing but the ledger can
+mark a group pending or clear it (see Balance recomputation). Services and
 repositories use **primary constructors** for injection — match that style.
 
 Read services can query `ApplicationDbContext` directly to shape response projections.
