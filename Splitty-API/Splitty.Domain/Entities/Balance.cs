@@ -13,8 +13,8 @@ public class Balance
     public int PeerId { get; set; }
     public Decimal Amount { get; set; }
     
-    public virtual User User { get; init; }
-    public virtual User Peer { get; init; }
+    public virtual User User { get; init; } = null!;
+    public virtual User Peer { get; init; } = null!;
     [JsonIgnore]
-    public virtual Group Group { get; init; }
+    public virtual Group Group { get; init; } = null!;
 }

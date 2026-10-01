@@ -33,5 +33,5 @@ public class OAuthAccount
     public DateTime CreatedAt { get; init; } = DateTime.UtcNow;
 
     [JsonIgnore]
-    public virtual User User { get; init; }
+    public virtual User User { get; init; } = null!;
 }

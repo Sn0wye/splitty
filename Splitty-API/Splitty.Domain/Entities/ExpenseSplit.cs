@@ -23,8 +23,8 @@ public class ExpenseSplit
     public Decimal? Percentage { get; set; }
     
     [JsonIgnore]
-    public Expense Expense { get; init; }
+    public Expense Expense { get; init; } = null!;
     
     // [JsonIgnore]
-    public User User { get; init; }
+    public User User { get; init; } = null!;
 }

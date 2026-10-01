@@ -9,7 +9,7 @@ public class Group
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; init; }
     
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     
     public string? Description { get; set; }
 
@@ -32,7 +32,7 @@ public class Group
     /// </summary>
     public int BalancesPendingGeneration { get; set; }
     
-    public virtual User CreatedByUser { get; set; }
+    public virtual User CreatedByUser { get; set; } = null!;
     
     public virtual ICollection<GroupMembership> Members { get; set; } = new List<GroupMembership>();
     [JsonIgnore]

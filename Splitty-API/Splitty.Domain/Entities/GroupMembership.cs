@@ -15,8 +15,8 @@ public class GroupMembership
     
     public DateTime JoinedAt { get; init; } = DateTime.UtcNow;
     
-    public virtual User User { get; init; }
+    public virtual User User { get; init; } = null!;
     
     [JsonIgnore]
-    public virtual Group Group { get; init; }
+    public virtual Group Group { get; init; } = null!;
 }

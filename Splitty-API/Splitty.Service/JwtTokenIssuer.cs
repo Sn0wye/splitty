@@ -14,7 +14,8 @@ public class JwtTokenIssuer(IConfiguration configuration) : IJwtTokenIssuer
 
     public string Issue(User user)
     {
-        var secretKey = configuration["Jwt:SecretKey"];
+        var secretKey = configuration["Jwt:SecretKey"]
+            ?? throw new InvalidOperationException("Jwt:SecretKey is not configured.");
         var issuer = configuration["Jwt:Issuer"];
         var expiryDays = configuration.GetValue<int?>("Jwt:ExpiryDays") ?? DefaultExpiryDays;
 
