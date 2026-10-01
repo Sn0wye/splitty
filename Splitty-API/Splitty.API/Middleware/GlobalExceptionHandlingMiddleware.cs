@@ -42,7 +42,7 @@ public class GlobalExceptionHandlingMiddleware(RequestDelegate next, IHostEnviro
             StatusCode = statusCode,
             Message = message,
             // Stack traces leak internals; development only.
-            Details = environment.IsDevelopment() ? ex.StackTrace : null
+            Details = environment.IsDevelopmentOrTesting() ? ex.StackTrace : null
         });
     }
 }

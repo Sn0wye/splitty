@@ -33,7 +33,7 @@ builder.Logging.AddConsole();
 builder.Services.AddOpenApi();
 builder.Services.AddControllers(options =>
     {
-        if (!builder.Environment.IsDevelopment())
+        if (!builder.Environment.IsDevelopmentOrTesting())
         {
             options.Conventions.Add(new RemoveControllerConvention<DevAuthController>());
         }
@@ -54,10 +54,16 @@ if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:SecretKey"]))
     throw new InvalidOperationException("Configuration 'Jwt:SecretKey' is required.");
 }
 
+if (builder.Configuration["Jwt:SecretKey"] == HostEnvironments.TestJwtSecretKey && !builder.Environment.IsTesting())
+{
+    throw new InvalidOperationException(
+        $"Configuration 'Jwt:SecretKey' is the test suite's key, which is only accepted in the {HostEnvironments.Testing} environment.");
+}
+
 // Google and R2 credentials only matter to the real token exchanger and the real avatar
 // storage, both of which the test suite replaces with fakes, so these stay scoped to
-// non-Development hosts.
-if (!builder.Environment.IsDevelopment())
+// hosts other than Development and Testing.
+if (!builder.Environment.IsDevelopmentOrTesting())
 {
     foreach (var key in new[]
              {
@@ -72,7 +78,7 @@ if (!builder.Environment.IsDevelopment())
     {
         if (string.IsNullOrWhiteSpace(builder.Configuration[key]))
         {
-            throw new InvalidOperationException($"Configuration '{key}' is required outside Development.");
+            throw new InvalidOperationException($"Configuration '{key}' is required outside Development and Testing.");
         }
     }
 }
@@ -210,7 +216,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopmentOrTesting())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();

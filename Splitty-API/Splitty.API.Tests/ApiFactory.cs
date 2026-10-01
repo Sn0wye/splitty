@@ -42,11 +42,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // DevAuthController and the startup secret checks both key off this.
-        builder.UseEnvironment("Development");
+        // DevAuthController and the startup secret checks both key off this, and Testing is the
+        // only environment that accepts the test signing key.
+        builder.UseEnvironment(HostEnvironments.Testing);
         // Program reads the signing key before the host is built, where ConfigureAppConfiguration
         // values are not yet visible; UseSetting lands in the builder's configuration up front.
-        builder.UseSetting("Jwt:SecretKey", "SplittyTestSigningKeyLongEnoughForHmacSha256");
+        builder.UseSetting("Jwt:SecretKey", HostEnvironments.TestJwtSecretKey);
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>

@@ -7,8 +7,8 @@ using Splitty.Service.Interfaces;
 namespace Splitty.API.Controllers;
 
 /// Hands out a token for a seeded user with no credential of any kind. Registered only
-/// when the host is Development — `Program.cs` strips the whole controller otherwise, so
-/// outside development the route does not exist rather than returning 401.
+/// when the host is Development or Testing — `Program.cs` strips the whole controller
+/// otherwise, so outside those environments the route does not exist rather than returning 401.
 [ApiController]
 [Route("auth")]
 [AllowAnonymous]
