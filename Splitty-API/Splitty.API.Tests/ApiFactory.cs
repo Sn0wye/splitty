@@ -44,12 +44,14 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         // DevAuthController and the startup secret checks both key off this.
         builder.UseEnvironment("Development");
+        // Program reads the signing key before the host is built, where ConfigureAppConfiguration
+        // values are not yet visible; UseSetting lands in the builder's configuration up front.
+        builder.UseSetting("Jwt:SecretKey", "SplittyTestSigningKeyLongEnoughForHmacSha256");
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DefaultConnection"] = _postgres.GetConnectionString(),
-                ["Jwt:SecretKey"] = "SplittyTestSigningKeyLongEnoughForHmacSha256",
                 ["Jwt:Issuer"] = "Splitty"
             });
         });
