@@ -1,5 +1,6 @@
 using Amazon.S3;
 using Amazon.S3.Model;
+using Microsoft.Extensions.Options;
 using Splitty.Service.Interfaces;
 
 namespace Splitty.Service;
@@ -8,8 +9,10 @@ namespace Splitty.Service;
 /// R2 through its S3-compatible API. The AWS SDK is here to sign requests — hand-rolling
 /// SigV4 reimplements a solved problem.
 /// </summary>
-public class R2AvatarStorage(IAmazonS3 s3, R2Options options) : IAvatarStorage
+public class R2AvatarStorage(IAmazonS3 s3, IOptions<R2Options> r2Options) : IAvatarStorage
 {
+    private readonly R2Options options = r2Options.Value;
+
     public string ContentType => "image/jpeg";
 
     public long MaxBytes => options.MaxAvatarBytes;

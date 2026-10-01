@@ -8,9 +8,9 @@ public class User
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; init; }
     
-    public string Name { get; set; }
+    public required string Name { get; set; }
     
-    public string Email { get; set; }
+    public required string Email { get; set; }
     
     /// The picture the identity provider supplied, written once at user creation and never
     /// overwritten. Empty for a provider that sends none.

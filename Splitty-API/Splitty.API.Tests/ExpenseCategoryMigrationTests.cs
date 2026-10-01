@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Microsoft.Extensions.Configuration;
 using Splitty.Domain.Entities;
 using Splitty.Infrastructure;
 using Testcontainers.PostgreSql;
@@ -74,15 +74,9 @@ public sealed class ExpenseCategoryMigrationTests : IAsyncLifetime
             """);
     }
 
-    private ApplicationDbContext CreateContext()
-    {
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:DefaultConnection"] = _postgres.GetConnectionString()
-            })
-            .Build();
-
-        return new ApplicationDbContext(new DbContextOptions<ApplicationDbContext>(), configuration);
-    }
+    private ApplicationDbContext CreateContext() =>
+        new(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql(_postgres.GetConnectionString())
+            .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
+            .Options);
 }

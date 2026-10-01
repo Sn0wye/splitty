@@ -33,7 +33,7 @@ public class Expense
     
     public Decimal Amount { get; set; }
     
-    public string Description { get; set; }
+    public required string Description { get; set; }
 
     public ExpenseType Type { get; set; } = ExpenseType.Expense;
 
@@ -65,9 +65,9 @@ public class Expense
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     
     [JsonIgnore]
-    public virtual Group Group { get; init; }
+    public virtual Group Group { get; init; } = null!;
     
-    public virtual User PaidByUser { get; init; }
+    public virtual User PaidByUser { get; init; } = null!;
     
     public virtual IList<ExpenseSplit> Splits { get; set; } = new List<ExpenseSplit>();
 }

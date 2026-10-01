@@ -24,8 +24,8 @@ public class Invite
     public int UsedCount { get; set; }
 
     [JsonIgnore]
-    public virtual Group Group { get; init; }
+    public virtual Group Group { get; init; } = null!;
 
     [JsonIgnore]
-    public virtual User CreatedByUser { get; init; }
+    public virtual User CreatedByUser { get; init; } = null!;
 }

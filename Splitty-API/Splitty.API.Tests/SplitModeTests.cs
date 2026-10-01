@@ -43,8 +43,7 @@ public sealed class SplitModeTests(ApiFactory factory)
             }
         });
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        await ErrorResponseAssertions.ReadErrorAsync(response);
+        await ErrorResponseAssertions.AssertValidationProblemAsync(response);
     }
 
     [Fact]

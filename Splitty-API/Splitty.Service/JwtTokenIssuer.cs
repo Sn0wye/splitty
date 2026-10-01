@@ -1,24 +1,20 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Splitty.Domain.Entities;
 using Splitty.Service.Interfaces;
 
 namespace Splitty.Service;
 
-public class JwtTokenIssuer(IConfiguration configuration) : IJwtTokenIssuer
+public class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssuer
 {
-    private const int DefaultExpiryDays = 30;
-
     public string Issue(User user)
     {
-        var secretKey = configuration["Jwt:SecretKey"];
-        var issuer = configuration["Jwt:Issuer"];
-        var expiryDays = configuration.GetValue<int?>("Jwt:ExpiryDays") ?? DefaultExpiryDays;
+        var jwt = options.Value;
 
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SecretKey));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
@@ -30,12 +26,12 @@ public class JwtTokenIssuer(IConfiguration configuration) : IJwtTokenIssuer
         };
 
         var token = new JwtSecurityToken(
-            issuer: issuer,
+            issuer: jwt.Issuer,
             claims: claims,
             // UtcNow, not Now: JwtSecurityToken reads `expires` as UTC, so a local
             // timestamp shifts the lifetime by the host's offset — west of UTC that
             // ships already-expired tokens.
-            expires: DateTime.UtcNow.AddDays(expiryDays),
+            expires: DateTime.UtcNow.AddDays(jwt.ExpiryDays),
             signingCredentials: credentials
         );
 

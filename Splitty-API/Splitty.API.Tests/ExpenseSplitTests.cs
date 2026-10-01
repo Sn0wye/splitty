@@ -59,8 +59,7 @@ public sealed class ExpenseSplitTests
                 Encoding.UTF8,
                 "application/json"));
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        await ErrorResponseAssertions.ReadErrorAsync(response);
+        await ErrorResponseAssertions.AssertValidationProblemAsync(response);
     }
 
     [Fact]
