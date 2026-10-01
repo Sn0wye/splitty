@@ -16,8 +16,8 @@ public sealed class DevLoginTests
         _factory = factory;
     }
 
-    // The host runs as Testing, which keeps Development's routes; outside those two the
-    // controller is never added to the application model, so this route 404s rather than 401s.
+    // The host runs as Development; outside it the controller is never added to the
+    // application model, so this route 404s rather than 401s.
     [Fact]
     public async Task Dev_login_mints_a_usable_token_for_an_existing_user()
     {

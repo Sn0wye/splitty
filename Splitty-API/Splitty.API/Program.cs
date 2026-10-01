@@ -9,6 +9,7 @@ using System.Threading.RateLimiting;
 using Splitty.API;
 using Splitty.API.Controllers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Splitty.API.Middleware;
 using Splitty.Background;
@@ -33,7 +34,7 @@ builder.Logging.AddConsole();
 builder.Services.AddOpenApi();
 builder.Services.AddControllers(options =>
     {
-        if (!builder.Environment.IsDevelopmentOrTesting())
+        if (!builder.Environment.IsDevelopment())
         {
             options.Conventions.Add(new RemoveControllerConvention<DevAuthController>());
         }
@@ -44,26 +45,22 @@ builder.Services.AddControllers(options =>
             new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
     });
 // Secrets arrive as Jwt__SecretKey / Google__ClientId / Google__ClientSecret from .env.
-// Failing here beats minting tokens signed with "" or exchanging codes as an empty client.
+// Failing at startup beats minting tokens signed with "" or exchanging codes as an empty client.
 //
-// The signing key is checked in every environment, Development included: an empty key
+// The signing key is validated in every environment, Development included: an empty key
 // throws inside the JwtBearer handler, which runs per request, so skipping the check
-// turns a config fault into a 400 on every route rather than a startup crash.
-if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:SecretKey"]))
-{
-    throw new InvalidOperationException("Configuration 'Jwt:SecretKey' is required.");
-}
-
-if (builder.Configuration["Jwt:SecretKey"] == HostEnvironments.TestJwtSecretKey && !builder.Environment.IsTesting())
-{
-    throw new InvalidOperationException(
-        $"Configuration 'Jwt:SecretKey' is the test suite's key, which is only accepted in the {HostEnvironments.Testing} environment.");
-}
+// turns a config fault into a 400 on every route rather than a startup crash. It is bound
+// rather than read here so that configuration added after this point (the test host's
+// in-memory settings) is what gets validated and used.
+builder.Services.AddOptions<JwtOptions>()
+    .BindConfiguration(JwtOptions.SectionName)
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 // Google and R2 credentials only matter to the real token exchanger and the real avatar
 // storage, both of which the test suite replaces with fakes, so these stay scoped to
-// hosts other than Development and Testing.
-if (!builder.Environment.IsDevelopmentOrTesting())
+// non-Development hosts.
+if (!builder.Environment.IsDevelopment())
 {
     foreach (var key in new[]
              {
@@ -78,7 +75,7 @@ if (!builder.Environment.IsDevelopmentOrTesting())
     {
         if (string.IsNullOrWhiteSpace(builder.Configuration[key]))
         {
-            throw new InvalidOperationException($"Configuration '{key}' is required outside Development and Testing.");
+            throw new InvalidOperationException($"Configuration '{key}' is required outside Development.");
         }
     }
 }
@@ -100,18 +97,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opts =>
     {
-        opts.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidateAudience = false,
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(5),
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]
-                ?? throw new InvalidOperationException("Jwt:SecretKey is not configured.")))
-        };
-        
         opts.Events = new JwtBearerEvents
         {
             OnChallenge = async context =>
@@ -130,6 +115,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 
                 await context.Response.WriteAsJsonAsync(response);
             }
+        };
+    });
+
+// Configured from the bound options, not builder.Configuration, for the same reason as above.
+builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<IOptions<JwtOptions>>((opts, jwt) =>
+    {
+        opts.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwt.Value.Issuer,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(5),
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Value.SecretKey))
         };
     });
     
@@ -216,7 +217,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopmentOrTesting())
+if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
     app.MapScalarApiReference();
