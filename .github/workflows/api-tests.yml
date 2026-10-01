@@ -1,0 +1,71 @@
+name: API tests
+
+on:
+  pull_request:
+    paths:
+      - 'Splitty-API/**'
+      - '.github/workflows/api-tests.yml'
+      - 'global.json'
+      - 'NuGet.Config'
+      - 'nuget.config'
+      - 'Directory.Build.*'
+      - 'Directory.Packages.props'
+      - '!**/*.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: api-tests-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: true
+      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '9.0.x'
+
+      # There are no NuGet lockfiles yet. Cache packages, then always restore
+      # project assets instead of caching bin/obj or skipping restore on a hit.
+      - uses: actions/cache@v6
+        with:
+          path: ${{ env.NUGET_PACKAGES }}
+          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Splitty-API/**/*.csproj', '**/Directory.Build.*', '**/Directory.Packages.props', '**/[Nn]u[Gg]et.[Cc]onfig', '**/global.json') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Restore test project
+        run: dotnet restore Splitty-API/Splitty.API.Tests/Splitty.API.Tests.csproj
+
+      - name: Run API tests
+        # Program validates the key before ApiFactory adds its test configuration.
+        # This is the same public, test-only key used by that factory.
+        env:
+          Jwt__SecretKey: SplittyTestSigningKeyLongEnoughForHmacSha256
+        run: >-
+          dotnet test Splitty-API/Splitty.API.Tests/Splitty.API.Tests.csproj
+          --configuration Release
+          --no-restore
+          --logger "trx;LogFileName=api.trx"
+          --results-directory "${RUNNER_TEMP}/api-results"
+
+      - name: Upload API results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: api-test-results
+          path: ${{ runner.temp }}/api-results
+          if-no-files-found: ignore
+          retention-days: 7

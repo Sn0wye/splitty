@@ -1,100 +1,24 @@
-name: PR tests
+name: iOS unit tests
 
 on:
   pull_request:
+    paths:
+      - 'Splitty/**'
+      - '.xcode-version'
+      - '.github/workflows/ios-tests.yml'
+      - '!Splitty/SplittyUITests/**'
+      - '!**/*.md'
 
 permissions:
   contents: read
 
 concurrency:
-  group: pr-tests-${{ github.event.pull_request.number }}
+  group: ios-tests-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
-  changes:
-    name: Detect changes
-    runs-on: ubuntu-24.04
-    timeout-minutes: 3
-    permissions:
-      pull-requests: read
-    outputs:
-      api: ${{ steps.filter.outputs.api }}
-      ios: ${{ steps.filter.outputs.ios }}
-    steps:
-      # PR files come from the API, so this job needs no checkout.
-      - uses: dorny/paths-filter@v4
-        id: filter
-        with:
-          predicate-quantifier: some-with-excludes
-          filters: |
-            api:
-              - 'Splitty-API/**'
-              - '.github/workflows/pr-tests.yml'
-              - 'global.json'
-              - 'NuGet.Config'
-              - 'nuget.config'
-              - 'Directory.Build.*'
-              - 'Directory.Packages.props'
-              - '!**/*.md'
-            ios:
-              - 'Splitty/**'
-              - '.xcode-version'
-              - '.github/workflows/pr-tests.yml'
-              - '!Splitty/SplittyUITests/**'
-              - '!**/*.md'
-
-  api:
-    name: API tests
-    needs: changes
-    if: needs.changes.outputs.api == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    env:
-      DOTNET_NOLOGO: true
-      DOTNET_CLI_TELEMETRY_OPTOUT: true
-      NUGET_PACKAGES: ${{ github.workspace }}/.nuget/packages
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - uses: actions/setup-dotnet@v6
-        with:
-          dotnet-version: '9.0.x'
-
-      # There are no NuGet lockfiles yet. Cache packages, then always restore
-      # project assets instead of caching bin/obj or skipping restore on a hit.
-      - uses: actions/cache@v6
-        with:
-          path: ${{ env.NUGET_PACKAGES }}
-          key: nuget-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Splitty-API/**/*.csproj', '**/Directory.Build.*', '**/Directory.Packages.props', '**/[Nn]u[Gg]et.[Cc]onfig', '**/global.json') }}
-          restore-keys: |
-            nuget-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Restore test project
-        run: dotnet restore Splitty-API/Splitty.API.Tests/Splitty.API.Tests.csproj
-
-      - name: Run API tests
-        run: >-
-          dotnet test Splitty-API/Splitty.API.Tests/Splitty.API.Tests.csproj
-          --configuration Release
-          --no-restore
-          --logger "trx;LogFileName=api.trx"
-          --results-directory "${RUNNER_TEMP}/api-results"
-
-      - name: Upload API results
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: api-test-results
-          path: ${{ runner.temp }}/api-results
-          if-no-files-found: ignore
-          retention-days: 7
-
   ios:
     name: iOS unit tests
-    needs: changes
-    if: needs.changes.outputs.ios == 'true'
     # Matches .xcode-version; this image currently has preview status.
     runs-on: xcode-27
     timeout-minutes: 15
@@ -187,32 +111,3 @@ jobs:
             ${{ runner.temp }}/ios-tests.log
           if-no-files-found: ignore
           retention-days: 7
-
-  required:
-    name: PR tests
-    needs: [changes, api, ios]
-    if: always()
-    runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    steps:
-      - name: Check required results
-        env:
-          CHANGES_RESULT: ${{ needs.changes.result }}
-          API_CHANGED: ${{ needs.changes.outputs.api }}
-          API_RESULT: ${{ needs.api.result }}
-          IOS_CHANGED: ${{ needs.changes.outputs.ios }}
-          IOS_RESULT: ${{ needs.ios.result }}
-        shell: bash
-        run: |
-          [[ "$CHANGES_RESULT" == success ]] || exit 1
-          for component in API IOS; do
-            changed_var="${component}_CHANGED"
-            result_var="${component}_RESULT"
-            changed="${!changed_var}"
-            result="${!result_var}"
-            echo "$component: changed=$changed, result=$result"
-            case "$changed:$result" in
-              true:success|false:skipped) ;;
-              *) exit 1 ;;
-            esac
-          done
