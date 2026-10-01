@@ -4,9 +4,8 @@ Two independent workflows run on pull requests:
 
 - `.github/workflows/api-tests.yml` runs `Splitty.API.Tests` on Ubuntu with
   .NET 9 when `Splitty-API/**` or backend build configuration changes.
-  Testcontainers starts PostgreSQL. The test command receives the factory's
-  public test-only JWT key so startup validation succeeds before the factory
-  adds its configuration.
+  Testcontainers starts PostgreSQL; `ApiFactory` supplies the test-only
+  configuration, so the workflow sets no secrets.
 - `.github/workflows/ios-tests.yml` builds the app and runs `SplittyTests` on
   one iPhone simulator when `Splitty/**` or `.xcode-version` changes.
   The shared `SplittyUnitTests` scheme excludes `SplittyUITests` from both
@@ -23,7 +22,8 @@ execution, or automatic test retry.
 
 API results are retained as TRX artifacts for seven days. Failed iOS runs
 retain the `.xcresult` bundle and test log for seven days. Successful iOS
-runs keep their console log in Actions.
+runs keep their console log in Actions. Each test step times out before its
+job does, so a hung run still counts as a failure and uploads its results.
 
 GitHub leaves required checks pending when their workflow is skipped by a
 path filter. Do not require both checks unconditionally in branch rules

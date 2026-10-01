@@ -50,10 +50,8 @@ jobs:
         run: dotnet restore Splitty-API/Splitty.API.Tests/Splitty.API.Tests.csproj
 
       - name: Run API tests
-        # Program validates the key before ApiFactory adds its test configuration.
-        # This is the same public, test-only key used by that factory.
-        env:
-          Jwt__SecretKey: SplittyTestSigningKeyLongEnoughForHmacSha256
+        # Below the job timeout so a hang fails this step and results still upload.
+        timeout-minutes: 8
         run: >-
           dotnet test Splitty-API/Splitty.API.Tests/Splitty.API.Tests.csproj
           --configuration Release

@@ -80,6 +80,8 @@ jobs:
           PY
 
       - name: Build and run iOS unit tests
+        # Below the job timeout so a hang fails this step and diagnostics upload.
+        timeout-minutes: 12
         shell: bash
         run: |
           set -o pipefail
