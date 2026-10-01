@@ -98,6 +98,11 @@ struct SettingsView: View {
                     }
                 }
                 #endif
+
+                Section {
+                    aboutFooter
+                }
+                .listRowBackground(Color.clear)
             }
             .scrollContentBackground(.hidden)
             .background(Color("background"))
@@ -114,6 +119,33 @@ struct SettingsView: View {
                 Text(L10n.Settings.logOutConfirm)
             }
         }
+    }
+
+    /// The lockup and build, signed off at the foot of the list. One line, not stacked: the
+    /// list does not scroll on a tall phone, so a second line ends up under the add button.
+    private var aboutFooter: some View {
+        HStack(alignment: .center, spacing: 8) {
+            Image("Lockup")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 40)
+                .accessibilityLabel(Text(verbatim: "Splitty"))
+
+            if let version = Self.version {
+                Text(verbatim: version)
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(Color("muted-foreground"))
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private static var version: String? {
+        let info = Bundle.main.infoDictionary
+        guard let short = info?["CFBundleShortVersionString"] as? String else { return nil }
+        guard let build = info?["CFBundleVersion"] as? String else { return short }
+        return "\(short) (\(build))"
     }
 }
 

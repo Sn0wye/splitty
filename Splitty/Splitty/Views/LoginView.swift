@@ -12,33 +12,44 @@ struct LoginView: View {
     @State private var isLoading = false
     @State private var errorMessage = ""
     @StateObject private var authManager = AuthenticationManager.shared
+    @Environment(\.colorScheme) private var colorScheme
+
+    /// Small copy on the brand ground. White on coral is 3.45:1, large text only; ink on
+    /// coral is 5.13:1. On ink, white.
+    private var groundCaption: Color {
+        colorScheme == .dark
+            ? .white.opacity(0.85)
+            : Color(red: 24 / 255, green: 24 / 255, blue: 27 / 255)
+    }
 
     var body: some View {
         ZStack {
-            // Simple black background
-            Color.black
+            // The splash's ground, so signing in reads as the same moment: coral in light,
+            // ink in dark — the two app icons.
+            Color("LaunchBackground")
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 Spacer()
 
                 // Brand Section
-                VStack(spacing: 12) {
-                    Image("Logo")
+                VStack(spacing: 20) {
+                    // The lockup, never "Splitty" set in a typeface: all-white on coral, and
+                    // coral symbol with a white wordmark on ink.
+                    Image(colorScheme == .dark ? "Lockup" : "LockupWhite")
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 96, height: 96)
+                        .frame(height: 112)
+                        .accessibilityLabel(Text(verbatim: "Splitty"))
 
-                    Text("Splitty")
-                        .font(.largeTitle)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-
-                    // Says what the app is before it asks for an account.
+                    // Says what the app is before it asks for an account. Bold at title3:
+                    // white on coral only clears contrast as large text.
                     Text(L10n.Login.tagline)
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.6))
+                        .font(.title3.weight(.bold))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
                 }
+                .padding(.horizontal, 20)
 
                 Spacer()
                 Spacer()
@@ -46,10 +57,13 @@ struct LoginView: View {
                 // Providers
                 VStack(spacing: 16) {
                     if !errorMessage.isEmpty {
-                        Text(errorMessage)
-                            .foregroundColor(.red)
-                            .font(.footnote)
+                        // A card rather than red text: red disappears into the coral.
+                        Label(errorMessage, systemImage: "exclamationmark.circle.fill")
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(Color(red: 24 / 255, green: 24 / 255, blue: 27 / 255))
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                            .background(.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                             .padding(.horizontal, 20)
                     }
 
@@ -100,8 +114,8 @@ struct LoginView: View {
                         .opacity(0.4)
 
                         Text(L10n.Login.comingSoon)
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.4))
+                            .font(.caption.weight(.medium))
+                            .foregroundColor(groundCaption)
                     }
                     .padding(.horizontal, 20)
 
@@ -114,7 +128,7 @@ struct LoginView: View {
                         showingOnboardingReview = true
                     }
                     .font(.footnote)
-                    .foregroundStyle(.white.opacity(0.65))
+                    .foregroundStyle(groundCaption)
                     #endif
                 }
                 .padding(.bottom, 50)
@@ -237,12 +251,12 @@ private struct DevSignInPicker: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 50)
-            .background(Color.gray.opacity(0.2))
+            .background(Color.white.opacity(0.16))
             .foregroundColor(.white)
             .cornerRadius(25)
             .overlay(
                 RoundedRectangle(cornerRadius: 25)
-                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.4), lineWidth: 1)
             )
         }
         .disabled(isLoading)

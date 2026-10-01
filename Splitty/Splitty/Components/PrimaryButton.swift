@@ -11,6 +11,9 @@ import SwiftUI
 /// should be the most obvious thing on the screen and should say what it does — a 44pt
 /// arrow parked in a corner was neither, and being small and floating is what let it end up
 /// somewhere it did not belong.
+///
+/// Splitty Coral with white text. White on coral is 3.45:1, which the brand allows for large
+/// text only, so the label is set bold at `title3` (20pt) rather than the system's 17pt.
 struct PrimaryButton: View {
     let title: String
     var isLoading: Bool = false
@@ -26,17 +29,17 @@ struct PrimaryButton: View {
             ZStack {
                 if isLoading {
                     ProgressView()
-                        .tint(Color.expenseBackground)
+                        .tint(.white)
                 } else {
                     Text(title)
-                        .font(.headline)
+                        .font(.title3.weight(.bold))
                 }
             }
             .frame(maxWidth: .infinity)
             .frame(height: 52)
-            .foregroundStyle(Color.expenseBackground)
+            .foregroundStyle(.white)
             .background(
-                Color.expenseAccent.opacity(isEnabled ? 1 : 0.3),
+                Color("brand").opacity(isEnabled ? 1 : 0.35),
                 in: Capsule()
             )
         }

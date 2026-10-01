@@ -45,7 +45,7 @@ struct RootView: View {
                           let user = authManager.currentUser,
                           (resolvedOnboardingUserId != user.id || onboardingState == .checking
                            || appState.signedInUserId != user.id) {
-                    ProgressView()
+                    SplittyLoader()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(Color("background"))
                 } else if authManager.isAuthenticated {

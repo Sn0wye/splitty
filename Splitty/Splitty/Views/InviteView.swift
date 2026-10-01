@@ -91,7 +91,7 @@ struct InviteView: View {
                 }
                 .buttonStyle(.bordered)
                 .disabled(isReview)
-                .tint(isCopied ? .green : .accentColor)
+                .tint(isCopied ? Color("positive") : .accentColor)
             }
         }
     }

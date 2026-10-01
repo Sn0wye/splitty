@@ -44,18 +44,20 @@ struct GroupCard: View {
                             Text(Money.formatted(cents: abs(group.netBalanceCents)))
                                 .font(.system(size: 18))
                                 .fontWeight(.bold)
-                                .foregroundColor(positiveBalance ? .green : .red)
+                                .foregroundColor(Color(positiveBalance ? "positive" : "negative"))
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     
-                    Image(systemName: "ellipsis")
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color("muted-foreground"))
                 }
             }
             .frame(maxWidth: .infinity)
             .padding()
             .background(Color("card"))
-            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .padding(.horizontal, 20)
         }
         // Shallow: the card is the width of the screen, so a small percentage is a lot of

@@ -164,7 +164,7 @@ struct SettleUpSheet: View {
             if let payAllTitle = viewModel.payAllTitle, !viewModel.isEditing {
                 Button(payAllTitle) { viewModel.payAll() }
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.expenseAccent)
+                    .foregroundStyle(Color.accentColor)
                     .padding(.bottom, 12)
             }
 
