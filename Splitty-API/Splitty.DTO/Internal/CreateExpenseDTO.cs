@@ -7,7 +7,7 @@ public class CreateExpenseDTO
     public int GroupId { get; set; }
     public int PaidBy { get; set; }
     public Decimal Amount { get; set; }
-    public string Description { get; set; } = string.Empty;
+    public required string Description { get; set; }
     public DateTime? Date { get; set; }
     public ExpenseCategory? Category { get; set; }
     public required SplitMode SplitMode { get; set; }

@@ -1,7 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Splitty.DTO.Request;
 
 public class CreateGroupRequest
 {
-    public string Name { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Group name is required.")]
+    public required string Name { get; set; }
     public string? Description { get; set; }
 }

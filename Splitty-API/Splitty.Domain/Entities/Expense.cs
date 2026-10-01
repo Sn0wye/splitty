@@ -33,7 +33,7 @@ public class Expense
     
     public Decimal Amount { get; set; }
     
-    public string Description { get; set; } = string.Empty;
+    public required string Description { get; set; }
 
     public ExpenseType Type { get; set; } = ExpenseType.Expense;
 

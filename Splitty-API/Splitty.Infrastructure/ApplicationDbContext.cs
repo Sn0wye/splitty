@@ -11,8 +11,10 @@ public class ApplicationDbContext : DbContext
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IConfiguration configuration)
         : base(options)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
+        if (string.IsNullOrWhiteSpace(connectionString))
+            throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+        _connectionString = connectionString;
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
