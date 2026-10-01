@@ -66,13 +66,13 @@ jobs:
               if not match:
                   continue
               version = tuple(int(part or 0) for part in match.groups())
-              if version < (18, 2, 0):
+              if version < (18, 0, 0):
                   continue
               for device in runtime_devices:
                   if device["isAvailable"] and device["name"].startswith("iPhone"):
                       candidates.append((version, device["name"], device["udid"]))
           if not candidates:
-              raise SystemExit("No available iPhone simulator with iOS >= 18.2.")
+              raise SystemExit("No available iPhone simulator with iOS >= 18.0.")
           version, name, udid = max(candidates)
           print(f"Using {name}, iOS {'.'.join(map(str, version))}")
           with open(os.environ["GITHUB_ENV"], "a") as file:
