@@ -43,7 +43,8 @@ public sealed class ExpenseDateTests(ApiFactory factory)
     public async Task A_future_date_is_accepted()
     {
         var group = await GroupFixture.CreateAsync(factory);
-        var future = DateTime.UtcNow.AddYears(1);
+        // Whole days: Postgres keeps microseconds, so a raw UtcNow loses its last tick on Linux.
+        var future = DateTime.UtcNow.Date.AddYears(1);
 
         var expenseId = await group.CreateExpenseAsync(amount: 20m, share: 10m, date: future);
 
