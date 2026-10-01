@@ -15,9 +15,6 @@ enum ExpenseTheme {
     /// The amount and the keys.
     static let foreground = dynamic(dark: 0xFEFEFE, light: 0x000000)
 
-    /// The one filled control: the forward arrow's disc. Its glyph is `background`.
-    static let accent = dynamic(dark: 0xF3F3F4, light: 0x191919)
-
     private static func dynamic(dark: Int, light: Int) -> UIColor {
         UIColor { traits in
             traits.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light)
@@ -28,7 +25,6 @@ enum ExpenseTheme {
 extension Color {
     static let expenseBackground = Color(ExpenseTheme.background)
     static let expenseForeground = Color(ExpenseTheme.foreground)
-    static let expenseAccent = Color(ExpenseTheme.accent)
 }
 
 private extension UIColor {

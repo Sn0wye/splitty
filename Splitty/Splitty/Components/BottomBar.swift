@@ -5,7 +5,8 @@
 
 import SwiftUI
 
-/// Flat, monochrome tab bar pinned to the bottom edge.
+/// Flat tab bar pinned to the bottom edge. The tabs stay monochrome so the add button, in
+/// Splitty Coral, is the one thing on the bar with colour.
 struct BottomBar: View {
     @Binding var selection: AppTab
     let isAdding: Bool
@@ -52,16 +53,16 @@ struct BottomBar: View {
             SwiftUI.Group {
                 if isAdding {
                     ProgressView()
-                        .tint(Color("background"))
+                        .tint(.white)
                 } else {
                     Image(systemName: "plus")
                         .font(.system(size: 22, weight: .semibold))
                 }
             }
-            .foregroundStyle(Color("background"))
+            .foregroundStyle(.white)
             .frame(width: 56, height: 56)
-            .background(Color("foreground"), in: Circle())
-            .shadow(radius: 8, y: 4)
+            .background(Color("brand"), in: Circle())
+            .shadow(color: Color("brand").opacity(0.35), radius: 10, y: 4)
         }
         .frame(maxWidth: .infinity)
         .buttonStyle(.pressable(scale: 0.9))

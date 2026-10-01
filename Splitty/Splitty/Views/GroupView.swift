@@ -48,8 +48,7 @@ struct GroupView: View {
     private var groupScreen: some View {
         ZStack {
             if viewModel.isLoading {
-                ProgressView { Text(L10n.Common.loading) }
-                    .foregroundColor(Color("foreground"))
+                SplittyLoader()
             } else {
                 content
             }
@@ -239,7 +238,7 @@ struct GroupView: View {
                 .padding(20)
                 .background(Color("card"))
         } else if !viewModel.hasLoadedExpenses {
-            ProgressView { Text(L10n.Common.loading) }
+            SplittyLoader(size: 32)
                 .frame(maxWidth: .infinity)
                 .padding(32)
         } else if viewModel.expenses.isEmpty {
@@ -608,11 +607,11 @@ struct ExpenseRow: View {
         case .lent:
             Text(L10n.Group.youLent)
                 .font(.caption)
-                .foregroundColor(Color.green)
+                .foregroundColor(Color("positive"))
         case .borrowed:
             Text(L10n.Group.youBorrowed)
                 .font(.caption)
-                .foregroundColor(Color.red)
+                .foregroundColor(Color("negative"))
         }
     }
     
@@ -630,12 +629,12 @@ struct ExpenseRow: View {
             Text(Money.formatted(amount: amount))
                 .font(.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(Color.green)
+                .foregroundColor(Color("positive"))
         } else if case .borrowed(let amount) = involvement {
             Text(Money.formatted(amount: amount))
                 .font(.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(Color.red)
+                .foregroundColor(Color("negative"))
         }
     }
 }

@@ -206,8 +206,8 @@ private struct CurrentGroupView: View {
                 .id(groupId)
         } else {
             VStack(spacing: 8) {
-                Image(systemName: "person.2")
-                    .font(.system(size: 32, weight: .light))
+                BrandBadge(symbol: "person.2")
+                    .padding(.bottom, 6)
                 Text(L10n.Groups.noneSelected)
                     .font(.headline)
                 Text(L10n.Groups.pickFromTab)

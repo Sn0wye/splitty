@@ -127,9 +127,14 @@ struct BalancesView: View {
             .frame(maxWidth: .infinity, minHeight: 64, alignment: .center)
 
         case .settled:
-            Label(L10n.Balances.everyoneSettled, systemImage: "checkmark.circle.fill")
-                .foregroundStyle(Color("muted-foreground"))
-                .frame(minHeight: 56)
+            // The brand's settle-up motion: the halves slide back into one coin.
+            HStack(spacing: 12) {
+                SettledCoin()
+                Text(L10n.Balances.everyoneSettled)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(Color("foreground"))
+            }
+            .frame(minHeight: 56)
 
         case .error(let message):
             VStack(alignment: .leading, spacing: 12) {
@@ -179,8 +184,8 @@ private struct SimplifiedDebtRow: View {
 
     private var directionColor: Color {
         switch row.involvement {
-        case .youPay: .red
-        case .paysYou: .green
+        case .youPay: Color("negative")
+        case .paysYou: Color("positive")
         case .uninvolved: Color("card-foreground")
         }
     }
@@ -210,7 +215,8 @@ private struct SimplifiedDebtRow: View {
                         Image(systemName: "chevron.right")
                     }
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.accentColor)
+                    // Foreground, not the accent: Coral Deep on the row's red tint is 4:1.
+                    .foregroundStyle(Color("card-foreground"))
                 }
             }
         }

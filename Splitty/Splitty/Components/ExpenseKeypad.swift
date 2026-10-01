@@ -121,9 +121,10 @@ private struct KeypadKeyStyle: ButtonStyle {
     }
 }
 
-/// The sheet's primary action. Glass where the system has it, so it picks up the material
-/// and the press behaviour of every other prominent control on the OS; a flat disc in the
-/// accent colour before that.
+/// The sheet's primary action, in Splitty Coral. Glass where the system has it, so it picks
+/// up the material and the press behaviour of every other prominent control on the OS; a
+/// flat coral disc before that. The arrow is a glyph, not text, so white on coral clears
+/// the 3:1 the brand asks of icons.
 struct ForwardButton: View {
     let isEnabled: Bool
     var diameter: CGFloat = 44
@@ -137,7 +138,7 @@ struct ForwardButton: View {
                 glyph
                     .frame(width: diameter, height: diameter)
                     .glassEffect(
-                        .regular.tint(Color.expenseAccent.opacity(isEnabled ? 1 : 0.3)),
+                        .regular.tint(Color("brand").opacity(isEnabled ? 1 : 0.3)),
                         in: .circle
                     )
             }
@@ -147,7 +148,7 @@ struct ForwardButton: View {
             Button(action: action) {
                 glyph
                     .frame(width: diameter, height: diameter)
-                    .background(Color.expenseAccent.opacity(isEnabled ? 1 : 0.25), in: Circle())
+                    .background(Color("brand").opacity(isEnabled ? 1 : 0.3), in: Circle())
             }
             .buttonStyle(.plain)
             .disabled(!isEnabled)
@@ -157,7 +158,7 @@ struct ForwardButton: View {
     private var glyph: some View {
         Image(systemName: "arrow.right")
             .font(.system(size: diameter * 0.38, weight: .semibold))
-            .foregroundStyle(Color.expenseBackground)
+            .foregroundStyle(.white)
     }
 }
 
@@ -173,7 +174,7 @@ struct ExpenseDatePicker: View {
             DatePicker(selection: $date, displayedComponents: .date) { Text(L10n.Common.date) }
                 .labelsHidden()
                 .datePickerStyle(.graphical)
-                .tint(Color.expenseAccent)
+                .tint(Color.accentColor)
                 .accessibilityIdentifier("expense.datePicker")
 
             ForwardButton(isEnabled: true, diameter: 44) { dismiss() }

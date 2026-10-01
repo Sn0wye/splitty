@@ -201,6 +201,7 @@ private struct SplitIllustration: View {
             HStack(spacing: 8) {
                 Image(systemName: "arrow.left.arrow.right")
                     .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color("brand"))
                 Text(L10n.Onboarding.exampleResult)
                     .font(.subheadline.weight(.medium))
             }
@@ -210,7 +211,7 @@ private struct SplitIllustration: View {
             .opacity(step >= 2 ? 1 : 0)
         }
         .foregroundStyle(Color("card-foreground"))
-        .background(Color("card"), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(Color("card"), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private func share(_ name: String, amount: String) -> some View {

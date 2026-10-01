@@ -1,10 +1,12 @@
 import SwiftUI
 
-/// The circles use the same 1024-point proportions and 45-degree tilt as logo.svg.
+/// Picks up from the launch screen: one coin on the brand ground, cut and slid apart into
+/// the mark. The ground and the symbol follow the app icon — white on coral in light, coral
+/// on ink in dark.
 struct SplashView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var firstRing = 0.0
-    @State private var secondRing = 0.0
+    @State private var separation: CGFloat = 0
+    @State private var scale: CGFloat = 0.86
 
     let onFinished: () -> Void
 
@@ -13,45 +15,35 @@ struct SplashView: View {
             Color("LaunchBackground")
                 .ignoresSafeArea()
 
-            ZStack {
-                ring(progress: firstRing)
-                    .offset(x: -12)
-                ring(progress: secondRing)
-                    .offset(x: 12)
-            }
-            .rotationEffect(.degrees(45))
-            .frame(width: 96, height: 96)
+            // The reversed cut: a light mark on a coloured ground reads heavier.
+            SplittySymbol(separation: separation, cut: .reversed)
+                .foregroundStyle(Color("LaunchSymbol"))
+                .frame(width: 112, height: 112)
+                .scaleEffect(scale)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityHidden(true)
         .task {
             if reduceMotion {
-                firstRing = 1
-                secondRing = 1
+                separation = 1
+                scale = 1
                 try? await Task.sleep(for: .milliseconds(150))
             } else {
-                // Give the empty launch frame time to render before drawing the paths.
-                try? await Task.sleep(for: .milliseconds(50))
+                // Give the launch frame time to render before the coin moves.
+                try? await Task.sleep(for: .milliseconds(80))
                 guard !Task.isCancelled else { return }
-                withAnimation(.easeOut(duration: 0.7)) {
-                    firstRing = 1
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
+                    scale = 1
                 }
-                withAnimation(.easeOut(duration: 0.7).delay(0.12)) {
-                    secondRing = 1
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.68).delay(0.18)) {
+                    separation = 1
                 }
-                try? await Task.sleep(for: .milliseconds(900))
+                try? await Task.sleep(for: .milliseconds(850))
             }
 
             guard !Task.isCancelled else { return }
             onFinished()
         }
-    }
-
-    private func ring(progress: Double) -> some View {
-        Circle()
-            .trim(from: 0, to: progress)
-            .stroke(Color(red: 59 / 255, green: 130 / 255, blue: 246 / 255), lineWidth: 6)
-            .frame(width: 48, height: 48)
     }
 }
 

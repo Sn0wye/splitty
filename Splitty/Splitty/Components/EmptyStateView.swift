@@ -20,9 +20,7 @@ struct EmptyStateView<Actions: View>: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            Image(systemName: symbol)
-                .font(.system(size: 34, weight: .light))
-                .foregroundStyle(Color("foreground"))
+            BrandBadge(symbol: symbol)
                 .padding(.bottom, 6)
 
             Text(title)
