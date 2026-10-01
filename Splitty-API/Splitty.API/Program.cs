@@ -9,6 +9,7 @@ using System.Threading.RateLimiting;
 using Splitty.API;
 using Splitty.API.Controllers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Splitty.API.Middleware;
@@ -44,7 +45,7 @@ builder.Services.AddControllers(options =>
         options.JsonSerializerOptions.Converters.Add(
             new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower));
     });
-// Secrets arrive as Jwt__SecretKey / Google__ClientId / Google__ClientSecret from .env.
+// Secrets arrive as Jwt__*, Google__* and R2__* from .env.
 // Failing at startup beats minting tokens signed with "" or exchanging codes as an empty client.
 //
 // The signing key is validated in every environment, Development included: an empty key
@@ -58,41 +59,32 @@ builder.Services.AddOptions<JwtOptions>()
     .ValidateOnStart();
 
 // Google and R2 credentials only matter to the real token exchanger and the real avatar
-// storage, both of which the test suite replaces with fakes, so these stay scoped to
-// non-Development hosts.
+// storage, both of which the test suite replaces with fakes, so they are only required
+// outside Development.
+var googleOptions = builder.Services.AddOptions<GoogleOptions>()
+    .BindConfiguration(GoogleOptions.SectionName);
+var r2Options = builder.Services.AddOptions<R2Options>()
+    .BindConfiguration(R2Options.SectionName);
+
 if (!builder.Environment.IsDevelopment())
 {
-    foreach (var key in new[]
-             {
-                 "Google:ClientId",
-                 "Google:ClientSecret",
-                 "R2:AccountId",
-                 "R2:AccessKeyId",
-                 "R2:SecretAccessKey",
-                 "R2:BucketName",
-                 "R2:PublicBaseUrl"
-             })
-    {
-        if (string.IsNullOrWhiteSpace(builder.Configuration[key]))
-        {
-            throw new InvalidOperationException($"Configuration '{key}' is required outside Development.");
-        }
-    }
+    googleOptions.ValidateDataAnnotations().ValidateOnStart();
+    r2Options.ValidateDataAnnotations().ValidateOnStart();
 }
 
-// Bound by hand rather than through the options binder: five flat strings do not need a
-// second indirection, and a typo shows up as a compile error here.
-var r2Options = new R2Options
+// Resolved per context rather than read here, for the same reason as the options above.
+builder.Services.AddDbContext<ApplicationDbContext>((services, options) =>
 {
-    AccountId = builder.Configuration["R2:AccountId"] ?? string.Empty,
-    AccessKeyId = builder.Configuration["R2:AccessKeyId"] ?? string.Empty,
-    SecretAccessKey = builder.Configuration["R2:SecretAccessKey"] ?? string.Empty,
-    BucketName = builder.Configuration["R2:BucketName"] ?? string.Empty,
-    PublicBaseUrl = builder.Configuration["R2:PublicBaseUrl"] ?? string.Empty
-};
+    var connectionString = services.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection");
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+    }
+
+    options.UseNpgsql(connectionString)
+        .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning));
+});
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opts =>
@@ -195,8 +187,8 @@ builder.Services.AddScoped<IGroupStatsService, GroupStatsService>();
 builder.Services.AddScoped<IJwtTokenIssuer, JwtTokenIssuer>();
 builder.Services.AddScoped<IGoogleTokenExchanger, GoogleTokenExchanger>();
 builder.Services.AddHttpClient(nameof(GoogleTokenExchanger));
-builder.Services.AddSingleton(r2Options);
-builder.Services.AddSingleton(_ => R2AvatarStorage.CreateClient(r2Options));
+builder.Services.AddSingleton(services =>
+    R2AvatarStorage.CreateClient(services.GetRequiredService<IOptions<R2Options>>().Value));
 builder.Services.AddScoped<IAvatarStorage, R2AvatarStorage>();
 builder.Services.AddScoped<IAvatarResolver, AvatarResolver>();
 

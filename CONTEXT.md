@@ -369,19 +369,28 @@ Controllers are `[Authorize]` at class level; anonymous endpoints must opt out e
 (`AccountId`, `AccessKeyId`, `SecretAccessKey`, `BucketName`, `PublicBaseUrl`) come from `Splitty-API/.env`
 (gitignored; `.env.example` is the template). ASP.NET maps the double underscore to a
 config section. `appsettings.json` keeps `""` placeholders and is a schema, not a config.
-`Program.cs` throws at startup if any of them is empty outside Development.
+
+Each section binds to an options class (`JwtOptions`, `GoogleOptions`, `R2Options`) that is
+validated with `ValidateOnStart`, so a bad value fails the boot, not the first request.
+`Jwt:SecretKey` is required in every environment and must be at least 32 characters.
+Google and R2 are required only outside Development. Nothing reads configuration in
+top-level `Program.cs` code: options and the connection string are resolved after the
+host is built, so the test host's in-memory settings are what the app sees.
 
 `R2__PublicBaseUrl` is the host that **serves** the images — a custom domain bound to the
 bucket. It is not the `<AccountId>.r2.cloudflarestorage.com` S3 API endpoint, which the
 SDK signs against and which is not publicly readable, and not the `r2.dev` subdomain,
 which Cloudflare rate-limits and documents as unsuitable for production.
 
-Compose passes the file through `env_file:`. Running the API directly:
+Compose passes the file through `env_file:`. Running the API directly, `DotEnvFile` finds
+the nearest `.env` above the working directory and loads it before configuration is
+built; variables already set in the environment win:
 
 ```bash
-set -a; source Splitty-API/.env; set +a
 dotnet run --project Splitty-API/Splitty.API
 ```
+
+The test suite needs no `.env`: `ApiFactory` supplies its own settings.
 
 The connection string stays in `appsettings.json` — `splitty/splitty` against a local
 container is not a secret.

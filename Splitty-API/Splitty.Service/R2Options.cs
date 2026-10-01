@@ -1,14 +1,22 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Splitty.Service;
 
 /// Bound from the `R2__*` environment variables; see `.env.example`.
 public sealed class R2Options
 {
+    public const string SectionName = "R2";
+
+    [Required]
     public string AccountId { get; init; } = string.Empty;
 
+    [Required]
     public string AccessKeyId { get; init; } = string.Empty;
 
+    [Required]
     public string SecretAccessKey { get; init; } = string.Empty;
 
+    [Required]
     public string BucketName { get; init; } = string.Empty;
 
     /// <summary>
@@ -16,6 +24,7 @@ public sealed class R2Options
     /// S3 API endpoint the SDK signs against, which is derived from
     /// <see cref="AccountId"/> and is not publicly readable.
     /// </summary>
+    [Required, Url]
     public string PublicBaseUrl { get; init; } = string.Empty;
 
     public TimeSpan UploadUrlLifetime => TimeSpan.FromMinutes(10);
