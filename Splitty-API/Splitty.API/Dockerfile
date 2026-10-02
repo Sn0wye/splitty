@@ -19,13 +19,10 @@ COPY ["Splitty.Seeder/Splitty.Seeder.csproj", "Splitty.Seeder/"]
 RUN dotnet restore "Splitty.API/Splitty.API.csproj"
 COPY . .
 WORKDIR "/src/Splitty.API"
-RUN dotnet build "Splitty.API.csproj" -c $BUILD_CONFIGURATION -o /app/build
-
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "Splitty.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+# Publish compiles the project itself; a separate build step compiled it twice.
+RUN dotnet publish "Splitty.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish --no-restore /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "Splitty.API.dll"]
