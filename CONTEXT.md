@@ -431,8 +431,8 @@ SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
   current. With no session, the next open reads fresh. Group cards use a session's live net
   and pending state when available, and the server's list value otherwise. One pending-balance
   watcher per session supplies the header, Balances and Settle-up with the same summary and
-  pending status. The session also owns the saved-payment decision, the settle-up summary
-  freshness rule, and delete outcomes. People keeps its last successful response visible
+  pending status. The session also decides whether a saved settle-up payment is new or edited,
+  when settle-up forces a fresh summary, and what a delete's outcome is. People keeps its last successful response visible
   during a refetch, including an empty response.
 
 **Money is integer cents everywhere on the client**, converted to `Double` once at the

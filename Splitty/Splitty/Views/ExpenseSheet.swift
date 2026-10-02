@@ -25,15 +25,14 @@ struct ExpenseSheet: View {
     @State private var savedCount = 0
 
     private let onSaved: (Expense) -> Void
-    private let timelineExpenses: [Expense]?
-    private let groupId: Int
+    private let timelineExpenses: [Expense]
 
     init(
         groupId: Int,
         members: [GroupMember],
         currentUserId: Int,
         expense: Expense? = nil,
-        timelineExpenses: [Expense]? = nil,
+        timelineExpenses: [Expense] = [],
         onSaved: @escaping (Expense) -> Void
     ) {
         _viewModel = StateObject(wrappedValue: ExpenseFormViewModel(
@@ -41,10 +40,9 @@ struct ExpenseSheet: View {
             members: members,
             currentUserId: currentUserId,
             expense: expense,
-            timelineExpenses: timelineExpenses ?? []
+            timelineExpenses: timelineExpenses
         ))
         self.timelineExpenses = timelineExpenses
-        self.groupId = groupId
         self.onSaved = onSaved
     }
 
@@ -58,17 +56,8 @@ struct ExpenseSheet: View {
         .presentationCornerRadius(28)
         .presentationBackground(Color.expenseBackground)
         .sensoryFeedback(.success, trigger: savedCount)
-        .onChange(of: timelineExpenses?.map(\.category)) { _, _ in
-            if let timelineExpenses { viewModel.updateTimelineExpenses(timelineExpenses) }
-        }
-        .task {
-            guard timelineExpenses == nil else { return }
-            do {
-                let expenses = try await ExpenseService.shared.getExpenses(groupId: groupId)
-                if !Task.isCancelled { viewModel.updateTimelineExpenses(expenses) }
-            } catch {
-                // Suggestions are optional; saving an expense must still work offline.
-            }
+        .onChange(of: timelineExpenses.map(\.category)) { _, _ in
+            viewModel.updateTimelineExpenses(timelineExpenses)
         }
     }
 

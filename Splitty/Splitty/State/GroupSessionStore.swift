@@ -1,4 +1,3 @@
-import Combine
 import Foundation
 
 struct GroupLiveBalance: Equatable {
@@ -12,7 +11,6 @@ final class GroupSessionStore: ObservableObject {
     @Published private(set) var signedInUserId: Int?
     var currentGroupId: Int? { current?.groupId }
     private let defaults: UserDefaults
-    private var observations: [Int: AnyCancellable] = [:]
     private let dataSource: () -> GroupDataSource
     private var sessions: [Int: GroupSession] = [:]
     private var recentGroupIds: [Int] = []
@@ -38,8 +36,7 @@ final class GroupSessionStore: ObservableObject {
     func session(for groupId: Int) -> GroupSession? { sessions[groupId] }
 
     func liveBalance(for groupId: Int) -> GroupLiveBalance? {
-        guard let session = sessions[groupId], let cents = session.netBalanceCents else { return nil }
-        return GroupLiveBalance(netBalanceCents: cents, balancesPending: session.balancesPending)
+        sessions[groupId]?.liveBalance
     }
 
     private func persistCurrentGroup() {
@@ -60,22 +57,17 @@ final class GroupSessionStore: ObservableObject {
         }
         let session = GroupSession(groupId: groupId, seed: seed, dataSource: dataSource())
         sessions[groupId] = session
-        observations[groupId] = session.objectWillChange.sink { [weak self] _ in
-            self?.objectWillChange.send()
-        }
         recentGroupIds.append(groupId)
         current = session
         persistCurrentGroup()
         if recentGroupIds.count > cacheLimit {
             let oldest = recentGroupIds.removeFirst()
-            observations.removeValue(forKey: oldest)
             sessions.removeValue(forKey: oldest)?.discard()
         }
         return session
     }
 
     func remove(_ groupId: Int) {
-        observations.removeValue(forKey: groupId)
         sessions.removeValue(forKey: groupId)?.discard()
         recentGroupIds.removeAll { $0 == groupId }
         if current?.groupId == groupId {
@@ -86,7 +78,6 @@ final class GroupSessionStore: ObservableObject {
 
     func discard() {
         for session in sessions.values { session.discard() }
-        observations.removeAll()
         sessions.removeAll()
         recentGroupIds.removeAll()
         current = nil
@@ -96,7 +87,9 @@ final class GroupSessionStore: ObservableObject {
         sessions[groupId]?.report(write)
     }
 
-    func delete(_ row: Expense, groupId: Int) -> Task<GroupDeleteOutcome, Never>? {
-        sessions[groupId]?.delete(row)
+    /// Detail screens only open inside a live session, so a missing one is an eviction
+    /// race rather than a row the server has already lost.
+    func delete(_ row: Expense, groupId: Int) -> Task<GroupDeleteOutcome, Never> {
+        sessions[groupId]?.delete(row) ?? Task { .failed(L10n.Errors.generic) }
     }
 }

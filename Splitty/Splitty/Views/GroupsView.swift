@@ -83,8 +83,14 @@ struct GroupsView: View {
                             )
                         } else {
                             ForEach(viewModel.groups) { group in
-                                GroupCard(group: group, liveBalance: appState.groupSessions.liveBalance(for: group.id)) {
-                                    appState.openGroup(group.id, seed: group)
+                                if let session = appState.groupSessions.session(for: group.id) {
+                                    SessionGroupCard(group: group, session: session) {
+                                        appState.openGroup(group.id, seed: group)
+                                    }
+                                } else {
+                                    GroupCard(group: group) {
+                                        appState.openGroup(group.id, seed: group)
+                                    }
                                 }
                             }
                         }
@@ -145,6 +151,18 @@ struct GroupsView: View {
         viewModel.removeGroup(id: exitedGroupId)
     }
 
+}
+
+/// A card for a group with a live session. It observes that one session, so a polling tick
+/// re-renders this card rather than everything that observes the app state.
+private struct SessionGroupCard: View {
+    let group: Group
+    @ObservedObject var session: GroupSession
+    let onTap: () -> Void
+
+    var body: some View {
+        GroupCard(group: group, liveBalance: session.liveBalance, onTap: onTap)
+    }
 }
 
 struct GroupsEmptyState: View {

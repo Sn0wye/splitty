@@ -178,16 +178,10 @@ struct ExpenseDetailView: View {
 
         Task {
             defer { isDeleting = false }
-            guard let deletion = appState.groupSessions.delete(expense, groupId: expense.groupId) else {
-                errorMessage = CancellationError().displayMessage
+            let outcome = await appState.groupSessions.delete(expense, groupId: expense.groupId).value
+            if let failureMessage = outcome.failureMessage {
+                errorMessage = failureMessage
                 return
-            }
-            switch await deletion.value {
-            case .failed(let message):
-                errorMessage = message
-                return
-            case .deleted, .alreadyGone:
-                break
             }
             onMoneyWrite?()
             dismiss()

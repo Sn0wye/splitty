@@ -250,6 +250,20 @@ struct GroupRefreshTests {
         #expect(session.balancesPending)
     }
 
+    // Balances follow the timeline's rule: a background read cannot blank what is on screen.
+    @Test func aFailedBackgroundSummaryReadKeepsBalancesOnScreen() async {
+        let data = ControlledGroupData()
+        data.autoRelease = true
+        data.summaryFailureCalls = [2]
+        let session = GroupSession(groupId: 1, dataSource: data.source())
+
+        await session.refresh()
+        #expect(session.balanceState(currentUserId: 1) == .settled)
+        await session.refresh()
+
+        #expect(session.balanceState(currentUserId: 1) == .settled)
+    }
+
     @Test func aFailedDeleteKeepsTheTimelineAndShowsAnActionError() async {
         let data = ControlledGroupData()
         data.autoRelease = true

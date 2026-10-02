@@ -97,7 +97,7 @@ struct GroupView: View {
                     group: group,
                     currentUserId: currentUserId,
                     onGroupSaved: {
-                        session.appear()
+                        session.beginRefresh()
                     },
                     onGroupUnavailable: { message in
                         appState.leaveUnavailableGroup(message: message)
@@ -310,7 +310,6 @@ struct GroupView: View {
             case .payment:
                 SettlementDetailView(
                     settlement: expense,
-                    members: session.members,
                     currentUserId: currentUserId,
                     session: session
                 )

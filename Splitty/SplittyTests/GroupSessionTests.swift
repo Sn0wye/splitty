@@ -346,7 +346,7 @@ struct GroupSessionTests {
             Issue.record("Expected a pending payment")
             return
         }
-        #expect(await session.delete(pending).value == .failed(CancellationError().displayMessage))
+        #expect(await session.delete(pending).value == .failed(L10n.Errors.generic))
         #expect(data.paymentDeleteCount == 1)
     }
 
@@ -630,10 +630,10 @@ struct GroupSessionTests {
         let cached = store.open(1)
         await cached.appear().value
         let current = store.open(2, seed: group(id: 2))
-        #expect(await store.delete(row, groupId: 1)?.value == .deleted)
+        #expect(await store.delete(row, groupId: 1).value == .deleted)
         #expect(cached.expenses.isEmpty)
         #expect(store.current === current)
-        #expect(store.delete(row, groupId: 99) == nil)
+        #expect(await store.delete(row, groupId: 99).value == .failed(L10n.Errors.generic))
         store.discard()
     }
 

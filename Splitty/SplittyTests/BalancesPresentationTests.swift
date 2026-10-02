@@ -1,5 +1,5 @@
 //
-//  BalancesViewModelTests.swift
+//  BalancesPresentationTests.swift
 //  SplittyTests
 //
 

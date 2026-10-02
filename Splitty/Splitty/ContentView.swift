@@ -71,9 +71,8 @@ struct ContentView: View {
                             appState.groupSessions.report(.expenseCreated(saved), groupId: group.id)
                         }
                     } else {
-                        ExpenseSheet(
-                            groupId: group.id,
-                            members: group.members,
+                        UncachedExpenseSheet(
+                            group: group,
                             currentUserId: currentUserId
                         ) { saved in
                             appState.groupSessions.report(.expenseCreated(saved), groupId: group.id)
@@ -141,6 +140,33 @@ private struct SessionExpenseSheet: View {
             timelineExpenses: session.expenses,
             onSaved: onSaved
         )
+    }
+}
+
+/// A group with no session this launch: its timeline is read once, only to suggest
+/// categories. The store drops the write, and the first open reads the group fresh.
+private struct UncachedExpenseSheet: View {
+    let group: Group
+    let currentUserId: Int
+    let onSaved: (Expense) -> Void
+    @State private var timelineExpenses: [Expense] = []
+
+    var body: some View {
+        ExpenseSheet(
+            groupId: group.id,
+            members: group.members,
+            currentUserId: currentUserId,
+            timelineExpenses: timelineExpenses,
+            onSaved: onSaved
+        )
+        .task {
+            do {
+                let expenses = try await ExpenseService.shared.getExpenses(groupId: group.id)
+                if !Task.isCancelled { timelineExpenses = expenses }
+            } catch {
+                // Suggestions are optional; saving an expense must still work offline.
+            }
+        }
     }
 }
 

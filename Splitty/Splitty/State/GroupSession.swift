@@ -11,6 +11,12 @@ enum GroupDeleteOutcome: Equatable {
     case deleted
     case alreadyGone
     case failed(String)
+
+    /// What the screen the delete came from shows; nil when the row is gone either way.
+    var failureMessage: String? {
+        if case .failed(let message) = self { return message }
+        return nil
+    }
 }
 
 /// One group's observable state and work, independent of a screen's lifetime.
@@ -119,6 +125,12 @@ final class GroupSession: ObservableObject {
     }
 
     var netBalanceCents: Int? { group?.netBalanceCents }
+
+    /// The number a groups-list card shows while this session is alive, so the card and the
+    /// header agree after a write.
+    var liveBalance: GroupLiveBalance? {
+        netBalanceCents.map { GroupLiveBalance(netBalanceCents: $0, balancesPending: balancesPending) }
+    }
 
     @discardableResult
     func appear() -> Task<Void, Never> {
@@ -234,7 +246,7 @@ final class GroupSession: ObservableObject {
     /// Starts a refresh the session owns for callers with nothing to await, such as
     /// group settings, instead of spawning a task nobody can cancel.
     @discardableResult
-    private func beginRefresh() -> Task<Void, Never> {
+    func beginRefresh() -> Task<Void, Never> {
         refreshTask?.cancel()
         let task = Task { [weak self] () -> Void in
             await self?.reloadSnapshot()
@@ -343,7 +355,11 @@ final class GroupSession: ObservableObject {
         // A newer load started while this one was in flight. Its snapshot is the current
         // one, and an older answer arriving late must not replace it.
         guard generation == loadGeneration, !Task.isCancelled else { return nil }
-        summaryErrorMessage = summaryError
+        if let summaryError {
+            reportSummaryFailure(summaryError)
+        } else {
+            summaryErrorMessage = nil
+        }
 
         // A failed background read cannot replace a timeline already on screen.
         errorMessage = hasLoadedExpenses ? "" : (expensesError ?? (group == nil ? groupError : nil) ?? "")
@@ -422,13 +438,19 @@ final class GroupSession: ObservableObject {
             summary = try await dataSource.summary(groupId)
             summaryErrorMessage = nil
         } catch {
-            if !error.isCancellation { summaryErrorMessage = error.displayMessage }
+            if !error.isCancellation { reportSummaryFailure(error.displayMessage) }
             throw error
         }
         latestSummary = summary
         balancesPending = summary.balancesPending || needsPostWriteSettlement
         if balancesPending { startBalanceWatch() }
         return summary
+    }
+
+    /// A failed read cannot replace balances already on screen, the same rule the timeline
+    /// follows. Only a recomputation the member asked for reports over them.
+    private func reportSummaryFailure(_ message: String) {
+        if latestSummary == nil { summaryErrorMessage = message }
     }
 
     private func watchBalance(generation: Int) async {
@@ -569,7 +591,7 @@ final class GroupSession: ObservableObject {
     /// never sent.
     func delete(_ expense: Expense) -> Task<GroupDeleteOutcome, Never> {
         guard expense.id > 0 else {
-            return Task { .failed(CancellationError().displayMessage) }
+            return Task { .failed(L10n.Errors.generic) }
         }
         let index = expenses.firstIndex(where: { $0.id == expense.id })
         actionErrorMessage = nil
@@ -580,7 +602,7 @@ final class GroupSession: ObservableObject {
         groupedExpenses = Expense.groupExpensesByDate(expenses)
 
         return Task { [weak self] in
-            guard let self else { return .failed(CancellationError().displayMessage) }
+            guard let self else { return .failed(L10n.Errors.generic) }
             var outcome = GroupDeleteOutcome.deleted
             do {
                 switch expense.type {

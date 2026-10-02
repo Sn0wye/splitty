@@ -8,7 +8,6 @@ import SwiftUI
 /// Shows one payment and opens the shared amount screen when it is edited.
 struct SettlementDetailView: View {
     let settlement: Expense
-    let members: [GroupMember]
     let currentUserId: Int
     @ObservedObject var session: GroupSession
 
@@ -113,7 +112,7 @@ struct SettlementDetailView: View {
         if peer.id == currentUserId {
             return MemberDisplay(peer, currentUserId: currentUserId, currentUserLabel: L10n.Common.youLowercase)
         }
-        if let member = members.first(where: { $0.userId == peer.id }) {
+        if let member = session.members.first(where: { $0.userId == peer.id }) {
             return MemberDisplay(member)
         }
         return MemberDisplay(peer, currentUserId: currentUserId, currentUserLabel: L10n.Common.youLowercase)
@@ -138,12 +137,9 @@ struct SettlementDetailView: View {
 
         Task {
             defer { isDeleting = false }
-            switch await session.delete(settlement).value {
-            case .failed(let message):
-                errorMessage = message
+            if let failureMessage = await session.delete(settlement).value.failureMessage {
+                errorMessage = failureMessage
                 return
-            case .deleted, .alreadyGone:
-                break
             }
             dismiss()
         }
