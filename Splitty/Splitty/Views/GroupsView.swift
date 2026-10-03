@@ -164,27 +164,15 @@ struct GroupsView: View {
     }
 
     /// Where a new group comes from, at the end of the list rather than as a second "+"
-    /// in the bar: the coral one already means "add an expense". The empty list's own
-    /// invitation, a size down, minus the headline: someone with groups has started.
+    /// in the bar: the coral one already means "add an expense". Drawn as empty slots in
+    /// the cards' own shape, so they read as the next card rather than as a pitch.
     private var groupActions: some View {
-        VStack(spacing: 14) {
-            BrandBadge(symbol: "person.2", size: 48)
-
-            Text(L10n.Onboarding.emptyGroupsDetail)
-                .font(.subheadline)
-                .foregroundStyle(Color("muted-foreground"))
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-
-            VStack(spacing: 12) {
-                PrimaryButton(title: L10n.Onboarding.createGroup) { showingCreateSheet = true }
-                OnboardingSecondaryButton(title: L10n.Groups.joinWithCode) { showingJoinSheet = true }
-            }
-            .padding(.top, 4)
+        HStack(spacing: 10) {
+            NewGroupSlot(symbol: "plus", title: L10n.Groups.newGroup) { showingCreateSheet = true }
+            NewGroupSlot(symbol: "ticket", title: L10n.Groups.joinWithCode) { showingJoinSheet = true }
         }
-        .frame(maxWidth: .infinity)
+        .fixedSize(horizontal: false, vertical: true)
         .padding(.horizontal, 20)
-        .padding(.top, 32)
         .padding(.bottom, 20)
     }
 
@@ -193,6 +181,39 @@ struct GroupsView: View {
         viewModel.removeGroup(id: exitedGroupId)
     }
 
+}
+
+/// An empty card: dashed where a group card is filled, with the face row's circle
+/// holding the action instead.
+private struct NewGroupSlot: View {
+    let symbol: String
+    let title: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: symbol)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color("foreground"))
+                    .frame(width: 40, height: 40)
+                    .background(Color("muted"), in: Circle())
+
+                Text(title)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(Color("foreground"))
+                    .multilineTextAlignment(.leading)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding()
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(Color("border"), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.pressable(scale: 0.96))
+    }
 }
 
 struct GroupsEmptyState: View {
