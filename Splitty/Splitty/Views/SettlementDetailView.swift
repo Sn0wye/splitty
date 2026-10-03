@@ -131,7 +131,7 @@ struct SettlementDetailView: View {
 
     private var dateText: String {
         guard let date = settlement.effectiveDate else { return L10n.Expense.unknownDate }
-        return date.formatted(.dateTime.weekday(.abbreviated).day().month().year())
+        return date.formatted(.dateTime.weekday(.abbreviated).day().month().year().inAppLanguage())
     }
 
     private func delete() {

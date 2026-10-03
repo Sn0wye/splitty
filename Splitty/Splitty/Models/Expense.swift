@@ -157,18 +157,6 @@ extension Expense {
         return formatter
     }()
 
-    /// Shared, so it tracks the device rather than the moment it was built: a formatter
-    /// created once snapshots `Locale.current` and `TimeZone.current`, and grouping still
-    /// reads `Calendar.current` per call. Autoupdating keeps the label and the day bucket
-    /// from disagreeing after a locale or timezone change.
-    private static let dayLabelFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale.autoupdatingCurrent
-        formatter.timeZone = TimeZone.autoupdatingCurrent
-        formatter.dateFormat = "MMM d, E" // Apr 12, Sat
-        return formatter
-    }()
-
     var dayString: String {
         Self.dayLabel(for: effectiveDate)
     }
@@ -186,7 +174,9 @@ extension Expense {
            calendar.isDate(date, inSameDayAs: yesterday) {
             return L10n.Common.yesterday
         }
-        return dayLabelFormatter.string(from: date)
+        // Built per call rather than cached: the app's language can change while the
+        // timeline is open, and a format style is cheap where a formatter is not.
+        return date.formatted(.dateTime.month(.abbreviated).day().weekday(.abbreviated).inAppLanguage())
     }
     
     /// The counterparty on a settlement: the split that is not the payer's, which is the

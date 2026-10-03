@@ -72,3 +72,12 @@ final class LanguageManager: ObservableObject {
         language = AppLanguage.current(in: defaults)
     }
 }
+
+extension Date.FormatStyle {
+    /// Dates follow the language picked in the app, not the device's. Without this a
+    /// format style reads `Locale.current`, which stays English on an English phone
+    /// with the app in Portuguese.
+    func inAppLanguage() -> Self {
+        locale(AppLanguage.currentLocale)
+    }
+}
