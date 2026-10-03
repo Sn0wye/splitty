@@ -77,10 +77,9 @@ struct SettlementDetailView: View {
                 settlement: settlement
             )
         }
-        .confirmationDialog(
+        .alert(
             L10n.Settlement.deleteTitle(Money.formatted(amount: settlement.amount), payerName, payeeName),
-            isPresented: $showingDeleteConfirmation,
-            titleVisibility: .visible
+            isPresented: $showingDeleteConfirmation
         ) {
             Button(role: .destructive) { delete() } label: { Text(L10n.Common.delete) }
             Button(role: .cancel) {} label: { Text(L10n.Common.cancel) }
