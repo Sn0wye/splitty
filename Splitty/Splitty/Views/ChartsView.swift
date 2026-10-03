@@ -449,8 +449,7 @@ private struct ChartsExpenseDestination: View {
                 members: members,
                 currentUserId: currentUserId,
                 timelineExpenses: expenses,
-                onChanged: onMoneyWrite,
-                onDeleted: onMoneyWrite
+                onMoneyWrite: onMoneyWrite
             )
             // A delete refreshes the list before the pop lands; the row that just left it
             // stays on screen rather than being read again.

@@ -1,73 +1,47 @@
-//
-//  GroupViewModel.swift
-//  Splitty
-//
-//  Created by Snowye on 19/11/25.
-//
-
 import Foundation
 
-/// The group reads and delete routes behind closures so a test can control their timing.
-/// Each snapshot still issues its three reads concurrently.
-struct GroupDataSource {
-    var group: (Int) async throws -> GroupDetail
-    var expenses: (Int) async throws -> [Expense]
-    var summary: (Int) async throws -> GroupBalanceSummary
-    var waitForBalanceRetry: (Duration) async throws -> Void
-    var deleteExpense: (Int, Int) async throws -> Void
-    var deletePayment: (Int, Int) async throws -> Void
-
-    init(
-        group: @escaping (Int) async throws -> GroupDetail,
-        expenses: @escaping (Int) async throws -> [Expense],
-        summary: @escaping (Int) async throws -> GroupBalanceSummary,
-        waitForBalanceRetry: @escaping (Duration) async throws -> Void = { duration in
-            try await Task.sleep(for: duration)
-        },
-        deleteExpense: @escaping (Int, Int) async throws -> Void = { groupId, expenseId in
-            try await ExpenseService.shared.deleteExpense(groupId: groupId, expenseId: expenseId)
-        },
-        deletePayment: @escaping (Int, Int) async throws -> Void = { groupId, expenseId in
-            try await SettlementService.shared.deleteSettlement(groupId: groupId, expenseId: expenseId)
-        }
-    ) {
-        self.group = group
-        self.expenses = expenses
-        self.summary = summary
-        self.waitForBalanceRetry = waitForBalanceRetry
-        self.deleteExpense = deleteExpense
-        self.deletePayment = deletePayment
-    }
-
-    static let live = GroupDataSource(
-        group: { try await GroupService.shared.getGroup(id: $0) },
-        expenses: { try await ExpenseService.shared.getExpenses(groupId: $0) },
-        summary: { try await GroupService.shared.getBalanceSummary(groupId: $0) }
-    )
+enum GroupMoneyWrite {
+    case expenseCreated(Expense)
+    case expenseEdited(Expense)
+    case paymentRecorded(payee: GroupMember, amountCents: Int, date: Date, currentUserId: Int)
+    case paymentEdited(id: Int, amountCents: Int, date: Date)
 }
 
+enum GroupDeleteOutcome: Equatable {
+    case deleted
+    case alreadyGone
+    case failed(String)
+
+    /// What the screen the delete came from shows; nil when the row is gone either way.
+    var failureMessage: String? {
+        if case .failed(let message) = self { return message }
+        return nil
+    }
+}
+
+/// One group's observable state and work, independent of a screen's lifetime.
 @MainActor
-class GroupViewModel: ObservableObject {
-    @Published var group: GroupDetail?
-    @Published var expenses: [Expense] = []
-    @Published var groupedExpenses: [GroupedExpense] = []
-    @Published var isLoading = false
+final class GroupSession: ObservableObject {
+    @Published private(set) var group: GroupDetail?
+    @Published private(set) var expenses: [Expense] = []
+    @Published private(set) var groupedExpenses: [GroupedExpense] = []
+    @Published private(set) var isLoading = false
     @Published private(set) var hasLoadedExpenses = false
-    private(set) var hasCompletedInitialRead = false
-    @Published var errorMessage = ""
+    private var hasCompletedInitialRead = false
+    @Published private(set) var errorMessage = ""
 
     /// A failed delete belongs next to the list, not in place of it: `errorMessage` blanks
     /// the timeline, which is the right shape for a load that failed and the wrong one for
     /// an action that did.
-    @Published var actionErrorMessage: String?
+    @Published private(set) var actionErrorMessage: String?
 
     /// True while the balance worker still owes this group a recomputation, so the header
     /// number is known to predate the last write.
-    @Published var balancesPending = false
+    @Published private(set) var balancesPending = false
     @Published private(set) var latestSummary: GroupBalanceSummary?
 
     /// Negative ids exist until an expense refetch supplies the matching server rows.
-    @Published private(set) var pendingPaymentIds: Set<Int> = []
+    private var pendingPaymentIds: Set<Int> = []
     private var pendingRows: [Int: PendingRowWrite] = [:]
     private var hiddenDeletionIds: Set<Int> = []
     private var successfulDeletionIds: Set<Int> = []
@@ -78,7 +52,7 @@ class GroupViewModel: ObservableObject {
 
     private let dataSource: GroupDataSource
 
-    /// The refresh this view model owns, so a new one can cancel the one it replaces
+    /// The refresh this session owns, so a new one can cancel the one it replaces
     /// instead of racing it.
     private var refreshTask: Task<Void, Never>?
     private var balanceWatchTask: Task<Void, Never>?
@@ -133,8 +107,76 @@ class GroupViewModel: ObservableObject {
         }
     }
 
-    init(dataSource: GroupDataSource = .live) {
+    let groupId: Int
+    private var initialLoad: Task<Void, Never>?
+    private var finishedInitialLoad = false
+    @Published private(set) var summaryErrorMessage: String?
+
+    init(groupId: Int, seed: Group? = nil, dataSource: GroupDataSource = .live) {
+        self.groupId = groupId
+        self.group = seed
         self.dataSource = dataSource
+    }
+
+    /// A failed read cannot replace balances already on screen, the same rule the timeline
+    /// follows.
+    func balanceState(currentUserId: Int) -> BalancesDisplayState {
+        if let latestSummary { return BalancesDisplayState(summary: latestSummary, currentUserId: currentUserId) }
+        if let summaryErrorMessage { return .error(summaryErrorMessage) }
+        return .loading
+    }
+
+    var netBalanceCents: Int? { group?.netBalanceCents }
+
+    @discardableResult
+    func appear() -> Task<Void, Never> {
+        if !finishedInitialLoad {
+            if let initialLoad {
+                if !hasCompletedInitialRead { return initialLoad }
+                initialLoad.cancel()
+                finishedInitialLoad = true
+                return beginRefresh()
+            }
+            let task = Task { [weak self] in
+                guard let self else { return }
+                await loadGroupData()
+                finishedInitialLoad = true
+            }
+            initialLoad = task
+            return task
+        }
+        return beginRefresh()
+    }
+
+    func discard() {
+        initialLoad?.cancel()
+        cancelRefresh()
+    }
+
+    @discardableResult
+    func record(_ result: SettleUpResult, currentUserId: Int) -> Task<Void, Never> {
+        if let id = result.settlementId {
+            return report(.paymentEdited(id: id, amountCents: result.amountCents, date: result.date))
+        }
+        return report(.paymentRecorded(payee: result.peer, amountCents: result.amountCents,
+                                       date: result.date, currentUserId: currentUserId))
+    }
+
+    func summaryForSettleUp() async throws -> GroupBalanceSummary {
+        try await summary(force: !balancesPending)
+    }
+
+    func readSummary() async throws -> GroupBalanceSummary {
+        try await summary(force: false)
+    }
+
+    func refreshBalances() async {
+        do {
+            try await dataSource.requestBalanceRefresh(groupId)
+            await refresh()
+        } catch {
+            if !error.isCancellation { summaryErrorMessage = error.displayMessage }
+        }
     }
 
     var members: [GroupMember] { group?.members ?? [] }
@@ -145,25 +187,25 @@ class GroupViewModel: ObservableObject {
         expenses.contains { $0.type == .expense }
     }
 
-    func loadGroupData(groupId: Int) async {
+    private func loadGroupData() async {
         isLoading = group == nil
-        let generation = await load(groupId: groupId)
+        let generation = await load()
         isLoading = false
         hasCompletedInitialRead = true
 
-        if let generation { startBackgroundWork(groupId: groupId, generation: generation) }
+        if let generation { startBackgroundWork(generation: generation) }
     }
 
     /// Pull to refresh returns after the three snapshot reads publish. The balance
     /// watcher keeps working after the refresh spinner stops.
-    func refresh(groupId: Int) async {
+    func refresh() async {
         refreshTask?.cancel()
-        let generation = await load(groupId: groupId)
-        if let generation { startBackgroundWork(groupId: groupId, generation: generation) }
+        let generation = await load()
+        if let generation { startBackgroundWork(generation: generation) }
     }
 
     @discardableResult
-    func report(_ write: GroupMoneyWrite, groupId: Int) -> Task<Void, Never> {
+    func report(_ write: GroupMoneyWrite) -> Task<Void, Never> {
         cancelRefresh()
         needsPostWriteSettlement = true
         balancesPending = true
@@ -174,7 +216,6 @@ class GroupViewModel: ObservableObject {
         case .paymentRecorded(let payee, let amountCents, let date, let currentUserId):
             if let currentUser = members.first(where: { $0.userId == currentUserId }) {
                 insertPendingPayment(
-                    groupId: groupId,
                     currentUser: currentUser,
                     peer: payee,
                     amountCents: amountCents,
@@ -195,22 +236,22 @@ class GroupViewModel: ObservableObject {
                 pendingRows[id] = .payment(expenses[index])
             }
         }
-        return beginRefresh(groupId: groupId)
+        return beginRefresh()
     }
 
-    /// Starts a refresh the view model owns for callers with nothing to await, such as
+    /// Starts a refresh the session owns for callers with nothing to await, such as
     /// group settings, instead of spawning a task nobody can cancel.
     @discardableResult
-    func beginRefresh(groupId: Int) -> Task<Void, Never> {
+    func beginRefresh() -> Task<Void, Never> {
         refreshTask?.cancel()
         let task = Task { [weak self] () -> Void in
-            await self?.reloadSnapshot(groupId: groupId)
+            await self?.reloadSnapshot()
         }
         refreshTask = task
         return task
     }
 
-    func cancelRefresh() {
+    private func cancelRefresh() {
         refreshTask?.cancel()
         refreshTask = nil
         rowReconciliationTask?.cancel()
@@ -224,37 +265,38 @@ class GroupViewModel: ObservableObject {
     /// Shows a just-saved expense without waiting for the refetch. The row is real — the
     /// server returned it — while the *balance* it feeds is not, which is what
     /// `balancesPending` says.
-    func insert(_ expense: Expense) {
+    private func insert(_ expense: Expense) {
         expenses.removeAll { $0.id == expense.id }
         expenses.append(expense)
         groupedExpenses = Expense.groupExpensesByDate(expenses)
     }
 
-    private func reloadSnapshot(groupId: Int) async {
-        guard let generation = await load(groupId: groupId) else { return }
-        startBackgroundWork(groupId: groupId, generation: generation)
+    private func reloadSnapshot() async {
+        guard let generation = await load() else { return }
+        startBackgroundWork(generation: generation)
     }
 
-    private func startBackgroundWork(groupId: Int, generation: Int) {
-        startBalanceWatch(groupId: groupId)
+    private func startBackgroundWork(generation: Int) {
+        startBalanceWatch()
         rowReconciliationTask?.cancel()
         if !pendingPaymentIds.isEmpty || !pendingRows.isEmpty {
             rowReconciliationTask = Task { [weak self] in
-                await self?.reconcilePendingRows(groupId: groupId, generation: generation)
+                await self?.reconcilePendingRows(generation: generation)
             }
         }
     }
 
-    private func startBalanceWatch(groupId: Int) {
+    private func startBalanceWatch() {
         guard balancesPending, balanceWatchTask == nil else { return }
         balanceWatchGeneration += 1
         let generation = balanceWatchGeneration
         balanceWatchTask = Task { [weak self] in
-            await self?.watchBalance(groupId: groupId, generation: generation)
+            await self?.watchBalance(generation: generation)
         }
     }
 
-    private func load(groupId: Int) async -> Int? {
+    private func load() async -> Int? {
+        guard !Task.isCancelled else { return nil }
         loadGeneration += 1
         let generation = loadGeneration
 
@@ -296,16 +338,20 @@ class GroupViewModel: ObservableObject {
         }
 
         let summary: GroupBalanceSummary?
+        let summaryError: String?
         do {
             summary = try await summaryResult
+            summaryError = nil
         } catch {
             if error.isCancellation { return nil }
             summary = nil
+            summaryError = error.displayMessage
         }
 
         // A newer load started while this one was in flight. Its snapshot is the current
         // one, and an older answer arriving late must not replace it.
-        guard generation == loadGeneration else { return nil }
+        guard generation == loadGeneration, !Task.isCancelled else { return nil }
+        summaryErrorMessage = summaryError
 
         // A failed background read cannot replace a timeline already on screen.
         errorMessage = hasLoadedExpenses ? "" : (expensesError ?? (group == nil ? groupError : nil) ?? "")
@@ -318,7 +364,9 @@ class GroupViewModel: ObservableObject {
         let displayedNetCents = group?.netBalanceCents
         // These requests began together. Even a settled summary may have raced ahead
         // of the group read, so finish a write with a group read after the summary.
-        if let summary { latestSummary = summary }
+        if let summary {
+            latestSummary = summary
+        }
         balancesPending = (summary?.balancesPending ?? balancesPending) || needsPostWriteSettlement
         if var loadedGroup {
             if balancesPending,
@@ -375,20 +423,23 @@ class GroupViewModel: ObservableObject {
         successfulDeletionIds.subtract(confirmedAbsent)
     }
 
-    func seed(_ group: Group) {
-        self.group = group
-    }
-
-    func summary(groupId: Int, force: Bool = false) async throws -> GroupBalanceSummary {
+    private func summary(force: Bool) async throws -> GroupBalanceSummary {
         if !force, let latestSummary { return latestSummary }
-        let summary = try await dataSource.summary(groupId)
+        let summary: GroupBalanceSummary
+        do {
+            summary = try await dataSource.summary(groupId)
+            summaryErrorMessage = nil
+        } catch {
+            if !error.isCancellation { summaryErrorMessage = error.displayMessage }
+            throw error
+        }
         latestSummary = summary
         balancesPending = summary.balancesPending || needsPostWriteSettlement
-        if balancesPending { startBalanceWatch(groupId: groupId) }
+        if balancesPending { startBalanceWatch() }
         return summary
     }
 
-    private func watchBalance(groupId: Int, generation: Int) async {
+    private func watchBalance(generation: Int) async {
         defer {
             if generation == balanceWatchGeneration { balanceWatchTask = nil }
         }
@@ -400,6 +451,7 @@ class GroupViewModel: ObservableObject {
         ) { [weak self] summary in
             guard let self, generation == balanceWatchGeneration else { return false }
             latestSummary = summary
+            summaryErrorMessage = nil
             return true
         }
         guard pendingCleared else { return }
@@ -434,7 +486,7 @@ class GroupViewModel: ObservableObject {
 
     /// A newer load takes over this retry when pull to refresh cancels its predecessor.
     /// The expense endpoint may lag the settled summary and group reads.
-    private func reconcilePendingRows(groupId: Int, generation: Int) async {
+    private func reconcilePendingRows(generation: Int) async {
         var retryIndex = 0
         while (!pendingPaymentIds.isEmpty || !pendingRows.isEmpty), generation == loadGeneration {
             do {
@@ -460,8 +512,7 @@ class GroupViewModel: ObservableObject {
     /// The settle route returns no row, so make the one piece of UI it cannot return. Its
     /// negative id keeps navigation and deletion away from a resource that does not exist.
     @discardableResult
-    func insertPendingPayment(
-        groupId: Int,
+    private func insertPendingPayment(
         currentUser: GroupMember,
         peer: GroupMember,
         amountCents: Int,
@@ -524,9 +575,9 @@ class GroupViewModel: ObservableObject {
     /// Deletes an expense or a settlement, whichever the row is. They do not share a route:
     /// the expense route refuses payment rows rather than branching on a type the client
     /// never sent.
-    func delete(_ expense: Expense, groupId: Int) -> Task<Bool, Never> {
+    func delete(_ expense: Expense) -> Task<GroupDeleteOutcome, Never> {
         guard expense.id > 0 else {
-            return Task { false }
+            return Task { .failed(L10n.Errors.generic) }
         }
         let index = expenses.firstIndex(where: { $0.id == expense.id })
         actionErrorMessage = nil
@@ -537,7 +588,8 @@ class GroupViewModel: ObservableObject {
         groupedExpenses = Expense.groupExpensesByDate(expenses)
 
         return Task { [weak self] in
-            guard let self else { return false }
+            guard let self else { return .failed(L10n.Errors.generic) }
+            var outcome = GroupDeleteOutcome.deleted
             do {
                 switch expense.type {
                 case .expense:
@@ -554,15 +606,16 @@ class GroupViewModel: ObservableObject {
                         groupedExpenses = Expense.groupExpensesByDate(expenses)
                     }
                     if !error.isCancellation { actionErrorMessage = error.displayMessage }
-                    startBackgroundWork(groupId: groupId, generation: loadGeneration)
-                    return false
+                    startBackgroundWork(generation: loadGeneration)
+                    return .failed(error.displayMessage)
                 }
+                outcome = .alreadyGone
             }
             needsPostWriteSettlement = true
             balancesPending = true
             successfulDeletionIds.insert(expense.id)
-            beginRefresh(groupId: groupId)
-            return true
+            beginRefresh()
+            return outcome
         }
     }
 }

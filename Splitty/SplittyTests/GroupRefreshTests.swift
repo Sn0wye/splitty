@@ -12,17 +12,17 @@ private struct ControlledGroupFailure: Error {}
 @MainActor
 struct GroupRefreshTests {
 
-    @Test func aSavedSheetRefreshesOnceAndOnlyOnce() async {
+    @Test func aMoneyWriteRefreshesOnceAndOnlyOnce() async {
         let data = ControlledGroupData()
         data.autoRelease = true
         let saved = TestExpense.make(id: 9, paidBy: 1, amount: 10, splitAmounts: [1: 10])
         data.expensesForCall = { _ in [saved] }
-        let viewModel = GroupViewModel(dataSource: data.source())
-        let task = viewModel.report(.expenseCreated(saved), groupId: 1)
-        #expect(viewModel.expenses.map(\.id) == [9])
+        let session = GroupSession(groupId: 1, dataSource: data.source())
+        let task = session.report(.expenseCreated(saved))
+        #expect(session.expenses.map(\.id) == [9])
         await task.value
 
-        #expect(viewModel.expenses.map(\.id) == [9])
+        #expect(session.expenses.map(\.id) == [9])
         #expect(data.expenseCallCount == 1)
 
         // Dismissal has no write event and does not start another load.
@@ -33,14 +33,14 @@ struct GroupRefreshTests {
     @Test func aRefreshStillRequestsTheGroupExpensesAndBalanceSummary() async {
         let data = ControlledGroupData()
         data.autoRelease = true
-        let viewModel = GroupViewModel(dataSource: data.source())
+        let session = GroupSession(groupId: 1, dataSource: data.source())
 
-        await viewModel.refresh(groupId: 1)
+        await session.refresh()
 
         #expect(data.groupCallCount == 1)
         #expect(data.expenseCallCount == 1)
         #expect(data.summaryCallCount == 1)
-        #expect(viewModel.group?.id == 1)
+        #expect(session.group?.id == 1)
     }
 
     @Test func aPendingBalanceRefreshesUntilTheWorkerSettles() async {
@@ -60,37 +60,40 @@ struct GroupRefreshTests {
             GroupBalanceSummary(simplifiedDebts: [], balancesPending: call < 10)
         }
         data.groupFailureCalls = [2]
-        let viewModel = GroupViewModel(dataSource: data.source())
+        let session = GroupSession(groupId: 1, dataSource: data.source())
 
-        await viewModel.refresh(groupId: 1)
-        for _ in 0..<1_000 where viewModel.balancesPending { await Task.yield() }
+        await session.refresh()
+        for _ in 0..<1_000 where session.balancesPending { await Task.yield() }
 
         #expect(data.summaryCallCount == 10)
         #expect(data.balanceRetryCount == 10)
         #expect(data.groupCallCount == 3)
-        #expect(viewModel.group?.netBalanceCents == 2_500)
-        #expect(!viewModel.balancesPending)
+        #expect(session.group?.netBalanceCents == 2_500)
+        #expect(!session.balancesPending)
     }
 
-    @Test func aRefreshReplacesLocallyInsertedRowsWithTheServersRows() async {
+    @Test func aRefreshReplacesPreviouslyLoadedRowsWithTheServersRows() async {
         let data = ControlledGroupData()
         data.autoRelease = true
-        let viewModel = GroupViewModel(dataSource: data.source())
-        viewModel.insert(TestExpense.make(id: 9, paidBy: 1, amount: 10, splitAmounts: [1: 10]))
+        let session = GroupSession(groupId: 1, dataSource: data.source())
+        data.expensesForCall = { call in
+            call == 1 ? [TestExpense.make(id: 9, paidBy: 1, amount: 10, splitAmounts: [1: 10])] : []
+        }
+        await session.appear().value
 
-        await viewModel.refresh(groupId: 1)
+        await session.refresh()
 
-        #expect(viewModel.expenses.isEmpty)
-        #expect(viewModel.groupedExpenses.isEmpty)
+        #expect(session.expenses.isEmpty)
+        #expect(session.groupedExpenses.isEmpty)
     }
 
     @Test func anEditedPaymentRefreshesWithoutAddingAnotherRow() async {
         let data = ControlledGroupData()
         data.autoRelease = true
-        let viewModel = GroupViewModel(dataSource: data.source())
-        await viewModel.report(.paymentEdited(id: 18, amountCents: 500, date: Date()), groupId: 1).value
+        let session = GroupSession(groupId: 1, dataSource: data.source())
+        await session.report(.paymentEdited(id: 18, amountCents: 500, date: Date())).value
 
-        #expect(viewModel.expenses.isEmpty)
+        #expect(session.expenses.isEmpty)
         #expect(data.expenseCallCount == 1)
     }
 
@@ -112,20 +115,20 @@ struct GroupRefreshTests {
             date: "2026-03-01T12:00:00Z"
         )
         data.expensesForCall = { call in call < 5 ? [] : [stored] }
-        let viewModel = GroupViewModel(dataSource: data.source())
+        let session = GroupSession(groupId: 1, dataSource: data.source())
 
-        await viewModel.refresh(groupId: 1)
-        await viewModel.report(.paymentRecorded(payee: TestExpense.members[1], amountCents: 500, date: paymentDate, currentUserId: 1), groupId: 1).value
-        let pending = try #require(viewModel.expenses.first)
+        await session.refresh()
+        await session.report(.paymentRecorded(payee: TestExpense.members[1], amountCents: 500, date: paymentDate, currentUserId: 1)).value
+        let pending = try #require(session.expenses.first)
         #expect(pending.id < 0)
-        #expect(viewModel.isPendingPayment(pending))
-        #expect(!viewModel.balancesPending)
+        #expect(session.isPendingPayment(pending))
+        #expect(!session.balancesPending)
 
-        await viewModel.refresh(groupId: 1)
+        await session.refresh()
         await data.waitForExpenseCall(5)
-        for _ in 0..<1_000 where !viewModel.pendingPaymentIds.isEmpty { await Task.yield() }
-        #expect(viewModel.expenses.map(\.id) == [42])
-        #expect(viewModel.pendingPaymentIds.isEmpty)
+        for _ in 0..<1_000 where session.expenses.contains(where: session.isPendingPayment) { await Task.yield() }
+        #expect(session.expenses.map(\.id) == [42])
+        #expect(!session.expenses.contains(where: session.isPendingPayment))
     }
 
     @Test func workerSettlementReplacesTheTemporaryPaymentAndNetBalance() async throws {
@@ -155,15 +158,15 @@ struct GroupRefreshTests {
             date: "2026-03-01T12:00:00Z"
         )
         data.expensesForCall = { call in call < 4 ? [] : [stored] }
-        let viewModel = GroupViewModel(dataSource: data.source())
-        await viewModel.refresh(groupId: 1)
+        let session = GroupSession(groupId: 1, dataSource: data.source())
+        await session.refresh()
 
-        await viewModel.report(.paymentRecorded(payee: TestExpense.members[1], amountCents: 500, date: paymentDate, currentUserId: 1), groupId: 1).value
+        await session.report(.paymentRecorded(payee: TestExpense.members[1], amountCents: 500, date: paymentDate, currentUserId: 1)).value
 
-        #expect(viewModel.expenses.map(\.id) == [42])
-        #expect(viewModel.pendingPaymentIds.isEmpty)
-        #expect(viewModel.group?.netBalanceCents == 0)
-        #expect(!viewModel.balancesPending)
+        #expect(session.expenses.map(\.id) == [42])
+        #expect(!session.expenses.contains(where: session.isPendingPayment))
+        #expect(session.group?.netBalanceCents == 0)
+        #expect(!session.balancesPending)
         #expect(data.expenseCallCount == 4)
     }
 
@@ -192,14 +195,14 @@ struct GroupRefreshTests {
             date: "2026-03-01T12:00:00Z"
         )
         data.expensesForCall = { call in call == 1 ? [] : [stored] }
-        let viewModel = GroupViewModel(dataSource: data.source())
-        await viewModel.refresh(groupId: 1)
+        let session = GroupSession(groupId: 1, dataSource: data.source())
+        await session.refresh()
 
-        await viewModel.report(.paymentRecorded(payee: TestExpense.members[1], amountCents: 500, date: paymentDate, currentUserId: 1), groupId: 1).value
+        await session.report(.paymentRecorded(payee: TestExpense.members[1], amountCents: 500, date: paymentDate, currentUserId: 1)).value
 
         #expect(data.groupCallCount == 3)
-        #expect(viewModel.group?.netBalanceCents == finalNetCents)
-        #expect(!viewModel.balancesPending)
+        #expect(session.group?.netBalanceCents == finalNetCents)
+        #expect(!session.balancesPending)
     }
 
     @Test func anExpenseWriteAlsoGetsAGroupReadAfterTheSummary() async {
@@ -217,14 +220,14 @@ struct GroupRefreshTests {
         }
         let row = TestExpense.make(id: 9, paidBy: 1, amount: 10, splitAmounts: [1: 10])
         data.expensesForCall = { _ in [row] }
-        let viewModel = GroupViewModel(dataSource: data.source())
-        await viewModel.refresh(groupId: 1)
+        let session = GroupSession(groupId: 1, dataSource: data.source())
+        await session.refresh()
 
-        await viewModel.report(.expenseCreated(row), groupId: 1).value
+        await session.report(.expenseCreated(row)).value
 
         #expect(data.groupCallCount == 3)
-        #expect(viewModel.group?.netBalanceCents == 400)
-        #expect(!viewModel.balancesPending)
+        #expect(session.group?.netBalanceCents == 400)
+        #expect(!session.balancesPending)
     }
 
     @Test func aSummaryFailurePreservesThePendingHeaderAndTimeline() async {
@@ -237,29 +240,44 @@ struct GroupRefreshTests {
         }
         let row = TestExpense.make(id: 4, paidBy: 1, amount: 10, splitAmounts: [1: 10])
         data.expensesForCall = { _ in [row] }
-        let viewModel = GroupViewModel(dataSource: data.source())
+        let session = GroupSession(groupId: 1, dataSource: data.source())
 
-        await viewModel.refresh(groupId: 1)
-        #expect(viewModel.balancesPending)
-        await viewModel.refresh(groupId: 1)
+        await session.refresh()
+        #expect(session.balancesPending)
+        await session.refresh()
 
-        #expect(viewModel.expenses.map(\.id) == [4])
-        #expect(viewModel.balancesPending)
+        #expect(session.expenses.map(\.id) == [4])
+        #expect(session.balancesPending)
+    }
+
+    // Balances follow the timeline's rule: a background read cannot blank what is on screen.
+    @Test func aFailedBackgroundSummaryReadKeepsBalancesOnScreen() async {
+        let data = ControlledGroupData()
+        data.autoRelease = true
+        data.summaryFailureCalls = [2]
+        let session = GroupSession(groupId: 1, dataSource: data.source())
+
+        await session.refresh()
+        #expect(session.balanceState(currentUserId: 1) == .settled)
+        await session.refresh()
+
+        #expect(session.balanceState(currentUserId: 1) == .settled)
     }
 
     @Test func aFailedDeleteKeepsTheTimelineAndShowsAnActionError() async {
         let data = ControlledGroupData()
         data.autoRelease = true
         data.deleteError = APIError.httpError(500, message: nil)
-        let viewModel = GroupViewModel(dataSource: data.source())
+        let session = GroupSession(groupId: 1, dataSource: data.source())
         let row = TestExpense.make(id: 4, paidBy: 1, amount: 10, splitAmounts: [1: 10])
-        viewModel.insert(row)
+        data.expensesForCall = { _ in [row] }
+        await session.appear().value
 
-        #expect(!(await viewModel.delete(row, groupId: 1).value))
+        #expect(await session.delete(row).value == .failed(APIError.httpError(500, message: nil).displayMessage))
 
-        #expect(viewModel.expenses.map(\.id) == [4])
-        #expect(viewModel.actionErrorMessage != nil)
-        #expect(data.expenseCallCount == 0)
+        #expect(session.expenses.map(\.id) == [4])
+        #expect(session.actionErrorMessage != nil)
+        #expect(data.expenseCallCount == 1)
     }
 
     @Test func aSuccessfulDeleteReturnsAfterTheRouteAndRefreshesInBackground() async {
@@ -275,13 +293,14 @@ struct GroupRefreshTests {
                 members: TestExpense.members
             )
         }
-        let viewModel = GroupViewModel(dataSource: data.source())
+        let session = GroupSession(groupId: 1, dataSource: data.source())
         let row = TestExpense.make(id: 4, paidBy: 1, amount: 10, splitAmounts: [1: 10])
-        viewModel.insert(row)
+        data.expensesForCall = { _ in [row] }
+        await session.appear().value
 
-        #expect(await viewModel.delete(row, groupId: 1).value)
+        #expect(await session.delete(row).value == .deleted)
 
-        #expect(viewModel.expenses.isEmpty)
+        #expect(session.expenses.isEmpty)
         #expect(data.expenseDeleteCount == 1)
     }
 
@@ -290,11 +309,11 @@ struct GroupRefreshTests {
     @Test func anOlderRefreshCannotOverwriteANewerSnapshot() async {
         let data = ControlledGroupData()
         data.expensesForCall = { call in [TestExpense.make(id: call, paidBy: 1, amount: 10, splitAmounts: [1: 10])] }
-        let viewModel = GroupViewModel(dataSource: data.source())
+        let session = GroupSession(groupId: 1, dataSource: data.source())
 
-        let first = viewModel.beginRefresh(groupId: 1)
+        let first = Task { await session.refresh() }
         await data.waitForExpenseCall(1)
-        let second = viewModel.beginRefresh(groupId: 1)
+        let second = Task { await session.refresh() }
         await data.waitForExpenseCall(2)
 
         // The newer request answers first, then the older one arrives late.
@@ -303,8 +322,8 @@ struct GroupRefreshTests {
         data.release(call: 1)
         await first.value
 
-        #expect(viewModel.expenses.map(\.id) == [2])
-        #expect(viewModel.groupedExpenses.flatMap { $0.expenses }.map(\.id) == [2])
+        #expect(session.expenses.map(\.id) == [2])
+        #expect(session.groupedExpenses.flatMap { $0.expenses }.map(\.id) == [2])
     }
 
     // Cancellation is control flow: it leaves the rows already on screen alone rather
@@ -312,32 +331,33 @@ struct GroupRefreshTests {
     @Test func aCanceledRefreshLeavesTheRowsOnScreenAlone() async {
         let data = ControlledGroupData()
         data.expensesForCall = { call in [TestExpense.make(id: call, paidBy: 1, amount: 10, splitAmounts: [1: 10])] }
-        let viewModel = GroupViewModel(dataSource: data.source())
+        let session = GroupSession(groupId: 1, dataSource: data.source())
 
-        let loaded = viewModel.beginRefresh(groupId: 1)
+        let loaded = Task { await session.refresh() }
         await data.waitForExpenseCall(1)
         data.release(call: 1)
         await loaded.value
-        #expect(viewModel.expenses.map(\.id) == [1])
+        #expect(session.expenses.map(\.id) == [1])
 
-        let canceled = viewModel.beginRefresh(groupId: 1)
+        let canceled = Task { await session.refresh() }
         await data.waitForExpenseCall(2)
         data.fail(call: 2, with: CancellationError())
         await canceled.value
 
-        #expect(viewModel.expenses.map(\.id) == [1])
-        #expect(viewModel.errorMessage.isEmpty)
+        #expect(session.expenses.map(\.id) == [1])
+        #expect(session.errorMessage.isEmpty)
     }
 
     // A superseded refresh is control flow, not a failure the user should read about.
     @Test func aSupersededRefreshLeavesTheScreenAloneWhenItFails() async {
         let data = ControlledGroupData()
+        data.summaryFailureCalls = [1]
         data.expensesForCall = { call in [TestExpense.make(id: call, paidBy: 1, amount: 10, splitAmounts: [1: 10])] }
-        let viewModel = GroupViewModel(dataSource: data.source())
+        let session = GroupSession(groupId: 1, dataSource: data.source())
 
-        let first = viewModel.beginRefresh(groupId: 1)
+        let first = Task { await session.refresh() }
         await data.waitForExpenseCall(1)
-        let second = viewModel.beginRefresh(groupId: 1)
+        let second = Task { await session.refresh() }
         await data.waitForExpenseCall(2)
 
         data.release(call: 2)
@@ -345,8 +365,9 @@ struct GroupRefreshTests {
         data.fail(call: 1, with: APIError.httpError(500, message: nil))
         await first.value
 
-        #expect(viewModel.expenses.map(\.id) == [2])
-        #expect(viewModel.errorMessage.isEmpty)
+        #expect(session.expenses.map(\.id) == [2])
+        #expect(session.errorMessage.isEmpty)
+        #expect(session.balanceState(currentUserId: 1) == .settled)
     }
 }
 

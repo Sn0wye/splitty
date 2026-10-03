@@ -13,19 +13,21 @@ struct ExpenseTimelineTests {
     // The saved row is real — the server returned it — so it appears without waiting for
     // the refetch that follows the sheet's dismissal.
     @Test func insertingAnExpenseShowsItImmediately() {
-        let viewModel = GroupViewModel()
-        viewModel.insert(TestExpense.make(id: 9, paidBy: 1, amount: 30, splitAmounts: [1: 30]))
+        let session = GroupSession(groupId: 1, dataSource: ControlledGroupData().source())
+        session.report(.expenseCreated(TestExpense.make(id: 9, paidBy: 1, amount: 30, splitAmounts: [1: 30])))
 
-        #expect(viewModel.expenses.map(\.id) == [9])
-        #expect(viewModel.groupedExpenses.flatMap { $0.expenses }.map(\.id) == [9])
+        #expect(session.expenses.map(\.id) == [9])
+        #expect(session.groupedExpenses.flatMap { $0.expenses }.map(\.id) == [9])
+        session.discard()
     }
 
     @Test func insertingAnEditedExpenseReplacesTheRowRatherThanDoublingIt() {
-        let viewModel = GroupViewModel()
-        viewModel.insert(TestExpense.make(id: 9, paidBy: 1, amount: 30, splitAmounts: [1: 30]))
-        viewModel.insert(TestExpense.make(id: 9, paidBy: 1, amount: 45, splitAmounts: [1: 45]))
+        let session = GroupSession(groupId: 1, dataSource: ControlledGroupData().source())
+        session.report(.expenseCreated(TestExpense.make(id: 9, paidBy: 1, amount: 30, splitAmounts: [1: 30])))
+        session.report(.expenseEdited(TestExpense.make(id: 9, paidBy: 1, amount: 45, splitAmounts: [1: 45])))
 
-        #expect(viewModel.expenses.map(\.amount) == [45])
+        #expect(session.expenses.map(\.amount) == [45])
+        session.discard()
     }
 }
 

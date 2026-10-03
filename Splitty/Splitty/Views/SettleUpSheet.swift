@@ -6,8 +6,7 @@
 import SwiftUI
 
 struct SettleUpSheet: View {
-    @EnvironmentObject private var appState: AppState
-    @ObservedObject private var snapshot: GroupViewModel
+    @ObservedObject private var session: GroupSession
     @StateObject private var viewModel: SettleUpViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var showingAmount: Bool
@@ -16,41 +15,26 @@ struct SettleUpSheet: View {
 
     private let startsWithFixedPeer: Bool
     private let shouldLoadDebts: Bool
-    private let onSaved: (SettleUpResult) -> Void
 
     init(
         session: GroupSession,
-        groupId: Int,
-        members: [GroupMember],
         currentUserId: Int,
         preselectedRow: BalanceRow? = nil,
-        settlement: Expense? = nil,
-        onSaved: @escaping (SettleUpResult) -> Void
+        settlement: Expense? = nil
     ) {
-        _snapshot = ObservedObject(wrappedValue: session.snapshot)
-        var dataSource = SettleUpDataSource.live
-        dataSource.summary = { [weak snapshot = session.snapshot] groupId in
-            guard let snapshot else { throw CancellationError() }
-            return try await snapshot.summary(groupId: groupId, force: !snapshot.balancesPending)
-        }
+        _session = ObservedObject(wrappedValue: session)
         let model = SettleUpViewModel(
-            groupId: groupId,
-            members: members,
+            session: session,
             currentUserId: currentUserId,
             preselectedRow: preselectedRow,
-            settlement: settlement,
-            dataSource: dataSource
+            settlement: settlement
         )
-        if let summary = session.snapshot.latestSummary, settlement == nil {
-            model.apply(summary)
-        }
-        model.setPending(session.snapshot.balancesPending)
+        model.suggestPayment()
         _viewModel = StateObject(wrappedValue: model)
         let isEditing = settlement != nil
         _showingAmount = State(initialValue: preselectedRow != nil || isEditing)
         startsWithFixedPeer = isEditing
         shouldLoadDebts = !isEditing
-        self.onSaved = onSaved
     }
 
     var body: some View {
@@ -69,14 +53,8 @@ struct SettleUpSheet: View {
                 await refreshDebts()
             }
         }
-        .onReceive(snapshot.$latestSummary) { summary in
-            if let summary, !viewModel.isEditing {
-                viewModel.apply(summary)
-                viewModel.setPending(snapshot.balancesPending)
-            }
-        }
-        .onReceive(snapshot.$balancesPending) { pending in
-            viewModel.setPending(pending)
+        .onChange(of: session.balanceState(currentUserId: viewModel.currentUserId)) { _, _ in
+            viewModel.suggestPayment()
         }
         .sheet(isPresented: $showingDatePicker) {
             ExpenseDatePicker(date: $viewModel.date)
@@ -240,21 +218,7 @@ struct SettleUpSheet: View {
         Task {
             if let result = await viewModel.submit() {
                 savedCount += 1
-                if let id = result.settlementId {
-                    appState.groupSessions.report(
-                        .paymentEdited(id: id, amountCents: result.amountCents, date: result.date),
-                        groupId: viewModel.groupId
-                    )
-                } else {
-                    appState.groupSessions.report(
-                        .paymentRecorded(
-                            payee: result.peer, amountCents: result.amountCents,
-                            date: result.date, currentUserId: viewModel.currentUserId
-                        ),
-                        groupId: viewModel.groupId
-                    )
-                }
-                onSaved(result)
+                session.record(result, currentUserId: viewModel.currentUserId)
                 dismiss()
             }
         }
@@ -262,7 +226,6 @@ struct SettleUpSheet: View {
 
     private func refreshDebts() async {
         await viewModel.loadDebts()
-        viewModel.setPending(snapshot.balancesPending)
     }
 
     private func peerAvatar(_ peer: GroupMember) -> some View {

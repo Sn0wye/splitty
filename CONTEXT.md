@@ -423,13 +423,17 @@ SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
   and fetched once on a cold launch that restored a Keychain token. Everything that says
   "you" reads it. Not cached in UserDefaults — a second copy of the profile can go stale, a
   Keychain token cannot. The profile route is `GET /profile`.
-- **Group sessions** — up to eight recently opened group snapshots live above the tab
-  switch. Reopening one shows its cached data while a fresh read runs; leaving or losing
-  access removes that group, and sign-out clears every session. The People screen likewise
-  keeps its last successful response visible during a refetch, including an empty response.
-  Money writes enter the current group session as one value, and deletes go through its
-  single optimistic path. One pending-balance watcher per session supplies the header,
-  Balances and Settle-up with the same summary and pending status.
+- **Group sessions** — a single observable session owns each group's snapshot and commands.
+  Up to eight recently opened sessions live above the tab switch; reopening one shows cached
+  data while a fresh read runs. The store is the only owner of the current group and persists
+  it per signed-in user. Leaving or losing access removes that session; sign-out clears all
+  sessions. Money writes and deletes route to any cached session, including one that isn't
+  current. With no session, the next open reads fresh. Group cards use a session's live net
+  and pending state when available, and the server's list value otherwise. One pending-balance
+  watcher per session supplies the header, Balances and Settle-up with the same summary and
+  pending status. The session also decides whether a saved settle-up payment is new or edited,
+  when settle-up forces a fresh summary, and what a delete's outcome is. People keeps its last successful response visible
+  during a refetch, including an empty response.
 
 **Money is integer cents everywhere on the client**, converted to `Double` once at the
 request boundary (`Money`). The API validates that splits sum *exactly* to the total against

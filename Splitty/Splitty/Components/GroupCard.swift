@@ -9,16 +9,20 @@ import SwiftUI
 
 struct GroupCard: View {
     let group: Group
+    var liveBalance: GroupLiveBalance? = nil
     let onTap: () -> Void
     @ObservedObject private var authManager = AuthenticationManager.shared
     
+    private var netBalanceCents: Int { liveBalance?.netBalanceCents ?? group.netBalanceCents }
+    private var balancesPending: Bool { liveBalance?.balancesPending ?? false }
+
     var positiveBalance: Bool {
-        return group.netBalanceCents > 0;
+        return netBalanceCents > 0;
     }
 
     private var balanceLabel: String {
-        if group.netBalanceCents > 0 { return L10n.Groups.youAreOwed }
-        if group.netBalanceCents < 0 { return L10n.Groups.youOwe }
+        if netBalanceCents > 0 { return L10n.Groups.youAreOwed }
+        if netBalanceCents < 0 { return L10n.Groups.youOwe }
         return L10n.Balances.allSettled
     }
     
@@ -37,14 +41,19 @@ struct GroupCard: View {
                             .lineLimit(1)
                             .padding(.bottom, 2)
                         
-                        Text(balanceLabel)
-                            .font(.system(size: 12))
+                        HStack(spacing: 6) {
+                            Text(balanceLabel)
+                                .opacity(balancesPending ? 0.5 : 1)
+                            if balancesPending { ProgressView().controlSize(.mini) }
+                        }
+                        .font(.system(size: 12))
                         
-                        if group.netBalanceCents != 0 {
-                            Text(Money.formatted(cents: abs(group.netBalanceCents)))
+                        if netBalanceCents != 0 {
+                            Text(Money.formatted(cents: abs(netBalanceCents)))
                                 .font(.system(size: 18))
                                 .fontWeight(.bold)
                                 .foregroundColor(Color(positiveBalance ? "positive" : "negative"))
+                                .opacity(balancesPending ? 0.5 : 1)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -66,6 +75,7 @@ struct GroupCard: View {
         // Shared across every card on purpose: a test wants "a group", not a particular
         // one, and naming them individually would tie it to whatever the data happens to be.
         .accessibilityIdentifier("groups.card")
+        .accessibilityValue(balancesPending ? L10n.Common.updating : "")
     }
 
     private func avatarURL(for member: GroupMember) -> URL? {

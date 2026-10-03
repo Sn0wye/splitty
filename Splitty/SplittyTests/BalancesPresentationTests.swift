@@ -1,5 +1,5 @@
 //
-//  BalancesViewModelTests.swift
+//  BalancesPresentationTests.swift
 //  SplittyTests
 //
 
@@ -8,75 +8,69 @@ import Testing
 @testable import Splitty
 
 @MainActor
-struct BalancesViewModelTests {
-    @Test func aSummaryWithNoRowsIsSettled() {
-        let viewModel = makeViewModel()
-        viewModel.apply(summary([]), currentUserId: 1)
-        #expect(viewModel.state == .settled)
+struct BalancesPresentationTests {
+    @Test func aSummaryWithNoRowsIsSettled() async {
+        let session = await makeSession(summary([]))
+        #expect(session.balanceState(currentUserId: 1) == .settled)
     }
 
-    @Test func aChainRendersTheServersSingleSimplifiedDebt() {
-        let viewModel = makeViewModel()
-        viewModel.apply(summary([
+    @Test func aChainRendersTheServersSingleSimplifiedDebt() async {
+        let session = await makeSession(summary([
             debt(fromId: 2, fromName: "John", toId: 4, toName: "Adam", cents: 1_000)
-        ]), currentUserId: 1)
-
-        #expect(viewModel.rows.count == 1)
-        #expect(viewModel.rows.first?.from.name == "John")
-        #expect(viewModel.rows.first?.to.name == "Adam")
-        #expect(viewModel.rows.first?.amountCents == 1_000)
+        ]))
+        let rows = session.balanceState(currentUserId: 1).rows
+        #expect(rows.count == 1)
+        #expect(rows.first?.from.name == "John")
+        #expect(rows.first?.to.name == "Adam")
+        #expect(rows.first?.amountCents == 1_000)
     }
 
-    @Test func currentUserRowsComeFirstAndStateTheirDirection() {
-        let viewModel = makeViewModel()
-        viewModel.apply(summary([
+    @Test func currentUserRowsComeFirstAndStateTheirDirection() async {
+        let session = await makeSession(summary([
             debt(fromId: 2, fromName: "Ana", toId: 3, toName: "Bob", cents: 7_000),
             debt(fromId: 1, fromName: "You", toId: 4, toName: "Cara", cents: 4_000),
             debt(fromId: 5, fromName: "Dan", toId: 1, toName: "You", cents: 1_200)
-        ]), currentUserId: 1)
-
-        #expect(viewModel.rows.map(\.involvement) == [.youPay, .paysYou, .uninvolved])
-        #expect(viewModel.rows.map(\.amountCents) == [4_000, 1_200, 7_000])
-        #expect(viewModel.rows.map(\.to.name) == ["Cara", "You", "Bob"])
+        ]))
+        let rows = session.balanceState(currentUserId: 1).rows
+        #expect(rows.map(\.involvement) == [.youPay, .paysYou, .uninvolved])
+        #expect(rows.map(\.amountCents) == [4_000, 1_200, 7_000])
+        #expect(rows.map(\.to.name) == ["Cara", "You", "Bob"])
     }
 
-    @Test func aFailureIsDistinctFromSettled() {
-        let viewModel = makeViewModel()
-        viewModel.fail(with: TestFailure())
-
-        #expect(viewModel.state == .error("Could not load balances"))
+    @Test func aFailureIsDistinctFromSettled() async {
+        let data = ControlledGroupData()
+        var source = data.source()
+        source.summary = { _ in throw TestFailure() }
+        let session = GroupSession(groupId: 7, dataSource: source)
+        _ = try? await session.readSummary()
+        #expect(session.balanceState(currentUserId: 1) == .error("Could not load balances"))
     }
 
-    @Test func pendingDoesNotChangeWhichRowsAppear() {
-        let viewModel = makeViewModel()
-        viewModel.apply(
-            summary([debt(fromId: 1, fromName: "You", toId: 2, toName: "Ana", cents: 4_000)], pending: true),
-            currentUserId: 1
-        )
-
-        #expect(viewModel.rows.map(\.to.name) == ["Ana"])
+    @Test func pendingDoesNotChangeWhichRowsAppear() async {
+        let session = await makeSession(summary([
+            debt(fromId: 1, fromName: "You", toId: 2, toName: "Ana", cents: 4_000)
+        ], pending: true))
+        #expect(session.balanceState(currentUserId: 1).rows.map(\.to.name) == ["Ana"])
+        #expect(session.balancesPending)
+        session.discard()
     }
 
-    private func makeViewModel() -> BalancesViewModel {
-        BalancesViewModel(groupId: 7)
+    private func makeSession(_ summary: GroupBalanceSummary) async -> GroupSession {
+        let data = ControlledGroupData()
+        data.cancelBalanceRetry = true
+        data.summaryForCall = { _ in summary }
+        let session = GroupSession(groupId: 7, dataSource: data.source())
+        _ = try? await session.readSummary()
+        return session
     }
 
     private func summary(_ debts: [SimplifiedDebt], pending: Bool = false) -> GroupBalanceSummary {
         GroupBalanceSummary(simplifiedDebts: debts, balancesPending: pending)
     }
 
-    private func debt(
-        fromId: Int,
-        fromName: String,
-        toId: Int,
-        toName: String,
-        cents: Int
-    ) -> SimplifiedDebt {
-        SimplifiedDebt(
-            from: DebtMember(id: fromId, name: fromName, avatarUrl: ""),
-            to: DebtMember(id: toId, name: toName, avatarUrl: ""),
-            amountCents: cents,
-        )
+    private func debt(fromId: Int, fromName: String, toId: Int, toName: String, cents: Int) -> SimplifiedDebt {
+        SimplifiedDebt(from: DebtMember(id: fromId, name: fromName, avatarUrl: ""),
+                       to: DebtMember(id: toId, name: toName, avatarUrl: ""), amountCents: cents)
     }
 }
 

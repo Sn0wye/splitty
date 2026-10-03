@@ -8,13 +8,10 @@ import SwiftUI
 /// Shows one payment and opens the shared amount screen when it is edited.
 struct SettlementDetailView: View {
     let settlement: Expense
-    let members: [GroupMember]
     let currentUserId: Int
-    let onChanged: () -> Void
-    let onDeleted: () -> Void
+    @ObservedObject var session: GroupSession
 
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var appState: AppState
     @State private var showingDeleteConfirmation = false
     @State private var showingEditSheet = false
     @State private var isDeleting = false
@@ -74,18 +71,11 @@ struct SettlementDetailView: View {
             }
         }
         .sheet(isPresented: $showingEditSheet) {
-            if let session = appState.groupSessions.current,
-               session.groupId == settlement.groupId {
-                SettleUpSheet(
+            SettleUpSheet(
                 session: session,
-                groupId: settlement.groupId,
-                members: members,
                 currentUserId: currentUserId,
                 settlement: settlement
-            ) { _ in
-                onChanged()
-            }
-            }
+            )
         }
         .confirmationDialog(
             L10n.Settlement.deleteTitle(Money.formatted(amount: settlement.amount), payerName, payeeName),
@@ -122,7 +112,7 @@ struct SettlementDetailView: View {
         if peer.id == currentUserId {
             return MemberDisplay(peer, currentUserId: currentUserId, currentUserLabel: L10n.Common.youLowercase)
         }
-        if let member = members.first(where: { $0.userId == peer.id }) {
+        if let member = session.members.first(where: { $0.userId == peer.id }) {
             return MemberDisplay(member)
         }
         return MemberDisplay(peer, currentUserId: currentUserId, currentUserLabel: L10n.Common.youLowercase)
@@ -147,12 +137,10 @@ struct SettlementDetailView: View {
 
         Task {
             defer { isDeleting = false }
-            guard let deletion = appState.groupSessions.delete(settlement, groupId: settlement.groupId),
-                  await deletion.value else {
-                errorMessage = appState.groupSessions.current?.snapshot.actionErrorMessage
+            if let failureMessage = await session.delete(settlement).value.failureMessage {
+                errorMessage = failureMessage
                 return
             }
-            onDeleted()
             dismiss()
         }
     }

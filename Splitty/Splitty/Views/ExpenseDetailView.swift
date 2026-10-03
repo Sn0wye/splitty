@@ -12,8 +12,7 @@ struct ExpenseDetailView: View {
     let members: [GroupMember]
     let currentUserId: Int
     let timelineExpenses: [Expense]
-    let onChanged: () -> Void
-    let onDeleted: () -> Void
+    var onMoneyWrite: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
@@ -113,7 +112,7 @@ struct ExpenseDetailView: View {
                 timelineExpenses: timelineExpenses
             ) { saved in
                 appState.groupSessions.report(.expenseEdited(saved), groupId: expense.groupId)
-                onChanged()
+                onMoneyWrite?()
                 dismiss()
             }
         }
@@ -179,12 +178,12 @@ struct ExpenseDetailView: View {
 
         Task {
             defer { isDeleting = false }
-            guard let deletion = appState.groupSessions.delete(expense, groupId: expense.groupId),
-                  await deletion.value else {
-                errorMessage = appState.groupSessions.current?.snapshot.actionErrorMessage
+            let outcome = await appState.groupSessions.delete(expense, groupId: expense.groupId).value
+            if let failureMessage = outcome.failureMessage {
+                errorMessage = failureMessage
                 return
             }
-            onDeleted()
+            onMoneyWrite?()
             dismiss()
         }
     }

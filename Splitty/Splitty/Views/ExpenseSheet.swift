@@ -26,7 +26,6 @@ struct ExpenseSheet: View {
 
     private let onSaved: (Expense) -> Void
     private let timelineExpenses: [Expense]
-    private let loadTimelineExpenses: (() async throws -> [Expense])?
 
     init(
         groupId: Int,
@@ -34,7 +33,6 @@ struct ExpenseSheet: View {
         currentUserId: Int,
         expense: Expense? = nil,
         timelineExpenses: [Expense] = [],
-        loadTimelineExpenses: (() async throws -> [Expense])? = nil,
         onSaved: @escaping (Expense) -> Void
     ) {
         _viewModel = StateObject(wrappedValue: ExpenseFormViewModel(
@@ -45,7 +43,6 @@ struct ExpenseSheet: View {
             timelineExpenses: timelineExpenses
         ))
         self.timelineExpenses = timelineExpenses
-        self.loadTimelineExpenses = loadTimelineExpenses
         self.onSaved = onSaved
     }
 
@@ -61,15 +58,6 @@ struct ExpenseSheet: View {
         .sensoryFeedback(.success, trigger: savedCount)
         .onChange(of: timelineExpenses.map(\.category)) { _, _ in
             viewModel.updateTimelineExpenses(timelineExpenses)
-        }
-        .task {
-            guard let loadTimelineExpenses else { return }
-            do {
-                let expenses = try await loadTimelineExpenses()
-                if !Task.isCancelled { viewModel.updateTimelineExpenses(expenses) }
-            } catch {
-                // Suggestions are optional; saving an expense must still work offline.
-            }
         }
     }
 

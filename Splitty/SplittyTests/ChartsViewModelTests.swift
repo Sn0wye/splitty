@@ -318,23 +318,31 @@ struct ChartsViewModelTests {
 @MainActor
 /// Charts is always reachable; without an expense it asks for one instead of charting.
 struct ChartsEmptyGroupTests {
-    @Test func aGroupWithOnlySettlementsAsksForAnExpense() {
-        let viewModel = GroupViewModel()
-        viewModel.insert(TestExpense.make(id: 1, paidBy: 1, amount: 10, splitAmounts: [1: 10, 2: -10], type: .payment))
-
-        #expect(!viewModel.hasExpenses)
+    @Test func aGroupWithOnlySettlementsAsksForAnExpense() async {
+        let data = ControlledGroupData()
+        data.autoRelease = true
+        data.expensesForCall = { _ in
+            [TestExpense.make(id: 1, paidBy: 1, amount: 10, splitAmounts: [1: 10, 2: -10], type: .payment)]
+        }
+        let session = GroupSession(groupId: 1, dataSource: data.source())
+        await session.appear().value
+        #expect(!session.hasExpenses)
     }
 
-    @Test func oneExpenseIsEnoughToChart() {
-        let viewModel = GroupViewModel()
-        viewModel.insert(TestExpense.make(id: 1, paidBy: 1, amount: 10, splitAmounts: [1: 10, 2: -10], type: .payment))
-        viewModel.insert(TestExpense.make(id: 2, paidBy: 1, amount: 30, splitAmounts: [1: 15, 2: 15]))
-
-        #expect(viewModel.hasExpenses)
+    @Test func oneExpenseIsEnoughToChart() async {
+        let data = ControlledGroupData()
+        data.autoRelease = true
+        data.expensesForCall = { _ in
+            [TestExpense.make(id: 1, paidBy: 1, amount: 10, splitAmounts: [1: 10, 2: -10], type: .payment),
+             TestExpense.make(id: 2, paidBy: 1, amount: 30, splitAmounts: [1: 15, 2: 15])]
+        }
+        let session = GroupSession(groupId: 1, dataSource: data.source())
+        await session.appear().value
+        #expect(session.hasExpenses)
     }
 
     @Test func anEmptyGroupAsksForAnExpense() {
-        #expect(!GroupViewModel().hasExpenses)
+        #expect(!GroupSession(groupId: 1).hasExpenses)
     }
 }
 
