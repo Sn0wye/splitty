@@ -20,10 +20,13 @@ struct SplitConfigurationView: View {
             modeSection
             participantSection
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.expenseBackground)
+        .toolbarBackground(Color.expenseBackground, for: .navigationBar)
         .navigationTitle(Text(L10n.Split.title))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
+            ToolbarItem(placement: .confirmationAction) {
                 // Save is what an unfinished split blocks; leaving this screen is not. The
                 // mode in effect is whichever is selected on the way out.
                 Button { dismiss() } label: { Text(L10n.Common.done) }
@@ -189,6 +192,9 @@ private struct PayerPickerView: View {
             }
             .accessibilityIdentifier("split.payer.\(member.userId)")
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.expenseBackground)
+        .toolbarBackground(Color.expenseBackground, for: .navigationBar)
         .navigationTitle(Text(L10n.Split.paidBy))
         .navigationBarTitleDisplayMode(.inline)
     }

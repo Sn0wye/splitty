@@ -51,13 +51,13 @@ struct SettlementDetailView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Color("background"))
         .navigationTitle(Text(L10n.Settlement.title))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // Same order as an expense's detail: delete, then Edit at the trailing edge.
             ToolbarItemGroup(placement: .navigationBarTrailing) {
-                Button { showingEditSheet = true } label: { Text(L10n.Common.edit) }
-                    .disabled(isDeleting)
-
                 if isDeleting {
                     ProgressView()
                 } else {
@@ -68,6 +68,10 @@ struct SettlementDetailView: View {
                     }
                     .accessibilityLabel(L10n.Settlement.deleteA11y)
                 }
+
+                Button { showingEditSheet = true } label: { Image(systemName: "pencil") }
+                    .accessibilityLabel(L10n.Settlement.edit)
+                    .disabled(isDeleting)
             }
         }
         .sheet(isPresented: $showingEditSheet) {

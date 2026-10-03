@@ -82,6 +82,8 @@ struct ExpenseDetailView: View {
             }
 
         }
+        .scrollContentBackground(.hidden)
+        .background(Color("background"))
         .navigationTitle(Text(L10n.Expense.title))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -99,7 +101,8 @@ struct ExpenseDetailView: View {
             }
 
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button { showingEditSheet = true } label: { Text(L10n.Common.edit) }
+                Button { showingEditSheet = true } label: { Image(systemName: "pencil") }
+                    .accessibilityLabel(L10n.Expense.editExpense)
                     .disabled(isDeleting)
             }
         }

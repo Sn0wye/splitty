@@ -45,16 +45,15 @@ struct JoinGroupSheet: View {
             .navigationTitle(Text(L10n.Invite.joinTitle))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: { Text(L10n.Common.cancel) }
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if viewModel.isRedeeming {
+                // No Join button: the code submits itself on its last character, and a
+                // failed code clears, so a button here could only ever be disabled.
+                if viewModel.isRedeeming {
+                    ToolbarItem(placement: .confirmationAction) {
                         ProgressView()
-                    } else {
-                        Button { } label: { Text(L10n.Invite.join) }
-                            .disabled(true)
                     }
                 }
             }
