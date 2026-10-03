@@ -174,6 +174,16 @@ headings (Food and drink, Transportation, …) for display only; the heading is 
 `general` means nobody chose. `payment` is the category every settlement carries.
 _Avoid_: tag, label, type (`ExpenseType` already owns "type")
 
+**Recurring expense**:
+A rule that adds an ordinary expense to a group each time it comes due, weekly, fortnightly,
+monthly, or yearly from a start date of today or later, until it is stopped. Creating one adds
+its first expense at once, on the start date; after that, nothing is added before it is due.
+Each added expense is a normal expense. Editing or deleting one asks whether
+the change applies to that expense only, or to it and every one after it. Participants are
+fixed: someone who joins later is not included until the recurring expense is edited. Only
+expenses recur, never settlements.
+_Avoid_: subscription, template, schedule, series, occurrence, revision
+
 **Group spend**:
 The sum of a group's expense totals, each at its full amount. Settlements are not spend and
 never count toward it.
