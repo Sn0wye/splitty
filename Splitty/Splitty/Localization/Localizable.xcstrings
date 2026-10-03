@@ -3947,19 +3947,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dividir"
+            "value" : "División"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Répartir"
+            "value" : "Répartition"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dividir"
+            "value" : "Divisão"
           }
         }
       }
@@ -3976,19 +3976,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dividir por importes"
+            "value" : "Dividido por importes"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Répartir selon les montants"
+            "value" : "Réparti selon les montants"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dividir por valores"
+            "value" : "Dividido por valores"
           }
         }
       }
@@ -4005,19 +4005,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dividir por porcentajes"
+            "value" : "Dividido por porcentajes"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Répartir selon les pourcentages"
+            "value" : "Réparti selon les pourcentages"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dividir por porcentagens"
+            "value" : "Dividido por porcentagens"
           }
         }
       }
@@ -4034,19 +4034,19 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dividir a partes iguales"
+            "value" : "Dividido a partes iguales"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Répartir équitablement"
+            "value" : "Réparti équitablement"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dividir igualmente"
+            "value" : "Dividido igualmente"
           }
         }
       }
