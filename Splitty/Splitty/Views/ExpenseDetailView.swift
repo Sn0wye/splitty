@@ -119,10 +119,9 @@ struct ExpenseDetailView: View {
         }
         // Every member may delete anything, so the confirmation names what is going, not
         // who recorded it.
-        .confirmationDialog(
+        .alert(
             L10n.Expense.deleteTitle(expense.description),
-            isPresented: $showingDeleteConfirmation,
-            titleVisibility: .visible
+            isPresented: $showingDeleteConfirmation
         ) {
             Button(role: .destructive) { delete() } label: { Text(L10n.Common.delete) }
             Button(role: .cancel) {} label: { Text(L10n.Common.cancel) }
