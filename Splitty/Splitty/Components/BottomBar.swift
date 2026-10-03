@@ -8,6 +8,9 @@ import SwiftUI
 /// Flat tab bar pinned to the bottom edge. The tabs stay monochrome so the add button, in
 /// Splitty Coral, is the one thing on the bar with colour.
 struct BottomBar: View {
+    /// How far the add button rises above the bar's border, over the content.
+    static let overhang: CGFloat = 18
+
     @Binding var selection: AppTab
     let isAdding: Bool
     let isAddEnabled: Bool
@@ -24,15 +27,17 @@ struct BottomBar: View {
         .frame(height: 60, alignment: .bottom)
         .padding(.bottom, 4)
         .padding(.horizontal, 8)
+        // Fill only from the border down: the strip above it, beside the raised add
+        // button, stays clear so content scrolling under the bar shows through.
         .background(alignment: .top) {
-            ZStack(alignment: .top) {
-                Color("background")
-                Rectangle()
-                    .fill(Color("border"))
-                    .frame(height: 0.5)
-                    .padding(.top, 18)
-            }
-            .ignoresSafeArea(edges: .bottom)
+            Color("background")
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(Color("border"))
+                        .frame(height: 0.5)
+                }
+                .padding(.top, Self.overhang)
+                .ignoresSafeArea(edges: .bottom)
         }
         // Selection, not impact: moving between tabs is a picker landing on a detent, and
         // the system has a texture for exactly that.
@@ -43,7 +48,7 @@ struct BottomBar: View {
         BottomBarItem(tab: tab, isSelected: tab == selection) {
             selection = tab
         }
-        .padding(.top, 18)
+        .padding(.top, Self.overhang)
     }
 
     private var addButton: some View {

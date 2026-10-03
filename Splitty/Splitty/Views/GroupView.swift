@@ -405,6 +405,8 @@ struct GroupView: View {
         }
         .scrollIndicators(.hidden)
         .contentMargins(.horizontal, 20, for: .scrollContent)
+        // Opt out of the tab bar's bottom margin, which would only make the row taller.
+        .contentMargins(.vertical, 0, for: .scrollContent)
         .padding(.vertical, 20)
     }
     

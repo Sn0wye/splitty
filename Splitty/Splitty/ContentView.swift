@@ -17,9 +17,9 @@ struct ContentView: View {
     @State private var addErrorMessage: String?
 
     var body: some View {
-        // A VStack, not a safeAreaInset: an inset is something content draws under,
-        // and a list does exactly that, taking anything anchored to its bottom edge
-        // (the add button) behind the bar with it. Stacked, the bar owns its space.
+        // A VStack, not a safeAreaInset: the inset never reaches scroll views inside a
+        // NavigationStack, so lists would end under the bar. Stacked, the bar owns its
+        // space and only overhangs the content by the strip beside the add button.
         VStack(spacing: 0) {
             ZStack {
                 // Keep the list and its header alive while viewing a group. Recreating
@@ -43,6 +43,9 @@ struct ContentView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // Rows scroll on under the overhang, but the last one still comes to rest
+            // above the add button.
+            .contentMargins(.bottom, BottomBar.overhang, for: .scrollContent)
 
             BottomBar(
                 selection: $appState.selectedTab,
@@ -51,6 +54,7 @@ struct ContentView: View {
             ) {
                 Task { await beginAddingExpense() }
             }
+            .padding(.top, -BottomBar.overhang)
         }
         .background(Color("background").ignoresSafeArea())
         .environmentObject(appState)
