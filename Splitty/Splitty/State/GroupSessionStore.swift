@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 struct GroupLiveBalance: Equatable {
@@ -11,6 +12,7 @@ final class GroupSessionStore: ObservableObject {
     @Published private(set) var signedInUserId: Int?
     var currentGroupId: Int? { current?.groupId }
     private let defaults: UserDefaults
+    private var observations: [Int: AnyCancellable] = [:]
     private let dataSource: () -> GroupDataSource
     private var sessions: [Int: GroupSession] = [:]
     private var recentGroupIds: [Int] = []
@@ -36,7 +38,8 @@ final class GroupSessionStore: ObservableObject {
     func session(for groupId: Int) -> GroupSession? { sessions[groupId] }
 
     func liveBalance(for groupId: Int) -> GroupLiveBalance? {
-        sessions[groupId]?.liveBalance
+        guard let session = sessions[groupId], let cents = session.netBalanceCents else { return nil }
+        return GroupLiveBalance(netBalanceCents: cents, balancesPending: session.balancesPending)
     }
 
     private func persistCurrentGroup() {
@@ -57,17 +60,22 @@ final class GroupSessionStore: ObservableObject {
         }
         let session = GroupSession(groupId: groupId, seed: seed, dataSource: dataSource())
         sessions[groupId] = session
+        observations[groupId] = session.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
         recentGroupIds.append(groupId)
         current = session
         persistCurrentGroup()
         if recentGroupIds.count > cacheLimit {
             let oldest = recentGroupIds.removeFirst()
+            observations.removeValue(forKey: oldest)
             sessions.removeValue(forKey: oldest)?.discard()
         }
         return session
     }
 
     func remove(_ groupId: Int) {
+        observations.removeValue(forKey: groupId)
         sessions.removeValue(forKey: groupId)?.discard()
         recentGroupIds.removeAll { $0 == groupId }
         if current?.groupId == groupId {
@@ -78,6 +86,7 @@ final class GroupSessionStore: ObservableObject {
 
     func discard() {
         for session in sessions.values { session.discard() }
+        observations.removeAll()
         sessions.removeAll()
         recentGroupIds.removeAll()
         current = nil

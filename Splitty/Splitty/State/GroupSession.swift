@@ -118,19 +118,15 @@ final class GroupSession: ObservableObject {
         self.dataSource = dataSource
     }
 
+    /// A failed read cannot replace balances already on screen, the same rule the timeline
+    /// follows.
     func balanceState(currentUserId: Int) -> BalancesDisplayState {
+        if let latestSummary { return BalancesDisplayState(summary: latestSummary, currentUserId: currentUserId) }
         if let summaryErrorMessage { return .error(summaryErrorMessage) }
-        guard let latestSummary else { return .loading }
-        return BalancesDisplayState(summary: latestSummary, currentUserId: currentUserId)
+        return .loading
     }
 
     var netBalanceCents: Int? { group?.netBalanceCents }
-
-    /// The number a groups-list card shows while this session is alive, so the card and the
-    /// header agree after a write.
-    var liveBalance: GroupLiveBalance? {
-        netBalanceCents.map { GroupLiveBalance(netBalanceCents: $0, balancesPending: balancesPending) }
-    }
 
     @discardableResult
     func appear() -> Task<Void, Never> {
@@ -355,11 +351,7 @@ final class GroupSession: ObservableObject {
         // A newer load started while this one was in flight. Its snapshot is the current
         // one, and an older answer arriving late must not replace it.
         guard generation == loadGeneration, !Task.isCancelled else { return nil }
-        if let summaryError {
-            reportSummaryFailure(summaryError)
-        } else {
-            summaryErrorMessage = nil
-        }
+        summaryErrorMessage = summaryError
 
         // A failed background read cannot replace a timeline already on screen.
         errorMessage = hasLoadedExpenses ? "" : (expensesError ?? (group == nil ? groupError : nil) ?? "")
@@ -438,19 +430,13 @@ final class GroupSession: ObservableObject {
             summary = try await dataSource.summary(groupId)
             summaryErrorMessage = nil
         } catch {
-            if !error.isCancellation { reportSummaryFailure(error.displayMessage) }
+            if !error.isCancellation { summaryErrorMessage = error.displayMessage }
             throw error
         }
         latestSummary = summary
         balancesPending = summary.balancesPending || needsPostWriteSettlement
         if balancesPending { startBalanceWatch() }
         return summary
-    }
-
-    /// A failed read cannot replace balances already on screen, the same rule the timeline
-    /// follows. Only a recomputation the member asked for reports over them.
-    private func reportSummaryFailure(_ message: String) {
-        if latestSummary == nil { summaryErrorMessage = message }
     }
 
     private func watchBalance(generation: Int) async {
