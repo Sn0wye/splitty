@@ -95,8 +95,6 @@ struct GroupsView: View {
                 .refreshable {
                     if !isReview { await viewModel.loadGroups() }
                 }
-                
-                Spacer()
             }
             .background(Color("background").ignoresSafeArea())
             .toolbar {
