@@ -196,7 +196,7 @@ struct SettleUpSheet: View {
         let calendar = Calendar.current
         if calendar.isDateInToday(viewModel.date) { return L10n.Common.today }
         if calendar.isDateInYesterday(viewModel.date) { return L10n.Common.yesterday }
-        return viewModel.date.formatted(.dateTime.day().month(.abbreviated).year())
+        return viewModel.date.formatted(.dateTime.day().month(.abbreviated).year().inAppLanguage())
     }
 
     private func handle(key: KeypadKey) {

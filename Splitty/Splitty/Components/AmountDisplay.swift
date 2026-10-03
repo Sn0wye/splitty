@@ -17,14 +17,13 @@ struct AmountDisplay: View {
     var currencySymbol: String = "$"
     var size: CGFloat = 76
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 0) {
             ForEach(glyphs, id: \.id) { glyph in
                 Text(glyph.character)
-                    .transition(.asymmetric(
-                        insertion: AnyTransition(BlurPushTransition(from: .below)),
-                        removal: AnyTransition(BlurPushTransition(from: .above))
-                    ))
+                    .transition(glyphTransition)
             }
 
             // Trailing, and the same size as the digits: the symbol is part of the number
@@ -37,7 +36,20 @@ struct AmountDisplay: View {
         .foregroundStyle(Color.expenseForeground)
         .lineLimit(1)
         .minimumScaleFactor(0.4)
-        .animation(.spring(response: 0.34, dampingFraction: 0.72), value: text)
+        .animation(
+            reduceMotion ? .easeOut(duration: 0.15) : .spring(response: 0.34, dampingFraction: 0.72),
+            value: text
+        )
+    }
+
+    /// Reduce Motion keeps the digit changing visibly, as a fade, without the travel.
+    private var glyphTransition: AnyTransition {
+        reduceMotion
+            ? .opacity
+            : .asymmetric(
+                insertion: AnyTransition(BlurPushTransition(from: .below)),
+                removal: AnyTransition(BlurPushTransition(from: .above))
+            )
     }
 
     /// Identity is position **and** character: appending leaves the earlier glyphs alone,

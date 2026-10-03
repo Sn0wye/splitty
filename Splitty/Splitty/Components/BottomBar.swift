@@ -24,7 +24,8 @@ struct BottomBar: View {
             tab(.people)
             tab(.settings)
         }
-        .frame(height: 60, alignment: .bottom)
+        // Room above the labels so the icons don't sit against the border.
+        .frame(height: 64, alignment: .bottom)
         .padding(.bottom, 4)
         .padding(.horizontal, 8)
         // Fill only from the border down: the strip above it, beside the raised add
@@ -70,6 +71,8 @@ struct BottomBar: View {
             .shadow(color: Color("brand").opacity(0.35), radius: 10, y: 4)
         }
         .frame(maxWidth: .infinity)
+        // Lifted by what the bar grew, so the button keeps its overhang.
+        .padding(.bottom, 4)
         .buttonStyle(.pressable(scale: 0.9))
         .disabled(isAdding || !isAddEnabled)
         .accessibilityLabel(L10n.Tabs.addExpense)
@@ -83,16 +86,26 @@ private struct BottomBarItem: View {
     let action: () -> Void
 
     var body: some View {
+        // Labelled, like the system's own bar: an icon alone left two of the four tabs
+        // to guesswork.
         Button(action: action) {
-            Image(systemName: tab.icon)
-                .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
-                .foregroundColor(isSelected ? Color("foreground") : Color("muted-foreground"))
-                .frame(maxWidth: .infinity)
-                .frame(height: 28)
-                .contentShape(Rectangle())
+            VStack(spacing: 2) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
+                    .frame(height: 26)
+
+                Text(tab.title)
+                    .font(.system(size: 10, weight: isSelected ? .semibold : .medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .foregroundColor(isSelected ? Color("foreground") : Color("muted-foreground"))
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
         }
-        .buttonStyle(.pressable(scale: 0.88))
+        .buttonStyle(.pressable(scale: 0.92))
         .accessibilityLabel(tab.title)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .animation(.easeOut(duration: 0.15), value: isSelected)
     }
 }

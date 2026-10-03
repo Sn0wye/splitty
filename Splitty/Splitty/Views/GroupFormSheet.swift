@@ -47,14 +47,16 @@ struct GroupFormSheet: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color("background"))
             .navigationTitle(viewModel.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: { Text(L10n.Common.cancel) }
                 }
                 
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     if viewModel.isSaving {
                         ProgressView()
                     } else {
