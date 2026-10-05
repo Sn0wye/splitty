@@ -256,7 +256,7 @@ struct SplitConfiguration: Equatable {
     func summary(members: [GroupMember], currentUserId: Int) -> String {
         let payer = payerId == currentUserId
             ? L10n.Split.you
-            : members.first { $0.userId == payerId }?.name ?? L10n.Split.someoneElse
+            : members.first { $0.userId == payerId }.map { MemberDisplay($0).name } ?? L10n.Split.someoneElse
 
         switch mode {
         case .custom:
@@ -276,10 +276,12 @@ struct SplitConfiguration: Equatable {
             if participants.count == 1, let onlyId = participants.first, onlyId != payerId {
                 let debtor = onlyId == currentUserId
                     ? L10n.Split.youOwe
-                    : L10n.Split.theyOwe(members.first { $0.userId == onlyId }?.name ?? L10n.Split.they)
+                    : L10n.Split.theyOwe(members.first { $0.userId == onlyId }.map { MemberDisplay($0).name } ?? L10n.Split.they)
                 return L10n.Split.summaryFullAmount(payer, debtor)
             }
-            if participants.count == members.count || members.isEmpty {
+            // A removed member left out is not someone left out: they can't be billed.
+            let splittable = members.filter { !$0.isRemoved || participants.contains($0.userId) }
+            if participants.count == splittable.count || members.isEmpty {
                 return L10n.Split.summaryEqually(payer)
             }
             return L10n.Split.summaryEquallyBetween(payer, participants.count)

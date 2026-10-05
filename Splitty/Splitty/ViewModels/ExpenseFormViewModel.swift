@@ -40,6 +40,9 @@ class ExpenseFormViewModel: ObservableObject {
     private var percentages: [Int: Decimal] = [:]
 
     private let existingExpenseId: Int?
+    /// Users already on the expense being edited. A removed member among them stays on
+    /// screen: the server, not the form, decides whether keeping them is allowed.
+    private let existingParticipantIds: Set<Int>
 
     init(
         groupId: Int,
@@ -53,6 +56,7 @@ class ExpenseFormViewModel: ObservableObject {
         self.currentUserId = currentUserId
         self.timelineExpenses = timelineExpenses
         self.existingExpenseId = expense?.id
+        self.existingParticipantIds = Set(expense?.splits.map(\.userId) ?? [])
 
         if let expense {
             amount = AmountExpression(cents: Money.cents(from: expense.amount))
@@ -66,11 +70,12 @@ class ExpenseFormViewModel: ObservableObject {
             description = ""
             date = Date()
             category = .general
+            let billableMemberIds = Set(members.filter { !$0.isRemoved }.map(\.userId))
             configuration = SplitConfiguration(
                 payerId: currentUserId,
-                mode: .equal(participants: Set(members.map(\.userId)))
+                mode: .equal(participants: billableMemberIds)
             )
-            equalParticipants = Set(members.map(\.userId))
+            equalParticipants = billableMemberIds
         }
 
         // Editing loads both typed modes from what is stored; a new expense starts them
@@ -103,6 +108,14 @@ class ExpenseFormViewModel: ObservableObject {
     var title: String { isEditing ? L10n.Expense.editExpense : L10n.Expense.newExpense }
 
     var memberIds: [Int] { members.map(\.userId) }
+
+    /// Removed members can't pay for anything new.
+    var payerChoices: [GroupMember] { members.filter { !$0.isRemoved } }
+
+    /// Live members, plus any removed member whose share is already on the expense.
+    var participantChoices: [GroupMember] {
+        members.filter { !$0.isRemoved || existingParticipantIds.contains($0.userId) }
+    }
 
     var categorySuggestions: [ExpenseCategory] {
         ExpenseCategory.chipSuggestions(from: timelineExpenses, selected: category)
@@ -177,9 +190,9 @@ class ExpenseFormViewModel: ObservableObject {
     }
 
     func name(for userId: Int) -> String {
-        userId == currentUserId
-            ? L10n.Common.you
-            : members.first { $0.userId == userId }?.name ?? L10n.Common.unknown
+        guard userId != currentUserId else { return L10n.Common.you }
+        return members.first { $0.userId == userId }.map { MemberDisplay($0).name }
+            ?? L10n.Common.unknown
     }
 
     func splits() -> [ExpenseSplitRequest] {

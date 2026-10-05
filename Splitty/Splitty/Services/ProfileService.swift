@@ -55,6 +55,22 @@ final class ProfileService {
         return profile.user
     }
 
+    /// Reversible: signing in again reactivates the same account.
+    func deactivateAccount() async throws {
+        let _: EmptyResponse = try await APIClient.shared.request(
+            endpoint: "/profile/deactivate",
+            method: .POST
+        )
+    }
+
+    /// Irreversible: the server replaces the user with a `[removed]` tombstone.
+    func deleteAccount() async throws {
+        let _: EmptyResponse = try await APIClient.shared.request(
+            endpoint: "/profile",
+            method: .DELETE
+        )
+    }
+
     func createAvatarUpload() async throws -> AvatarUpload {
         try await APIClient.shared.request(
             endpoint: "/profile/avatar/upload-url",

@@ -63,6 +63,36 @@ enum L10n {
         static var logOutConfirm: String {
             text("settings.log_out_confirm", default: "Are you sure you want to log out?")
         }
+        static var closeAccount: String { text("settings.close_account", default: "Close account") }
+        static var deactivateAccount: String {
+            text("settings.deactivate_account", default: "Deactivate account")
+        }
+        static var deactivateTitle: String {
+            text("settings.deactivate_title", default: "Deactivate your account?")
+        }
+        static var deactivateMessage: String {
+            text(
+                "settings.deactivate_message",
+                default: "You'll be signed out. Sign in again anytime to reactivate. Your groups and balances stay as they are."
+            )
+        }
+        static var deactivate: String { text("settings.deactivate", default: "Deactivate") }
+        static var deleteAccount: String { text("settings.delete_account", default: "Delete account") }
+        static var deleteTitle: String {
+            text("settings.delete_title", default: "Delete your account?")
+        }
+        static var deleteMessage: String {
+            text(
+                "settings.delete_message",
+                default: "Your profile is deleted permanently. Expenses you shared stay visible to your groups as Removed member. This can't be undone."
+            )
+        }
+        static var accountDeleted: String {
+            text("settings.account_deleted", default: "Your account was deleted")
+        }
+        static var closeAccountFailed: String {
+            text("settings.close_account_failed", default: "Couldn't close your account")
+        }
     }
 
     enum Profile {

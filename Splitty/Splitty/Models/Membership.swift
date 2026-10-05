@@ -24,7 +24,9 @@ struct MembershipError: Equatable {
 
 /// Stable presentation data for users retained on historical expense rows.
 struct MemberDisplay: Equatable {
-    static let removed = MemberDisplay(name: "[removed]", avatarURL: nil)
+    /// The exact name every projection gives a tombstone.
+    static let tombstoneName = "[removed]"
+    static let removed = MemberDisplay(name: tombstoneName, avatarURL: nil)
 
     let userID: Int?
     let name: String
@@ -33,7 +35,7 @@ struct MemberDisplay: Equatable {
 
     init(name: String, avatarURL: URL?, userID: Int? = nil) {
         self.userID = userID
-        isRemoved = name == "[removed]"
+        isRemoved = name == Self.tombstoneName
         self.name = isRemoved ? L10n.Errors.removedMember : name
         self.avatarURL = isRemoved ? nil : avatarURL
     }
@@ -62,4 +64,10 @@ struct MemberDisplay: Equatable {
         guard let currentUser, userID == currentUser.id else { return self }
         return MemberDisplay(currentUser)
     }
+}
+
+extension GroupMember {
+    /// A tombstone, kept in the group only to carry an unsettled balance. It can be paid,
+    /// but it can't be billed: the server refuses an expense that includes it.
+    var isRemoved: Bool { name == MemberDisplay.tombstoneName }
 }

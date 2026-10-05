@@ -182,16 +182,21 @@ private struct MemberDetailSheet: View {
     @State private var errorMessage: String?
 
     var body: some View {
+        let display = MemberDisplay(member)
+
         VStack(alignment: .leading, spacing: 20) {
             HStack(spacing: 14) {
-                MemberAvatar(display: MemberDisplay(member), size: 52)
+                MemberAvatar(display: display, size: 52)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(member.name)
+                    Text(display.name)
                         .font(.headline)
-                    Text(member.email)
-                        .font(.subheadline)
-                        .foregroundStyle(Color("muted-foreground"))
+                    // A removed member has no email left to show.
+                    if !member.email.isEmpty {
+                        Text(member.email)
+                            .font(.subheadline)
+                            .foregroundStyle(Color("muted-foreground"))
+                    }
                 }
             }
 
