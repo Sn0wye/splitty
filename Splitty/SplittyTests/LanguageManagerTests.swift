@@ -113,9 +113,9 @@ struct L10nFormattingTests {
     } }
 
     @Test func countsPickTheirPluralFromTheCatalog() { withAppLanguage(.english) {
-        #expect(L10n.Invite.members(1) == "1 member")
-        #expect(L10n.Invite.members(0) == "0 members")
-        #expect(L10n.Invite.members(3) == "3 members")
+        #expect(L10n.Charts.expenseCount(1) == "1 expense")
+        #expect(L10n.Charts.expenseCount(0) == "0 expenses")
+        #expect(L10n.Charts.expenseCount(3) == "3 expenses")
         #expect(L10n.Split.summaryEquallyBetween("Ana", 1) == "Paid by Ana and split equally between 1 person")
         #expect(L10n.Split.summaryEquallyBetween("Ana", 4) == "Paid by Ana and split equally between 4 people")
     } }
@@ -124,18 +124,18 @@ struct L10nFormattingTests {
     /// which is the point of keeping categories in the catalog.
     @Test func eachLanguagePluralizesByItsOwnRules() {
         withAppLanguage(.brazilianPortuguese) {
-            #expect(L10n.Invite.members(1) == "1 membro")
-            #expect(L10n.Invite.members(3) == "3 membros")
+            #expect(L10n.Charts.expenseCount(1) == "1 despesa")
+            #expect(L10n.Charts.expenseCount(3) == "3 despesas")
             #expect(L10n.Split.summaryEquallyBetween("Ana", 1) == "Pago por Ana e dividido igualmente entre 1 pessoa")
         }
         withAppLanguage(.spanish) {
-            #expect(L10n.Invite.members(1) == "1 miembro")
-            #expect(L10n.Invite.members(3) == "3 miembros")
+            #expect(L10n.Charts.expenseCount(1) == "1 gasto")
+            #expect(L10n.Charts.expenseCount(3) == "3 gastos")
         }
         withAppLanguage(.french) {
-            #expect(L10n.Invite.members(0) == "0 membre")
-            #expect(L10n.Invite.members(1) == "1 membre")
-            #expect(L10n.Invite.members(3) == "3 membres")
+            #expect(L10n.Charts.expenseCount(0) == "0 dépense")
+            #expect(L10n.Charts.expenseCount(1) == "1 dépense")
+            #expect(L10n.Charts.expenseCount(3) == "3 dépenses")
         }
     }
 

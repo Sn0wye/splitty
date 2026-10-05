@@ -23,14 +23,6 @@
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
-			<key>CFBundleURLName</key>
-			<string>$(PRODUCT_BUNDLE_IDENTIFIER).invite</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>splitty</string>
-			</array>
-		</dict>
-		<dict>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>com.googleusercontent.apps.978511957932-8f4eqisf6kb01dr8d4ev8s1sgk8ntle5</string>
@@ -60,8 +52,6 @@
 	</dict>
 	<key>SplittyAPIBaseURL</key>
 	<string>$(SPLITTY_API_BASE_URL)</string>
-	<key>SplittyInviteHost</key>
-	<string>$(SPLITTY_INVITE_HOST)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

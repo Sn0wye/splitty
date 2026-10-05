@@ -587,6 +587,8 @@ enum L10n {
         static var filterHint: String {
             text("charts.filter_hint", default: "Filters biggest expenses to this category")
         }
+        /// Plural category is chosen by the catalog, not by Swift, so locales with
+        /// more than two forms stay correct without touching this call site.
         static func expenseCount(_ count: Int) -> String {
             text("charts.expense_count", default: "\(count) expenses")
         }
@@ -640,19 +642,6 @@ enum L10n {
                 default: "Enter the six-character invite code shared by a group member."
             )
         }
-        static var join: String { text("invite.join", default: "Join") }
-        static var checking: String { text("invite.checking", default: "Checking invite…") }
-        static var groupInvite: String { text("invite.group_invite", default: "Group invite") }
-        static func invitedBy(_ name: String) -> String {
-            format("invite.invited_by", default: "Invited by %@", name)
-        }
-        static var alreadyMember: String {
-            text("invite.already_member", default: "You're already a member of this group.")
-        }
-        static var openGroup: String { text("invite.open_group", default: "Open group") }
-        static var invalidLink: String {
-            text("invite.invalid_link", default: "This invite link isn't valid. Ask for a new one.")
-        }
         static var invalidCode: String {
             text("invite.invalid_code", default: "That invite code isn't valid.")
         }
@@ -664,12 +653,6 @@ enum L10n {
         }
         static var tooMany: String {
             text("invite.too_many", default: "Too many attempts. Wait a minute and try again.")
-        }
-        static var linkAlert: String { text("invite.link_alert", default: "Invite link") }
-        /// Plural category is chosen by the catalog, not by Swift, so locales with
-        /// more than two forms stay correct without touching this call site.
-        static func members(_ count: Int) -> String {
-            text("invite.members", default: "\(count) members")
         }
         static var codeHint: String {
             text("invite.code_hint", default: "Submits automatically after six characters")
