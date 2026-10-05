@@ -288,11 +288,20 @@ iOS gets result.serverAuthCode from the Google Sign-In SDK
 API exchanges it at oauth2.googleapis.com/token with the *Web* client id + secret
   → validates the returned id_token
   → upserts User + OAuthAccount
-  → 200 { token, user }
+  → starts a refresh token family
+  → 200 { token, refreshToken, user }
+
+POST /auth/refresh { refreshToken }
+  → revokes the presented row, inserts its replacement in the same family
+  → 200 { token, refreshToken }   or 401 for unknown, expired, revoked or reused
+
+POST /auth/logout { refreshToken }
+  → revokes the token's whole family
+  → 204, for any token or none
 ```
 
 The app never holds the client secret and never sees a Google access or refresh token —
-only a one-time code, then a Splitty JWT. `IGoogleTokenExchanger` is the only component
+only a one-time code, then a Splitty access token and refresh token. `IGoogleTokenExchanger` is the only component
 that talks to Google over the network, which is what makes `OAuthService` testable.
 
 `OAuthAccount` holds one provider identity: `(Provider, Subject)` unique, plus the email
@@ -307,6 +316,37 @@ indexed, so an unverified collision cannot fall back to a second user either.)
 `Name` and `AvatarUrl` come from the Google payload **once, at user creation**. They are
 never overwritten on later sign-ins, or an in-app rename would silently revert. `Name` is
 editable through `PATCH /profile`; `AvatarUrl` is provider-owned and is not.
+
+**Access token**:
+The Splitty JWT, sent as `Authorization: Bearer`. Lives `Jwt:AccessTokenMinutes`
+(default 15) and cannot be revoked, which is why it is short. `LoginResponse` still calls
+it `token`.
+
+**Refresh token**:
+An opaque credential (32 random bytes, base64url) traded at `POST /auth/refresh` for a new
+access token and a new refresh token. Each one works once. Stored only as a SHA-256 hash in
+`RefreshToken`; the raw value is never stored or logged. Expires after
+`Jwt:RefreshTokenDays` (default 90) without a refresh, and each refresh starts that window
+again. The client never reads the expiry.
+_Avoid_: session token, long-lived token
+
+**Family**:
+The chain of refresh tokens from one sign-in on one device. Each sign-in starts a family
+and each rotation adds a row to it. Logout revokes the family, so signing out on one device
+leaves the others signed in.
+_Avoid_: session
+
+**Reuse detection.** Presenting a refresh token that was already revoked revokes every live
+row in its family, then 401s. Two concurrent refreshes with the same token count as reuse,
+because only one can win the conditional update. Unknown, expired, revoked and reused
+tokens all get the same 401 message; logout answers 204 for any token, or none. See
+`docs/adr/0005-short-access-tokens-with-rotating-refresh-tokens.md`.
+
+`OAuthService` and the dev login both call `IRefreshTokenService.IssueAsync`, so every way
+in returns a refresh token. Closing an account ends its refresh tokens too (see Closing an
+account): deactivation revokes them, and deletion deletes the rows, because a tombstone
+keeps the `User` row and the cascade never fires. Refresh also refuses a user who is not
+live.
 
 ## Profiles and avatars
 
@@ -358,12 +398,14 @@ endpoint; hand-rolling SigV4 reimplements a solved problem. Size and type are en
 commit rather than in the signature because an S3 presigned PUT cannot bound a body whose
 length is unknown at signing time.
 
-`POST /auth/dev-login { email }` mints a token for a seeded user with no credential. It
+`POST /auth/dev-login { email }` mints an access token and a refresh token for a seeded user
+with no credential. It
 exists only when the host is Development — `Program.cs` strips `DevAuthController` from
 the application model otherwise, so the route 404s rather than 401s.
 
-JWT bearer, HMAC-SHA256, issued by `JwtTokenIssuer.Issue`. Expiry is `Jwt:ExpiryDays`,
-default 30. Refresh tokens are out of scope.
+JWT bearer, HMAC-SHA256, issued by `JwtTokenIssuer.Issue`. Expiry is
+`Jwt:AccessTokenMinutes`, default 15, validated with a 30-second clock skew; the 5-minute
+default would add a third to the lifetime. Renewal is the refresh token's job (see Auth).
 
 Claims: `NameIdentifier` = user id, `Name` = display name, `Email`, `Sub` = email,
 `token_version` = `User.TokenVersion` (absent on older tokens, read as 0).
@@ -428,11 +470,13 @@ DELETE /profile              204  irreversible and immediate: the user becomes a
 A user is **live** when `DeactivatedAt` and `DeletedAt` are both null. Both actions end
 every session at once, through the per-request lookup described under Auth.
 
-**Deactivation** sets `DeactivatedAt` and bumps `TokenVersion`, nothing else. A
+**Deactivation** sets `DeactivatedAt`, bumps `TokenVersion` and revokes every refresh
+token, nothing else. A
 deactivated user is a member for every purpose, including as payer or participant on new
 expenses, and other members see them as before. Signing in again with Google, by subject
 or by verified-email link, clears `DeactivatedAt` and lands on the same user. The bumped
-version is what keeps the pre-deactivation tokens dead after that. Deactivated accounts
+version and the revoked refresh tokens are what keep the pre-deactivation sessions dead
+after that. Deactivated accounts
 are never purged.
 
 **Deletion** cannot be a hard delete: `Expense.PaidBy` is `Restrict`, and the `Cascade` on
@@ -442,7 +486,7 @@ are never purged.
 1. rewrites the user as `Name = "[removed]"`, `Email = ""`, `AvatarUrl = ""`,
    `AvatarKey = null`, `DeletedAt = now`;
 2. deletes every `OAuthAccount` of the user, so the same Google account signs in as a
-   fresh user;
+   fresh user, and every `RefreshToken`;
 3. drops each membership whose group is not `BalancesPending` and whose net is exactly
    zero, and keeps the rest on the tombstone so invariant 1 holds (a pending group's
    stored net may be stale);
@@ -588,8 +632,8 @@ the same `LedgerCore` the API uses, keyed by email.
 
 Re-running is safe because the command **clears the tables it owns first** — every
 `User`, `Group`, `Expense`, `ExpenseSplit`, `GroupMembership`, `Invite`, `OAuthAccount` and
-`Balance` row. It is a local development reset, not an upsert: anything created by hand in
-the dev database goes with it.
+`Balance` row, and with `User` every `RefreshToken` by cascade. It is a local development
+reset, not an upsert: anything created by hand in the dev database goes with it.
 
 ## Known issues
 

@@ -8,10 +8,11 @@ public class OAuthService(
     IGoogleTokenExchanger tokenExchanger,
     IUserRepository userRepository,
     IOAuthAccountRepository oauthAccountRepository,
-    IJwtTokenIssuer tokenIssuer
+    IJwtTokenIssuer tokenIssuer,
+    IRefreshTokenService refreshTokenService
 ) : IOAuthService
 {
-    public async Task<(User user, string token)> SignInWithGoogleAsync(
+    public async Task<(User user, string token, string refreshToken)> SignInWithGoogleAsync(
         string authCode,
         CancellationToken cancellationToken = default)
     {
@@ -19,7 +20,7 @@ public class OAuthService(
 
         var user = await ResolveUserAsync(identity);
 
-        return (user, tokenIssuer.Issue(user));
+        return (user, tokenIssuer.Issue(user), await refreshTokenService.IssueAsync(user));
     }
 
     private async Task<User> ResolveUserAsync(GoogleIdentity identity)

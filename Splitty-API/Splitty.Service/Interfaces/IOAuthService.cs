@@ -4,5 +4,5 @@ namespace Splitty.Service.Interfaces;
 
 public interface IOAuthService
 {
-    Task<(User user, string token)> SignInWithGoogleAsync(string authCode, CancellationToken cancellationToken = default);
+    Task<(User user, string token, string refreshToken)> SignInWithGoogleAsync(string authCode, CancellationToken cancellationToken = default);
 }

@@ -21,11 +21,12 @@ public class DevAuthController(
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
 
-        var (user, token) = await authService.DevLogin(request.Email);
+        var (user, token, refreshToken) = await authService.DevLogin(request.Email);
 
         return Ok(new LoginResponse
         {
             Token = token,
+            RefreshToken = refreshToken,
             User = user
         });
     }

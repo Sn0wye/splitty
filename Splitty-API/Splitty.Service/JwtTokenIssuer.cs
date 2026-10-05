@@ -36,7 +36,7 @@ public class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssuer
             // UtcNow, not Now: JwtSecurityToken reads `expires` as UTC, so a local
             // timestamp shifts the lifetime by the host's offset — west of UTC that
             // ships already-expired tokens.
-            expires: DateTime.UtcNow.AddDays(jwt.ExpiryDays),
+            expires: DateTime.UtcNow.AddMinutes(jwt.AccessTokenMinutes),
             signingCredentials: credentials
         );
 

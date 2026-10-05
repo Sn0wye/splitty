@@ -16,6 +16,13 @@ public sealed class JwtOptions
 
     public string? Issuer { get; init; }
 
+    /// Lifetime of the Splitty JWT. Short, because an access token cannot be revoked: a
+    /// leaked one is useful until it expires.
     [Range(1, int.MaxValue)]
-    public int ExpiryDays { get; init; } = 30;
+    public int AccessTokenMinutes { get; init; } = 15;
+
+    /// The idle window: a refresh token not traded within this many days expires, and the
+    /// user signs in again. Each refresh starts the window over.
+    [Range(1, int.MaxValue)]
+    public int RefreshTokenDays { get; init; } = 90;
 }
