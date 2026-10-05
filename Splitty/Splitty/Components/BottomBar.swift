@@ -28,6 +28,8 @@ struct BottomBar: View {
         .frame(height: 64, alignment: .bottom)
         .padding(.bottom, 4)
         .padding(.horizontal, 8)
+        .frame(maxWidth: 600)
+        .frame(maxWidth: .infinity)
         // Fill only from the border down: the strip above it, beside the raised add
         // button, stays clear so content scrolling under the bar shows through.
         .background(alignment: .top) {

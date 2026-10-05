@@ -133,6 +133,7 @@ struct LoginView: View {
                 }
                 .padding(.bottom, 50)
             }
+            .frame(maxWidth: 560)
         }
         .fullScreenCover(isPresented: $showingOnboardingReview) {
             OnboardingReviewView()
