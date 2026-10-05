@@ -51,6 +51,15 @@ answers 204 for any token. A different answer would tell an attacker which token
 existed. Logout with no token at all is also 204, because signing out should never show
 the user an error.
 
+## Account closure
+
+ADR 0004 revokes access tokens with a per-request user lookup and a `TokenVersion` bump on
+deactivation. Refresh tokens are covered as well. Deactivating revokes every family the user
+holds, so a lost phone's refresh token cannot mint a token with the new version once the
+user signs in again. Deleting the account deletes the user's `RefreshToken` rows. The cascade
+cannot do this, because the user row survives as a tombstone. Refresh also refuses a
+deactivated or deleted user outright.
+
 ## Not covered
 
 There is no absolute lifetime for a family beyond the sliding window, no purge of expired

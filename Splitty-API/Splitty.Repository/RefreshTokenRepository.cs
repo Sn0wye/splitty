@@ -58,4 +58,11 @@ public class RefreshTokenRepository(ApplicationDbContext context) : IRefreshToke
             .Where(t => t.FamilyId == familyId && t.RevokedAt == null)
             .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.RevokedAt, DateTime.UtcNow));
     }
+
+    public async Task RevokeAllForUserAsync(int userId)
+    {
+        await context.RefreshToken
+            .Where(t => t.UserId == userId && t.RevokedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.RevokedAt, DateTime.UtcNow));
+    }
 }

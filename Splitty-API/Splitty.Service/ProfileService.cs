@@ -10,6 +10,7 @@ namespace Splitty.Service;
 public class ProfileService(
     IUserRepository userRepository,
     IGroupMembershipRepository groupMembershipRepository,
+    IRefreshTokenRepository refreshTokenRepository,
     IAvatarStorage avatarStorage,
     IAvatarResolver avatarResolver,
     ILogger<ProfileService> logger
@@ -106,6 +107,9 @@ public class ProfileService(
         // but the old tokens still carry the old version.
         user.TokenVersion++;
         await userRepository.UpdateAsync(user);
+        // The same for refresh tokens, which would otherwise mint access tokens carrying
+        // the new version as soon as the user signs in again elsewhere.
+        await refreshTokenRepository.RevokeAllForUserAsync(userId);
     }
 
     public async Task DeleteAsync(int userId, CancellationToken cancellationToken = default)

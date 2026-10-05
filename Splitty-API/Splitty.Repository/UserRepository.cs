@@ -83,6 +83,8 @@ public class UserRepository(ApplicationDbContext context): IUserRepository
                 .SetProperty(u => u.UpdatedAt, now));
 
         await context.OAuthAccount.Where(a => a.UserId == id).ExecuteDeleteAsync();
+        // The row survives as a tombstone, so the cascade never fires.
+        await context.RefreshToken.Where(t => t.UserId == id).ExecuteDeleteAsync();
 
         var groupIds = await context.GroupMembership
             .Where(m => m.UserId == id)

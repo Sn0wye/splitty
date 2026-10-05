@@ -34,6 +34,13 @@ public class RefreshTokenService(
             return null;
         }
 
+        // Closing an account already revokes or deletes its tokens. This refuses a closed
+        // account even if one slipped past.
+        if (current.User.DeactivatedAt is not null || current.User.DeletedAt is not null)
+        {
+            return null;
+        }
+
         if (current.RevokedAt is null)
         {
             var (raw, replacement) = Create(current.UserId, current.FamilyId);

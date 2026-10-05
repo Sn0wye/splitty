@@ -343,7 +343,10 @@ tokens all get the same 401 message; logout answers 204 for any token, or none. 
 `docs/adr/0005-short-access-tokens-with-rotating-refresh-tokens.md`.
 
 `OAuthService` and the dev login both call `IRefreshTokenService.IssueAsync`, so every way
-in returns a refresh token. A deleted user's refresh tokens cascade with the row.
+in returns a refresh token. Closing an account ends its refresh tokens too (see Closing an
+account): deactivation revokes them, and deletion deletes the rows, because a tombstone
+keeps the `User` row and the cascade never fires. Refresh also refuses a user who is not
+live.
 
 ## Profiles and avatars
 
@@ -467,11 +470,13 @@ DELETE /profile              204  irreversible and immediate: the user becomes a
 A user is **live** when `DeactivatedAt` and `DeletedAt` are both null. Both actions end
 every session at once, through the per-request lookup described under Auth.
 
-**Deactivation** sets `DeactivatedAt` and bumps `TokenVersion`, nothing else. A
+**Deactivation** sets `DeactivatedAt`, bumps `TokenVersion` and revokes every refresh
+token, nothing else. A
 deactivated user is a member for every purpose, including as payer or participant on new
 expenses, and other members see them as before. Signing in again with Google, by subject
 or by verified-email link, clears `DeactivatedAt` and lands on the same user. The bumped
-version is what keeps the pre-deactivation tokens dead after that. Deactivated accounts
+version and the revoked refresh tokens are what keep the pre-deactivation sessions dead
+after that. Deactivated accounts
 are never purged.
 
 **Deletion** cannot be a hard delete: `Expense.PaidBy` is `Restrict`, and the `Cascade` on
@@ -481,7 +486,7 @@ are never purged.
 1. rewrites the user as `Name = "[removed]"`, `Email = ""`, `AvatarUrl = ""`,
    `AvatarKey = null`, `DeletedAt = now`;
 2. deletes every `OAuthAccount` of the user, so the same Google account signs in as a
-   fresh user;
+   fresh user, and every `RefreshToken`;
 3. drops each membership whose group is not `BalancesPending` and whose net is exactly
    zero, and keeps the rest on the tombstone so invariant 1 holds (a pending group's
    stored net may be stale);

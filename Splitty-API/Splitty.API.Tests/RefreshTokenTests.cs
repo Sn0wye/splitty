@@ -194,6 +194,41 @@ public sealed class RefreshTokenTests
         Assert.Equal(0, await WithDbAsync(db => db.RefreshToken.CountAsync(t => t.UserId == user.Id)));
     }
 
+    /// Deactivation bumps the token version so reactivating does not revive old access
+    /// tokens. Refresh tokens need the same guarantee, or a lost phone would mint fresh
+    /// access tokens as soon as the user signed in again elsewhere.
+    [Fact]
+    public async Task Deactivating_ends_every_refresh_token_even_after_reactivating()
+    {
+        var client = ApiClient.Create(_factory);
+        var email = Email();
+        var subject = "sub-deactivate-" + email;
+        var phone = await client.SignInAsync(email, subject: subject);
+        var tablet = await client.SignInAsync(email, subject: subject);
+
+        (await ApiClient.Create(_factory, tablet.Token).DeactivateAccountAsync()).EnsureSuccessStatusCode();
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.RefreshAsync(phone.RefreshToken)).StatusCode);
+
+        var reactivated = await client.SignInAsync(email, subject: subject);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.RefreshAsync(tablet.RefreshToken)).StatusCode);
+        await RefreshPairAsync(client, reactivated.RefreshToken);
+    }
+
+    /// Deleting an account keeps the user row as a tombstone, so the cascade never fires.
+    [Fact]
+    public async Task Deleting_the_account_deletes_its_refresh_tokens()
+    {
+        var client = ApiClient.Create(_factory);
+        var user = await client.SignInAsync();
+
+        (await ApiClient.Create(_factory, user.Token).DeleteAccountAsync()).EnsureSuccessStatusCode();
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.RefreshAsync(user.RefreshToken)).StatusCode);
+        Assert.Equal(0, await WithDbAsync(db => db.RefreshToken.CountAsync(t => t.UserId == user.Id)));
+    }
+
     [Fact]
     public async Task Only_a_hash_of_the_refresh_token_is_stored()
     {

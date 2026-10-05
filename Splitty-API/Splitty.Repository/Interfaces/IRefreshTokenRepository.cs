@@ -16,4 +16,7 @@ public interface IRefreshTokenRepository
 
     /// Revokes every row in the family that is not revoked already.
     Task RevokeFamilyAsync(Guid familyId);
+
+    /// Revokes every live row the user holds, across all their families.
+    Task RevokeAllForUserAsync(int userId);
 }
