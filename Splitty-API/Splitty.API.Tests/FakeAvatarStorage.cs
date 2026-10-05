@@ -57,6 +57,22 @@ public sealed class FakeAvatarStorage : IAvatarStorage
         return Task.CompletedTask;
     }
 
+    public Task DeleteUserObjectsAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        if (FailDeletes)
+        {
+            throw new InvalidOperationException("Storage is unavailable.");
+        }
+
+        foreach (var key in _objects.Keys.Where(k => k.StartsWith($"avatars/{userId}/", StringComparison.Ordinal)))
+        {
+            _deleted.Add(key);
+            _objects.TryRemove(key, out _);
+        }
+
+        return Task.CompletedTask;
+    }
+
     public string PublicUrl(string key) => $"{PublicBase}/{key}";
 
     /// Pretends the client finished its PUT.

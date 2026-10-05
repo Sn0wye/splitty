@@ -91,6 +91,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         opts.Events = new JwtBearerEvents
         {
+            // A JWT is valid until it expires, so a closed account would otherwise keep
+            // working on every device. One lookup per request is the revocation: failing
+            // here sends the request to OnChallenge, the same JSON 401 as no token at all.
+            OnTokenValidated = async context =>
+            {
+                var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                var version = context.Principal?.FindFirstValue(JwtTokenIssuer.TokenVersionClaim);
+                var users = context.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+
+                if (!int.TryParse(userId, out var id)
+                    || !await users.AcceptsTokenAsync(id, int.TryParse(version, out var v) ? v : 0))
+                {
+                    context.Fail("This session has ended.");
+                }
+            },
             OnChallenge = async context =>
             {
                 // Suppress the default response

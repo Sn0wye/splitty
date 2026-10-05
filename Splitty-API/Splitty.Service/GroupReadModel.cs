@@ -135,8 +135,12 @@ public class GroupReadModel(ApplicationDbContext context, IAvatarResolver avatar
     public Task<bool> GroupExistsAsync(int groupId) =>
         context.Group.AnyAsync(g => g.Id == groupId);
 
+    /// A tombstone keeps its membership row only to carry its balance, so it is not a
+    /// member here. The settle path reads the row directly, which is what lets a debtor
+    /// still pay a deleted creditor.
     public Task<bool> IsMemberAsync(int groupId, int userId) =>
-        context.GroupMembership.AnyAsync(m => m.GroupId == groupId && m.UserId == userId);
+        context.GroupMembership.AnyAsync(m => m.GroupId == groupId && m.UserId == userId
+            && m.User.DeletedAt == null);
 
     public async Task<decimal> GetMemberNetAsync(int groupId, int userId) =>
         await context.Balance.Where(b => b.GroupId == groupId && b.UserId == userId)

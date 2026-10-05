@@ -53,6 +53,37 @@ public class ProfileController(IProfileService profileService) : ControllerBase
     }
 
     /// <summary>
+    /// Switches the account off and ends every session. Signing in again reactivates it.
+    /// </summary>
+    [HttpPost("deactivate")]
+    public async Task<ActionResult> Deactivate()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        await profileService.DeactivateAsync(int.Parse(userId));
+
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Deletes the account permanently and immediately. Shared history stays with the
+    /// other members under a `[removed]` tombstone. See docs/adr/0004-account-closure.md.
+    /// </summary>
+    [HttpDelete]
+    public async Task<ActionResult> DeleteOwnAccount(CancellationToken cancellationToken)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        await profileService.DeleteAsync(int.Parse(userId), cancellationToken);
+
+        return NoContent();
+    }
+
+    /// <summary>
     /// Gated on sharing a group with the caller: an authenticated account cannot walk the
     /// user table. A stranger is a 404, not a 403.
     /// </summary>
