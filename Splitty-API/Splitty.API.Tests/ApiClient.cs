@@ -53,11 +53,18 @@ public sealed class ApiClient
             body.GetProperty("user").GetProperty("id").GetInt32(),
             name,
             email,
-            body.GetProperty("token").GetString()!);
+            body.GetProperty("token").GetString()!,
+            body.GetProperty("refreshToken").GetString()!);
     }
 
     public Task<HttpResponseMessage> SignInResponseAsync(string authCode) =>
         _http.PostAsJsonAsync("/oauth/google", new { authCode });
+
+    public Task<HttpResponseMessage> RefreshAsync(string refreshToken) =>
+        _http.PostAsJsonAsync("/auth/refresh", new { refreshToken });
+
+    public Task<HttpResponseMessage> LogoutAsync(string refreshToken) =>
+        _http.PostAsJsonAsync("/auth/logout", new { refreshToken });
 
     public async Task<int> CreateGroupAsync(string name = "Trip")
     {
@@ -168,7 +175,7 @@ public sealed class ApiClient
     }
 }
 
-public readonly record struct SignedInUser(int Id, string Name, string Email, string Token);
+public readonly record struct SignedInUser(int Id, string Name, string Email, string Token, string RefreshToken);
 
 public sealed record BalanceSummary(IReadOnlyList<SimplifiedDebtEntry> SimplifiedDebts, bool BalancesPending)
 {

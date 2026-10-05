@@ -36,6 +36,21 @@ public sealed class DevLoginTests
         Assert.Equal(HttpStatusCode.OK, profile.StatusCode);
     }
 
+    /// Local testing should go through the same refresh path as a Google sign-in.
+    [Fact]
+    public async Task Dev_login_returns_a_refresh_token_that_rotates()
+    {
+        var client = ApiClient.Create(_factory);
+        var user = await client.SignInAsync(name: "Seeded");
+
+        var response = await client.Http.PostAsJsonAsync("/auth/dev-login", new { email = user.Email });
+        var body = await client.ReadJsonAsync(response);
+
+        var refresh = await client.RefreshAsync(body.GetProperty("refreshToken").GetString()!);
+
+        Assert.Equal(HttpStatusCode.OK, refresh.StatusCode);
+    }
+
     [Fact]
     public async Task Dev_login_for_an_unknown_email_is_404()
     {

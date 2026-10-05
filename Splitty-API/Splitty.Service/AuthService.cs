@@ -6,10 +6,11 @@ namespace Splitty.Service;
 
 public class AuthService(
     IUserRepository userRepository,
-    IJwtTokenIssuer tokenIssuer
+    IJwtTokenIssuer tokenIssuer,
+    IRefreshTokenService refreshTokenService
 ) : IAuthService
 {
-    public async Task<(User user, string token)> DevLogin(string email)
+    public async Task<(User user, string token, string refreshToken)> DevLogin(string email)
     {
         var user = await userRepository.GetByEmailAsync(email);
 
@@ -18,6 +19,6 @@ public class AuthService(
             throw new KeyNotFoundException("No user with this email.");
         }
 
-        return (user, tokenIssuer.Issue(user));
+        return (user, tokenIssuer.Issue(user), await refreshTokenService.IssueAsync(user));
     }
 }

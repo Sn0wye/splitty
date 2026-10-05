@@ -12,6 +12,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Domain.Entities.Balance> Balance { get; set; }
     public DbSet<Domain.Entities.Invite> Invite { get; set; }
     public DbSet<Domain.Entities.OAuthAccount> OAuthAccount { get; set; }
+    public DbSet<Domain.Entities.RefreshToken> RefreshToken { get; set; }
 
     public DbSet<Domain.Entities.SimplifiedDebt> SimplifiedDebt { get; set; }
 
@@ -44,6 +45,30 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany()
                 .HasForeignKey(a => a.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Domain.Entities.RefreshToken>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.TokenHash).IsRequired().HasMaxLength(64);
+            entity.Property(t => t.CreatedAt).IsRequired();
+            entity.Property(t => t.ExpiresAt).IsRequired();
+
+            // The lookup every refresh and logout performs.
+            entity.HasIndex(t => t.TokenHash).IsUnique();
+            entity.HasIndex(t => t.FamilyId);
+
+            entity.HasOne(t => t.User)
+                .WithMany()
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // NO ACTION rather than RESTRICT: Postgres checks it at the end of the statement,
+            // so the user cascade can delete a chain whose rows point at each other.
+            entity.HasOne<Domain.Entities.RefreshToken>()
+                .WithMany()
+                .HasForeignKey(t => t.ReplacedById)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Domain.Entities.Group>(entity =>

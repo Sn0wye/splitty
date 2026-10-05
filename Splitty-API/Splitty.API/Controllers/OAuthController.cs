@@ -6,8 +6,8 @@ using Splitty.Service.Interfaces;
 
 namespace Splitty.API.Controllers;
 
-/// Mints Splitty tokens from provider identities. `AuthController` reads identity from
-/// a token that already exists; the two never share a route.
+/// Mints Splitty tokens from provider identities. `AuthController` renews and ends a
+/// sign-in from a refresh token this controller already issued; the two never share a route.
 [ApiController]
 [Route("oauth")]
 [AllowAnonymous]
@@ -22,11 +22,12 @@ public class OAuthController(
 
         try
         {
-            var (user, token) = await oauthService.SignInWithGoogleAsync(request.AuthCode, cancellationToken);
+            var (user, token, refreshToken) = await oauthService.SignInWithGoogleAsync(request.AuthCode, cancellationToken);
 
             return Ok(new LoginResponse
             {
                 Token = token,
+                RefreshToken = refreshToken,
                 User = user
             });
         }
