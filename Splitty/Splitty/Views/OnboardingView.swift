@@ -65,6 +65,8 @@ struct OnboardingView: View {
                 .padding(.top, 12)
                 .padding(.bottom, 16)
         }
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
         .background(Color("background").ignoresSafeArea())
         .task { await animateIllustration() }
         .sheet(item: $setupSheet) { sheet in

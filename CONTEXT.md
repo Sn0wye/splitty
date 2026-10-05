@@ -126,6 +126,8 @@ These are the rules the domain actually depends on:
 3. **Every group sub-resource checks membership.** Controller actions under
    `/group/{groupId}/...` call `groupService.IsMemberAsync(...)` and return `Forbid()`.
    Adding an endpoint without that check is the failure mode to watch for.
+   A deleted user's **tombstone** fails `IsMemberAsync` even while its membership row
+   remains; see Closing an account.
 4. **The balance replay has exactly one caller: the group ledger.** It is what makes
    duplicate pairwise rows impossible without a unique index on `(UserId, PeerId, GroupId)`,
    so a second call site would reintroduce the duplicates silently. Visibility enforces it:
@@ -154,6 +156,16 @@ no simplified debts. See `docs/adr/0003-debts-are-simplified.md`.
 A repayment recorded between two members, stored as an `Expense` with `Type = Payment`.
 The code and API call it a settlement; on screen it is always a **payment**.
 _Avoid_: refund, transfer, payback
+
+**Tombstone**:
+The row a deleted **User** becomes: named `[removed]`, no email, no avatar. It exists only
+so shared history and unsettled balances still point at someone, and it is not a member for
+any other purpose.
+_Avoid_: deleted user (when meaning the row), ghost
+
+**Live**:
+A user with neither `DeactivatedAt` nor `DeletedAt` set. Only a live user's token is
+accepted.
 
 **Participant**:
 A member carrying a split row on an expense. Distinct from the payer, who need not be one.
@@ -342,9 +354,11 @@ GET   /profile                    the signed-in user
 PATCH /profile                    partial update: name, avatarKey
 GET   /profile/{userId}           a peer — 404 unless a group is shared
 POST  /profile/avatar/upload-url  a presigned PUT slot
+POST  /profile/deactivate         switch the account off (see Closing an account)
+DELETE /profile                   delete the account (see Closing an account)
 ```
 
-All four return or accept `ProfileResponse`, a DTO rather than the `User` entity, so
+The first four return or accept `ProfileResponse`, a DTO rather than the `User` entity, so
 adding a column is not automatically an API change. The peer read is gated on **sharing a
 group** and 404s otherwise — membership is the only authorization boundary in the system,
 and a 403 would confirm the account exists.
@@ -390,7 +404,13 @@ JWT bearer, HMAC-SHA256, issued by `JwtTokenIssuer.Issue`. Expiry is
 `Jwt:AccessTokenMinutes`, default 15, validated with a 30-second clock skew; the 5-minute
 default would add a third to the lifetime. Renewal is the refresh token's job (see Auth).
 
-Claims: `NameIdentifier` = user id, `Name` = display name, `Email`, `Sub` = email.
+Claims: `NameIdentifier` = user id, `Name` = display name, `Email`, `Sub` = email,
+`token_version` = `User.TokenVersion` (absent on older tokens, read as 0).
+
+**A token is accepted only while its user is live.** `OnTokenValidated` loads the user
+named by `NameIdentifier` on every request and fails authentication when the user is
+missing, deactivated, deleted, or carries a different `TokenVersion`. The failure goes
+through `OnChallenge`, so the client sees the same JSON 401 as a missing token.
 
 **Use `ClaimTypes.NameIdentifier` for identity.** `Name` is the display name and is not
 unique. Controllers read it as:
@@ -433,6 +453,62 @@ The test suite needs no `.env`: `ApiFactory` supplies its own settings.
 
 The connection string stays in `appsettings.json` — `splitty/splitty` against a local
 container is not a secret.
+
+## Closing an account
+
+Two actions, both on `/profile`, following Splitwise. See
+`docs/adr/0004-account-closure.md`.
+
+```
+POST   /profile/deactivate   204  reversible: sessions end, everything else stays
+DELETE /profile              204  irreversible and immediate: the user becomes a tombstone
+```
+
+A user is **live** when `DeactivatedAt` and `DeletedAt` are both null. Both actions end
+every session at once, through the per-request lookup described under Auth.
+
+**Deactivation** sets `DeactivatedAt` and bumps `TokenVersion`, nothing else. A
+deactivated user is a member for every purpose, including as payer or participant on new
+expenses, and other members see them as before. Signing in again with Google, by subject
+or by verified-email link, clears `DeactivatedAt` and lands on the same user. The bumped
+version is what keeps the pre-deactivation tokens dead after that. Deactivated accounts
+are never purged.
+
+**Deletion** cannot be a hard delete: `Expense.PaidBy` is `Restrict`, and the `Cascade` on
+`ExpenseSplit.UserId` would leave expenses whose splits no longer sum to their total.
+`UserRepository.TombstoneAsync` instead runs one transaction that:
+
+1. rewrites the user as `Name = "[removed]"`, `Email = ""`, `AvatarUrl = ""`,
+   `AvatarKey = null`, `DeletedAt = now`;
+2. deletes every `OAuthAccount` of the user, so the same Google account signs in as a
+   fresh user;
+3. drops each membership whose group is not `BalancesPending` and whose net is exactly
+   zero, and keeps the rest on the tombstone so invariant 1 holds (a pending group's
+   stored net may be stale);
+4. deletes every group of the user's left with no live member.
+
+No recomputation is requested: the replay reads splits, not memberships. After the
+commit, `IAvatarStorage.DeleteUserObjectsAsync` removes everything under
+`avatars/{userId}/`, best effort and logged on failure.
+
+`User.Email` is uniquely indexed only where `DeletedAt IS NULL`, so tombstones can share
+the empty string and a deleted user's address is free to sign up again.
+
+**Tombstones and membership.** `IsMemberAsync` requires the member's user to be live, so
+expense create and update refuse a tombstone as payer or participant (403). Settling reads
+the membership row directly, so a debtor can still pay a deleted creditor. Member removal
+also reads the row, so any member can remove a settled tombstone through the existing
+zero-balance route. Member counts (the empty-group check on leave or removal, and the invite
+preview) count only live members, so the last live member leaving deletes a group of
+tombstones. Projections need no change: they read the stored `[removed]` name and
+empty email, and the client renders that exact name as "Removed member". `PATCH /profile`
+refuses the exact name `[removed]` so a live user cannot pose as one.
+
+A deleted user cannot reach the route again. A deactivated user who wants deletion signs
+in first, which reactivates them.
+
+Accepted race: an expense involving the user added between the zero-net read and the commit
+can leave a nonzero balance on a dropped membership. Member removal has the same window.
 
 ## Errors
 

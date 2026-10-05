@@ -203,6 +203,8 @@ struct GroupView: View {
 
                 timeline
             }
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
         }
         .background(Color("background"))
         .accessibilityIdentifier("group.timeline")

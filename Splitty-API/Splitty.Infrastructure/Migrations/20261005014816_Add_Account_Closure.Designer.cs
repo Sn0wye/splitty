@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Splitty.Infrastructure;
@@ -11,9 +12,11 @@ using Splitty.Infrastructure;
 namespace Splitty.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261005014816_Add_Account_Closure")]
+    partial class Add_Account_Closure
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -287,49 +290,6 @@ namespace Splitty.Infrastructure.Migrations
                     b.ToTable("OAuthAccount");
                 });
 
-            modelBuilder.Entity("Splitty.Domain.Entities.RefreshToken", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("FamilyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("ReplacedById")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("RevokedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FamilyId");
-
-                    b.HasIndex("ReplacedById");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshToken");
-                });
-
             modelBuilder.Entity("Splitty.Domain.Entities.SimplifiedDebt", b =>
                 {
                     b.Property<int>("GroupId")
@@ -521,22 +481,6 @@ namespace Splitty.Infrastructure.Migrations
 
             modelBuilder.Entity("Splitty.Domain.Entities.OAuthAccount", b =>
                 {
-                    b.HasOne("Splitty.Domain.Entities.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Splitty.Domain.Entities.RefreshToken", b =>
-                {
-                    b.HasOne("Splitty.Domain.Entities.RefreshToken", null)
-                        .WithMany()
-                        .HasForeignKey("ReplacedById")
-                        .OnDelete(DeleteBehavior.NoAction);
-
                     b.HasOne("Splitty.Domain.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")

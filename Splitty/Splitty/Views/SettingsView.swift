@@ -119,6 +119,9 @@ struct SettingsView: View {
                 Text(L10n.Settings.logOutConfirm)
             }
         }
+        .frame(maxWidth: 760)
+        .frame(maxWidth: .infinity)
+        .background(Color("background"))
     }
 
     /// The lockup and build, signed off at the foot of the list. One line, not stacked: the

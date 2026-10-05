@@ -88,6 +88,7 @@ struct PeopleView: View {
     private func refreshableScroll<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         ScrollView {
             content()
+                .frame(maxWidth: 760)
                 .frame(maxWidth: .infinity)
         }
         .refreshable { await viewModel.load() }

@@ -27,9 +27,11 @@ public class GroupMembershipRepository(ApplicationDbContext context): IGroupMemb
         await context.SaveChangesAsync();
     }
 
+    /// Live members only: a tombstone's row carries a balance, not a member, so a group
+    /// left with nothing else counts as empty.
     public async Task<int> CountByGroupIdAsync(int groupId)
     {
-        return await context.GroupMembership.CountAsync(gm => gm.GroupId == groupId);
+        return await context.GroupMembership.CountAsync(gm => gm.GroupId == groupId && gm.User.DeletedAt == null);
     }
 
     /// <summary>

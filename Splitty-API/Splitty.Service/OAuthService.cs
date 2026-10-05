@@ -32,7 +32,7 @@ public class OAuthService(
 
         if (existingAccount is not null)
         {
-            return existingAccount.User;
+            return await ReactivateAsync(existingAccount.User);
         }
 
         var byEmail = await userRepository.GetByEmailAsync(identity.Email);
@@ -50,7 +50,7 @@ public class OAuthService(
 
             await LinkAsync(byEmail.Id, identity);
 
-            return byEmail;
+            return await ReactivateAsync(byEmail);
         }
 
         var user = new User
@@ -64,6 +64,21 @@ public class OAuthService(
 
         await userRepository.CreateAsync(user);
         await LinkAsync(user.Id, identity);
+
+        return user;
+    }
+
+    /// Signing in is how a deactivated user comes back, with everything as they left it.
+    private async Task<User> ReactivateAsync(User user)
+    {
+        if (user.DeactivatedAt is null)
+        {
+            return user;
+        }
+
+        user.DeactivatedAt = null;
+        user.UpdatedAt = DateTime.UtcNow;
+        await userRepository.UpdateAsync(user);
 
         return user;
     }

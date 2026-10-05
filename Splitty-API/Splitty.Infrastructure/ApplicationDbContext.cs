@@ -23,7 +23,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasKey(u => u.Id);
             entity.Property(u => u.Name).IsRequired().HasMaxLength(255);
             entity.Property(u => u.Email).IsRequired().HasMaxLength(255);
-            entity.HasIndex(u => u.Email).IsUnique();
+            // Tombstones all store an empty email, and a deleted user's address must be
+            // free for a new sign-up. A deactivated user keeps theirs, so linking finds them.
+            entity.HasIndex(u => u.Email).IsUnique().HasFilter("\"DeletedAt\" IS NULL");
+            entity.Property(u => u.TokenVersion).IsRequired().HasDefaultValue(0);
             entity.Property(u => u.AvatarUrl).HasMaxLength(255);
             entity.Property(u => u.CreatedAt).IsRequired();
             entity.Property(u => u.UpdatedAt).IsRequired();
