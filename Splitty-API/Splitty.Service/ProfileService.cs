@@ -91,6 +91,40 @@ public class ProfileService(
         };
     }
 
+    public async Task DeactivateAsync(int userId)
+    {
+        var user = await RequireUserAsync(userId);
+
+        if (user.DeactivatedAt is not null)
+        {
+            return;
+        }
+
+        user.DeactivatedAt = DateTime.UtcNow;
+        user.UpdatedAt = user.DeactivatedAt.Value;
+        // Ends the sessions issued so far for good: reactivation clears the timestamp,
+        // but the old tokens still carry the old version.
+        user.TokenVersion++;
+        await userRepository.UpdateAsync(user);
+    }
+
+    public async Task DeleteAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        await RequireUserAsync(userId);
+        await userRepository.TombstoneAsync(userId);
+
+        // After the commit, and best effort like every other avatar delete: storage being
+        // down must not leave the account half deleted.
+        try
+        {
+            await avatarStorage.DeleteUserObjectsAsync(userId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to delete avatar objects of deleted user {UserId}.", userId);
+        }
+    }
+
     /// <summary>
     /// Confirms the object is really there before the key is committed, so a client that
     /// crashed mid-upload cannot leave a user pointing at a 404. The size and type checks
@@ -151,6 +185,12 @@ public class ProfileService(
         if (trimmed.Length > MaxNameLength)
         {
             throw new ArgumentException($"Name cannot exceed {MaxNameLength} characters.", nameof(name));
+        }
+
+        // Exact match only, like the client's sentinel: other bracketed names stay legal.
+        if (trimmed == User.TombstoneName)
+        {
+            throw new ArgumentException("This name is reserved.", nameof(name));
         }
 
         return trimmed;

@@ -17,4 +17,16 @@ public interface IProfileService
     Task<ProfileResponse> UpdateAsync(int userId, UpdateProfileRequest request, CancellationToken cancellationToken = default);
 
     Task<AvatarUploadResponse> CreateAvatarUploadAsync(int userId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Switches the account off and ends every session. Nothing else changes; signing in
+    /// again reactivates the same user. A no-op for an already deactivated user.
+    /// </summary>
+    Task DeactivateAsync(int userId);
+
+    /// <summary>
+    /// Turns the user into a `[removed]` tombstone, then deletes their avatar objects
+    /// best effort. Irreversible and immediate.
+    /// </summary>
+    Task DeleteAsync(int userId, CancellationToken cancellationToken = default);
 }

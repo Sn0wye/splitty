@@ -10,6 +10,10 @@ namespace Splitty.Service;
 
 public class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssuer
 {
+    /// Carries <see cref="User.TokenVersion"/>. A token without it predates the claim and
+    /// reads as version 0.
+    public const string TokenVersionClaim = "token_version";
+
     public string Issue(User user)
     {
         var jwt = options.Value;
@@ -23,6 +27,7 @@ public class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssuer
             new Claim(ClaimTypes.Name, user.Name),
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(JwtRegisteredClaimNames.Sub, user.Email),
+            new Claim(TokenVersionClaim, user.TokenVersion.ToString()),
         };
 
         var token = new JwtSecurityToken(

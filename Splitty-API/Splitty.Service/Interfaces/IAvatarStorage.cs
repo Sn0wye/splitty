@@ -27,6 +27,10 @@ public interface IAvatarStorage
 
     Task DeleteAsync(string key, CancellationToken cancellationToken = default);
 
+    /// Deletes every object under the user's `avatars/{userId}/` prefix: the committed
+    /// avatar and any upload that was presigned but never committed.
+    Task DeleteUserObjectsAsync(int userId, CancellationToken cancellationToken = default);
+
     /// The absolute, publicly readable URL for a committed key.
     string PublicUrl(string key);
 }

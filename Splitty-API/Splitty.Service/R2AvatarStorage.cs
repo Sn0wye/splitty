@@ -57,6 +57,48 @@ public class R2AvatarStorage(IAmazonS3 s3, IOptions<R2Options> r2Options) : IAva
     public Task DeleteAsync(string key, CancellationToken cancellationToken = default) =>
         s3.DeleteObjectAsync(options.BucketName, key, cancellationToken);
 
+    /// <summary>
+    /// Lists by prefix and deletes each page in one batch. R2 implements both
+    /// `ListObjectsV2` and `DeleteObjects`; a page holds at most 1,000 keys, which is also
+    /// the batch limit.
+    /// </summary>
+    public async Task DeleteUserObjectsAsync(int userId, CancellationToken cancellationToken = default)
+    {
+        var request = new ListObjectsV2Request
+        {
+            BucketName = options.BucketName,
+            Prefix = $"avatars/{userId}/"
+        };
+
+        ListObjectsV2Response page;
+
+        do
+        {
+            page = await s3.ListObjectsV2Async(request, cancellationToken);
+
+            // SDK v4 leaves an empty page's collection null rather than empty.
+            var keys = page.S3Objects?.Select(o => new KeyVersion { Key = o.Key }).ToList() ?? [];
+
+            if (keys.Count > 0)
+            {
+                var result = await s3.DeleteObjectsAsync(new DeleteObjectsRequest
+                {
+                    BucketName = options.BucketName,
+                    Objects = keys
+                }, cancellationToken);
+
+                // A batch delete reports per-key failures in the body, not as an exception.
+                if (result.DeleteErrors is { Count: > 0 } errors)
+                {
+                    throw new InvalidOperationException(
+                        $"Failed to delete {errors.Count} avatar object(s), first {errors[0].Key}: {errors[0].Message}");
+                }
+            }
+
+            request.ContinuationToken = page.NextContinuationToken;
+        } while (page.IsTruncated == true);
+    }
+
     public string PublicUrl(string key) => $"{options.PublicBaseUrl.TrimEnd('/')}/{key}";
 
     /// <summary>

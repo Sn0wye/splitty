@@ -144,6 +144,15 @@ public sealed class ApiClient
     public Task<HttpResponseMessage> CreateAvatarUploadAsync() =>
         _http.PostAsync("/profile/avatar/upload-url", null);
 
+    public Task<HttpResponseMessage> DeactivateAccountAsync() =>
+        _http.PostAsync("/profile/deactivate", null);
+
+    public Task<HttpResponseMessage> DeleteAccountAsync() =>
+        _http.DeleteAsync("/profile");
+
+    public Task<HttpResponseMessage> RemoveMemberAsync(int groupId, int userId) =>
+        _http.DeleteAsync($"/group/{groupId}/members/{userId}");
+
     public Task<HttpResponseMessage> GetPeopleAsync() =>
         _http.GetAsync("/people");
 
