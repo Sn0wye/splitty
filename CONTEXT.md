@@ -163,6 +163,10 @@ so shared history and unsettled balances still point at someone, and it is not a
 any other purpose.
 _Avoid_: deleted user (when meaning the row), ghost
 
+**Live**:
+A user with neither `DeactivatedAt` nor `DeletedAt` set. Only a live user's token is
+accepted.
+
 **Participant**:
 A member carrying a split row on an expense. Distinct from the payer, who need not be one.
 _Avoid_: member (when talking about a single expense)
@@ -313,9 +317,11 @@ GET   /profile                    the signed-in user
 PATCH /profile                    partial update: name, avatarKey
 GET   /profile/{userId}           a peer — 404 unless a group is shared
 POST  /profile/avatar/upload-url  a presigned PUT slot
+POST  /profile/deactivate         switch the account off (see Closing an account)
+DELETE /profile                   delete the account (see Closing an account)
 ```
 
-All four return or accept `ProfileResponse`, a DTO rather than the `User` entity, so
+The first four return or accept `ProfileResponse`, a DTO rather than the `User` entity, so
 adding a column is not automatically an API change. The peer read is gated on **sharing a
 group** and 404s otherwise — membership is the only authorization boundary in the system,
 and a 403 would confirm the account exists.
@@ -453,7 +459,9 @@ the empty string and a deleted user's address is free to sign up again.
 expense create and update refuse a tombstone as payer or participant (403). Settling reads
 the membership row directly, so a debtor can still pay a deleted creditor. Member removal
 also reads the row, so any member can remove a settled tombstone through the existing
-zero-balance route. Projections need no change: they read the stored `[removed]` name and
+zero-balance route. Member counts (the empty-group check on leave or removal, and the invite
+preview) count only live members, so the last live member leaving deletes a group of
+tombstones. Projections need no change: they read the stored `[removed]` name and
 empty email, and the client renders that exact name as "Removed member". `PATCH /profile`
 refuses the exact name `[removed]` so a live user cannot pose as one.
 

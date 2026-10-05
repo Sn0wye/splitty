@@ -229,6 +229,24 @@ public sealed class AccountClosureTests : IDisposable
     }
 
     [Fact]
+    public async Task The_last_live_member_leaving_deletes_a_group_of_tombstones()
+    {
+        var pair = await PairWhereGuestOwesAsync(10m);
+        var third = await ApiClient.Create(_factory).SignInAsync(name: "Third");
+        var thirdClient = ApiClient.Create(_factory, third.Token);
+        (await thirdClient.AcceptInviteAsync(await pair.OwnerClient.CreateInviteAsync(pair.GroupId)))
+            .EnsureSuccessStatusCode();
+
+        // Both keep their memberships: one owes the other.
+        (await pair.GuestClient.DeleteAccountAsync()).EnsureSuccessStatusCode();
+        (await pair.OwnerClient.DeleteAccountAsync()).EnsureSuccessStatusCode();
+        Assert.True(await GroupExistsAsync(pair.GroupId));
+
+        Assert.Equal(HttpStatusCode.NoContent, (await thirdClient.LeaveGroupAsync(pair.GroupId)).StatusCode);
+        Assert.False(await GroupExistsAsync(pair.GroupId));
+    }
+
+    [Fact]
     public async Task Deleting_removes_every_avatar_object_including_uncommitted_uploads()
     {
         var user = await ApiClient.Create(_factory).SignInAsync();
