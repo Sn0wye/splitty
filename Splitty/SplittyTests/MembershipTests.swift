@@ -67,4 +67,14 @@ struct MemberDisplayTests {
         #expect(display.name == "[Removed]")
         #expect(!display.isRemoved)
     }
+
+    @Test func groupMembersUseTheSameExactSentinel() {
+        func member(named name: String) -> GroupMember {
+            GroupMember(id: 1, userId: 1, name: name, email: "", avatarUrl: "")
+        }
+
+        #expect(member(named: "[removed]").isRemoved)
+        #expect(!member(named: "[Removed]").isRemoved)
+        #expect(!member(named: "Ana").isRemoved)
+    }
 }

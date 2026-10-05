@@ -77,7 +77,7 @@ struct SplitConfigurationView: View {
 
     private var participantSection: some View {
         Section {
-            ForEach(viewModel.members) { member in
+            ForEach(viewModel.participantChoices) { member in
                 switch viewModel.selectedMode {
                 case .equal: equalRow(for: member)
                 case .custom: customRow(for: member)
@@ -175,7 +175,7 @@ private struct PayerPickerView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        List(viewModel.members) { member in
+        List(viewModel.payerChoices) { member in
             Button {
                 viewModel.setPayer(member.userId)
                 dismiss()

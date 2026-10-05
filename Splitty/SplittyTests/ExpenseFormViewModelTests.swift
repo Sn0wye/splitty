@@ -320,4 +320,70 @@ struct ExpenseFormViewModelTests {
         #expect(viewModel.splits().map(\.amountCents) == [3500, 1500])
         #expect(viewModel.splits().map(\.percentage) == [70, 30])
     }
+
+    // MARK: - Removed members
+
+    private static let membersWithRemoved = TestExpense.members + [TestExpense.removedMember]
+
+    // A tombstone only carries a balance. Billing it is a 403, so a new expense must
+    // neither default to it nor offer it.
+    @Test func leavesRemovedMembersOutOfANewExpense() {
+        let viewModel = ExpenseFormViewModel(
+            groupId: 1,
+            members: Self.membersWithRemoved,
+            currentUserId: 1
+        )
+
+        #expect(viewModel.configuration == SplitConfiguration(payerId: 1, mode: .equal(participants: [1, 2, 3])))
+        #expect(viewModel.payerChoices.map(\.userId) == [1, 2, 3])
+        #expect(viewModel.participantChoices.map(\.userId) == [1, 2, 3])
+        #expect(viewModel.splitSummary == "Paid by you and split equally")
+    }
+
+    @Test func keepsRemovedMembersOutOfTheEqualSplitAfterASwitch() {
+        let viewModel = ExpenseFormViewModel(
+            groupId: 1,
+            members: Self.membersWithRemoved,
+            currentUserId: 1
+        )
+
+        viewModel.selectMode(.custom)
+        viewModel.selectMode(.equal)
+
+        #expect(viewModel.configuration.mode == .equal(participants: [1, 2, 3]))
+    }
+
+    // The server decides whether an edit that keeps a removed member is allowed, so the
+    // form shows the split rather than dropping it silently.
+    @Test func showsARemovedMembersExistingSplitWhenEditing() {
+        let removedId = TestExpense.removedMember.userId
+        let expense = TestExpense.make(paidBy: 1, amount: 30, splitAmounts: [1: 15, removedId: 15])
+        let viewModel = ExpenseFormViewModel(
+            groupId: 1,
+            members: Self.membersWithRemoved,
+            currentUserId: 1,
+            expense: expense
+        )
+
+        #expect(viewModel.participantChoices.map(\.userId) == [1, 2, 3, removedId])
+        #expect(viewModel.payerChoices.map(\.userId) == [1, 2, 3])
+        #expect(viewModel.isParticipant(removedId))
+        #expect(viewModel.name(for: removedId) == "Removed member")
+        #expect(viewModel.splits().map(\.userId) == [1, removedId])
+    }
+
+    @Test func namesARemovedPayerOnAnExistingExpense() {
+        let removedId = TestExpense.removedMember.userId
+        let expense = TestExpense.make(paidBy: removedId, amount: 30, splitAmounts: [1: 30])
+        let viewModel = ExpenseFormViewModel(
+            groupId: 1,
+            members: Self.membersWithRemoved,
+            currentUserId: 1,
+            expense: expense
+        )
+
+        #expect(viewModel.name(for: removedId) == "Removed member")
+        #expect(viewModel.splitSummary.contains("Removed member"))
+        #expect(viewModel.payerChoices.map(\.userId) == [1, 2, 3])
+    }
 }

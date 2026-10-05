@@ -59,6 +59,14 @@ final class GoogleSignInService {
         return authCode
     }
 
+    /// Revokes the app's Google grant so Splitty no longer shows as connected in the
+    /// user's Google account. Best effort: a Google failure must not keep a deleted
+    /// account signed in, so errors are ignored.
+    @MainActor
+    func disconnect() async {
+        try? await GIDSignIn.sharedInstance.disconnect()
+    }
+
     /// Completes a sign-in redirect handed back to the app by the custom URL scheme.
     @discardableResult
     static func handle(_ url: URL) -> Bool {

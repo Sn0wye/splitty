@@ -371,6 +371,9 @@ enum TestExpense {
         GroupMember(id: 13, userId: 3, name: "Cara", email: "cara@example.com", avatarUrl: "")
     ]
 
+    /// A tombstone kept in the group only to carry its balance.
+    static let removedMember = GroupMember(id: 14, userId: 4, name: "[removed]", email: "", avatarUrl: "")
+
     static func user(_ id: Int) -> User {
         User(id: id, name: "User \(id)", email: "user\(id)@example.com", createdAt: "", updatedAt: "")
     }
