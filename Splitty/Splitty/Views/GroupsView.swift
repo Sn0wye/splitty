@@ -64,6 +64,8 @@ struct GroupsView: View {
                         groupActions
                     }
                 }
+                .frame(maxWidth: 760)
+                .frame(maxWidth: .infinity)
             }
             .accessibilityIdentifier("groups.scroll")
             .performanceScrollSignpost(.groupsScroll)
