@@ -328,7 +328,7 @@ _Avoid_: session
 row in its family, then 401s. Two concurrent refreshes with the same token count as reuse,
 because only one can win the conditional update. Unknown, expired, revoked and reused
 tokens all get the same 401 message; logout answers 204 for any token, or none. See
-`docs/adr/0004-short-access-tokens-with-rotating-refresh-tokens.md`.
+`docs/adr/0005-short-access-tokens-with-rotating-refresh-tokens.md`.
 
 `OAuthService` and the dev login both call `IRefreshTokenService.IssueAsync`, so every way
 in returns a refresh token. A deleted user's refresh tokens cascade with the row.

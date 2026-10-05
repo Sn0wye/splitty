@@ -5,7 +5,7 @@ namespace Splitty.Domain.Entities;
 
 /// One refresh token the API handed out. Each row is used once: a refresh revokes it and
 /// inserts its replacement in the same family. See
-/// docs/adr/0004-short-access-tokens-with-rotating-refresh-tokens.md.
+/// docs/adr/0005-short-access-tokens-with-rotating-refresh-tokens.md.
 [Table("RefreshToken")]
 public class RefreshToken
 {
