@@ -149,6 +149,19 @@ public sealed class RefreshTokenTests
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    /// Signing out never shows an error, even from a client that has already lost its token.
+    [Fact]
+    public async Task Logout_without_a_token_is_still_204()
+    {
+        var http = ApiClient.Create(_factory).Http;
+
+        var emptyObject = await http.PostAsJsonAsync("/auth/logout", new { });
+        var noBody = await http.PostAsync("/auth/logout", null);
+
+        Assert.Equal(HttpStatusCode.NoContent, emptyObject.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, noBody.StatusCode);
+    }
+
     [Fact]
     public async Task Logout_ends_one_sign_in_and_leaves_another_working()
     {

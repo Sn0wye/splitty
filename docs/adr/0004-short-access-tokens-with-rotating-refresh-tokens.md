@@ -48,7 +48,8 @@ letting both requests through would give a stolen copy an easy way past detectio
 
 Unknown, expired, revoked and reused tokens all get the same 401 and message, and logout
 answers 204 for any token. A different answer would tell an attacker which tokens once
-existed.
+existed. Logout with no token at all is also 204, because signing out should never show
+the user an error.
 
 ## Not covered
 

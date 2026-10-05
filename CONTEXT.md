@@ -285,7 +285,7 @@ POST /auth/refresh { refreshToken }
 
 POST /auth/logout { refreshToken }
   → revokes the token's whole family
-  → 204, for any token
+  → 204, for any token or none
 ```
 
 The app never holds the client secret and never sees a Google access or refresh token —
@@ -327,7 +327,7 @@ _Avoid_: session
 **Reuse detection.** Presenting a refresh token that was already revoked revokes every live
 row in its family, then 401s. Two concurrent refreshes with the same token count as reuse,
 because only one can win the conditional update. Unknown, expired, revoked and reused
-tokens all get the same 401 message; logout answers 204 for any token. See
+tokens all get the same 401 message; logout answers 204 for any token, or none. See
 `docs/adr/0004-short-access-tokens-with-rotating-refresh-tokens.md`.
 
 `OAuthService` and the dev login both call `IRefreshTokenService.IssueAsync`, so every way

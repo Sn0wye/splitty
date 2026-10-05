@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Splitty.DTO.Request;
 using Splitty.DTO.Response;
 using Splitty.Service.Interfaces;
@@ -41,13 +42,16 @@ public class AuthController(
     }
 
     /// Always 204, for the same reason refresh has one 401: a different answer for an
-    /// unknown token would confirm which ones are real. Signing out never shows an error.
+    /// unknown token would confirm which ones are real. Signing out never shows an error,
+    /// so a missing token or an empty body is 204 too.
     [HttpPost("logout")]
-    public async Task<ActionResult> Logout([FromBody] RefreshTokenRequest request)
+    public async Task<ActionResult> Logout(
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] LogoutRequest? request)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
-
-        await refreshTokenService.RevokeFamilyAsync(request.RefreshToken);
+        if (!string.IsNullOrEmpty(request?.RefreshToken))
+        {
+            await refreshTokenService.RevokeFamilyAsync(request.RefreshToken);
+        }
 
         return NoContent();
     }
