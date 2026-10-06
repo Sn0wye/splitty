@@ -668,5 +668,7 @@ DELETE /group/{groupId}/members/{userId}  remove member     (net balance must be
 - A departed member's `Expense` and `ExpenseSplit` rows are retained and still reference
   them, so `MemberDTO` falls back to `[removed]` for a user with no membership row.
 
-Design and full decision record in issue #2. Deferred to phase 2: web/deep links,
-iOS client support, invite list + revoke.
+Invites are shared as the bare code only — no web, universal, or custom-scheme links.
+
+Design and full decision record in issue #2. Deferred to phase 2: iOS client support,
+invite list + revoke.

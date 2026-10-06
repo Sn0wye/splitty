@@ -49,11 +49,19 @@ struct JoinGroupSheet: View {
                     Button { dismiss() } label: { Text(L10n.Common.cancel) }
                 }
                 
-                // No Join button: the code submits itself on its last character, and a
+                // No Join button: the code looks itself up on its last character, and a
                 // failed code clears, so a button here could only ever be disabled.
-                if viewModel.isRedeeming {
+                if viewModel.isLookingUp {
                     ToolbarItem(placement: .confirmationAction) {
                         ProgressView()
+                    }
+                }
+            }
+            .navigationDestination(isPresented: showingPreview) {
+                if let preview = viewModel.preview {
+                    InviteGroupPreview(metadata: preview, viewModel: viewModel) { group in
+                        onJoined(group)
+                        dismiss()
                     }
                 }
             }
@@ -75,7 +83,7 @@ struct JoinGroupSheet: View {
                 InviteCodeInputField(
                     text: viewModel.code,
                     isFocused: $codeFocused,
-                    isEnabled: !viewModel.isRedeeming && !isReview
+                    isEnabled: !viewModel.isLookingUp && !isReview
                 ) { proposedText, source in
                     guard viewModel.updateCode(proposedText, source: source) else { return }
                     Task { await submit() }
@@ -150,15 +158,94 @@ struct JoinGroupSheet: View {
     }
 
     private func isActive(_ index: Int) -> Bool {
-        codeFocused && !viewModel.isRedeeming && index == viewModel.code.count
+        codeFocused && !viewModel.isLookingUp && index == viewModel.code.count
+    }
+
+    private var showingPreview: Binding<Bool> {
+        Binding(
+            get: { viewModel.preview != nil },
+            set: { isPresented in
+                guard !isPresented else { return }
+                viewModel.dismissPreview()
+                codeFocused = true
+            }
+        )
     }
 
     private func submit() async {
         guard !isReview else { return }
-        if let group = await viewModel.redeem() {
-            onJoined(group)
-            dismiss()
+        await viewModel.lookUp()
+        if viewModel.preview != nil { codeFocused = false }
+    }
+}
+
+/// Confirms the group behind a code before anyone joins it, so a mistyped code
+/// that happens to be valid can't drop the user into a stranger's group.
+private struct InviteGroupPreview: View {
+    let metadata: InviteMetadata
+    @ObservedObject var viewModel: JoinGroupViewModel
+    let onJoined: (GroupDetail) -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            Image(systemName: "person.3.fill")
+                .font(.system(size: 44))
+                .foregroundStyle(.tint)
+                .accessibilityHidden(true)
+
+            VStack(spacing: 8) {
+                Text(metadata.groupName)
+                    .font(.title2.bold())
+                    .multilineTextAlignment(.center)
+
+                Text(L10n.Invite.members(metadata.memberCount))
+                    .foregroundStyle(.secondary)
+
+                Text(L10n.Invite.invitedBy(metadata.createdByName))
+                    .foregroundStyle(.secondary)
+            }
+
+            if metadata.alreadyMember {
+                Text(L10n.Invite.alreadyMember)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            Spacer()
+
+            if let errorMessage = viewModel.errorMessage {
+                Text(errorMessage)
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
+            }
+
+            Button {
+                Task {
+                    if let group = await viewModel.join() { onJoined(group) }
+                }
+            } label: {
+                if viewModel.isJoining {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                } else {
+                    Text(viewModel.joinTitle)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(viewModel.isJoining)
         }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color("background"))
+        .navigationTitle(Text(L10n.Invite.groupInvite))
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(viewModel.isJoining)
     }
 }
 

@@ -5588,35 +5588,6 @@
         }
       }
     },
-    "invite.checking" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Checking invite…"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Comprobando la invitación…"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vérification de l’invitation…"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verificando convite…"
-          }
-        }
-      }
-    },
     "invite.code" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5936,35 +5907,6 @@
         }
       }
     },
-    "invite.invalid_link" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This invite link isn't valid. Ask for a new one."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este enlace de invitación no es válido. Pide uno nuevo."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ce lien d’invitation n’est pas valide. Demandez-en un nouveau."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Este link de convite não é válido. Peça um novo."
-          }
-        }
-      }
-    },
     "invite.invited_by" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -6077,35 +6019,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entrar com código"
-          }
-        }
-      }
-    },
-    "invite.link_alert" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invite link"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enlace de invitación"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lien d’invitation"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Link do convite"
           }
         }
       }
