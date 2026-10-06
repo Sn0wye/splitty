@@ -231,6 +231,7 @@ private enum ProfileTestError: LocalizedError {
 private struct ProfileAuthenticationSource: AuthenticationSource {
     func isAuthenticated() -> Bool { true }
     func currentUser() async throws -> User { ProfileViewModelTests.user }
+    func logout() {}
 }
 
 private extension ProfileDataSource {
