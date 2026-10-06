@@ -7,10 +7,6 @@
 
 import Foundation
 
-extension Notification.Name {
-    static let unauthorizedError = Notification.Name("unauthorizedError")
-}
-
 // MARK: - API Client
 final class APIClient: Sendable {
     static let shared = APIClient(
@@ -20,20 +16,8 @@ final class APIClient: Sendable {
         notificationCenter: .default
     )
 
-    /// Resolved once at startup; a misconfigured build fails on every request rather
-    /// than falling back to a hardcoded host.
-    private let baseURL: Result<String, Error>
-    private let session: URLSession
-    private let credentials: any CredentialStore
-    private let notificationCenter: NotificationCenter
-    private let refreshGate = RefreshGate()
-    /// Every write to `credentials` and the read it depends on happen under this lock, so a
-    /// sign-out cannot land between a refresh's check and its save.
-    private let credentialLock = NSLock()
-
-    /// An access token this close to `exp` is refreshed before it is sent rather than
-    /// after the server rejects it.
-    private static let refreshLeeway: TimeInterval = 60
+    private let transport: APITransport
+    private let tokens: TokenRefresher
 
     convenience init(
         session: URLSession,
@@ -55,16 +39,16 @@ final class APIClient: Sendable {
         baseURL: Result<String, Error>,
         notificationCenter: NotificationCenter
     ) {
-        self.session = session
-        self.credentials = credentials
-        self.baseURL = baseURL
-        self.notificationCenter = notificationCenter
+        transport = APITransport(baseURL: baseURL, session: session)
+        tokens = TokenRefresher(
+            transport: transport,
+            credentials: credentials,
+            notificationCenter: notificationCenter
+        )
     }
 
-    /// Signed in means a refresh token is stored. Whether it still works is the server's
-    /// call, made on the next refresh.
     var hasCredentials: Bool {
-        credentials.load() != nil
+        tokens.hasCredentials
     }
 
     // MARK: - Generic Request Method
@@ -76,194 +60,30 @@ final class APIClient: Sendable {
         body: [String: Any]? = nil,
         requiresAuth: Bool = true
     ) async throws -> T {
-        var request = try makeRequest(endpoint: endpoint, method: method, body: body)
+        var request = try transport.makeRequest(endpoint: endpoint, method: method, body: body)
 
         guard requiresAuth else {
-            let (data, response) = try await send(request)
-            return try decode(T.self, endpoint: endpoint, data: data, response: response)
+            let (data, response) = try await transport.send(request)
+            return try transport.decode(T.self, endpoint: endpoint, data: data, response: response)
         }
 
-        let token = try await validAccessToken()
+        let token = try await tokens.validAccessToken()
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        var (data, response) = try await send(request)
+        var (data, response) = try await transport.send(request)
 
         // A 401 means the server refused the bearer before any handler ran, so sending
         // the request again cannot apply it twice. One retry only: a second 401 is final.
         if response.statusCode == 401 {
-            let refreshed = try await refreshedAccessToken(replacing: token)
+            let refreshed = try await tokens.refreshedAccessToken(replacing: token)
             request.setValue("Bearer \(refreshed)", forHTTPHeaderField: "Authorization")
-            (data, response) = try await send(request)
+            (data, response) = try await transport.send(request)
         }
 
-        return try decode(T.self, endpoint: endpoint, data: data, response: response)
+        return try transport.decode(T.self, endpoint: endpoint, data: data, response: response)
     }
 
-    private func makeRequest(endpoint: String, method: HTTPMethod, body: [String: Any]?) throws -> URLRequest {
-        guard let url = URL(string: try baseURL.get() + endpoint) else {
-            throw APIError.invalidURL
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = method.rawValue
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        if let body = body {
-            do {
-                request.httpBody = try JSONSerialization.data(withJSONObject: body)
-            } catch {
-                throw APIError.invalidRequestBody
-            }
-        }
-
-        return request
-    }
-
-    private func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        do {
-            let (data, response) = try await session.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw APIError.invalidResponse
-            }
-
-            return (data, httpResponse)
-        } catch let error as APIError {
-            throw error
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch let error as URLError where error.code == .cancelled {
-            // SwiftUI owns tasks such as pull-to-refresh and may cancel them when their
-            // view disappears. Cancellation is control flow, not a failed connection.
-            throw CancellationError()
-        } catch {
-            throw APIError.networkError(error)
-        }
-    }
-
-    private func decode<T: Decodable>(
-        _ type: T.Type,
-        endpoint: String,
-        data: Data,
-        response: HTTPURLResponse
-    ) throws -> T {
-        guard 200...299 ~= response.statusCode else {
-            throw APIError.httpError(response.statusCode, message: Self.serverMessage(from: data))
-        }
-
-        // A 204 carries no body; decoding one is a failure that has nothing to report.
-        if data.isEmpty, let empty = EmptyResponse() as? T {
-            return empty
-        }
-
-        do {
-            return try JSONDecoder().decode(T.self, from: data)
-        } catch {
-            // Log the JSON response for debugging
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("❌ Decoding error for endpoint \(endpoint)")
-                print("📄 JSON Response: \(jsonString)")
-            }
-            throw APIError.decodingError(error)
-        }
-    }
-
-    /// The server's explanation for a rejection, from either error shape the API produces:
-    /// its own `ErrorResponse`, or the validation dictionary `ModelState` returns.
-    private static func serverMessage(from data: Data) -> String? {
-        guard !data.isEmpty,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return nil }
-
-        if let message = json["message"] as? String, !message.isEmpty {
-            return message
-        }
-
-        if let errors = json["errors"] as? [String: Any] {
-            let messages = errors.values.compactMap { $0 as? [String] }.flatMap { $0 }
-            if !messages.isEmpty { return messages.joined(separator: " ") }
-        }
-
-        return nil
-    }
 
     // MARK: - Refresh
-
-    /// The stored access token, refreshed first when it has expired or is about to.
-    /// Reading `exp` only schedules a refresh; it never decides that the user is signed out.
-    private func validAccessToken() async throws -> String {
-        guard let stored = credentials.load() else {
-            throw APIError.noAuthToken
-        }
-
-        if let expiry = stored.accessTokenExpiry,
-           expiry.timeIntervalSinceNow <= Self.refreshLeeway {
-            return try await refreshedAccessToken(replacing: stored.accessToken)
-        }
-
-        return stored.accessToken
-    }
-
-    /// Trades the refresh token for a new pair, unless another request already traded the
-    /// one `stale` came from. Callers that arrive mid-refresh wait for that refresh instead
-    /// of starting their own: two refreshes with the same token look like reuse to the
-    /// server, which then revokes the whole sign-in.
-    private func refreshedAccessToken(replacing stale: String) async throws -> String {
-        try await refreshGate.run { [self] in
-            guard let stored = credentials.load() else {
-                throw APIError.noAuthToken
-            }
-
-            if stored.accessToken != stale {
-                return stored.accessToken
-            }
-
-            return try await exchange(stored.refreshToken)
-        }
-    }
-
-    /// A 401 is the only answer that ends the sign-in. A network failure or a 5xx keeps
-    /// the stored pair so the next request can try again.
-    private func exchange(_ refreshToken: String) async throws -> String {
-        let request = try makeRequest(
-            endpoint: "/auth/refresh",
-            method: .POST,
-            body: ["refreshToken": refreshToken]
-        )
-        let (data, response) = try await send(request)
-
-        // A sign-out (or a new sign-in) while the refresh was in flight already decided
-        // what the store holds. Acting on this answer would bring the old sign-in back, or
-        // sign the new one out.
-        if response.statusCode == 401 {
-            if replaceCredentials(holding: refreshToken, with: nil) {
-                print("🚨 Refresh token rejected - signing out")
-                notificationCenter.post(name: .unauthorizedError, object: nil)
-            }
-        }
-
-        let pair = try decode(RefreshResponse.self, endpoint: "/auth/refresh", data: data, response: response)
-
-        guard replaceCredentials(holding: refreshToken, with: pair.credentials) else {
-            throw APIError.noAuthToken
-        }
-
-        return pair.token
-    }
-
-    /// Writes `replacement` (or clears the store for nil) only while the store still holds
-    /// `refreshToken`. Returns whether it did.
-    private func replaceCredentials(holding refreshToken: String, with replacement: Credentials?) -> Bool {
-        credentialLock.withLock {
-            guard credentials.load()?.refreshToken == refreshToken else { return false }
-
-            if let replacement {
-                credentials.save(replacement)
-            } else {
-                credentials.clear()
-            }
-            return true
-        }
-    }
 
     // MARK: - Authentication
     /// Redeems a one-time Google auth code for a Splitty token pair. The exchange with
@@ -287,7 +107,7 @@ final class APIClient: Sendable {
             body: body,
             requiresAuth: false
         )
-        credentialLock.withLock { credentials.save(response.credentials) }
+        tokens.save(response.credentials)
         return response
     }
 
@@ -296,15 +116,11 @@ final class APIClient: Sendable {
     /// best effort: no connection still signs out locally.
     @discardableResult
     func logout() -> Task<Void, Never> {
-        let refreshToken = credentialLock.withLock {
-            let refreshToken = credentials.load()?.refreshToken
-            credentials.clear()
-            return refreshToken
-        }
+        let refreshToken = tokens.clear()
 
-        return Task { [self] in
+        return Task { [transport] in
             guard let refreshToken,
-                  var request = try? makeRequest(
+                  var request = try? transport.makeRequest(
                       endpoint: "/auth/logout",
                       method: .POST,
                       body: ["refreshToken": refreshToken]
@@ -312,7 +128,7 @@ final class APIClient: Sendable {
             else { return }
 
             request.timeoutInterval = 5
-            _ = try? await send(request)
+            _ = try? await transport.send(request)
         }
     }
     
@@ -508,34 +324,3 @@ struct DebtMember: Codable, Equatable {
 
 // MARK: - Empty Response for DELETE operations
 struct EmptyResponse: Codable {}
-
-/// Holds the one refresh in flight. Callers that arrive while it runs await the same task.
-private actor RefreshGate {
-    private var inFlight: Task<String, Error>?
-
-    func run(_ refresh: @escaping @Sendable () async throws -> String) async throws -> String {
-        if let inFlight {
-            return try await inFlight.value
-        }
-
-        // Unstructured, so a caller whose task is cancelled cannot abandon a pair the server
-        // has already rotated. The task clears itself before it finishes: a caller arriving
-        // after that starts its own refresh rather than reusing a finished failure.
-        let task = Task {
-            do {
-                let token = try await refresh()
-                await finish()
-                return token
-            } catch {
-                await finish()
-                throw error
-            }
-        }
-        inFlight = task
-        return try await task.value
-    }
-
-    private func finish() {
-        inFlight = nil
-    }
-}

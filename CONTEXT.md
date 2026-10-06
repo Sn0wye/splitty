@@ -532,14 +532,17 @@ Enums serialize as snake_case strings (`JsonStringEnumConverter` in `Program.cs`
 SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
 
 - `APIClient` — one shared instance (tests build their own), one generic
-  `request<T: Codable>` method, attaches the `Bearer` access token. It owns the credentials,
-  so the sign-in, `/auth/refresh` and `/auth/logout` calls live on it rather than in a
-  service. It refreshes before sending when the token's `exp` is within 60 seconds, and on
-  a 401 refreshes once and retries once; a second 401 is final. One refresh runs at a time
-  and concurrent callers await it, because two refreshes with the same token look like
-  reuse. Only a 401 from `/auth/refresh` clears the credentials and posts
-  `.unauthorizedError`; a network failure or 5xx keeps them. Logout clears them at once and
-  revokes the refresh token at `/auth/logout` as best effort.
+  `request<T: Codable>` method, attaches the `Bearer` access token. On a 401 it refreshes
+  once and retries once; a second 401 is final. The sign-in, `/auth/refresh` and
+  `/auth/logout` calls live on it rather than in a service, because it owns the
+  credentials. Logout clears them at once and revokes the refresh token at `/auth/logout` as
+  best effort. Built on `APITransport` (builds, sends and decodes requests) and
+  `TokenRefresher`.
+- `TokenRefresher` — owns the stored credentials. Refreshes before a request when the access
+  token's `exp` is within 60 seconds. One refresh runs at a time and concurrent callers await
+  it, because two refreshes with the same token look like reuse. Only a 401 from
+  `/auth/refresh` clears the credentials and posts `.unauthorizedError`; a network failure or
+  5xx keeps them.
 - `CredentialStore` — saves, loads and clears `Credentials`, the access and refresh token as
   one pair. **Signed in** means a refresh token is stored; the client never signs out on the
   access token's `exp`. The Keychain implementation holds both in one item (service
