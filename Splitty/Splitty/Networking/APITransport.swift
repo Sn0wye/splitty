@@ -56,11 +56,7 @@ struct APITransport: Sendable {
         response: HTTPURLResponse
     ) throws -> T {
         guard 200...299 ~= response.statusCode else {
-            let message = Self.serverMessage(from: data)
-            if let code = Self.serverCode(from: data) {
-                throw APIError.refused(response.statusCode, code: code, message: message)
-            }
-            throw APIError.httpError(response.statusCode, message: message)
+            throw Self.refusal(status: response.statusCode, data: data)
         }
 
         // A 204 carries no body; decoding one is a failure that has nothing to report.
@@ -80,22 +76,19 @@ struct APITransport: Sendable {
         }
     }
 
-    /// The code an `ErrorResponse` names its refusal with, when this build knows it.
-    private static func serverCode(from data: Data) -> APIErrorCode? {
-        guard !data.isEmpty,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let code = json["code"] as? String
-        else { return nil }
-        return APIErrorCode(rawValue: code)
+    /// What the server said when it refused, read once from either error shape the API
+    /// produces: its own `ErrorResponse`, which may name the refusal with a code this build
+    /// knows, or the validation dictionary `ModelState` returns.
+    private static func refusal(status: Int, data: Data) -> APIError {
+        let json = data.isEmpty ? nil : (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        let message = json.flatMap(serverMessage(from:))
+        if let code = (json?["code"] as? String).flatMap(APIErrorCode.init(rawValue:)) {
+            return .refused(status, code: code, message: message)
+        }
+        return .httpError(status, message: message)
     }
 
-    /// The server's explanation for a rejection, from either error shape the API produces:
-    /// its own `ErrorResponse`, or the validation dictionary `ModelState` returns.
-    private static func serverMessage(from data: Data) -> String? {
-        guard !data.isEmpty,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return nil }
-
+    private static func serverMessage(from json: [String: Any]) -> String? {
         if let message = json["message"] as? String, !message.isEmpty {
             return message
         }
