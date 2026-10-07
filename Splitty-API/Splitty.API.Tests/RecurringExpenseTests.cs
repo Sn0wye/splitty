@@ -444,12 +444,7 @@ public sealed class RecurringExpenseTests : IDisposable
     [Fact]
     public async Task A_new_zone_west_of_utc_keeps_the_day_the_expense_was_on()
     {
-        var start = new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);
-        _factory.Clock.Set(start);
-        var group = await GroupFixture.CreateAsync(_factory);
-        await group.CreateRecurringAsync("monthly", start.UtcDateTime);
-        _factory.Clock.Set(new DateTimeOffset(2030, 3, 10, 12, 0, 0, TimeSpan.Zero));
-        await group.OpenAsync();
+        var group = await MonthlyFromJanuaryAsync();
         var february = ExpenseOn(await group.ExpensesAsync(), Day(2030, 2, 1));
 
         (await group.Owner.UpdateExpenseAsync(group.Id, Id(february), "following", new
@@ -468,6 +463,57 @@ public sealed class RecurringExpenseTests : IDisposable
 
         var added = (await group.ExpensesAsync()).MaxBy(e => e.GetProperty("date").GetDateTime());
         Assert.Equal(new DateTime(2030, 4, 1, 7, 0, 0, DateTimeKind.Utc), added.GetProperty("date").GetDateTime());
+    }
+
+    // Every expense it added keeps its day in the new zone, earlier ones included, so a
+    // second edit made from the new zone reads the same days as the first.
+    [Fact]
+    public async Task A_second_edit_after_a_zone_change_still_lands_on_the_first()
+    {
+        var group = await MonthlyFromJanuaryAsync();
+        var february = ExpenseOn(await group.ExpensesAsync(), Day(2030, 2, 1));
+        (await group.Owner.UpdateExpenseAsync(group.Id, Id(february), "following", new
+        {
+            date = february.GetProperty("date").GetDateTime(),
+            timeZone = "America/Los_Angeles"
+        })).EnsureSuccessStatusCode();
+        var moved = Assert.Single(await group.ExpensesAsync(), e => Id(e) == Id(february));
+
+        (await group.Owner.UpdateExpenseAsync(group.Id, Id(moved), "following", new
+        {
+            amount = 30m,
+            splitMode = "equal",
+            splits = Splits(group, 15m),
+            date = moved.GetProperty("date").GetDateTime(),
+            timeZone = "America/Los_Angeles"
+        })).EnsureSuccessStatusCode();
+
+        Assert.Equal(
+            [
+                new DateTime(2030, 1, 1, 8, 0, 0, DateTimeKind.Utc),
+                new DateTime(2030, 2, 1, 8, 0, 0, DateTimeKind.Utc),
+                new DateTime(2030, 3, 1, 8, 0, 0, DateTimeKind.Utc)
+            ],
+            (await group.ExpensesAsync()).Select(e => e.GetProperty("date").GetDateTime()).Order());
+    }
+
+    // The date is the day the member picked where they are: the zone they sent. Here that
+    // is the 2nd in Tokyo, though still the 1st in the expense's old zone.
+    [Fact]
+    public async Task A_day_picked_in_the_new_zone_moves_the_expense_though_the_old_zone_disagrees()
+    {
+        var group = await MonthlyFromJanuaryAsync();
+        var february = ExpenseOn(await group.ExpensesAsync(), Day(2030, 2, 1));
+
+        (await group.Owner.UpdateExpenseAsync(group.Id, Id(february), "following", new
+        {
+            date = new DateTime(2030, 2, 1, 15, 0, 0, DateTimeKind.Utc),
+            timeZone = "Asia/Tokyo"
+        })).EnsureSuccessStatusCode();
+
+        // Midnight on 2 March in Tokyo.
+        var march = Assert.Single(await group.ExpensesAsync(), e => e.GetProperty("date").GetDateTime() > new DateTime(2030, 2, 15));
+        Assert.Equal(new DateTime(2030, 3, 1, 15, 0, 0, DateTimeKind.Utc), march.GetProperty("date").GetDateTime());
     }
 
     [Fact]
@@ -568,6 +614,19 @@ public sealed class RecurringExpenseTests : IDisposable
         var group = await GroupFixture.CreateAsync(_factory);
         await group.CreateRecurringAsync("weekly", Now.UtcDateTime);
         _factory.Clock.Set(through);
+        await group.OpenAsync();
+        return group;
+    }
+
+    /// A monthly rent in UTC from 1 January 2030, opened on 10 March: the 1st of January,
+    /// February and March.
+    private async Task<GroupFixture> MonthlyFromJanuaryAsync()
+    {
+        var start = new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);
+        _factory.Clock.Set(start);
+        var group = await GroupFixture.CreateAsync(_factory);
+        await group.CreateRecurringAsync("monthly", start.UtcDateTime);
+        _factory.Clock.Set(new DateTimeOffset(2030, 3, 10, 12, 0, 0, TimeSpan.Zero));
         await group.OpenAsync();
         return group;
     }

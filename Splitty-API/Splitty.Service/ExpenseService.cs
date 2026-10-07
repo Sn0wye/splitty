@@ -249,8 +249,16 @@ public class ExpenseService(
 
         var frequency = repeat is { } r ? RecurringExpenses.FrequencyOf(r) : recurring.Frequency;
 
+        // A new zone re-expresses every expense it added, so the earlier ones are needed too.
+        var laterIds = later.Select(e => e.Id).ToHashSet();
+        var earlier = frequency is not null && zone is not null && zone.Id != recurring.TimeZone
+            ? (await expenseRepository.GetAddedAsync(recurringExpenseId))
+                .Where(e => e.Id != expense.Id && !laterIds.Contains(e.Id))
+                .ToList()
+            : [];
+
         var removed = frequency is { } f
-            ? RestartFrom(recurring, expense, originalDate, f, zone, later)
+            ? RestartFrom(recurring, expense, originalDate, f, zone, earlier, later)
             : later;
 
         await expenseRepository.InTransactionAsync(async () =>
@@ -268,8 +276,11 @@ public class ExpenseService(
     /// rewrites the <paramref name="later"/> expenses onto the new days. Each keeps its place:
     /// the nth repeat after this expense stays the nth, so one deleted on its own stays a gap
     /// rather than being added again. A place whose new day is not due yet is dropped, since
-    /// nothing is added before it is due. Places are counted in the old zone, where they were
-    /// added; the new days are days in the new one. Returns the expenses to delete.
+    /// nothing is added before it is due. Returns the expenses to delete.
+    ///
+    /// Every expense it added is stored as local midnight of its day in its zone. A new zone
+    /// keeps each day and moves its midnight, the <paramref name="earlier"/> expenses
+    /// included, so an edit made later from the new zone reads the same days.
     /// </summary>
     private List<Expense> RestartFrom(
         RecurringExpense recurring,
@@ -277,6 +288,7 @@ public class ExpenseService(
         DateTime originalDate,
         RepeatFrequency frequency,
         TimeZoneInfo? newZone,
+        List<Expense> earlier,
         List<Expense> later)
     {
         var oldZone = TimeZoneInfo.FindSystemTimeZoneById(recurring.TimeZone);
@@ -290,16 +302,28 @@ public class ExpenseService(
             originalDay,
             recurring.AddedThrough).ToList();
 
-        // A day the edit did not move stays the day it was, read where it was added: west of
-        // UTC, the stored midnight of "the 1st" is the 31st in the new zone. Clients resend
-        // the date they were given, so "not moved" is judged by the day, not by presence.
-        var moved = LocalCalendar.DayOf(DateOf(expense), oldZone) != originalDay;
+        // A date is the day the member picked where they are, the zone they sent. Clients
+        // resend the date they were given, and an unchanged date is not a move however its
+        // two zones read it: it stays the day it was.
+        var moved = LocalCalendar.DayOf(DateOf(expense), zone) != LocalCalendar.DayOf(originalDate, zone);
+        var startDay = moved ? LocalCalendar.DayOf(DateOf(expense), zone) : originalDay;
 
         RecurringExpenses.CopyFrom(recurring, expense);
         recurring.Frequency = frequency;
-        recurring.TimeZone = zone.Id;
-        recurring.StartDate = moved ? LocalCalendar.DayOf(DateOf(expense), zone) : originalDay;
+        recurring.StartDate = startDay;
         recurring.UpdatedAt = DateTime.UtcNow;
+
+        if (zone.Id != oldZone.Id)
+        {
+            foreach (var earlierExpense in earlier)
+            {
+                earlierExpense.Date = LocalCalendar.MidnightUtc(LocalCalendar.DayOf(DateOf(earlierExpense), oldZone), zone);
+                earlierExpense.UpdatedAt = DateTime.UtcNow;
+            }
+
+            expense.Date = LocalCalendar.MidnightUtc(startDay, zone);
+            recurring.TimeZone = zone.Id;
+        }
 
         var today = LocalCalendar.DayOf(timeProvider.GetUtcNow(), zone);
         var kept = Enumerable.Range(1, oldDays.Count)

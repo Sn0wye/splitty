@@ -191,7 +191,8 @@ A rule that adds an ordinary expense to a group each time it comes due, weekly, 
 monthly, or yearly from a start date of today or later, until it is stopped. Creating one adds
 its first expense at once, on the start date; after that, nothing is added before it is due.
 Each added expense is a normal expense. It comes due at local midnight in the zone it was
-created in, or the zone sent with its latest "this and following" edit. Editing or deleting
+created in, or the zone sent with its latest "this and following" edit; a new zone keeps every
+expense it added on its day. Editing or deleting
 one asks whether the change applies to that expense only, or to it and every one after it. Participants are
 fixed: someone who joins later is not included until the recurring expense is edited. It ends
 when its payer or anyone in its split leaves, is removed, or deletes their account;
