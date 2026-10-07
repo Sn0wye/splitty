@@ -240,8 +240,9 @@ struct SettingsView: View {
                 authManager.logout()
             case .delete:
                 try await ProfileService.shared.deleteAccount()
-                // Revoked before the confirmation rather than after it: the old token is
-                // dead now, and any 401 while the alert is up signs out without waiting.
+                // Revoked before the confirmation rather than after it: the old tokens are
+                // dead now, and any 401 while the alert is up fails its refresh and signs
+                // out without waiting.
                 await GoogleSignInService.shared.disconnect()
                 showingAccountDeleted = true
             }

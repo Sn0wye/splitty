@@ -5,6 +5,7 @@ import SwiftUI
 protocol AuthenticationSource {
     func isAuthenticated() -> Bool
     func currentUser() async throws -> User
+    func logout()
 }
 
 @MainActor
@@ -13,18 +14,16 @@ class AuthenticationManager: ObservableObject {
 
     /// Who is signed in. Everything that says "you" — the default payer, the checkbox
     /// defaults, whether a row reads *lent* or *borrowed* — reads this. Not cached in
-    /// UserDefaults: the token already lives in the Keychain, and one request on launch
+    /// UserDefaults: the credentials already live in the Keychain, and one request on launch
     /// cannot go stale the way a second copy of the profile can.
     @Published var currentUser: User?
 
     static let shared = AuthenticationManager()
 
-    private let source: (any AuthenticationSource)?
+    private let source: any AuthenticationSource
 
-    private init() {
-        source = nil
-        checkAuthenticationStatus()
-        setupUnauthorizedObserver()
+    private convenience init() {
+        self.init(source: AuthService.shared)
     }
 
     init(source: any AuthenticationSource) {
@@ -39,7 +38,7 @@ class AuthenticationManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            print("🔴 Received 401 unauthorized - forcing logout")
+            print("🔴 Refresh token rejected - forcing logout")
             Task { @MainActor in self?.logout() }
         }
     }
@@ -50,11 +49,11 @@ class AuthenticationManager: ObservableObject {
             currentUser = PerformanceScenarios.profileUser
             return
         }
-        isAuthenticated = source?.isAuthenticated() ?? AuthService.shared.isAuthenticated()
+        isAuthenticated = source.isAuthenticated()
     }
 
-    /// Token presence decides the first screen; the profile fetch fills `currentUser`
-    /// when a token exists. There is no cosmetic delay.
+    /// A stored refresh token decides the first screen, however old the access token is;
+    /// the profile fetch fills `currentUser` when one exists. There is no cosmetic delay.
     func restoreSession() async {
         if PerformanceScenarioLaunch.isEnabled {
             isAuthenticated = true
@@ -75,20 +74,17 @@ class AuthenticationManager: ObservableObject {
         currentUser = user
     }
 
-    /// Fills in `currentUser` on a cold launch that skipped the sign-in screen. A network
-    /// blip leaves the session alone for a later screen to retry, but a server that
-    /// answers and does not recognize the token's user (a stale Keychain token against a
-    /// reset database) means there is no session to keep: log out so the login screen
-    /// shows instead of a half-authenticated app.
+    /// Fills in `currentUser` on a cold launch that skipped the sign-in screen. The request
+    /// refreshes an expired access token first, so a 401 here means the server rejected
+    /// the refresh token too. A network blip leaves the session alone for a later screen
+    /// to retry, but a server that answers and does not recognize the user means there is
+    /// no session to keep: log out so the login screen shows instead of a
+    /// half-authenticated app.
     func hydrateCurrentUser() async {
         guard isAuthenticated, currentUser == nil else { return }
 
         do {
-            if let source {
-                currentUser = try await source.currentUser()
-            } else {
-                currentUser = try await AuthService.shared.getCurrentUser()
-            }
+            currentUser = try await source.currentUser()
         } catch let error as APIError {
             switch error {
             case .httpError(400..<500, _), .noAuthToken:
@@ -103,7 +99,7 @@ class AuthenticationManager: ObservableObject {
     }
 
     func logout() {
-        AuthService.shared.logout()
+        source.logout()
         currentUser = nil
         isAuthenticated = false
     }

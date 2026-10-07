@@ -7,23 +7,50 @@
 
 import Foundation
 
-extension Notification.Name {
-    static let unauthorizedError = Notification.Name("unauthorizedError")
-}
-
 // MARK: - API Client
-class APIClient {
-    static let shared = APIClient()
-    
-    /// Resolved once at startup; a misconfigured build fails on every request rather
-    /// than falling back to a hardcoded host.
-    private let baseURL: Result<String, Error>
-    private let session = URLSession.shared
-    
-    private init() {
-        baseURL = Result { try APIConfiguration.baseURL() }
+final class APIClient: Sendable {
+    static let shared = APIClient(
+        session: .shared,
+        credentials: KeychainCredentialStore(),
+        baseURL: Result { try APIConfiguration.baseURL() },
+        notificationCenter: .default
+    )
+
+    private let transport: APITransport
+    private let tokens: TokenRefresher
+
+    convenience init(
+        session: URLSession,
+        credentials: any CredentialStore,
+        baseURL: String,
+        notificationCenter: NotificationCenter = .default
+    ) {
+        self.init(
+            session: session,
+            credentials: credentials,
+            baseURL: .success(baseURL),
+            notificationCenter: notificationCenter
+        )
     }
-    
+
+    private init(
+        session: URLSession,
+        credentials: any CredentialStore,
+        baseURL: Result<String, Error>,
+        notificationCenter: NotificationCenter
+    ) {
+        transport = APITransport(baseURL: baseURL, session: session)
+        tokens = TokenRefresher(
+            transport: transport,
+            credentials: credentials,
+            notificationCenter: notificationCenter
+        )
+    }
+
+    var hasCredentials: Bool {
+        tokens.hasCredentials
+    }
+
     // MARK: - Generic Request Method
     /// Not private: a service owns its own endpoints and calls this directly rather than
     /// adding another pass-through method here.
@@ -33,115 +60,77 @@ class APIClient {
         body: [String: Any]? = nil,
         requiresAuth: Bool = true
     ) async throws -> T {
-        
-        guard let url = URL(string: try baseURL.get() + endpoint) else {
-            throw APIError.invalidURL
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = method.rawValue
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        // Add authentication if required
-        if requiresAuth {
-            guard let token = TokenManager.shared.getToken() else {
-                throw APIError.noAuthToken
-            }
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
-        
-        // Add body if present
-        if let body = body {
-            do {
-                request.httpBody = try JSONSerialization.data(withJSONObject: body)
-            } catch {
-                throw APIError.invalidRequestBody
-            }
-        }
-        
-        do {
-            let (data, response) = try await session.data(for: request)
-            
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw APIError.invalidResponse
-            }
-            
-            guard 200...299 ~= httpResponse.statusCode else {
-                // Handle 401 Unauthorized - post notification to trigger logout
-                if httpResponse.statusCode == 401 {
-                    print("🚨 401 Unauthorized - Logging out user")
-                    DispatchQueue.main.async {
-                        NotificationCenter.default.post(name: .unauthorizedError, object: nil)
-                    }
-                }
-                throw APIError.httpError(httpResponse.statusCode, message: Self.serverMessage(from: data))
-            }
-            
-            // A 204 carries no body; decoding one is a failure that has nothing to report.
-            if data.isEmpty, let empty = EmptyResponse() as? T {
-                return empty
-            }
+        var request = try transport.makeRequest(endpoint: endpoint, method: method, body: body)
 
-            let decoder = JSONDecoder()
-            do {
-                return try decoder.decode(T.self, from: data)
-            } catch {
-                // Log the JSON response for debugging
-                if let jsonString = String(data: data, encoding: .utf8) {
-                    print("❌ Decoding error for endpoint \(endpoint)")
-                    print("📄 JSON Response: \(jsonString)")
-                }
-                throw APIError.decodingError(error)
-            }
-            
-        } catch let error as APIError {
-            throw error
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch let error as URLError where error.code == .cancelled {
-            // SwiftUI owns tasks such as pull-to-refresh and may cancel them when their
-            // view disappears. Cancellation is control flow, not a failed connection.
-            throw CancellationError()
-        } catch {
-            throw APIError.networkError(error)
+        guard requiresAuth else {
+            let (data, response) = try await transport.send(request)
+            return try transport.decode(T.self, endpoint: endpoint, data: data, response: response)
         }
+
+        let token = try await tokens.validAccessToken()
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        var (data, response) = try await transport.send(request)
+
+        // A 401 means the server refused the bearer before any handler ran, so sending
+        // the request again cannot apply it twice. One retry only: a second 401 is final.
+        if response.statusCode == 401 {
+            let refreshed = try await tokens.refreshedAccessToken(replacing: token)
+            request.setValue("Bearer \(refreshed)", forHTTPHeaderField: "Authorization")
+            (data, response) = try await transport.send(request)
+        }
+
+        return try transport.decode(T.self, endpoint: endpoint, data: data, response: response)
     }
-    
-    /// The server's explanation for a rejection, from either error shape the API produces:
-    /// its own `ErrorResponse`, or the validation dictionary `ModelState` returns.
-    private static func serverMessage(from data: Data) -> String? {
-        guard !data.isEmpty,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return nil }
 
-        if let message = json["message"] as? String, !message.isEmpty {
-            return message
-        }
 
-        if let errors = json["errors"] as? [String: Any] {
-            let messages = errors.values.compactMap { $0 as? [String] }.flatMap { $0 }
-            if !messages.isEmpty { return messages.joined(separator: " ") }
-        }
-
-        return nil
-    }
+    // MARK: - Refresh
 
     // MARK: - Authentication
-    /// Redeems a one-time Google auth code for a Splitty token. The exchange with Google
-    /// happens server-side, so no client secret is needed here.
+    /// Redeems a one-time Google auth code for a Splitty token pair. The exchange with
+    /// Google happens server-side, so no client secret is needed here.
     func oauthGoogle(authCode: String) async throws -> LoginResponse {
-        let body = ["authCode": authCode]
-        return try await request(endpoint: "/oauth/google", method: .POST, body: body, requiresAuth: false)
+        try await signIn(endpoint: "/oauth/google", body: ["authCode": authCode])
     }
     
     #if DEBUG
     /// Signs in as a seeded user with no credential. The route only exists on a
     /// Development host, so this cannot reach a deployed API.
     func devLogin(email: String) async throws -> LoginResponse {
-        let body = ["email": email]
-        return try await request(endpoint: "/auth/dev-login", method: .POST, body: body, requiresAuth: false)
+        try await signIn(endpoint: "/auth/dev-login", body: ["email": email])
     }
     #endif
+
+    private func signIn(endpoint: String, body: [String: Any]) async throws -> LoginResponse {
+        let response: LoginResponse = try await request(
+            endpoint: endpoint,
+            method: .POST,
+            body: body,
+            requiresAuth: false
+        )
+        tokens.save(response.credentials)
+        return response
+    }
+
+    /// Clears the stored pair at once, then asks the server to revoke the refresh token so
+    /// a copy left behind stops working. The returned task is the revocation, which is
+    /// best effort: no connection still signs out locally.
+    @discardableResult
+    func logout() -> Task<Void, Never> {
+        let refreshToken = tokens.clear()
+
+        return Task { [transport] in
+            guard let refreshToken,
+                  var request = try? transport.makeRequest(
+                      endpoint: "/auth/logout",
+                      method: .POST,
+                      body: ["refreshToken": refreshToken]
+                  )
+            else { return }
+
+            request.timeoutInterval = 5
+            _ = try? await transport.send(request)
+        }
+    }
     
     // MARK: - Groups
     func getGroups() async throws -> [Group] {
@@ -268,8 +257,23 @@ struct ExpenseSplitRequest {
 
 // MARK: - Response Types
 struct LoginResponse: Codable {
+    /// The access token; the field kept its name from when it was the only credential.
     let token: String
+    let refreshToken: String
     let user: User
+
+    var credentials: Credentials {
+        Credentials(accessToken: token, refreshToken: refreshToken)
+    }
+}
+
+struct RefreshResponse: Codable {
+    let token: String
+    let refreshToken: String
+
+    var credentials: Credentials {
+        Credentials(accessToken: token, refreshToken: refreshToken)
+    }
 }
 
 // POST /group and PUT /group/{id} return the Group entity, which carries neither

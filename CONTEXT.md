@@ -531,18 +531,30 @@ Enums serialize as snake_case strings (`JsonStringEnumConverter` in `Program.cs`
 
 SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
 
-- `APIClient` — singleton, one generic `request<T: Codable>` method, attaches
-  `Bearer` token, posts `.unauthorizedError` on 401.
-- `TokenManager` — Keychain storage (`kSecClassGenericPassword`, service
-  `com.splitty.app`).
+- `APIClient` — one shared instance (tests build their own), one generic
+  `request<T: Codable>` method, attaches the `Bearer` access token. On a 401 it refreshes
+  once and retries once; a second 401 is final. The sign-in, `/auth/refresh` and
+  `/auth/logout` calls live on it rather than in a service, because it owns the
+  credentials. Logout clears them at once and revokes the refresh token at `/auth/logout` as
+  best effort. Built on `APITransport` (builds, sends and decodes requests) and
+  `TokenRefresher`.
+- `TokenRefresher` — owns the stored credentials. Refreshes before a request when the access
+  token's `exp` is within 60 seconds. One refresh runs at a time and concurrent callers await
+  it, because two refreshes with the same token look like reuse. Only a 401 from
+  `/auth/refresh` clears the credentials and posts `.unauthorizedError`; a network failure or
+  5xx keeps them.
+- `CredentialStore` — saves, loads and clears `Credentials`, the access and refresh token as
+  one pair. **Signed in** means a refresh token is stored; the client never signs out on the
+  access token's `exp`. The Keychain implementation holds both in one item (service
+  `com.splitty.app`, `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`).
 - `Services/*Service.swift` — thin wrappers over `APIClient`, async/await only. There are
   no completion-handler variants; views call the async methods from `.task` / `Task`. New
   endpoints go in a service and call `APIClient.request` directly rather than adding another
   pass-through method to the client.
 - `AuthenticationManager.currentUser` is the signed-in `User`: set from the sign-in response,
-  and fetched once on a cold launch that restored a Keychain token. Everything that says
-  "you" reads it. Not cached in UserDefaults — a second copy of the profile can go stale, a
-  Keychain token cannot. The profile route is `GET /profile`.
+  and fetched once on a cold launch that restored a stored refresh token. Everything that says
+  "you" reads it. Not cached in UserDefaults — a second copy of the profile can go stale, the
+  Keychain credentials cannot. The profile route is `GET /profile`.
 - **Group sessions** — a single observable session owns each group's snapshot and commands.
   Up to eight recently opened sessions live above the tab switch; reopening one shows cached
   data while a fresh read runs. The store is the only owner of the current group and persists
