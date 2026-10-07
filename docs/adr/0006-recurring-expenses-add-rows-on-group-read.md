@@ -30,3 +30,8 @@ Catch-up copies the split template without the membership checks an expense writ
 every recurring expense a user pays for or shares in is deleted when that user leaves, is
 removed, or deletes their account (ADR 0004), and nothing is ever billed to someone outside
 the group or to a tombstone.
+
+A "this and following" edit rewrites the later expenses that are still there instead of
+deleting and adding them again. Each keeps its place, so the nth repeat after the edited
+expense stays the nth, and one deleted on its own stays deleted. A place whose new day is not
+due yet is dropped, because nothing is added before it is due.

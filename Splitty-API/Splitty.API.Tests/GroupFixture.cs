@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -91,6 +92,58 @@ public sealed class GroupFixture
         var body = await response.Content.ReadFromJsonAsync<JsonElement>(Json);
         return body.GetProperty("id").GetInt32();
     }
+
+    /// <summary>
+    /// A rent paid by <paramref name="paidBy"/> (the owner by default) and split evenly
+    /// between <paramref name="participants"/> (both members by default), as a create body
+    /// a test can send as is or with a field it means to get refused.
+    /// </summary>
+    public object RecurringBody(
+        string? repeat,
+        DateTime? date,
+        string? timeZone = "UTC",
+        int? paidBy = null,
+        int[]? participants = null,
+        decimal share = 10m)
+    {
+        participants ??= [OwnerId, GuestId];
+
+        return new
+        {
+            paidBy = paidBy ?? OwnerId,
+            amount = share * participants.Length,
+            description = "Rent",
+            category = "rent",
+            date,
+            splitMode = "equal",
+            repeat,
+            timeZone,
+            splits = participants.Select(userId => new { userId, amount = share }).ToArray()
+        };
+    }
+
+    /// Creates <see cref="RecurringBody"/> as the owner and returns the expense it answered with.
+    public async Task<JsonElement> CreateRecurringAsync(
+        string? repeat,
+        DateTime? date,
+        string? timeZone = "UTC",
+        int? paidBy = null,
+        int[]? participants = null)
+    {
+        var response = await Owner.CreateExpenseAsync(Id, RecurringBody(repeat, date, timeZone, paidBy, participants));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        return await response.Content.ReadFromJsonAsync<JsonElement>(Json);
+    }
+
+    /// Opens the group as the owner, the read that catches recurring expenses up.
+    public async Task OpenAsync() =>
+        (await Owner.GetGroupAsync(Id)).EnsureSuccessStatusCode();
+
+    /// The group's expenses as the owner reads them, settlements left out.
+    public async Task<List<JsonElement>> ExpensesAsync() =>
+        (await Owner.ReadJsonAsync(await Owner.GetExpensesAsync(Id))).EnumerateArray()
+            .Where(e => e.GetProperty("type").GetString() == "expense")
+            .ToList();
 
     /// <summary>
     /// The id of the settlement the guest just recorded — the settle route answers with no

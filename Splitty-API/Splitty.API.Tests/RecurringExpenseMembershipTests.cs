@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,8 +12,6 @@ namespace Splitty.API.Tests;
 [Collection(nameof(ApiCollection))]
 public sealed class RecurringExpenseMembershipTests : IDisposable
 {
-    private static readonly JsonSerializerOptions Json = new() { PropertyNameCaseInsensitive = true };
-
     private static readonly DateTimeOffset Now = new(2030, 1, 15, 12, 0, 0, TimeSpan.Zero);
 
     private readonly ApiFactory _factory;
@@ -31,15 +28,15 @@ public sealed class RecurringExpenseMembershipTests : IDisposable
     public async Task Someone_who_joins_later_is_not_in_the_added_expenses()
     {
         var group = await GroupFixture.CreateAsync(_factory);
-        await CreateWeeklyAsync(group, paidBy: group.OwnerId, group.OwnerId, group.GuestId);
+        await group.CreateRecurringAsync("weekly", Now.UtcDateTime, paidBy: group.OwnerId, participants: [group.OwnerId, group.GuestId]);
         var third = await ApiClient.Create(_factory).SignInAsync(name: "Third");
         (await ApiClient.Create(_factory, third.Token).AcceptInviteAsync(await group.Owner.CreateInviteAsync(group.Id)))
             .EnsureSuccessStatusCode();
 
         _factory.Clock.Set(Now.AddDays(7));
-        await OpenAsync(group);
+        await group.OpenAsync();
 
-        var expenses = await ExpensesAsync(group);
+        var expenses = await group.ExpensesAsync();
         Assert.Equal(2, expenses.Count);
         Assert.All(expenses, e => Assert.Equal(
             [group.OwnerId, group.GuestId],
@@ -51,7 +48,7 @@ public sealed class RecurringExpenseMembershipTests : IDisposable
     {
         var group = await GroupFixture.CreateAsync(_factory);
         await _factory.DrainProcessedAsync();
-        await CreateWeeklyAsync(group, paidBy: group.OwnerId, group.OwnerId, group.GuestId);
+        await group.CreateRecurringAsync("weekly", Now.UtcDateTime, paidBy: group.OwnerId, participants: [group.OwnerId, group.GuestId]);
         await WorkerHarness.WaitForProcessedAsync(_factory);
         await group.SettleAsync(10m);
         await WorkerHarness.WaitForProcessedAsync(_factory);
@@ -60,7 +57,7 @@ public sealed class RecurringExpenseMembershipTests : IDisposable
         var refused = await group.Guest.LeaveGroupAsync(group.Id);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        Assert.Equal(2, (await ExpensesAsync(group)).Count);
+        Assert.Equal(2, (await group.ExpensesAsync()).Count);
     }
 
     [Fact]
@@ -100,7 +97,7 @@ public sealed class RecurringExpenseMembershipTests : IDisposable
     {
         var group = await GroupFixture.CreateAsync(_factory);
         await _factory.DrainProcessedAsync();
-        await CreateWeeklyAsync(group, paidBy: group.OwnerId, group.OwnerId, group.GuestId);
+        await group.CreateRecurringAsync("weekly", Now.UtcDateTime, paidBy: group.OwnerId, participants: [group.OwnerId, group.GuestId]);
         await WorkerHarness.WaitForProcessedAsync(_factory);
         await group.SettleAsync(10m);
         await WorkerHarness.WaitForProcessedAsync(_factory);
@@ -108,9 +105,9 @@ public sealed class RecurringExpenseMembershipTests : IDisposable
         Assert.Equal(HttpStatusCode.NoContent, (await group.Guest.LeaveGroupAsync(group.Id)).StatusCode);
 
         _factory.Clock.Set(Now.AddDays(21));
-        await OpenAsync(group);
+        await group.OpenAsync();
 
-        var remaining = Assert.Single(await ExpensesAsync(group));
+        var remaining = Assert.Single(await group.ExpensesAsync());
         Assert.Equal(JsonValueKind.Null, remaining.GetProperty("recurringExpenseId").ValueKind);
         Assert.False(await RecurringExpensesExistAsync(group.Id));
     }
@@ -121,15 +118,15 @@ public sealed class RecurringExpenseMembershipTests : IDisposable
         var group = await GroupFixture.CreateAsync(_factory);
         await _factory.DrainProcessedAsync();
         // The guest pays for themselves alone, so they never owe anyone.
-        await CreateWeeklyAsync(group, paidBy: group.GuestId, group.GuestId);
+        await group.CreateRecurringAsync("weekly", Now.UtcDateTime, paidBy: group.GuestId, participants: [group.GuestId]);
         await WorkerHarness.WaitForProcessedAsync(_factory);
 
         Assert.Equal(HttpStatusCode.NoContent, (await group.Owner.RemoveMemberAsync(group.Id, group.GuestId)).StatusCode);
 
         _factory.Clock.Set(Now.AddDays(21));
-        await OpenAsync(group);
+        await group.OpenAsync();
 
-        Assert.Single(await ExpensesAsync(group));
+        Assert.Single(await group.ExpensesAsync());
         Assert.False(await RecurringExpensesExistAsync(group.Id));
     }
 
@@ -138,8 +135,8 @@ public sealed class RecurringExpenseMembershipTests : IDisposable
     {
         var group = await GroupFixture.CreateAsync(_factory);
         await _factory.DrainProcessedAsync();
-        await CreateWeeklyAsync(group, paidBy: group.OwnerId, group.OwnerId, group.GuestId);
-        await CreateWeeklyAsync(group, paidBy: group.GuestId, group.GuestId);
+        await group.CreateRecurringAsync("weekly", Now.UtcDateTime, paidBy: group.OwnerId, participants: [group.OwnerId, group.GuestId]);
+        await group.CreateRecurringAsync("weekly", Now.UtcDateTime, paidBy: group.GuestId, participants: [group.GuestId]);
         await WorkerHarness.WaitForProcessedAsync(_factory, count: 2);
         await group.SettleAsync(10m);
         await WorkerHarness.WaitForProcessedAsync(_factory);
@@ -150,58 +147,30 @@ public sealed class RecurringExpenseMembershipTests : IDisposable
 
         // Both due repeats were added, and the one the tombstone shares in left it owing,
         // so it keeps its membership to carry that.
-        Assert.Equal(4, (await ExpensesAsync(group)).Count);
+        Assert.Equal(4, (await group.ExpensesAsync()).Count);
         Assert.False(await RecurringExpensesExistAsync(group.Id));
         Assert.Equal(10m, (await group.Owner.ReadSummaryAsync(group.Id)).AmountOwedBy(group.OwnerId, group.GuestId));
 
         _factory.Clock.Set(Now.AddDays(21));
-        await OpenAsync(group);
+        await group.OpenAsync();
 
-        Assert.Equal(4, (await ExpensesAsync(group)).Count);
+        Assert.Equal(4, (await group.ExpensesAsync()).Count);
     }
 
     [Fact]
     public async Task Deactivating_leaves_recurring_expenses_running()
     {
         var group = await GroupFixture.CreateAsync(_factory);
-        await CreateWeeklyAsync(group, paidBy: group.GuestId, group.OwnerId, group.GuestId);
+        await group.CreateRecurringAsync("weekly", Now.UtcDateTime, paidBy: group.GuestId, participants: [group.OwnerId, group.GuestId]);
 
         (await group.Guest.DeactivateAccountAsync()).EnsureSuccessStatusCode();
         _factory.Clock.Set(Now.AddDays(7));
-        await OpenAsync(group);
+        await group.OpenAsync();
 
-        Assert.Equal(2, (await ExpensesAsync(group)).Count);
+        Assert.Equal(2, (await group.ExpensesAsync()).Count);
     }
 
     // Helpers.
-
-    private static async Task CreateWeeklyAsync(GroupFixture group, int paidBy, params int[] participants)
-    {
-        var response = await group.Owner.CreateExpenseAsync(group.Id, new
-        {
-            paidBy,
-            amount = 10m * participants.Length,
-            description = "Rent",
-            date = Now.UtcDateTime,
-            splitMode = "equal",
-            repeat = "weekly",
-            timeZone = "UTC",
-            splits = participants.Select(userId => new { userId, amount = 10m }).ToArray()
-        });
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    }
-
-    private static async Task OpenAsync(GroupFixture group) =>
-        (await group.Owner.GetGroupAsync(group.Id)).EnsureSuccessStatusCode();
-
-    private static async Task<List<JsonElement>> ExpensesAsync(GroupFixture group)
-    {
-        var response = await group.Owner.GetExpensesAsync(group.Id);
-        response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<JsonElement>(Json)).EnumerateArray()
-            .Where(e => e.GetProperty("type").GetString() == "expense")
-            .ToList();
-    }
 
     private Task<bool> RecurringExpensesExistAsync(int groupId) =>
         _factory.UseDbAsync(db => db.RecurringExpense.AnyAsync(r => r.GroupId == groupId));

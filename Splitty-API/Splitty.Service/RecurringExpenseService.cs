@@ -58,24 +58,38 @@ public class RecurringExpenseService(
 /// </summary>
 internal static class RecurringExpenses
 {
-    public static Expense ExpenseFor(RecurringExpense recurring, DateTime date) => new()
+    public static Expense ExpenseFor(RecurringExpense recurring, DateTime date)
     {
-        GroupId = recurring.GroupId,
-        PaidBy = recurring.PaidBy,
-        Amount = recurring.Amount,
-        Description = recurring.Description,
-        Category = recurring.Category,
-        SplitMode = recurring.SplitMode,
-        Type = ExpenseType.Expense,
-        Date = date,
-        RecurringExpenseId = recurring.Id,
-        Splits = recurring.Splits.OrderBy(s => s.Id).Select(s => new ExpenseSplit
+        var expense = new Expense
+        {
+            GroupId = recurring.GroupId,
+            Description = recurring.Description,
+            Type = ExpenseType.Expense,
+            RecurringExpenseId = recurring.Id
+        };
+        CopyTo(expense, recurring, date);
+        return expense;
+    }
+
+    /// <summary>
+    /// Sets <paramref name="expense"/>'s copied values and date from the recurring expense.
+    /// Its splits are replaced, never re-pointed, like an expense edit's.
+    /// </summary>
+    public static void CopyTo(Expense expense, RecurringExpense recurring, DateTime date)
+    {
+        expense.PaidBy = recurring.PaidBy;
+        expense.Amount = recurring.Amount;
+        expense.Description = recurring.Description;
+        expense.Category = recurring.Category;
+        expense.SplitMode = recurring.SplitMode;
+        expense.Date = date;
+        expense.Splits = recurring.Splits.OrderBy(s => s.Id).Select(s => new ExpenseSplit
         {
             UserId = s.UserId,
             Amount = s.Amount,
             Percentage = s.Percentage
-        }).ToList()
-    };
+        }).ToList();
+    }
 
     /// Sets the recurring expense's copied values from <paramref name="expense"/>.
     public static void CopyFrom(RecurringExpense recurring, Expense expense)

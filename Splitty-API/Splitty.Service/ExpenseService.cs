@@ -222,11 +222,11 @@ public class ExpenseService(
 
     /// <summary>
     /// Applies an edit already made to <paramref name="expense"/> to every expense after it:
-    /// the later ones are deleted and the recurring expense restarts from this one, then
-    /// catch-up adds the later ones again with the new values. <see cref="Repeat.Never"/>
-    /// deletes the recurring expense instead, leaving this one and the earlier ones plain.
-    /// Either way the group catches up, all in one transaction, and the recomputation is
-    /// requested once it has committed.
+    /// the recurring expense restarts from this one and the later ones it added are rewritten
+    /// onto the new days (see <see cref="RestartFrom"/>). <see cref="Repeat.Never"/> deletes
+    /// the later ones and the recurring expense instead, leaving this one and the earlier ones
+    /// plain. Either way the group catches up, all in one transaction, and the recomputation
+    /// is requested once it has committed.
     /// </summary>
     private async Task UpdateFollowingAsync(Expense expense, int recurringExpenseId, DateTime originalDate, Repeat? repeat)
     {
@@ -236,22 +236,76 @@ public class ExpenseService(
 
         var frequency = repeat is { } r ? RecurringExpenses.FrequencyOf(r) : recurring.Frequency;
 
-        if (frequency is not null)
-        {
-            RecurringExpenses.CopyFrom(recurring, expense);
-            recurring.Frequency = frequency.Value;
-            recurring.StartDate = LocalCalendar.DayOf(DateOf(expense), TimeZoneInfo.FindSystemTimeZoneById(recurring.TimeZone));
-            recurring.AddedThrough = recurring.StartDate;
-            recurring.UpdatedAt = DateTime.UtcNow;
-        }
+        var removed = frequency is { } f
+            ? RestartFrom(recurring, expense, originalDate, f, later)
+            : later;
 
         await expenseRepository.InTransactionAsync(async () =>
         {
-            await expenseRepository.SaveFollowingAsync(later, stopped: frequency is null ? recurring : null);
+            await expenseRepository.SaveFollowingAsync(removed, stopped: frequency is null ? recurring : null);
             await recurringExpenseService.AddDueAsync(expense.GroupId);
         });
 
         await groupLedger.RequestRecomputationAsync(expense.GroupId);
+    }
+
+    /// <summary>
+    /// Restarts <paramref name="recurring"/> from <paramref name="expense"/>'s values, day and
+    /// <paramref name="frequency"/>, and rewrites the <paramref name="later"/> expenses onto
+    /// the new days. Each keeps its place: the nth repeat after this expense stays the nth,
+    /// so one deleted on its own stays a gap rather than being added again. A place whose new
+    /// day is not due yet is dropped, since nothing is added before it is due. Returns the
+    /// expenses to delete.
+    /// </summary>
+    private List<Expense> RestartFrom(
+        RecurringExpense recurring,
+        Expense expense,
+        DateTime originalDate,
+        RepeatFrequency frequency,
+        List<Expense> later)
+    {
+        var zone = TimeZoneInfo.FindSystemTimeZoneById(recurring.TimeZone);
+
+        // The places after this expense that were already added, under the old values.
+        var oldDays = RecurringDueDays.DueDaysBetween(
+            recurring.StartDate,
+            recurring.Frequency,
+            LocalCalendar.DayOf(originalDate, zone),
+            recurring.AddedThrough).ToList();
+
+        RecurringExpenses.CopyFrom(recurring, expense);
+        recurring.Frequency = frequency;
+        recurring.StartDate = LocalCalendar.DayOf(DateOf(expense), zone);
+        recurring.UpdatedAt = DateTime.UtcNow;
+
+        var today = LocalCalendar.DayOf(timeProvider.GetUtcNow(), zone);
+        var kept = Enumerable.Range(1, oldDays.Count)
+            .TakeWhile(n => RecurringDueDays.DueDay(recurring.StartDate, frequency, n) <= today)
+            .Count();
+
+        // Covers the gaps too, so catch-up adds only places that were never added.
+        recurring.AddedThrough = RecurringDueDays.DueDay(recurring.StartDate, frequency, kept);
+
+        var removed = new List<Expense>();
+
+        foreach (var laterExpense in later)
+        {
+            // An expense moved off its day on its own counts as the latest place on or before it.
+            var day = LocalCalendar.DayOf(DateOf(laterExpense), zone);
+            var place = Math.Max(1, oldDays.Count(d => d <= day));
+
+            if (place > kept)
+            {
+                removed.Add(laterExpense);
+                continue;
+            }
+
+            var newDay = RecurringDueDays.DueDay(recurring.StartDate, frequency, place);
+            RecurringExpenses.CopyTo(laterExpense, recurring, LocalCalendar.MidnightUtc(newDay, zone));
+            laterExpense.UpdatedAt = DateTime.UtcNow;
+        }
+
+        return removed;
     }
 
     /// <summary>

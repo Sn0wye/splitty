@@ -46,6 +46,7 @@ public class ExpenseRepository(ApplicationDbContext context): IExpenseRepository
 
     public Task<List<Expense>> GetAddedAfterAsync(int recurringExpenseId, DateTime after) =>
         context.Expense
+            .Include(e => e.Splits)
             .Where(e => e.RecurringExpenseId == recurringExpenseId && (e.Date ?? e.CreatedAt) > after)
             .ToListAsync();
 

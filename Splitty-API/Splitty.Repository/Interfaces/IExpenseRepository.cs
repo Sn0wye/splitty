@@ -12,7 +12,7 @@ public interface IExpenseRepository
 
     /// <summary>
     /// The expenses <paramref name="recurringExpenseId"/> added that are dated after
-    /// <paramref name="after"/>, tracked.
+    /// <paramref name="after"/>, tracked, with their splits.
     /// </summary>
     Task<List<Expense>> GetAddedAfterAsync(int recurringExpenseId, DateTime after);
 
