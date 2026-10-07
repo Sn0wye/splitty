@@ -104,6 +104,29 @@ struct APIErrorMessageTests {
         #expect(APIError.httpError(500, message: nil).displayMessage == "Something went wrong (500). Try again.")
     }
 
+    // A refusal the server names with a code keeps it, so a caller branches on the code
+    // rather than the English message. A code this build does not know is an ordinary error.
+    @Test func keepsTheCodeOfARefusalItKnows() async {
+        let server = StubServer { request in
+            let code = request.url?.path == "/known" ? "balances_pending" : "newer_server_code"
+            return (409, json(["statusCode": 409, "message": "Try again later.", "code": code]))
+        }
+        let client = server.client(credentials: InMemoryCredentialStore())
+
+        await #expect {
+            let _: EmptyResponse = try await client.request(endpoint: "/known", method: .POST, requiresAuth: false)
+        } throws: { error in
+            guard case .refused(409, .balancesPending, "Try again later.") = error as? APIError else { return false }
+            return true
+        }
+        await #expect {
+            let _: EmptyResponse = try await client.request(endpoint: "/unknown", method: .POST, requiresAuth: false)
+        } throws: { error in
+            guard case .httpError(409, "Try again later.") = error as? APIError else { return false }
+            return true
+        }
+    }
+
     @Test func readsAnErrorThatIsNotAnAPIError() {
         struct Sad: LocalizedError { var errorDescription: String? { "Sad" } }
         #expect(Sad().displayMessage == "Sad")

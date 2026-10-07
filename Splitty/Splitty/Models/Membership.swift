@@ -7,11 +7,6 @@ import Foundation
 
 /// What a membership action should say, and whether the group screen can still be used.
 struct MembershipError: Equatable {
-    /// What the API says when it refuses a leave or a removal because the group's balances
-    /// are still being recomputed. The response carries no code, so the message is the
-    /// only thing telling this 409 from the outstanding-balance one.
-    static let balancesPendingMessage = "Balances are being recalculated. Try again in a moment."
-
     let message: String
     let shouldLeaveScreen: Bool
 
@@ -20,7 +15,8 @@ struct MembershipError: Equatable {
         case .httpError(403, _), .httpError(404, _):
             message = L10n.Errors.groupUnavailable
             shouldLeaveScreen = true
-        case .httpError(409, .some(Self.balancesPendingMessage)):
+        case .refused(409, .balancesPending, _):
+            // Retryable, so it gets the app's own copy rather than the server's English.
             message = L10n.Errors.balancesUpdating
             shouldLeaveScreen = false
         default:

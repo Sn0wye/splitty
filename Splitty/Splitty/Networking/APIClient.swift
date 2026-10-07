@@ -164,6 +164,13 @@ final class APIClient: Sendable {
     
 }
 
+/// `ErrorResponse.code` on the wire: the refusals a client handles differently from others
+/// with the same status.
+enum APIErrorCode: String {
+    case outstandingBalance = "outstanding_balance"
+    case balancesPending = "balances_pending"
+}
+
 enum APIError: Error, LocalizedError {
     case missingBaseURL
     case invalidBaseURL(String)
@@ -175,6 +182,9 @@ enum APIError: Error, LocalizedError {
     /// case that needs it: only the server knows why a request the client believed in was
     /// refused.
     case httpError(Int, message: String?)
+    /// A refusal the server named with a code this build knows. Only refusals a client
+    /// must tell apart from others with the same status carry one.
+    case refused(Int, code: APIErrorCode, message: String?)
     case networkError(Error)
     case decodingError(Error)
     
@@ -183,7 +193,9 @@ enum APIError: Error, LocalizedError {
     /// raw `localizedDescription`.
     var displayMessage: String {
         switch self {
-        case .httpError(_, .some(let message)): return message
+        case .httpError(_, .some(let message)), .refused(_, _, .some(let message)): return message
+        case .refused(_, .balancesPending, nil): return L10n.Errors.balancesUpdating
+        case .refused(_, .outstandingBalance, nil): return L10n.Errors.outstandingBalance
         case .httpError(400, _): return L10n.Errors.rejected
         case .httpError(403, _): return L10n.Errors.notMember
         case .httpError(404, _): return L10n.Errors.gone
@@ -208,7 +220,7 @@ enum APIError: Error, LocalizedError {
             return "Invalid request body"
         case .invalidResponse:
             return "Invalid response"
-        case .httpError(let code, _):
+        case .httpError(let code, _), .refused(let code, _, _):
             return "HTTP error: \(code)"
         case .networkError(let error):
             return "Network error: \(error.localizedDescription)"

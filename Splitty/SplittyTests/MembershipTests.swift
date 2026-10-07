@@ -19,14 +19,27 @@ struct MembershipErrorTests {
         #expect(!result.shouldLeaveScreen)
     }
 
-    // Retryable, so it gets the app's own copy rather than the server's English.
+    // Retryable, so it gets the app's own copy rather than the server's English. Told apart
+    // from the outstanding-balance 409 by its code, never by the wording.
     @Test func pendingBalancesConflictSaysToRetry() {
-        let result = MembershipError(APIError.httpError(
+        let result = MembershipError(APIError.refused(
             409,
+            code: .balancesPending,
             message: "Balances are being recalculated. Try again in a moment."
         ))
 
         #expect(result.message == "Balances are still updating. Try again in a moment.")
+        #expect(!result.shouldLeaveScreen)
+    }
+
+    @Test func outstandingBalanceConflictUsesTheServersExplanation() {
+        let result = MembershipError(APIError.refused(
+            409,
+            code: .outstandingBalance,
+            message: "Settle your balance before leaving the group"
+        ))
+
+        #expect(result.message == "Settle your balance before leaving the group")
         #expect(!result.shouldLeaveScreen)
     }
 
