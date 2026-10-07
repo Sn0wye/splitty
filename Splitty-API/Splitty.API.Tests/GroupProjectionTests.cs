@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Splitty.DTO.Response;
 
 namespace Splitty.API.Tests;
 
@@ -183,8 +184,9 @@ public sealed class GroupProjectionTests(ApiFactory factory)
         await factory.DrainProcessedAsync();
         await group.CreateExpenseAsync(20m, 10m);
         await factory.WaitForProcessedAsync();
-        Assert.Equal(HttpStatusCode.Conflict,
-            (await group.Owner.Http.DeleteAsync($"/group/{group.Id}/members/{group.GuestId}")).StatusCode);
+        var removal = await group.Owner.Http.DeleteAsync($"/group/{group.Id}/members/{group.GuestId}");
+        Assert.Equal(HttpStatusCode.Conflict, removal.StatusCode);
+        Assert.Equal(ErrorCode.OutstandingBalance, (await ErrorResponseAssertions.ReadErrorAsync(removal)).Code);
         Assert.Equal(HttpStatusCode.Conflict, (await group.Guest.LeaveGroupAsync(group.Id)).StatusCode);
         await group.SettleAsync(10m);
         await factory.WaitForProcessedAsync();

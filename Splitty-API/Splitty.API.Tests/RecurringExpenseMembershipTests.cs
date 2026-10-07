@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Splitty.DTO.Response;
 
 namespace Splitty.API.Tests;
 
@@ -83,8 +84,11 @@ public sealed class RecurringExpenseMembershipTests : IDisposable
         var refused = await guest.LeaveGroupAsync(group.Id);
 
         Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
-        // Not the outstanding-balance message: the guest owes nothing.
-        Assert.Contains("recalculated", (await ErrorResponseAssertions.ReadErrorAsync(refused)).Message);
+        // Not the outstanding-balance refusal: the guest owes nothing. The code is what lets
+        // a client tell the two 409s apart without reading English.
+        var error = await ErrorResponseAssertions.ReadErrorAsync(refused);
+        Assert.Equal(ErrorCode.BalancesPending, error.Code);
+        Assert.Contains("recalculated", error.Message);
 
         gate.Release();
         await WorkerHarness.WaitForProcessedAsync(gated);

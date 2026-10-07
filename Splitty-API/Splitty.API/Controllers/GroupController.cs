@@ -152,16 +152,17 @@ public class GroupController(
         MembershipRemovalStatus.TargetNotAMember => NotFound(Error(404, "User is not a member of this group")),
         MembershipRemovalStatus.OutstandingBalance => Conflict(Error(409, self
             ? "Settle your balance before leaving the group"
-            : "This member has an outstanding balance")),
+            : "This member has an outstanding balance", ErrorCode.OutstandingBalance)),
         MembershipRemovalStatus.BalancesPending => Conflict(Error(409,
-            "Balances are being recalculated. Try again in a moment.")),
+            "Balances are being recalculated. Try again in a moment.", ErrorCode.BalancesPending)),
         _ => StatusCode(500)
     };
 
-    private static ErrorResponse Error(int statusCode, string message) => new()
+    private static ErrorResponse Error(int statusCode, string message, ErrorCode? code = null) => new()
     {
         StatusCode = statusCode,
-        Message = message
+        Message = message,
+        Code = code
     };
 
     [HttpGet("{groupId}/expenses")]
