@@ -31,6 +31,38 @@ public sealed class ExpenseReadAndDeleteTests(ApiFactory factory)
         Assert.Equal(2, body.GetProperty("splits").GetArrayLength());
     }
 
+    // Opening a group sends the group read, which adds due repeats (ADR 0006), alongside the
+    // expense list. An expense written between the list's statements stands in for that
+    // catch-up: the list must still read every expense together with its own splits.
+    [Fact]
+    public async Task An_expense_written_mid_list_does_not_strip_the_others_of_their_splits()
+    {
+        var group = await GroupFixture.CreateAsync(factory);
+        var earlier = await group.CreateExpenseAsync(amount: 20m, share: 10m, date: DateTime.UtcNow.AddDays(-2));
+        var later = await group.CreateExpenseAsync(amount: 40m, share: 20m, date: DateTime.UtcNow.AddDays(-1));
+
+        var interceptor = new CommandInterceptor();
+        await using var host = factory.WithInterceptor(interceptor);
+        var guest = ApiClient.Create(host, group.GuestToken);
+        interceptor.Before(
+            sql => sql.Contains("JOIN \"ExpenseSplit\"", StringComparison.Ordinal),
+            () => group.CreateExpenseAsync(amount: 60m, share: 30m, date: DateTime.UtcNow));
+
+        var list = await guest.ReadJsonAsync(await guest.GetExpensesAsync(group.Id));
+        await interceptor.Fired;
+
+        var expenses = list.EnumerateArray().ToList();
+        Assert.Contains(expenses, e => e.GetProperty("id").GetInt32() == earlier);
+        Assert.Contains(expenses, e => e.GetProperty("id").GetInt32() == later);
+        foreach (var expense in expenses)
+        {
+            var splits = expense.GetProperty("splits").EnumerateArray().ToList();
+            Assert.Equal(2, splits.Count);
+            Assert.All(splits, split =>
+                Assert.Equal(expense.GetProperty("id").GetInt32(), split.GetProperty("expenseId").GetInt32()));
+        }
+    }
+
     [Fact]
     public async Task Reading_an_expense_of_another_group_is_not_found()
     {
