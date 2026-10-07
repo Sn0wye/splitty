@@ -59,7 +59,7 @@ public class GroupController(
 
         if (userId is null) return Unauthorized();
 
-        var group = await readModel.GetGroupAsync(groupId, int.Parse(userId));
+        var group = await groupService.OpenAsync(groupId, int.Parse(userId));
 
         if (group is null) return NotFound(Error(404, "Group not found"));
 
@@ -153,6 +153,8 @@ public class GroupController(
         MembershipRemovalStatus.OutstandingBalance => Conflict(Error(409, self
             ? "Settle your balance before leaving the group"
             : "This member has an outstanding balance")),
+        MembershipRemovalStatus.BalancesPending => Conflict(Error(409,
+            "Balances are being recalculated. Try again in a moment.")),
         _ => StatusCode(500)
     };
 
@@ -214,7 +216,9 @@ public class GroupController(
             Date = request.Date,
             Category = request.Category,
             SplitMode = request.SplitMode,
-            ExpenseSplits = request.Splits
+            ExpenseSplits = request.Splits,
+            Repeat = request.Repeat,
+            TimeZone = request.TimeZone
         };
 
         var expense = await expenseService.CreateAsync(dto, int.Parse(userId));
@@ -226,7 +230,8 @@ public class GroupController(
     public async Task<ActionResult<ExpenseResponse>> UpdateExpense(
         [FromBody] UpdateExpenseRequest request,
         int groupId,
-        int expenseId
+        int expenseId,
+        [FromQuery] ExpenseScope scope = ExpenseScope.This
     )
     {
         
@@ -251,7 +256,9 @@ public class GroupController(
             Date = request.Date,
             Category = request.Category,
             SplitMode = request.SplitMode,
-            ExpenseSplits = request.Splits
+            ExpenseSplits = request.Splits,
+            Repeat = request.Repeat,
+            Scope = scope
         };
 
         var expense = await expenseService.UpdateAsync(dto, int.Parse(userId));
@@ -260,7 +267,10 @@ public class GroupController(
     }
     
     [HttpDelete("{groupId}/expenses/{expenseId:int}")]
-    public async Task<ActionResult> DeleteExpense(int groupId, int expenseId)
+    public async Task<ActionResult> DeleteExpense(
+        int groupId,
+        int expenseId,
+        [FromQuery] ExpenseScope scope = ExpenseScope.This)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -268,7 +278,7 @@ public class GroupController(
 
         if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
 
-        await expenseService.DeleteAsync(groupId, expenseId, int.Parse(userId));
+        await expenseService.DeleteAsync(groupId, expenseId, int.Parse(userId), scope);
 
         return NoContent();
     }

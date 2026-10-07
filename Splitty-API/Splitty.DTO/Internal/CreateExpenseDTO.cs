@@ -12,6 +12,8 @@ public class CreateExpenseDTO
     public ExpenseCategory? Category { get; set; }
     public required SplitMode SplitMode { get; set; }
     public required List<ExpenseSplitDTO> ExpenseSplits { get; set; }
+    public Repeat? Repeat { get; set; }
+    public string? TimeZone { get; set; }
 }
 
 public partial class ExpenseSplitDTO

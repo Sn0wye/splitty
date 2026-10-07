@@ -93,6 +93,8 @@ public class GroupReadModel(ApplicationDbContext context, IAvatarResolver avatar
                 Date = e.Date,
                 CreatedAt = e.CreatedAt,
                 UpdatedAt = e.UpdatedAt,
+                RecurringExpenseId = e.RecurringExpenseId,
+                Repeat = e.RecurringExpense == null ? null : e.RecurringExpense.Frequency,
                 Splits = e.Splits.OrderBy(s => s.Id).Select(s => new ExpenseSplitResponse
                 {
                     Id = s.Id,

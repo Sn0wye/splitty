@@ -15,6 +15,12 @@ public sealed class ExpenseResponse
     public DateTime? Date { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
+
+    /// The recurring expense that added this expense, null for one entered by hand.
+    public int? RecurringExpenseId { get; init; }
+
+    /// How often <see cref="RecurringExpenseId"/> repeats, null when it is null.
+    public RepeatFrequency? Repeat { get; init; }
     public ExpenseUserResponse PaidByUser { get; set; } = null!;
     public List<ExpenseSplitResponse> Splits { get; init; } = [];
 }

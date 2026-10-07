@@ -43,4 +43,19 @@ public class ExpenseRepository(ApplicationDbContext context): IExpenseRepository
         context.Expense.Remove(expense);
         await context.SaveChangesAsync();
     }
+
+    public Task<List<Expense>> GetAddedAfterAsync(int recurringExpenseId, DateTime after) =>
+        context.Expense
+            .Where(e => e.RecurringExpenseId == recurringExpenseId && (e.Date ?? e.CreatedAt) > after)
+            .ToListAsync();
+
+    public async Task SaveFollowingAsync(IEnumerable<Expense> removed, RecurringExpense? stopped)
+    {
+        context.Expense.RemoveRange(removed);
+
+        // What it added before stays, unlinked by the foreign key's SET NULL.
+        if (stopped is not null) context.RecurringExpense.Remove(stopped);
+
+        await context.SaveChangesAsync();
+    }
 }

@@ -35,6 +35,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     /// The storage stand-in the host is wired to, so a test can seed and inspect it.
     public FakeAvatarStorage AvatarStorage => Services.GetRequiredService<FakeAvatarStorage>();
 
+    /// The clock the host reads, so a test can move it past due days.
+    public TestClock Clock => Services.GetRequiredService<TestClock>();
+
     public async Task WaitForProcessedAsync(CancellationToken cancellationToken = default)
     {
         await Services.GetRequiredService<TransactionProcessedSignal>().WaitAsync(cancellationToken);
@@ -60,6 +63,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             services.AddScoped<IGoogleTokenExchanger, FakeGoogleTokenExchanger>();
             services.AddSingleton<FakeAvatarStorage>();
             services.AddSingleton<IAvatarStorage>(sp => sp.GetRequiredService<FakeAvatarStorage>());
+            services.AddSingleton<TestClock>();
+            services.AddSingleton<TimeProvider>(sp => sp.GetRequiredService<TestClock>());
         });
     }
 }

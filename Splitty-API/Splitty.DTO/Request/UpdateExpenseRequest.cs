@@ -29,4 +29,11 @@ public class UpdateExpenseRequest
     public SplitMode? SplitMode { get; set; }
 
     public List<UpdateExpenseSplitDTO>? Splits { get; set; }
+
+    /// <summary>
+    /// The new frequency of the recurring expense that added this expense, or
+    /// <see cref="Domain.Entities.Repeat.Never"/> to stop it. Only accepted with
+    /// <c>scope=following</c>; omitted keeps the current frequency.
+    /// </summary>
+    public Repeat? Repeat { get; set; }
 }

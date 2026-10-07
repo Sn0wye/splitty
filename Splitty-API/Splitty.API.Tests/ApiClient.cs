@@ -103,6 +103,9 @@ public sealed class ApiClient
     public Task<HttpResponseMessage> UpdateExpenseAsync(int groupId, int expenseId, object body) =>
         _http.PutAsJsonAsync($"/group/{groupId}/expenses/{expenseId}", body);
 
+    public Task<HttpResponseMessage> UpdateExpenseAsync(int groupId, int expenseId, string scope, object body) =>
+        _http.PutAsJsonAsync($"/group/{groupId}/expenses/{expenseId}?scope={scope}", body);
+
     public Task<HttpResponseMessage> GetExpenseAsync(int groupId, int expenseId) =>
         _http.GetAsync($"/group/{groupId}/expenses/{expenseId}");
 
@@ -111,6 +114,9 @@ public sealed class ApiClient
 
     public Task<HttpResponseMessage> DeleteExpenseAsync(int groupId, int expenseId) =>
         _http.DeleteAsync($"/group/{groupId}/expenses/{expenseId}");
+
+    public Task<HttpResponseMessage> DeleteExpenseAsync(int groupId, int expenseId, string scope) =>
+        _http.DeleteAsync($"/group/{groupId}/expenses/{expenseId}?scope={scope}");
 
     public Task<HttpResponseMessage> UpdateSettlementAsync(int groupId, int expenseId, object body) =>
         _http.PutAsJsonAsync($"/group/{groupId}/settlements/{expenseId}", body);

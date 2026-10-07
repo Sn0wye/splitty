@@ -65,6 +65,7 @@ public class UserRepository(ApplicationDbContext context): IUserRepository
     /// no money: a nonzero net stays on the tombstone so the group still sums to zero, and
     /// a pending group's stored net may be stale, so it is kept too. Every group left with
     /// no live member is then deleted, which cascades its expenses, balances and invites.
+    /// Every recurring expense the user pays for or shares in is deleted first.
     /// </summary>
     public async Task TombstoneAsync(int id)
     {
@@ -85,6 +86,12 @@ public class UserRepository(ApplicationDbContext context): IUserRepository
         await context.OAuthAccount.Where(a => a.UserId == id).ExecuteDeleteAsync();
         // The row survives as a tombstone, so the cascade never fires.
         await context.RefreshToken.Where(t => t.UserId == id).ExecuteDeleteAsync();
+
+        // Before memberships go: catch-up copies splits without checking membership, so a
+        // recurring expense left behind would keep billing the tombstone.
+        await context.RecurringExpense
+            .Where(r => r.PaidBy == id || r.Splits.Any(s => s.UserId == id))
+            .ExecuteDeleteAsync();
 
         var groupIds = await context.GroupMembership
             .Where(m => m.UserId == id)

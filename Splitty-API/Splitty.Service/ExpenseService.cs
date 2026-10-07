@@ -13,8 +13,11 @@ namespace Splitty.Service;
 /// </summary>
 public class ExpenseService(
     IExpenseRepository expenseRepository,
+    IRecurringExpenseRepository recurringExpenseRepository,
+    IRecurringExpenseService recurringExpenseService,
     IGroupLedger groupLedger,
-    IGroupReadModel readModel
+    IGroupReadModel readModel,
+    TimeProvider timeProvider
     ): IExpenseService
 {
     public async Task<ExpenseResponse> CreateAsync(CreateExpenseDTO dto, int userId)
@@ -55,6 +58,12 @@ public class ExpenseService(
             }).ToList()
         };
 
+        // Saved with its first expense in one insert, so neither exists without the other.
+        if (dto.Repeat is { } repeat && RecurringExpenses.FrequencyOf(repeat) is { } frequency)
+        {
+            expense.RecurringExpense = StartRecurring(expense, frequency, dto.TimeZone);
+        }
+
         await expenseRepository.CreateAsync(expense);
         await groupLedger.RequestRecomputationAsync(expense.GroupId);
         
@@ -66,7 +75,7 @@ public class ExpenseService(
     /// cap and keeps one delete path per row type. See
     /// docs/adr/0001-settlements-have-their-own-routes.md.
     /// </summary>
-    public async Task DeleteAsync(int groupId, int expenseId, int userId)
+    public async Task DeleteAsync(int groupId, int expenseId, int userId, ExpenseScope scope = ExpenseScope.This)
     {
         await EnsureMemberAsync(groupId, userId);
 
@@ -78,7 +87,21 @@ public class ExpenseService(
                 "This is a settlement. Delete it through /group/{groupId}/settlements/{expenseId}.");
         }
 
-        await expenseRepository.DeleteAsync(expense);
+        if (scope == ExpenseScope.Following)
+        {
+            var recurringExpenseId = RecurringExpenseIdOrThrow(expense);
+            var later = await expenseRepository.GetAddedAfterAsync(recurringExpenseId, DateOf(expense));
+            var recurring = await recurringExpenseRepository.GetForUpdateAsync(recurringExpenseId);
+
+            await expenseRepository.SaveFollowingAsync(later.Append(expense), recurring);
+        }
+        else
+        {
+            // The recurring expense keeps going. Its AddedThrough is unchanged, so this
+            // expense is never added again.
+            await expenseRepository.DeleteAsync(expense);
+        }
+
         await groupLedger.RequestRecomputationAsync(groupId);
     }
     
@@ -89,6 +112,11 @@ public class ExpenseService(
         if (dto.ExpenseSplits is not null && dto.SplitMode is null)
         {
             throw new ArgumentException("An update that changes the splits must also send the split mode.");
+        }
+
+        if (dto.Repeat is not null && dto.Scope != ExpenseScope.Following)
+        {
+            throw new ArgumentException("repeat changes the expenses that follow, so it needs scope=following.");
         }
 
         var expense = await expenseRepository.GetForUpdateAsync(dto.Id);
@@ -116,6 +144,10 @@ public class ExpenseService(
         }
 
         EnsureNotPaymentCategory(dto.Category);
+
+        // Read before the edit moves it: "following" means after where the expense was.
+        var originalDate = DateOf(expense);
+        var recurringExpenseId = dto.Scope == ExpenseScope.Following ? RecurringExpenseIdOrThrow(expense) : (int?)null;
 
         // Validate the resulting state, not just the supplied fields: an
         // amount-only update must not leave a nonmember payer or split behind.
@@ -154,7 +186,7 @@ public class ExpenseService(
         expense.PaidBy = dto.PaidBy ?? expense.PaidBy;
         expense.Date = ExpenseDate.Normalize(dto.Date) ?? expense.Date;
         expense.UpdatedAt = DateTime.UtcNow;
-        
+
         // Sent splits replace the stored rows outright: the old rows are orphaned and deleted,
         // the new ones inserted. A row is never re-pointed, so an edit cannot reach another
         // expense's split however the request is shaped.
@@ -175,10 +207,91 @@ public class ExpenseService(
             }
         }
         
-        await expenseRepository.UpdateAsync(expense);
-        await groupLedger.RequestRecomputationAsync(expense.GroupId);
+        if (recurringExpenseId is { } id)
+        {
+            await UpdateFollowingAsync(expense, id, originalDate, dto.Repeat);
+        }
+        else
+        {
+            await expenseRepository.UpdateAsync(expense);
+            await groupLedger.RequestRecomputationAsync(expense.GroupId);
+        }
+
         return await readModel.GetExpenseAsync(expense.GroupId, expense.Id, userId);
     }
+
+    /// <summary>
+    /// Applies an edit already made to <paramref name="expense"/> to every expense after it:
+    /// the later ones are deleted and the recurring expense restarts from this one, then
+    /// catch-up adds the later ones again with the new values. <see cref="Repeat.Never"/>
+    /// deletes the recurring expense instead, leaving this one and the earlier ones plain.
+    /// </summary>
+    private async Task UpdateFollowingAsync(Expense expense, int recurringExpenseId, DateTime originalDate, Repeat? repeat)
+    {
+        var later = await expenseRepository.GetAddedAfterAsync(recurringExpenseId, originalDate);
+        var recurring = await recurringExpenseRepository.GetForUpdateAsync(recurringExpenseId)
+            ?? throw new KeyNotFoundException("Recurring expense not found");
+
+        var frequency = repeat is { } r ? RecurringExpenses.FrequencyOf(r) : recurring.Frequency;
+
+        if (frequency is null)
+        {
+            await expenseRepository.SaveFollowingAsync(later, recurring);
+            await groupLedger.RequestRecomputationAsync(expense.GroupId);
+            return;
+        }
+
+        RecurringExpenses.CopyFrom(recurring, expense);
+        recurring.Frequency = frequency.Value;
+        recurring.StartDate = LocalCalendar.DayOf(DateOf(expense), TimeZoneInfo.FindSystemTimeZoneById(recurring.TimeZone));
+        recurring.AddedThrough = recurring.StartDate;
+        recurring.UpdatedAt = DateTime.UtcNow;
+
+        await expenseRepository.SaveFollowingAsync(later, stopped: null);
+
+        if (!await recurringExpenseService.CatchUpAsync(expense.GroupId))
+        {
+            await groupLedger.RequestRecomputationAsync(expense.GroupId);
+        }
+    }
+
+    /// <summary>
+    /// The recurring expense <paramref name="first"/> starts, unsaved. Its start day is the
+    /// expense's date, or now, as a day in <paramref name="timeZone"/>, and may not be
+    /// before today there: a mistyped date must not add months of expenses.
+    /// </summary>
+    private RecurringExpense StartRecurring(Expense first, RepeatFrequency frequency, string? timeZone)
+    {
+        var zone = RecurringExpenses.ZoneOrThrow(timeZone);
+        var now = timeProvider.GetUtcNow();
+        var today = LocalCalendar.DayOf(now, zone);
+        var start = first.Date is { } date ? LocalCalendar.DayOf(date, zone) : today;
+
+        if (start < today)
+        {
+            throw new ArgumentException("A repeating expense cannot start before today.");
+        }
+
+        var recurring = new RecurringExpense
+        {
+            GroupId = first.GroupId,
+            Description = first.Description,
+            Frequency = frequency,
+            StartDate = start,
+            AddedThrough = start,
+            TimeZone = zone.Id
+        };
+        RecurringExpenses.CopyFrom(recurring, first);
+
+        return recurring;
+    }
+
+    private static int RecurringExpenseIdOrThrow(Expense expense) =>
+        expense.RecurringExpenseId
+            ?? throw new ArgumentException("This expense does not repeat, so no expenses follow it.");
+
+    /// The date an expense reads as, the same fallback the expense list sorts by.
+    private static DateTime DateOf(Expense expense) => expense.Date ?? expense.CreatedAt;
 
     /// <summary>
     /// Payment is the category a settlement carries, and settlements are written through

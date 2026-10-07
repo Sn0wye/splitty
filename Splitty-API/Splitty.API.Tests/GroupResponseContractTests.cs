@@ -91,7 +91,7 @@ public sealed class GroupResponseContractTests(ApiFactory factory)
     private static void AssertExpense(JsonElement expense, int id, int groupId, int payerId, DateTime date, string description)
     {
         AssertKeys(expense, "id", "groupId", "paidBy", "amount", "description", "type", "splitMode",
-            "category", "date", "createdAt", "updatedAt", "paidByUser", "splits");
+            "category", "date", "createdAt", "updatedAt", "recurringExpenseId", "repeat", "paidByUser", "splits");
         Assert.Equal(id, expense.GetProperty("id").GetInt32());
         Assert.Equal(groupId, expense.GetProperty("groupId").GetInt32());
         Assert.Equal(payerId, expense.GetProperty("paidBy").GetInt32());
