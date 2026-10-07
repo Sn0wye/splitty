@@ -58,4 +58,11 @@ public class ExpenseRepository(ApplicationDbContext context): IExpenseRepository
 
         await context.SaveChangesAsync();
     }
+
+    public async Task InTransactionAsync(Func<Task> work)
+    {
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        await work();
+        await transaction.CommitAsync();
+    }
 }

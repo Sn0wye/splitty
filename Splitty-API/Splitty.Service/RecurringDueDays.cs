@@ -8,7 +8,7 @@ namespace Splitty.Service;
 /// a shorter month and returns to the 31st after it, and one started on 29 February lands on
 /// 28 February outside leap years.
 /// </summary>
-internal static class RecurringSchedule
+internal static class RecurringDueDays
 {
     /// The <paramref name="n"/>th due day after <paramref name="start"/>, which is the 0th.
     public static DateOnly DueDay(DateOnly start, RepeatFrequency frequency, int n) => frequency switch

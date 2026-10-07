@@ -421,6 +421,21 @@ public sealed class RecurringExpenseTests : IDisposable
     }
 
     [Fact]
+    public async Task Stopping_one_still_catches_up_the_rest_of_the_group()
+    {
+        var group = await GroupFixture.CreateAsync(_factory);
+        var stopped = await CreateAsync(group, "weekly", Now.UtcDateTime);
+        await CreateAsync(group, "monthly", Now.UtcDateTime);
+
+        _factory.Clock.Set(Now.AddDays(31));
+        (await group.Owner.UpdateExpenseAsync(group.Id, Id(stopped), "following", new { repeat = "never" }))
+            .EnsureSuccessStatusCode();
+
+        Assert.Contains(await ExpensesAsync(group), e =>
+            DayOf(e) == Day(2030, 2, 15) && e.GetProperty("repeat").GetString() == "monthly");
+    }
+
+    [Fact]
     public async Task Deleting_this_and_following_stops_the_recurring_expense_and_unlinks_the_earlier_ones()
     {
         var group = await WeeklyThroughAsync(Now.AddDays(21));

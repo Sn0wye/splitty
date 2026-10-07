@@ -15,6 +15,14 @@ public interface IRecurringExpenseService
     Task<bool> CatchUpAsync(int groupId);
 
     /// <summary>
+    /// <see cref="CatchUpAsync"/> without the recomputation request, for a caller that adds
+    /// inside its own transaction. The caller requests it after committing: a request made
+    /// before the commit carries a generation the worker cannot see yet, so it is skipped
+    /// and the group stays pending.
+    /// </summary>
+    Task<bool> AddDueAsync(int groupId);
+
+    /// <summary>
     /// Deletes every recurring expense in the group that <paramref name="userId"/> pays for
     /// or shares in, so nothing is billed to someone outside the group. What they already
     /// added stays, as plain expenses.

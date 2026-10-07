@@ -12,6 +12,15 @@ public class RecurringExpenseService(
 {
     public async Task<bool> CatchUpAsync(int groupId)
     {
+        if (!await AddDueAsync(groupId)) return false;
+
+        await groupLedger.RequestRecomputationAsync(groupId);
+
+        return true;
+    }
+
+    public async Task<bool> AddDueAsync(int groupId)
+    {
         var now = timeProvider.GetUtcNow();
         var added = new List<Expense>();
 
@@ -20,7 +29,7 @@ public class RecurringExpenseService(
             var zone = TimeZoneInfo.FindSystemTimeZoneById(recurring.TimeZone);
 
             // Due once local midnight has passed, so every day up to today in the zone.
-            foreach (var day in RecurringSchedule.DueDaysBetween(
+            foreach (var day in RecurringDueDays.DueDaysBetween(
                          recurring.StartDate,
                          recurring.Frequency,
                          recurring.AddedThrough,
@@ -34,7 +43,6 @@ public class RecurringExpenseService(
         if (added.Count == 0) return false;
 
         await recurringExpenseRepository.SaveCatchUpAsync(added);
-        await groupLedger.RequestRecomputationAsync(groupId);
 
         return true;
     }

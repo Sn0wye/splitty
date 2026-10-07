@@ -225,6 +225,8 @@ public class ExpenseService(
     /// the later ones are deleted and the recurring expense restarts from this one, then
     /// catch-up adds the later ones again with the new values. <see cref="Repeat.Never"/>
     /// deletes the recurring expense instead, leaving this one and the earlier ones plain.
+    /// Either way the group catches up, all in one transaction, and the recomputation is
+    /// requested once it has committed.
     /// </summary>
     private async Task UpdateFollowingAsync(Expense expense, int recurringExpenseId, DateTime originalDate, Repeat? repeat)
     {
@@ -234,25 +236,22 @@ public class ExpenseService(
 
         var frequency = repeat is { } r ? RecurringExpenses.FrequencyOf(r) : recurring.Frequency;
 
-        if (frequency is null)
+        if (frequency is not null)
         {
-            await expenseRepository.SaveFollowingAsync(later, recurring);
-            await groupLedger.RequestRecomputationAsync(expense.GroupId);
-            return;
+            RecurringExpenses.CopyFrom(recurring, expense);
+            recurring.Frequency = frequency.Value;
+            recurring.StartDate = LocalCalendar.DayOf(DateOf(expense), TimeZoneInfo.FindSystemTimeZoneById(recurring.TimeZone));
+            recurring.AddedThrough = recurring.StartDate;
+            recurring.UpdatedAt = DateTime.UtcNow;
         }
 
-        RecurringExpenses.CopyFrom(recurring, expense);
-        recurring.Frequency = frequency.Value;
-        recurring.StartDate = LocalCalendar.DayOf(DateOf(expense), TimeZoneInfo.FindSystemTimeZoneById(recurring.TimeZone));
-        recurring.AddedThrough = recurring.StartDate;
-        recurring.UpdatedAt = DateTime.UtcNow;
-
-        await expenseRepository.SaveFollowingAsync(later, stopped: null);
-
-        if (!await recurringExpenseService.CatchUpAsync(expense.GroupId))
+        await expenseRepository.InTransactionAsync(async () =>
         {
-            await groupLedger.RequestRecomputationAsync(expense.GroupId);
-        }
+            await expenseRepository.SaveFollowingAsync(later, stopped: frequency is null ? recurring : null);
+            await recurringExpenseService.AddDueAsync(expense.GroupId);
+        });
+
+        await groupLedger.RequestRecomputationAsync(expense.GroupId);
     }
 
     /// <summary>
