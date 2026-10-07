@@ -415,6 +415,42 @@ public sealed class RecurringExpenseTests : IDisposable
             (await group.ExpensesAsync()).Select(DayOf).Order());
     }
 
+    // A member who moved sends their new zone with a "this and following" edit, so "every
+    // Tuesday" means Tuesday where they are now. Tokyo is ahead of UTC, so a local midnight
+    // there is the afternoon before in UTC.
+    [Fact]
+    public async Task A_new_zone_this_and_following_moves_the_later_expenses_to_its_midnight()
+    {
+        var group = await WeeklyThroughAsync(Now.AddDays(14));
+        var second = ExpenseOn(await group.ExpensesAsync(), Day(2030, 1, 22));
+
+        (await group.Owner.UpdateExpenseAsync(group.Id, Id(second), "following",
+            new { timeZone = "Asia/Tokyo" })).EnsureSuccessStatusCode();
+
+        var third = Assert.Single(await group.ExpensesAsync(), e => Id(e) != Id(second) && DayOf(e) > Day(2030, 1, 22));
+        Assert.Equal(new DateTime(2030, 1, 28, 15, 0, 0, DateTimeKind.Utc), third.GetProperty("date").GetDateTime());
+
+        // Just past midnight on 5 February in Tokyo, still the 4th in UTC.
+        _factory.Clock.Set(new DateTimeOffset(2030, 2, 4, 15, 1, 0, TimeSpan.Zero));
+        await group.OpenAsync();
+
+        var added = (await group.ExpensesAsync()).MaxBy(e => e.GetProperty("date").GetDateTime());
+        Assert.Equal(new DateTime(2030, 2, 4, 15, 0, 0, DateTimeKind.Utc), added.GetProperty("date").GetDateTime());
+    }
+
+    [Fact]
+    public async Task A_zone_needs_scope_following_and_must_be_known()
+    {
+        var group = await WeeklyThroughAsync(Now);
+        var first = Assert.Single(await group.ExpensesAsync());
+
+        var withThis = await group.Owner.UpdateExpenseAsync(group.Id, Id(first), "this", new { timeZone = "Asia/Tokyo" });
+        var unknown = await group.Owner.UpdateExpenseAsync(group.Id, Id(first), "following", new { timeZone = "Mars/Olympus" });
+
+        await ErrorResponseAssertions.AssertErrorAsync(withThis, HttpStatusCode.BadRequest);
+        await ErrorResponseAssertions.AssertErrorAsync(unknown, HttpStatusCode.BadRequest);
+    }
+
     [Fact]
     public async Task Stopping_with_repeat_never_keeps_this_expense_and_leaves_everything_plain()
     {

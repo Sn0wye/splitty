@@ -36,4 +36,11 @@ public class UpdateExpenseRequest
     /// <c>scope=following</c>; omitted keeps the current frequency.
     /// </summary>
     public Repeat? Repeat { get; set; }
+
+    /// <summary>
+    /// The IANA zone the recurring expense comes due in from this expense on, normally the
+    /// device's current one. Only accepted with <c>scope=following</c>; omitted keeps the
+    /// current zone.
+    /// </summary>
+    public string? TimeZone { get; set; }
 }

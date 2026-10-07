@@ -190,8 +190,9 @@ _Avoid_: tag, label, type (`ExpenseType` already owns "type")
 A rule that adds an ordinary expense to a group each time it comes due, weekly, fortnightly,
 monthly, or yearly from a start date of today or later, until it is stopped. Creating one adds
 its first expense at once, on the start date; after that, nothing is added before it is due.
-Each added expense is a normal expense. Editing or deleting one asks whether
-the change applies to that expense only, or to it and every one after it. Participants are
+Each added expense is a normal expense. It comes due at local midnight in the zone it was
+created in, or the zone sent with its latest "this and following" edit. Editing or deleting
+one asks whether the change applies to that expense only, or to it and every one after it. Participants are
 fixed: someone who joins later is not included until the recurring expense is edited. It ends
 when its payer or anyone in its split leaves, is removed, or deletes their account;
 deactivating does not end it. Only expenses recur, never settlements.
@@ -543,6 +544,11 @@ Two coexisting styles:
   → 404, `UnauthorizedAccessException` → 403, everything else → 500, all as `ErrorResponse`.
 
 Enums serialize as snake_case strings (`JsonStringEnumConverter` in `Program.cs`).
+
+`ErrorResponse.code` is set only where a client must tell refusals with the same status
+apart: leaving or removing a member answers 409 with `outstanding_balance` or
+`balances_pending`. Branch on the code, never on `message`, which is English prose. Every
+other error omits the key.
 
 ## iOS client
 

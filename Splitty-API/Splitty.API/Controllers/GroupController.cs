@@ -259,6 +259,7 @@ public class GroupController(
             SplitMode = request.SplitMode,
             ExpenseSplits = request.Splits,
             Repeat = request.Repeat,
+            TimeZone = request.TimeZone,
             Scope = scope
         };
 
