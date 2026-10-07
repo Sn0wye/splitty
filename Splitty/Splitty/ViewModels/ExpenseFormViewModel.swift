@@ -346,7 +346,7 @@ class ExpenseFormViewModel: ObservableObject {
 
         do {
             if let expenseId = existingExpenseId {
-                let scope = resolvedScope(scope)
+                let reach = resolvedReach(scope)
                 let saved = try await dataSource.update(ExpenseUpdateRequest(
                     groupId: groupId,
                     expenseId: expenseId,
@@ -357,12 +357,9 @@ class ExpenseFormViewModel: ObservableObject {
                     category: category,
                     splitMode: configuration.mode.wireValue,
                     splits: splits(),
-                    scope: scope,
-                    repeatFrequency: scope == .following && repeatFrequency != linkedFrequency
-                        ? repeatFrequency
-                        : nil
+                    reach: reach
                 ))
-                return scope == .following ? .expenseEditedWithFollowing(saved) : .expenseEdited(saved)
+                return reach?.scope == .following ? .expenseEditedWithFollowing(saved) : .expenseEdited(saved)
             }
 
             let saved = try await dataSource.create(NewExpenseRequest(
@@ -385,9 +382,18 @@ class ExpenseFormViewModel: ObservableObject {
         }
     }
 
-    /// Nil for a plain expense, which has nothing after it to reach.
-    private func resolvedScope(_ chosen: ExpenseScope?) -> ExpenseScope? {
+    /// Nil for a plain expense, which has nothing after it to reach. A frequency is sent only
+    /// when it changed: omitted keeps the current one.
+    private func resolvedReach(_ chosen: ExpenseScope?) -> EditReach? {
         guard linkedFrequency != nil else { return nil }
-        return needsScopeChoice ? chosen ?? .this : .following
+        switch needsScopeChoice ? chosen ?? .this : .following {
+        case .this:
+            return .this
+        case .following:
+            return .following(
+                repeat: repeatFrequency != linkedFrequency ? repeatFrequency : nil,
+                timeZone: timeZone().identifier
+            )
+        }
     }
 }

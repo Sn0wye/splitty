@@ -41,9 +41,24 @@ struct ExpenseUpdateRequest: Equatable {
     var splitMode: ExpenseSplitMode? = nil
     var splits: [ExpenseSplitRequest]? = nil
     /// Nil for an expense entered by hand, whose edit has nothing to reach past it.
-    var scope: ExpenseScope? = nil
-    /// A new frequency, or `never` to stop. Only ever sent with `.following`.
-    var repeatFrequency: ExpenseRepeat? = nil
+    var reach: EditReach? = nil
+}
+
+/// How far an edit of an expense a recurring expense added reaches. Only "this and
+/// following" changes the recurring expense itself, so only it carries a frequency and a
+/// zone; the server refuses either on `this`.
+enum EditReach: Equatable {
+    case this
+    /// `repeat` is nil to keep the frequency, or `never` to stop. `timeZone` is the device's
+    /// current IANA identifier, so later repeats come due where the member is now.
+    case following(repeat: ExpenseRepeat?, timeZone: String)
+
+    var scope: ExpenseScope {
+        switch self {
+        case .this: .this
+        case .following: .following
+        }
+    }
 }
 
 class ExpenseService {
@@ -93,10 +108,13 @@ class ExpenseService {
         // a mode is rejected, so they travel together or not at all.
         if let splitMode = request.splitMode { body["splitMode"] = splitMode.rawValue }
         if let splits = request.splits { body["splits"] = splits.map(Self.splitBody(_:)) }
-        if let repeatFrequency = request.repeatFrequency { body["repeat"] = repeatFrequency.rawValue }
+        if case .following(let repeatFrequency, let timeZone) = request.reach {
+            if let repeatFrequency { body["repeat"] = repeatFrequency.rawValue }
+            body["timeZone"] = timeZone
+        }
 
         return try await APIClient.shared.request(
-            endpoint: "/group/\(request.groupId)/expenses/\(request.expenseId)" + Self.query(request.scope),
+            endpoint: "/group/\(request.groupId)/expenses/\(request.expenseId)" + Self.query(request.reach?.scope),
             method: .PUT,
             body: body
         )

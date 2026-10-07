@@ -93,8 +93,7 @@ struct RecurringExpenseFormTests {
         let write = await viewModel.save()
 
         let request = try #require(api.updated.first)
-        #expect(request.scope == nil)
-        #expect(request.repeatFrequency == nil)
+        #expect(request.reach == nil)
         #expect(request.expenseId == 7)
         guard case .expenseEdited = write else {
             Issue.record("Expected a plain edit, got \(String(describing: write))")
@@ -121,20 +120,33 @@ struct RecurringExpenseFormTests {
         #expect(viewModel.earliestDate == nil)
     }
 
-    @Test(arguments: [ExpenseScope.this, .following])
-    func theChosenScopeTravelsWithoutARepeat(scope: ExpenseScope) async throws {
+    @Test func onlyThisOneChangesNothingElse() async throws {
         let api = RecordingExpenseAPI()
         let viewModel = editing(linked(.monthly), api)
         viewModel.amount = AmountExpression(cents: 1_200)
 
-        let write = await viewModel.save(scope: scope)
+        let write = await viewModel.save(scope: .this)
 
-        let request = try #require(api.updated.first)
-        #expect(request.scope == scope)
-        #expect(request.repeatFrequency == nil)
-        switch (scope, write) {
-        case (.this, .expenseEdited?), (.following, .expenseEditedWithFollowing?): break
-        default: Issue.record("Scope \(scope) reported \(String(describing: write))")
+        #expect(try #require(api.updated.first).reach == .this)
+        guard case .expenseEdited = write else {
+            Issue.record("Expected a plain edit, got \(String(describing: write))")
+            return
+        }
+    }
+
+    // The zone travels with every "this and following" edit, so a member who moved gets
+    // the 1st where they are now.
+    @Test func thisAndFollowingCarriesTheDevicesZone() async throws {
+        let api = RecordingExpenseAPI()
+        let viewModel = editing(linked(.monthly), api)
+        viewModel.amount = AmountExpression(cents: 1_200)
+
+        let write = await viewModel.save(scope: .following)
+
+        #expect(try #require(api.updated.first).reach == .following(repeat: nil, timeZone: Self.zone))
+        guard case .expenseEditedWithFollowing = write else {
+            Issue.record("Expected a following edit, got \(String(describing: write))")
+            return
         }
     }
 
@@ -146,9 +158,7 @@ struct RecurringExpenseFormTests {
         #expect(viewModel.needsScopeChoice == false)
         _ = await viewModel.save()
 
-        let request = try #require(api.updated.first)
-        #expect(request.scope == .following)
-        #expect(request.repeatFrequency == .weekly)
+        #expect(try #require(api.updated.first).reach == .following(repeat: .weekly, timeZone: Self.zone))
     }
 
     @Test func doesNotRepeatStopsItFromThisExpenseOn() async throws {
@@ -159,9 +169,7 @@ struct RecurringExpenseFormTests {
         #expect(viewModel.needsScopeChoice == false)
         _ = await viewModel.save()
 
-        let request = try #require(api.updated.first)
-        #expect(request.scope == .following)
-        #expect(request.repeatFrequency == .never)
+        #expect(try #require(api.updated.first).reach == .following(repeat: .never, timeZone: Self.zone))
     }
 
     // MARK: - Fixtures
@@ -179,13 +187,16 @@ struct RecurringExpenseFormTests {
         return viewModel
     }
 
+    private static let zone = "Asia/Tokyo"
+
     private func editing(_ expense: Expense, _ api: RecordingExpenseAPI) -> ExpenseFormViewModel {
         ExpenseFormViewModel(
             groupId: 1,
             members: TestExpense.members,
             currentUserId: 1,
             expense: expense,
-            dataSource: api.source()
+            dataSource: api.source(),
+            timeZone: { TimeZone(identifier: Self.zone)! }
         )
     }
 
