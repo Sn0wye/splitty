@@ -465,8 +465,9 @@ public sealed class RecurringExpenseTests : IDisposable
         Assert.Equal(new DateTime(2030, 4, 1, 7, 0, 0, DateTimeKind.Utc), added.GetProperty("date").GetDateTime());
     }
 
-    // Every expense it added keeps its day in the new zone, earlier ones included, so a
-    // second edit made from the new zone reads the same days as the first.
+    // This expense and the following ones keep their days in the new zone, so a second edit
+    // made from there reads the same days as the first. Earlier ones are not part of a "this
+    // and following" edit and keep their dates.
     [Fact]
     public async Task A_second_edit_after_a_zone_change_still_lands_on_the_first()
     {
@@ -490,7 +491,7 @@ public sealed class RecurringExpenseTests : IDisposable
 
         Assert.Equal(
             [
-                new DateTime(2030, 1, 1, 8, 0, 0, DateTimeKind.Utc),
+                new DateTime(2030, 1, 1, 12, 0, 0, DateTimeKind.Utc),
                 new DateTime(2030, 2, 1, 8, 0, 0, DateTimeKind.Utc),
                 new DateTime(2030, 3, 1, 8, 0, 0, DateTimeKind.Utc)
             ],
@@ -514,6 +515,29 @@ public sealed class RecurringExpenseTests : IDisposable
         // Midnight on 2 March in Tokyo.
         var march = Assert.Single(await group.ExpensesAsync(), e => e.GetProperty("date").GetDateTime() > new DateTime(2030, 2, 15));
         Assert.Equal(new DateTime(2030, 3, 1, 15, 0, 0, DateTimeKind.Utc), march.GetProperty("date").GetDateTime());
+        var january = ExpenseOn(await group.ExpensesAsync(), Day(2030, 1, 1));
+        Assert.Equal(new DateTime(2030, 1, 1, 12, 0, 0, DateTimeKind.Utc), january.GetProperty("date").GetDateTime());
+    }
+
+    // Any change to the date is a pick, even one that falls on the same day as the old date
+    // when read in the new zone: midnight on 31 January in Los Angeles is where 1 February
+    // at 00:00 UTC already is.
+    [Fact]
+    public async Task A_picked_day_is_kept_even_where_the_old_date_reads_the_same()
+    {
+        var group = await MonthlyFromJanuaryAsync();
+        var february = ExpenseOn(await group.ExpensesAsync(), Day(2030, 2, 1));
+        var picked = new DateTime(2030, 1, 31, 8, 0, 0, DateTimeKind.Utc);
+
+        (await group.Owner.UpdateExpenseAsync(group.Id, Id(february), "following", new
+        {
+            date = picked,
+            timeZone = "America/Los_Angeles"
+        })).EnsureSuccessStatusCode();
+
+        var dates = (await group.ExpensesAsync()).Select(e => e.GetProperty("date").GetDateTime()).Order().ToList();
+        // A month after the 31st clamps to the 28th.
+        Assert.Equal([new DateTime(2030, 1, 1, 12, 0, 0, DateTimeKind.Utc), picked, new DateTime(2030, 2, 28, 8, 0, 0, DateTimeKind.Utc)], dates);
     }
 
     [Fact]

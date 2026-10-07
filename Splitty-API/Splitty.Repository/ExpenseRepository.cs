@@ -50,9 +50,6 @@ public class ExpenseRepository(ApplicationDbContext context): IExpenseRepository
             .Where(e => e.RecurringExpenseId == recurringExpenseId && (e.Date ?? e.CreatedAt) > after)
             .ToListAsync();
 
-    public Task<List<Expense>> GetAddedAsync(int recurringExpenseId) =>
-        context.Expense.Where(e => e.RecurringExpenseId == recurringExpenseId).ToListAsync();
-
     public async Task SaveFollowingAsync(IEnumerable<Expense> removed, RecurringExpense? stopped)
     {
         context.Expense.RemoveRange(removed);

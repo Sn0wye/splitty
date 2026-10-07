@@ -16,9 +16,6 @@ public interface IExpenseRepository
     /// </summary>
     Task<List<Expense>> GetAddedAfterAsync(int recurringExpenseId, DateTime after);
 
-    /// <summary>Every expense <paramref name="recurringExpenseId"/> added, tracked.</summary>
-    Task<List<Expense>> GetAddedAsync(int recurringExpenseId);
-
     /// <summary>
     /// Deletes <paramref name="removed"/> and <paramref name="stopped"/>, and saves every other
     /// tracked change, in one save. A "this and following" edit or delete is one write.

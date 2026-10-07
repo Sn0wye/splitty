@@ -249,16 +249,8 @@ public class ExpenseService(
 
         var frequency = repeat is { } r ? RecurringExpenses.FrequencyOf(r) : recurring.Frequency;
 
-        // A new zone re-expresses every expense it added, so the earlier ones are needed too.
-        var laterIds = later.Select(e => e.Id).ToHashSet();
-        var earlier = frequency is not null && zone is not null && zone.Id != recurring.TimeZone
-            ? (await expenseRepository.GetAddedAsync(recurringExpenseId))
-                .Where(e => e.Id != expense.Id && !laterIds.Contains(e.Id))
-                .ToList()
-            : [];
-
         var removed = frequency is { } f
-            ? RestartFrom(recurring, expense, originalDate, f, zone, earlier, later)
+            ? RestartFrom(recurring, expense, originalDate, f, zone, later)
             : later;
 
         await expenseRepository.InTransactionAsync(async () =>
@@ -278,9 +270,10 @@ public class ExpenseService(
     /// rather than being added again. A place whose new day is not due yet is dropped, since
     /// nothing is added before it is due. Returns the expenses to delete.
     ///
-    /// Every expense it added is stored as local midnight of its day in its zone. A new zone
-    /// keeps each day and moves its midnight, the <paramref name="earlier"/> expenses
-    /// included, so an edit made later from the new zone reads the same days.
+    /// An expense it added is stored as local midnight of its day in its zone. A new zone
+    /// keeps this expense and the later ones on their days and moves them to that midnight,
+    /// so a later edit made from the new zone reads the same days. Earlier expenses are not
+    /// part of the edit and keep their dates.
     /// </summary>
     private List<Expense> RestartFrom(
         RecurringExpense recurring,
@@ -288,7 +281,6 @@ public class ExpenseService(
         DateTime originalDate,
         RepeatFrequency frequency,
         TimeZoneInfo? newZone,
-        List<Expense> earlier,
         List<Expense> later)
     {
         var oldZone = TimeZoneInfo.FindSystemTimeZoneById(recurring.TimeZone);
@@ -302,10 +294,10 @@ public class ExpenseService(
             originalDay,
             recurring.AddedThrough).ToList();
 
-        // A date is the day the member picked where they are, the zone they sent. Clients
-        // resend the date they were given, and an unchanged date is not a move however its
-        // two zones read it: it stays the day it was.
-        var moved = LocalCalendar.DayOf(DateOf(expense), zone) != LocalCalendar.DayOf(originalDate, zone);
+        // Clients resend the date they were given, so only a different instant is a pick, and
+        // a pick is the day the member chose where they are: the zone they sent. An unchanged
+        // date stays the day it was. Whole seconds, since a client may drop the fraction.
+        var moved = WholeSeconds(DateOf(expense)) != WholeSeconds(originalDate);
         var startDay = moved ? LocalCalendar.DayOf(DateOf(expense), zone) : originalDay;
 
         RecurringExpenses.CopyFrom(recurring, expense);
@@ -315,12 +307,6 @@ public class ExpenseService(
 
         if (zone.Id != oldZone.Id)
         {
-            foreach (var earlierExpense in earlier)
-            {
-                earlierExpense.Date = LocalCalendar.MidnightUtc(LocalCalendar.DayOf(DateOf(earlierExpense), oldZone), zone);
-                earlierExpense.UpdatedAt = DateTime.UtcNow;
-            }
-
             expense.Date = LocalCalendar.MidnightUtc(startDay, zone);
             recurring.TimeZone = zone.Id;
         }
@@ -389,6 +375,9 @@ public class ExpenseService(
     private static int RecurringExpenseIdOrThrow(Expense expense) =>
         expense.RecurringExpenseId
             ?? throw new ArgumentException("This expense does not repeat, so no expenses follow it.");
+
+    private static DateTime WholeSeconds(DateTime instant) =>
+        instant.AddTicks(-(instant.Ticks % TimeSpan.TicksPerSecond));
 
     /// The date an expense reads as, the same fallback the expense list sorts by.
     private static DateTime DateOf(Expense expense) => expense.Date ?? expense.CreatedAt;
