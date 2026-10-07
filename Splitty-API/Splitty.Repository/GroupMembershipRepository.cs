@@ -72,4 +72,10 @@ public class GroupMembershipRepository(ApplicationDbContext context): IGroupMemb
             .Where(gm => gm.GroupId == groupId)
             .ToListAsync();
     }
+
+    public Task<List<int>> GetGroupIdsByUserIdAsync(int userId) =>
+        context.GroupMembership
+            .Where(gm => gm.UserId == userId)
+            .Select(gm => gm.GroupId)
+            .ToListAsync();
 }

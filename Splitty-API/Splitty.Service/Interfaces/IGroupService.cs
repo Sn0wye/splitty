@@ -8,12 +8,20 @@ public enum MembershipRemovalStatus
     GroupNotFound,
     NotAMember,
     TargetNotAMember,
-    OutstandingBalance
+    OutstandingBalance,
+    /// The group's balances are being recomputed, so the zero-balance check cannot be trusted yet.
+    BalancesPending
 }
 
 public interface IGroupService
 {
     Task<GroupDTO> CreateAsync(int userId, string name, string? description);
+    /// <summary>
+    /// The group as <paramref name="userId"/> sees it, after adding every expense its
+    /// recurring expenses came due for. Null when the group does not exist or the user is
+    /// not in it. The only read that catches up (ADR 0006).
+    /// </summary>
+    Task<GroupDTO?> OpenAsync(int groupId, int userId);
     Task<GroupDTO> UpdateAsync(int groupId, int userId, string? name, string? description);
     Task<MembershipRemovalStatus> LeaveAsync(int groupId, int userId);
     Task<MembershipRemovalStatus> RemoveMemberAsync(int groupId, int actorId, int targetUserId);

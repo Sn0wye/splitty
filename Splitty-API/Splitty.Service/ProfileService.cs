@@ -11,6 +11,7 @@ public class ProfileService(
     IUserRepository userRepository,
     IGroupMembershipRepository groupMembershipRepository,
     IRefreshTokenRepository refreshTokenRepository,
+    IRecurringExpenseService recurringExpenseService,
     IAvatarStorage avatarStorage,
     IAvatarResolver avatarResolver,
     ILogger<ProfileService> logger
@@ -115,6 +116,14 @@ public class ProfileService(
     public async Task DeleteAsync(int userId, CancellationToken cancellationToken = default)
     {
         await RequireUserAsync(userId);
+
+        // A group that gains an expense here is pending, so the tombstone keeps its
+        // membership there and the repeat's debt still has someone behind it.
+        foreach (var groupId in await groupMembershipRepository.GetGroupIdsByUserIdAsync(userId))
+        {
+            await recurringExpenseService.CatchUpAsync(groupId);
+        }
+
         await userRepository.TombstoneAsync(userId);
 
         // After the commit, and best effort like every other avatar delete: storage being

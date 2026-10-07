@@ -9,6 +9,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Domain.Entities.GroupMembership> GroupMembership { get; set; }
     public DbSet<Domain.Entities.Expense> Expense { get; set; }
     public DbSet<Domain.Entities.ExpenseSplit> ExpenseSplit { get; set; }
+    public DbSet<Domain.Entities.RecurringExpense> RecurringExpense { get; set; }
+    public DbSet<Domain.Entities.RecurringExpenseSplit> RecurringExpenseSplit { get; set; }
     public DbSet<Domain.Entities.Balance> Balance { get; set; }
     public DbSet<Domain.Entities.Invite> Invite { get; set; }
     public DbSet<Domain.Entities.OAuthAccount> OAuthAccount { get; set; }
@@ -171,6 +173,57 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasOne(e => e.Group)
                 .WithMany()
                 .HasForeignKey(e => e.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Deleting a recurring expense keeps what it added, as plain expenses.
+            entity.HasOne(e => e.RecurringExpense)
+                .WithMany()
+                .HasForeignKey(e => e.RecurringExpenseId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Domain.Entities.RecurringExpense>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.Amount).IsRequired().HasColumnType("decimal(18,2)");
+            entity.Property(r => r.Description).HasMaxLength(500);
+            entity.Property(r => r.SplitMode).IsRequired();
+            // Text, like Expense.Category: see docs/adr/0002-expense-categories-are-a-closed-text-list.md.
+            entity.Property(r => r.Category).IsRequired().HasConversion<string>();
+            entity.Property(r => r.Frequency).IsRequired().HasConversion<string>();
+            entity.Property(r => r.StartDate).IsRequired();
+            entity.Property(r => r.TimeZone).IsRequired().HasMaxLength(64);
+            entity.Property(r => r.AddedThrough).IsRequired();
+            entity.Property(r => r.CreatedAt).IsRequired();
+            entity.Property(r => r.UpdatedAt).IsRequired();
+
+            entity.HasIndex(r => r.GroupId);
+
+            entity.HasOne(r => r.Group)
+                .WithMany()
+                .HasForeignKey(r => r.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Domain.Entities.User>()
+                .WithMany()
+                .HasForeignKey(r => r.PaidBy)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Domain.Entities.RecurringExpenseSplit>(entity =>
+        {
+            entity.HasKey(s => s.Id);
+            entity.Property(s => s.Amount).IsRequired().HasColumnType("decimal(18,2)");
+            entity.Property(s => s.Percentage).HasColumnType("decimal(5,2)");
+
+            entity.HasOne(s => s.RecurringExpense)
+                .WithMany(r => r.Splits)
+                .HasForeignKey(s => s.RecurringExpenseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<Domain.Entities.User>()
+                .WithMany()
+                .HasForeignKey(s => s.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

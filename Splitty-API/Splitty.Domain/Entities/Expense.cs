@@ -59,6 +59,12 @@ public class Expense
     /// </summary>
     public DateTime? Date { get; set; }
 
+    /// <summary>
+    /// The recurring expense that added this one, if any. Nulled when the recurring
+    /// expense is deleted, which turns what it left behind into plain expenses.
+    /// </summary>
+    public int? RecurringExpenseId { get; set; }
+
     /// <summary>Audit timestamp, server-set, never client-supplied.</summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
@@ -68,6 +74,9 @@ public class Expense
     public virtual Group Group { get; init; } = null!;
     
     public virtual User PaidByUser { get; init; } = null!;
-    
+
+    [JsonIgnore]
+    public virtual RecurringExpense? RecurringExpense { get; set; }
+
     public virtual IList<ExpenseSplit> Splits { get; set; } = new List<ExpenseSplit>();
 }

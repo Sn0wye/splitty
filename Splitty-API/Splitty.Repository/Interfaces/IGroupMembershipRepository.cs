@@ -11,4 +11,6 @@ public interface IGroupMembershipRepository
     Task<bool> SharesGroupAsync(int userId, int peerId);
     Task DeleteAsync(GroupMembership groupMembership);
     Task<int> CountByGroupIdAsync(int groupId);
+
+    Task<List<int>> GetGroupIdsByUserIdAsync(int userId);
 }

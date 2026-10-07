@@ -59,11 +59,7 @@ public readonly record struct StatsRange(DateTime? Start, DateTime? End)
         return true;
     }
 
-    /// <summary>
     /// The instant local midnight of <paramref name="value"/> happens in <paramref name="zone"/>.
-    /// A midnight skipped by a daylight-saving jump resolves to the first instant after the
-    /// gap; one that happens twice resolves to the earlier, so the day starts when it first can.
-    /// </summary>
     private static bool TryStartOfDay(string? value, TimeZoneInfo zone, out DateTime? instant)
     {
         instant = null;
@@ -75,16 +71,7 @@ public readonly record struct StatsRange(DateTime? Start, DateTime? End)
             return false;
         }
 
-        var local = day.ToDateTime(TimeOnly.MinValue);
-
-        while (zone.IsInvalidTime(local))
-        {
-            local = local.AddMinutes(1);
-        }
-
-        instant = zone.IsAmbiguousTime(local)
-            ? DateTime.SpecifyKind(local - zone.GetAmbiguousTimeOffsets(local).Max(), DateTimeKind.Utc)
-            : TimeZoneInfo.ConvertTimeToUtc(local, zone);
+        instant = LocalCalendar.MidnightUtc(day, zone);
 
         return true;
     }

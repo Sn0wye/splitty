@@ -187,6 +187,7 @@ builder.Services.AddScoped<IBalanceRepository, BalanceRepository>();
 builder.Services.AddScoped<IInviteRepository, InviteRepository>();
 builder.Services.AddScoped<IOAuthAccountRepository, OAuthAccountRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddScoped<IRecurringExpenseRepository, RecurringExpenseRepository>();
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -200,8 +201,11 @@ builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 builder.Services.AddScoped<IPeopleService, PeopleService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IGroupStatsService, GroupStatsService>();
+builder.Services.AddScoped<IRecurringExpenseService, RecurringExpenseService>();
 
 // Utils
+// Read by recurring expense catch-up and nothing older; the test host replaces it.
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IJwtTokenIssuer, JwtTokenIssuer>();
 builder.Services.AddScoped<IGoogleTokenExchanger, GoogleTokenExchanger>();
 builder.Services.AddHttpClient(nameof(GoogleTokenExchanger));

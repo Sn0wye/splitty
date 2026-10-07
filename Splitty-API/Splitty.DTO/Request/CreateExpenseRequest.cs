@@ -39,4 +39,14 @@ public class CreateExpenseRequest
     /// deserializer, before any handler has to treat "absent" and "empty" the same way.
     /// </summary>
     public required List<ExpenseSplitDTO> Splits { get; set; }
+
+    /// <summary>
+    /// Absent means <see cref="Domain.Entities.Repeat.Never"/>. Anything else creates a
+    /// recurring expense starting on <see cref="Date"/>'s day in <see cref="TimeZone"/>,
+    /// and this expense is its first.
+    /// </summary>
+    public Repeat? Repeat { get; set; }
+
+    /// <summary>The IANA zone a repeat comes due in. Required unless the expense never repeats.</summary>
+    public string? TimeZone { get; set; }
 }

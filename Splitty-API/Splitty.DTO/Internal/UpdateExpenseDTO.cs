@@ -13,6 +13,18 @@ public class UpdateExpenseDTO
     public ExpenseCategory? Category { get; set; }
     public SplitMode? SplitMode { get; set; }
     public List<UpdateExpenseSplitDTO>? ExpenseSplits { get; set; }
+    public Repeat? Repeat { get; set; }
+    public ExpenseScope Scope { get; set; } = ExpenseScope.This;
+}
+
+/// <summary>
+/// What an edit or delete of an expense a recurring expense added applies to: that expense
+/// only, or it and every one after it.
+/// </summary>
+public enum ExpenseScope
+{
+    This,
+    Following
 }
 
 /// <summary>

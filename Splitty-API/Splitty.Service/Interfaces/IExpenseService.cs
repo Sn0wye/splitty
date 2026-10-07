@@ -6,6 +6,6 @@ namespace Splitty.Service.Interfaces;
 public interface IExpenseService
 {
     Task<ExpenseResponse> CreateAsync(CreateExpenseDTO dto, int userId);
-    Task DeleteAsync(int groupId, int expenseId, int userId);
+    Task DeleteAsync(int groupId, int expenseId, int userId, ExpenseScope scope = ExpenseScope.This);
     Task<ExpenseResponse> UpdateAsync(UpdateExpenseDTO dto, int userId);
 }
