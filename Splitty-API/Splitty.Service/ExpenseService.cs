@@ -281,18 +281,24 @@ public class ExpenseService(
     {
         var oldZone = TimeZoneInfo.FindSystemTimeZoneById(recurring.TimeZone);
         var zone = newZone ?? oldZone;
+        var originalDay = LocalCalendar.DayOf(originalDate, oldZone);
 
         // The places after this expense that were already added, under the old values.
         var oldDays = RecurringDueDays.DueDaysBetween(
             recurring.StartDate,
             recurring.Frequency,
-            LocalCalendar.DayOf(originalDate, oldZone),
+            originalDay,
             recurring.AddedThrough).ToList();
+
+        // A day the edit did not move stays the day it was, read where it was added: west of
+        // UTC, the stored midnight of "the 1st" is the 31st in the new zone. Clients resend
+        // the date they were given, so "not moved" is judged by the day, not by presence.
+        var moved = LocalCalendar.DayOf(DateOf(expense), oldZone) != originalDay;
 
         RecurringExpenses.CopyFrom(recurring, expense);
         recurring.Frequency = frequency;
         recurring.TimeZone = zone.Id;
-        recurring.StartDate = LocalCalendar.DayOf(DateOf(expense), zone);
+        recurring.StartDate = moved ? LocalCalendar.DayOf(DateOf(expense), zone) : originalDay;
         recurring.UpdatedAt = DateTime.UtcNow;
 
         var today = LocalCalendar.DayOf(timeProvider.GetUtcNow(), zone);

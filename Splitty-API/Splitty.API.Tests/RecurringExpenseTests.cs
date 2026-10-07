@@ -438,6 +438,38 @@ public sealed class RecurringExpenseTests : IDisposable
         Assert.Equal(new DateTime(2030, 2, 4, 15, 0, 0, DateTimeKind.Utc), added.GetProperty("date").GetDateTime());
     }
 
+    // West of UTC, the stored instant of "the 1st" is the evening of the 31st locally. A zone
+    // change keeps the day the expense was on and moves only its midnight; the app resends
+    // the date it was given, so an unchanged date counts as not moved.
+    [Fact]
+    public async Task A_new_zone_west_of_utc_keeps_the_day_the_expense_was_on()
+    {
+        var start = new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);
+        _factory.Clock.Set(start);
+        var group = await GroupFixture.CreateAsync(_factory);
+        await group.CreateRecurringAsync("monthly", start.UtcDateTime);
+        _factory.Clock.Set(new DateTimeOffset(2030, 3, 10, 12, 0, 0, TimeSpan.Zero));
+        await group.OpenAsync();
+        var february = ExpenseOn(await group.ExpensesAsync(), Day(2030, 2, 1));
+
+        (await group.Owner.UpdateExpenseAsync(group.Id, Id(february), "following", new
+        {
+            date = february.GetProperty("date").GetDateTime(),
+            timeZone = "America/Los_Angeles"
+        })).EnsureSuccessStatusCode();
+
+        // Midnight on 1 March in Los Angeles, eight hours behind UTC in winter.
+        var march = Assert.Single(await group.ExpensesAsync(), e => e.GetProperty("date").GetDateTime() > new DateTime(2030, 2, 2));
+        Assert.Equal(new DateTime(2030, 3, 1, 8, 0, 0, DateTimeKind.Utc), march.GetProperty("date").GetDateTime());
+
+        // Just past midnight on 1 April there, under daylight saving.
+        _factory.Clock.Set(new DateTimeOffset(2030, 4, 1, 7, 1, 0, TimeSpan.Zero));
+        await group.OpenAsync();
+
+        var added = (await group.ExpensesAsync()).MaxBy(e => e.GetProperty("date").GetDateTime());
+        Assert.Equal(new DateTime(2030, 4, 1, 7, 0, 0, DateTimeKind.Utc), added.GetProperty("date").GetDateTime());
+    }
+
     [Fact]
     public async Task A_zone_needs_scope_following_and_must_be_known()
     {
