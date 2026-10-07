@@ -24,7 +24,7 @@ struct ExpenseSheet: View {
     /// landing rather than on the tap that asked for it.
     @State private var savedCount = 0
 
-    private let onSaved: (Expense) -> Void
+    private let onSaved: (GroupMoneyWrite) -> Void
     private let timelineExpenses: [Expense]
 
     init(
@@ -33,7 +33,7 @@ struct ExpenseSheet: View {
         currentUserId: Int,
         expense: Expense? = nil,
         timelineExpenses: [Expense] = [],
-        onSaved: @escaping (Expense) -> Void
+        onSaved: @escaping (GroupMoneyWrite) -> Void
     ) {
         _viewModel = StateObject(wrappedValue: ExpenseFormViewModel(
             groupId: groupId,
@@ -50,7 +50,7 @@ struct ExpenseSheet: View {
         NavigationStack {
             amountStep
                 .navigationDestination(isPresented: $showingDetails) {
-                    ExpenseDetailsStep(viewModel: viewModel, onSave: save)
+                    ExpenseDetailsStep(viewModel: viewModel, onSave: save(scope:))
                 }
         }
         .presentationCornerRadius(28)
@@ -117,13 +117,11 @@ struct ExpenseSheet: View {
         }
     }
 
-    private func save() {
-        guard viewModel.attemptSave() else { return }
-
+    private func save(scope: ExpenseScope?) {
         Task {
-            if let expense = await viewModel.save() {
+            if let write = await viewModel.save(scope: scope) {
                 savedCount += 1
-                onSaved(expense)
+                onSaved(write)
                 dismiss()
             }
         }

@@ -405,6 +405,8 @@ final class ControlledGroupData {
     private(set) var balanceRetryCount = 0
     private(set) var expenseDeleteCount = 0
     private(set) var paymentDeleteCount = 0
+    /// The scope each expense delete was sent with, in order.
+    private(set) var deleteScopes: [ExpenseScope?] = []
 
     private var waitingForOutcome: [Int: CheckedContinuation<Outcome, Never>] = [:]
     private var outcomes: [Int: Outcome] = [:]
@@ -424,7 +426,10 @@ final class ControlledGroupData {
             },
             summary: { [self] _ in try await noteSummaryCall() },
             waitForBalanceRetry: { [self] _ in try await noteBalanceRetry() },
-            deleteExpense: { [self] _, _ in try await noteDelete(payment: false) },
+            deleteExpense: { [self] _, _, scope in
+                deleteScopes.append(scope)
+                try await noteDelete(payment: false)
+            },
             deletePayment: { [self] _, _ in try await noteDelete(payment: true) }
         )
     }

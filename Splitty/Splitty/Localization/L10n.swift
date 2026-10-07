@@ -407,6 +407,40 @@ enum L10n {
         static var unknownDay: String { text("expense.unknown_day", default: "Unknown") }
     }
 
+    enum Repeat {
+        static var title: String { text("repeat.title", default: "Repeats") }
+        static var never: String { text("repeat.never", default: "Doesn't repeat") }
+        static var weekly: String { text("repeat.weekly", default: "Weekly") }
+        static var fortnightly: String { text("repeat.fortnightly", default: "Fortnightly") }
+        static var monthly: String { text("repeat.monthly", default: "Monthly") }
+        static var yearly: String { text("repeat.yearly", default: "Yearly") }
+        static var repeatsWeekly: String { text("repeat.repeats_weekly", default: "Repeats weekly") }
+        static var repeatsFortnightly: String {
+            text("repeat.repeats_fortnightly", default: "Repeats fortnightly")
+        }
+        static var repeatsMonthly: String { text("repeat.repeats_monthly", default: "Repeats monthly") }
+        static var repeatsYearly: String { text("repeat.repeats_yearly", default: "Repeats yearly") }
+        static var cannotStartInPast: String {
+            text("repeat.cannot_start_in_past", default: "A repeating expense can't start before today")
+        }
+        static var saveTitle: String { text("repeat.save_title", default: "This expense repeats") }
+        static var saveMessage: String {
+            text(
+                "repeat.save_message",
+                default: "Save your changes to only this one, or to this and the following expenses?"
+            )
+        }
+        static var onlyThis: String { text("repeat.only_this", default: "Only this one") }
+        static var thisAndFollowing: String { text("repeat.this_and_following", default: "This and following") }
+        static var deleteOnlyThis: String { text("repeat.delete_only_this", default: "Delete only this one") }
+        static var deleteThisAndFollowing: String {
+            text("repeat.delete_this_and_following", default: "Delete this and following")
+        }
+        static var deleteMessage: String {
+            text("repeat.delete_message", default: "This expense repeats. Deleting this and following also stops it.")
+        }
+    }
+
     enum CategoryHeading {
         static var uncategorized: String { text("category_heading.uncategorized", default: "Uncategorized") }
         static var entertainment: String { text("category_heading.entertainment", default: "Entertainment") }
@@ -721,6 +755,9 @@ enum L10n {
         static var gone: String { text("errors.gone", default: "This no longer exists.") }
         static var outstandingBalance: String {
             text("errors.outstanding_balance", default: "This member has an outstanding balance.")
+        }
+        static var balancesUpdating: String {
+            text("errors.balances_updating", default: "Balances are still updating. Try again in a moment.")
         }
         static func status(_ code: Int) -> String {
             format("errors.status", default: "Something went wrong (%lld). Try again.", code)

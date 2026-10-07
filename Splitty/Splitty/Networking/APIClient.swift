@@ -247,7 +247,7 @@ extension Error {
 }
 
 // MARK: - Request Types
-struct ExpenseSplitRequest {
+struct ExpenseSplitRequest: Equatable {
     let userId: Int
     let amountCents: Int
     /// Percent units (`70`). Non-nil on every row of a percentage expense, nil elsewhere:

@@ -637,6 +637,126 @@ struct GroupSessionTests {
         store.discard()
     }
 
+    // MARK: - Recurring expenses
+
+    @Test(arguments: [ExpenseScope.this, .following])
+    func aScopedDeleteSendsTheScope(scope: ExpenseScope) async {
+        let data = ControlledGroupData()
+        data.autoRelease = true
+        let row = rent(id: 7, date: "2026-09-01T12:00:00Z")
+        data.expensesForCall = { _ in [row] }
+        let session = GroupSessionStore(dataSource: { data.source() }).open(1)
+        await session.appear().value
+
+        #expect(await session.delete(row, scope: scope).value == .deleted)
+        #expect(data.deleteScopes == [scope])
+    }
+
+    // A plain expense has nothing after it, so it is deleted as it always was.
+    @Test func aPlainExpenseDeleteSendsNoScope() async {
+        let data = ControlledGroupData()
+        data.autoRelease = true
+        let row = TestExpense.make(id: 7, paidBy: 1, amount: 10, splitAmounts: [1: 10])
+        data.expensesForCall = { _ in [row] }
+        let session = GroupSessionStore(dataSource: { data.source() }).open(1)
+        await session.appear().value
+
+        #expect(await session.delete(row, scope: .following).value == .deleted)
+        #expect(data.deleteScopes == [nil])
+    }
+
+    @Test func deletingFollowingRemovesLaterRowsOfTheSameRecurringExpenseOnly() async {
+        let data = ControlledGroupData()
+        data.autoRelease = true
+        data.holdDelete = true
+        let earlier = rent(id: 1, date: "2026-07-01T12:00:00Z")
+        let deleted = rent(id: 2, date: "2026-08-01T12:00:00Z")
+        let later = rent(id: 3, date: "2026-09-01T12:00:00Z")
+        let otherRule = rent(id: 4, date: "2026-09-02T12:00:00Z", recurringExpenseId: 41)
+        let plain = TestExpense.make(id: 5, paidBy: 1, amount: 10, splitAmounts: [1: 10], date: "2026-09-03T12:00:00Z")
+        let rows = [earlier, deleted, later, otherRule, plain]
+        data.expensesForCall = { _ in rows }
+        let session = GroupSessionStore(dataSource: { data.source() }).open(1)
+        await session.appear().value
+
+        let deletion = session.delete(deleted, scope: .following)
+        #expect(Set(session.expenses.map(\.id)) == [1, 4, 5])
+
+        data.expensesForCall = { _ in [earlier, otherRule, plain] }
+        await data.waitForDeleteCall()
+        data.releaseDelete()
+        #expect(await deletion.value == .deleted)
+        #expect(Set(session.expenses.map(\.id)) == [1, 4, 5])
+    }
+
+    @Test func aFailedFollowingDeletePutsEveryRowBack() async {
+        let data = ControlledGroupData()
+        data.autoRelease = true
+        data.deleteError = APIError.httpError(500, message: nil)
+        let rows = [
+            rent(id: 1, date: "2026-07-01T12:00:00Z"),
+            rent(id: 2, date: "2026-08-01T12:00:00Z"),
+            rent(id: 3, date: "2026-09-01T12:00:00Z")
+        ]
+        data.expensesForCall = { _ in rows }
+        let session = GroupSessionStore(dataSource: { data.source() }).open(1)
+        await session.appear().value
+        let before = session.expenses.map(\.id)
+
+        let outcome = await session.delete(rows[0], scope: .following).value
+
+        #expect(outcome.failureMessage != nil)
+        #expect(session.expenses.map(\.id) == before)
+    }
+
+    // The server rewrote the later rows, so the session reads them again instead of
+    // holding on to the one row the edit returned.
+    @Test func aFollowingEditRefetchesTheRewrittenRows() async {
+        let data = ControlledGroupData()
+        data.autoRelease = true
+        let edited = rent(id: 2, date: "2026-08-01T12:00:00Z")
+        let staleLater = rent(id: 3, date: "2026-09-01T12:00:00Z")
+        data.expensesForCall = { _ in [edited, staleLater] }
+        let session = GroupSessionStore(dataSource: { data.source() }).open(1)
+        await session.appear().value
+        #expect(data.expenseCallCount == 1)
+
+        let raised = rent(id: 2, date: "2026-08-01T12:00:00Z", amount: 45)
+        let raisedLater = rent(id: 3, date: "2026-09-01T12:00:00Z", amount: 45)
+        data.expensesForCall = { _ in [raised, raisedLater] }
+        await session.report(.expenseEditedWithFollowing(raised)).value
+
+        #expect(data.expenseCallCount == 2)
+        #expect(session.expenses.map(\.amount) == [45, 45])
+    }
+
+    // Stopping a recurring expense unlinks the rows it added, and the badge goes with
+    // the refetch.
+    @Test func aStoppedRecurringExpenseLosesItsLinkOnRefetch() async {
+        let data = ControlledGroupData()
+        data.autoRelease = true
+        let linkedRow = rent(id: 2, date: "2026-08-01T12:00:00Z")
+        data.expensesForCall = { _ in [linkedRow] }
+        let session = GroupSessionStore(dataSource: { data.source() }).open(1)
+        await session.appear().value
+
+        let unlinked = TestExpense.make(id: 2, paidBy: 1, amount: 30, splitAmounts: [1: 15, 2: 15],
+                                        date: "2026-08-01T12:00:00Z")
+        data.expensesForCall = { _ in [unlinked] }
+        await session.report(.expenseEditedWithFollowing(linkedRow)).value
+
+        #expect(session.expenses.first?.isRecurring == false)
+        #expect(session.expenses.first?.repeatFrequency == nil)
+    }
+
+    private func rent(id: Int, date: String, recurringExpenseId: Int = 40, amount: Double = 30) -> Expense {
+        var row = TestExpense.make(id: id, paidBy: 1, amount: amount,
+                                   splitAmounts: [1: amount / 2, 2: amount / 2], date: date)
+        row.recurringExpenseId = recurringExpenseId
+        row.repeatFrequency = .monthly
+        return row
+    }
+
     @Test func eightRecentGroupsKeepTheirCacheAndTheNinthEvictsTheOldest() {
         let store = GroupSessionStore(dataSource: { ControlledGroupData().source() })
         let oldest = store.open(1, seed: group(id: 1))

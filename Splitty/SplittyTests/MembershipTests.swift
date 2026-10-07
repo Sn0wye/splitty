@@ -19,6 +19,17 @@ struct MembershipErrorTests {
         #expect(!result.shouldLeaveScreen)
     }
 
+    // Retryable, so it gets the app's own copy rather than the server's English.
+    @Test func pendingBalancesConflictSaysToRetry() {
+        let result = MembershipError(APIError.httpError(
+            409,
+            message: "Balances are being recalculated. Try again in a moment."
+        ))
+
+        #expect(result.message == "Balances are still updating. Try again in a moment.")
+        #expect(!result.shouldLeaveScreen)
+    }
+
     @Test func conflictWithoutAnExplanationUsesReadableFallbackCopy() {
         let result = MembershipError(APIError.httpError(409, message: nil))
 

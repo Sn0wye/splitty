@@ -71,16 +71,16 @@ struct ContentView: View {
                             group: group,
                             currentUserId: currentUserId,
                             session: session
-                        ) { saved in
-                            appState.groupSessions.report(.expenseCreated(saved), groupId: group.id)
+                        ) { write in
+                            appState.groupSessions.report(write, groupId: group.id)
                         }
                     } else {
                         ExpenseSheet(
                             groupId: group.id,
                             members: group.members,
                             currentUserId: currentUserId
-                        ) { saved in
-                            appState.groupSessions.report(.expenseCreated(saved), groupId: group.id)
+                        ) { write in
+                            appState.groupSessions.report(write, groupId: group.id)
                         }
                     }
                 }
@@ -135,7 +135,7 @@ private struct SessionExpenseSheet: View {
     let group: Group
     let currentUserId: Int
     @ObservedObject var session: GroupSession
-    let onSaved: (Expense) -> Void
+    let onSaved: (GroupMoneyWrite) -> Void
 
     var body: some View {
         ExpenseSheet(

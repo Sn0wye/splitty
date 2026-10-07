@@ -8,7 +8,7 @@ struct GroupDataSource {
     var summary: (Int) async throws -> GroupBalanceSummary
     var waitForBalanceRetry: (Duration) async throws -> Void
     var requestBalanceRefresh: (Int) async throws -> Void
-    var deleteExpense: (Int, Int) async throws -> Void
+    var deleteExpense: (Int, Int, ExpenseScope?) async throws -> Void
     var deletePayment: (Int, Int) async throws -> Void
 
     init(
@@ -21,8 +21,8 @@ struct GroupDataSource {
         requestBalanceRefresh: @escaping (Int) async throws -> Void = { groupId in
             try await GroupService.shared.requestBalanceRecomputation(groupId: groupId)
         },
-        deleteExpense: @escaping (Int, Int) async throws -> Void = { groupId, expenseId in
-            try await ExpenseService.shared.deleteExpense(groupId: groupId, expenseId: expenseId)
+        deleteExpense: @escaping (Int, Int, ExpenseScope?) async throws -> Void = { groupId, expenseId, scope in
+            try await ExpenseService.shared.deleteExpense(groupId: groupId, expenseId: expenseId, scope: scope)
         },
         deletePayment: @escaping (Int, Int) async throws -> Void = { groupId, expenseId in
             try await SettlementService.shared.deleteSettlement(groupId: groupId, expenseId: expenseId)

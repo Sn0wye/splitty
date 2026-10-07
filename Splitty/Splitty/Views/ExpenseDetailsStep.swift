@@ -13,10 +13,12 @@ import SwiftUI
 /// handed across that boundary silently does nothing.
 struct ExpenseDetailsStep: View {
     @ObservedObject var viewModel: ExpenseFormViewModel
-    let onSave: () -> Void
+    /// Called once Save is allowed, with the answer to the scope prompt when one was asked.
+    let onSave: (ExpenseScope?) -> Void
 
     @FocusState private var descriptionFocused: Bool
     @State private var showingDatePicker = false
+    @State private var showingScopeChoice = false
 
     var body: some View {
         ScrollView {
@@ -38,6 +40,12 @@ struct ExpenseDetailsStep: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 dateRow
+                if let message = viewModel.repeatDateMessage {
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(.orange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
 
                 if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
@@ -56,7 +64,7 @@ struct ExpenseDetailsStep: View {
         // Save rides above the keyboard because SwiftUI's own avoidance puts it there. This
         // screen does not opt out of that, so there is nothing left to measure.
         .safeAreaInset(edge: .bottom) {
-            PrimaryButton(title: L10n.Common.save, isLoading: viewModel.isSaving, action: onSave)
+            PrimaryButton(title: L10n.Common.save, isLoading: viewModel.isSaving, action: save)
                 .disabled(viewModel.isSaving)
                 .accessibilityIdentifier("expense.save")
                 .padding(.horizontal, 20)
@@ -75,7 +83,32 @@ struct ExpenseDetailsStep: View {
             descriptionFocused = true
         }
         .sheet(isPresented: $showingDatePicker) {
-            ExpenseDatePicker(date: $viewModel.date)
+            ExpenseDatePicker(
+                date: $viewModel.date,
+                earliestDate: viewModel.earliestDate,
+                repeatFrequency: viewModel.showsRepeatPicker ? $viewModel.repeatFrequency : nil
+            )
+        }
+        .alert(L10n.Repeat.saveTitle, isPresented: $showingScopeChoice) {
+            Button { onSave(.this) } label: { Text(L10n.Repeat.onlyThis) }
+                .accessibilityIdentifier("expense.save.only-this")
+            Button { onSave(.following) } label: { Text(L10n.Repeat.thisAndFollowing) }
+                .accessibilityIdentifier("expense.save.following")
+            Button(role: .cancel) {} label: { Text(L10n.Common.cancel) }
+        } message: {
+            Text(L10n.Repeat.saveMessage)
+        }
+    }
+
+    /// An expense a recurring expense added asks how far the change reaches before
+    /// saving, unless the answer is already implied.
+    private func save() {
+        guard viewModel.attemptSave() else { return }
+        if viewModel.needsScopeChoice {
+            descriptionFocused = false
+            showingScopeChoice = true
+        } else {
+            onSave(nil)
         }
     }
 
@@ -229,7 +262,13 @@ struct ExpenseDetailsStep: View {
             .frame(width: 24)
     }
 
+    /// The day, then how often it repeats when it does.
     private var dateLabel: String {
+        guard let badge = viewModel.repeatFrequency.badge else { return dayLabel }
+        return "\(dayLabel) · \(badge)"
+    }
+
+    private var dayLabel: String {
         let calendar = Calendar.current
         if calendar.isDateInToday(viewModel.date) { return L10n.Common.today }
         if calendar.isDateInYesterday(viewModel.date) { return L10n.Common.yesterday }

@@ -167,15 +167,52 @@ struct ForwardButton: View {
 /// Full size and from the bottom, it is the same gesture as everything else here.
 struct ExpenseDatePicker: View {
     @Binding var date: Date
+    /// The first day on offer, when there is one.
+    var earliestDate: Date? = nil
+    /// The Repeats choice, on an expense that may repeat. Nil hides it: a payment never
+    /// repeats, and neither does an expense entered by hand once it exists.
+    var repeatFrequency: Binding<ExpenseRepeat>? = nil
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VStack(spacing: 16) {
-            DatePicker(selection: $date, displayedComponents: .date) { Text(L10n.Common.date) }
+            datePicker
                 .labelsHidden()
                 .datePickerStyle(.graphical)
                 .tint(Color.accentColor)
                 .accessibilityIdentifier("expense.datePicker")
+
+            if let repeatFrequency {
+                HStack(spacing: 14) {
+                    Image(systemName: "repeat")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24)
+                        .accessibilityHidden(true)
+
+                    Text(L10n.Repeat.title)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.expenseForeground)
+
+                    Spacer(minLength: 8)
+
+                    Picker(selection: repeatFrequency) {
+                        ForEach(ExpenseRepeat.allCases) { frequency in
+                            Text(frequency.name).tag(frequency)
+                        }
+                    } label: {
+                        Text(L10n.Repeat.title)
+                    }
+                    .pickerStyle(.menu)
+                    // A menu picker wraps its label to fit; "Doesn't repeat" reads as one value.
+                    .fixedSize()
+                    .tint(Color.expenseForeground)
+                    .accessibilityIdentifier("expense.repeat")
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
+            }
 
             ForwardButton(isEnabled: true, diameter: 44) { dismiss() }
                 .accessibilityLabel(L10n.Keypad.done)
@@ -183,8 +220,19 @@ struct ExpenseDatePicker: View {
         .padding(20)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color.expenseBackground)
-        .presentationDetents([.height(460)])
+        .presentationDetents([.height(repeatFrequency == nil ? 460 : 520)])
         .presentationCornerRadius(28)
         .presentationBackground(Color.expenseBackground)
+    }
+
+    @ViewBuilder
+    private var datePicker: some View {
+        if let earliestDate {
+            DatePicker(selection: $date, in: earliestDate..., displayedComponents: .date) {
+                Text(L10n.Common.date)
+            }
+        } else {
+            DatePicker(selection: $date, displayedComponents: .date) { Text(L10n.Common.date) }
+        }
     }
 }

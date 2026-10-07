@@ -70,22 +70,29 @@ struct ExpenseDetailView: View {
                 currentUserId: currentUserId,
                 expense: expense,
                 timelineExpenses: timelineExpenses
-            ) { saved in
-                appState.groupSessions.report(.expenseEdited(saved), groupId: expense.groupId)
+            ) { write in
+                appState.groupSessions.report(write, groupId: expense.groupId)
                 onMoneyWrite?()
                 dismiss()
             }
         }
         // Every member may delete anything, so the confirmation names what is going, not
-        // who recorded it.
+        // who recorded it. One a recurring expense added also asks how far to reach.
         .alert(
             L10n.Expense.deleteTitle(expense.description),
             isPresented: $showingDeleteConfirmation
         ) {
-            Button(role: .destructive) { delete() } label: { Text(L10n.Common.delete) }
+            if expense.isRecurring {
+                Button(role: .destructive) { delete(scope: .this) } label: { Text(L10n.Repeat.deleteOnlyThis) }
+                Button(role: .destructive) { delete(scope: .following) } label: {
+                    Text(L10n.Repeat.deleteThisAndFollowing)
+                }
+            } else {
+                Button(role: .destructive) { delete() } label: { Text(L10n.Common.delete) }
+            }
             Button(role: .cancel) {} label: { Text(L10n.Common.cancel) }
         } message: {
-            Text(L10n.Expense.deleteMessage)
+            Text(expense.isRecurring ? L10n.Repeat.deleteMessage : L10n.Expense.deleteMessage)
         }
     }
 
@@ -118,6 +125,11 @@ struct ExpenseDetailView: View {
                 .font(.subheadline)
                 .foregroundStyle(Color("muted-foreground"))
                 .multilineTextAlignment(.center)
+
+            if expense.isRecurring, let badge = expense.repeatFrequency?.badge {
+                RepeatBadge(text: badge)
+                    .padding(.top, 2)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 8)
@@ -285,13 +297,13 @@ struct ExpenseDetailView: View {
         return MemberDisplay(name: L10n.Common.unknown, avatarURL: nil)
     }
 
-    private func delete() {
+    private func delete(scope: ExpenseScope? = nil) {
         isDeleting = true
         errorMessage = nil
 
         Task {
             defer { isDeleting = false }
-            let outcome = await appState.groupSessions.delete(expense, groupId: expense.groupId).value
+            let outcome = await appState.groupSessions.delete(expense, scope: scope, groupId: expense.groupId).value
             if let failureMessage = outcome.failureMessage {
                 errorMessage = failureMessage
                 return

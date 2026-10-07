@@ -3,6 +3,9 @@ import Foundation
 enum GroupMoneyWrite {
     case expenseCreated(Expense)
     case expenseEdited(Expense)
+    /// A "this and following" edit. The server also rewrote or removed the later expenses
+    /// the same recurring expense added, so only a refetch can show them.
+    case expenseEditedWithFollowing(Expense)
     case paymentRecorded(payee: GroupMember, amountCents: Int, date: Date, currentUserId: Int)
     case paymentEdited(id: Int, amountCents: Int, date: Date)
 }
@@ -213,6 +216,11 @@ final class GroupSession: ObservableObject {
         case .expenseCreated(let row), .expenseEdited(let row):
             insert(row)
             pendingRows[row.id] = .expense(row)
+        case .expenseEditedWithFollowing(let row):
+            // Shown at once like any saved row, but not held against the refetch: the
+            // edit committed with the later rows it rewrote, so the next read is current.
+            insert(row)
+            pendingRows.removeValue(forKey: row.id)
         case .paymentRecorded(let payee, let amountCents, let date, let currentUserId):
             if let currentUser = members.first(where: { $0.userId == currentUserId }) {
                 insertPendingPayment(
@@ -575,16 +583,26 @@ final class GroupSession: ObservableObject {
     /// Deletes an expense or a settlement, whichever the row is. They do not share a route:
     /// the expense route refuses payment rows rather than branching on a type the client
     /// never sent.
-    func delete(_ expense: Expense) -> Task<GroupDeleteOutcome, Never> {
+    ///
+    /// `scope` matters only for an expense a recurring expense added. `.following` also
+    /// takes the later expenses the same recurring expense added off the list at once,
+    /// since the server deletes them with this one.
+    func delete(_ expense: Expense, scope: ExpenseScope? = nil) -> Task<GroupDeleteOutcome, Never> {
         guard expense.id > 0 else {
             return Task { .failed(L10n.Errors.generic) }
         }
-        let index = expenses.firstIndex(where: { $0.id == expense.id })
+        let scope = expense.isRecurring ? scope : nil
+        let removedIds = Set([expense.id] + (scope == .following ? laterRows(than: expense).map(\.id) : []))
+        // Kept in list order, so a failure can put every row back where it was.
+        let removed = expenses.enumerated().filter { removedIds.contains($0.element.id) }
         actionErrorMessage = nil
         cancelRefresh()
-        hiddenDeletionIds.insert(expense.id)
-        let pendingWrite = pendingRows.removeValue(forKey: expense.id)
-        if let index { expenses.remove(at: index) }
+        hiddenDeletionIds.formUnion(removedIds)
+        var pendingWrites: [Int: PendingRowWrite] = [:]
+        for id in removedIds {
+            pendingWrites[id] = pendingRows.removeValue(forKey: id)
+        }
+        expenses.removeAll { removedIds.contains($0.id) }
         groupedExpenses = Expense.groupExpensesByDate(expenses)
 
         return Task { [weak self] in
@@ -593,16 +611,18 @@ final class GroupSession: ObservableObject {
             do {
                 switch expense.type {
                 case .expense:
-                    try await dataSource.deleteExpense(groupId, expense.id)
+                    try await dataSource.deleteExpense(groupId, expense.id, scope)
                 case .payment:
                     try await dataSource.deletePayment(groupId, expense.id)
                 }
             } catch {
                 if !error.isAlreadyGone {
-                    hiddenDeletionIds.remove(expense.id)
-                    if let pendingWrite { pendingRows[expense.id] = pendingWrite }
-                    if let index {
-                        expenses.insert(pendingWrite?.row ?? expense, at: min(index, expenses.count))
+                    hiddenDeletionIds.subtract(removedIds)
+                    pendingRows.merge(pendingWrites) { _, restored in restored }
+                    if !removed.isEmpty {
+                        for (index, row) in removed {
+                            expenses.insert(pendingWrites[row.id]?.row ?? row, at: min(index, expenses.count))
+                        }
                         groupedExpenses = Expense.groupExpensesByDate(expenses)
                     }
                     if !error.isCancellation { actionErrorMessage = error.displayMessage }
@@ -613,9 +633,22 @@ final class GroupSession: ObservableObject {
             }
             needsPostWriteSettlement = true
             balancesPending = true
-            successfulDeletionIds.insert(expense.id)
+            successfulDeletionIds.formUnion(removedIds)
             beginRefresh()
             return outcome
+        }
+    }
+
+    /// The rows the same recurring expense added after `expense`, by the date each is
+    /// filed under — the same "after" the server deletes by.
+    private func laterRows(than expense: Expense) -> [Expense] {
+        guard let recurringExpenseId = expense.recurringExpenseId,
+              let date = expense.effectiveDate
+        else { return [] }
+        return expenses.filter { row in
+            row.recurringExpenseId == recurringExpenseId
+                && row.id != expense.id
+                && (row.effectiveDate.map { $0 > date } ?? false)
         }
     }
 }

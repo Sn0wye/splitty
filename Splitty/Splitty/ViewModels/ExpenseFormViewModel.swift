@@ -5,6 +5,16 @@
 
 import Foundation
 
+struct ExpenseFormDataSource {
+    var create: (NewExpenseRequest) async throws -> Expense
+    var update: (ExpenseUpdateRequest) async throws -> Expense
+
+    static let live = ExpenseFormDataSource(
+        create: { try await ExpenseService.shared.createExpense($0) },
+        update: { try await ExpenseService.shared.updateExpense($0) }
+    )
+}
+
 /// Backs the sheet used for both creating and editing an expense. `expense` decides which
 /// of the two it is; everything else is identical.
 ///
@@ -16,6 +26,15 @@ class ExpenseFormViewModel: ObservableObject {
     @Published var description: String
     @Published var date: Date
     @Published var category: ExpenseCategory
+    /// How often a new expense repeats, or how often a linked one's recurring expense
+    /// should from here on. Choosing a frequency on a new expense moves a past date to
+    /// today, since a repeating expense cannot start before it.
+    @Published var repeatFrequency: ExpenseRepeat {
+        didSet {
+            guard let earliestDate, date < earliestDate else { return }
+            date = Date()
+        }
+    }
     @Published var configuration: SplitConfiguration
     @Published var errorMessage: String?
     @Published var isSaving = false
@@ -43,13 +62,20 @@ class ExpenseFormViewModel: ObservableObject {
     /// Users already on the expense being edited. A removed member among them stays on
     /// screen: the server, not the form, decides whether keeping them is allowed.
     private let existingParticipantIds: Set<Int>
+    /// The frequency of the recurring expense that added the expense being edited; nil
+    /// when creating, and when editing an expense entered by hand.
+    private let linkedFrequency: ExpenseRepeat?
+    private let dataSource: ExpenseFormDataSource
+    private let timeZone: () -> TimeZone
 
     init(
         groupId: Int,
         members: [GroupMember],
         currentUserId: Int,
         expense: Expense? = nil,
-        timelineExpenses: [Expense] = []
+        timelineExpenses: [Expense] = [],
+        dataSource: ExpenseFormDataSource = .live,
+        timeZone: @escaping () -> TimeZone = { .current }
     ) {
         self.groupId = groupId
         self.members = members
@@ -57,6 +83,13 @@ class ExpenseFormViewModel: ObservableObject {
         self.timelineExpenses = timelineExpenses
         self.existingExpenseId = expense?.id
         self.existingParticipantIds = Set(expense?.splits.map(\.userId) ?? [])
+        self.dataSource = dataSource
+        self.timeZone = timeZone
+        // A stopped or unrecognised frequency leaves nothing to offer, so the expense
+        // edits as a plain one.
+        let linkedFrequency = expense?.isRecurring == true ? expense?.repeatFrequency : nil
+        self.linkedFrequency = linkedFrequency
+        repeatFrequency = linkedFrequency ?? .never
 
         if let expense {
             amount = AmountExpression(cents: Money.cents(from: expense.amount))
@@ -117,6 +150,30 @@ class ExpenseFormViewModel: ObservableObject {
         members.filter { !$0.isRemoved || existingParticipantIds.contains($0.userId) }
     }
 
+    /// Always on a new expense. On an edit, only for an expense a recurring expense added:
+    /// making a plain expense repeat is not something the API supports.
+    var showsRepeatPicker: Bool { !isEditing || linkedFrequency != nil }
+
+    /// The first day the date picker offers. Only a new repeating expense has one: the
+    /// server refuses a start before today, while an edit may keep last month's date.
+    var earliestDate: Date? {
+        guard !isEditing, repeatFrequency != .never else { return nil }
+        return Calendar.current.startOfDay(for: Date())
+    }
+
+    var repeatDateMessage: String? {
+        guard let earliestDate, date < earliestDate else { return nil }
+        return L10n.Repeat.cannotStartInPast
+    }
+
+    /// Saving asks "Only this one" or "This and following" only when both make sense. A
+    /// changed frequency belongs to the recurring expense, so it reaches the following
+    /// expenses without asking.
+    var needsScopeChoice: Bool {
+        guard let linkedFrequency else { return false }
+        return repeatFrequency == linkedFrequency
+    }
+
     var categorySuggestions: [ExpenseCategory] {
         ExpenseCategory.chipSuggestions(from: timelineExpenses, selected: category)
     }
@@ -145,6 +202,7 @@ class ExpenseFormViewModel: ObservableObject {
         !isSaving
             && !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && configuration.blockingReason(totalCents: totalCents) == nil
+            && repeatDateMessage == nil
     }
 
     var descriptionRequiredMessage: String? {
@@ -274,8 +332,9 @@ class ExpenseFormViewModel: ObservableObject {
 
     // MARK: - Saving
 
-    /// Returns the saved expense on success, nil on failure.
-    func save() async -> Expense? {
+    /// Returns the write to report on success, nil on failure. `scope` is the answer to
+    /// the scope prompt, and is ignored where `needsScopeChoice` says there was none.
+    func save(scope: ExpenseScope? = nil) async -> GroupMoneyWrite? {
         guard canSave else { return nil }
 
         let trimmedDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -287,7 +346,8 @@ class ExpenseFormViewModel: ObservableObject {
 
         do {
             if let expenseId = existingExpenseId {
-                return try await ExpenseService.shared.updateExpense(
+                let scope = resolvedScope(scope)
+                let saved = try await dataSource.update(ExpenseUpdateRequest(
                     groupId: groupId,
                     expenseId: expenseId,
                     description: trimmedDescription,
@@ -296,11 +356,17 @@ class ExpenseFormViewModel: ObservableObject {
                     date: date,
                     category: category,
                     splitMode: configuration.mode.wireValue,
-                    splits: splits()
-                )
+                    splits: splits(),
+                    scope: scope,
+                    repeatFrequency: scope == .following && repeatFrequency != linkedFrequency
+                        ? repeatFrequency
+                        : nil
+                ))
+                return scope == .following ? .expenseEditedWithFollowing(saved) : .expenseEdited(saved)
             }
 
-            return try await ExpenseService.shared.createExpense(
+            let repeats = repeatFrequency != .never
+            let saved = try await dataSource.create(NewExpenseRequest(
                 groupId: groupId,
                 description: trimmedDescription,
                 amountCents: total,
@@ -308,11 +374,20 @@ class ExpenseFormViewModel: ObservableObject {
                 date: date,
                 category: category,
                 splitMode: configuration.mode.wireValue,
-                splits: splits()
-            )
+                splits: splits(),
+                repeatFrequency: repeats ? repeatFrequency : nil,
+                timeZone: repeats ? timeZone().identifier : nil
+            ))
+            return .expenseCreated(saved)
         } catch {
             errorMessage = error.displayMessage
             return nil
         }
+    }
+
+    /// Nil for a plain expense, which has nothing after it to reach.
+    private func resolvedScope(_ chosen: ExpenseScope?) -> ExpenseScope? {
+        guard linkedFrequency != nil else { return nil }
+        return needsScopeChoice ? chosen ?? .this : .following
     }
 }

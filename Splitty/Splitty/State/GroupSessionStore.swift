@@ -98,7 +98,7 @@ final class GroupSessionStore: ObservableObject {
 
     /// Detail screens only open inside a live session, so a missing one is an eviction
     /// race rather than a row the server has already lost.
-    func delete(_ row: Expense, groupId: Int) -> Task<GroupDeleteOutcome, Never> {
-        sessions[groupId]?.delete(row) ?? Task { .failed(L10n.Errors.generic) }
+    func delete(_ row: Expense, scope: ExpenseScope? = nil, groupId: Int) -> Task<GroupDeleteOutcome, Never> {
+        sessions[groupId]?.delete(row, scope: scope) ?? Task { .failed(L10n.Errors.generic) }
     }
 }
