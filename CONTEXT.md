@@ -192,8 +192,9 @@ monthly, or yearly from a start date of today or later, until it is stopped. Cre
 its first expense at once, on the start date; after that, nothing is added before it is due.
 Each added expense is a normal expense. Editing or deleting one asks whether
 the change applies to that expense only, or to it and every one after it. Participants are
-fixed: someone who joins later is not included until the recurring expense is edited. Only
-expenses recur, never settlements.
+fixed: someone who joins later is not included until the recurring expense is edited. It ends
+when its payer or anyone in its split leaves, is removed, or deletes their account;
+deactivating does not end it. Only expenses recur, never settlements.
 _Avoid_: subscription, template, schedule, series, occurrence, revision
 
 **Group spend**:
@@ -491,18 +492,24 @@ are never purged.
 
 **Deletion** cannot be a hard delete: `Expense.PaidBy` is `Restrict`, and the `Cascade` on
 `ExpenseSplit.UserId` would leave expenses whose splits no longer sum to their total.
-`UserRepository.TombstoneAsync` instead runs one transaction that:
+First, as leaving does, it runs recurring expense catch-up in each of the user's groups, so
+a repeat that came due is added before the zero-net read. A group that gains one is then
+pending, and step 4 keeps the membership. `UserRepository.TombstoneAsync` then runs one
+transaction that:
 
 1. rewrites the user as `Name = "[removed]"`, `Email = ""`, `AvatarUrl = ""`,
    `AvatarKey = null`, `DeletedAt = now`;
 2. deletes every `OAuthAccount` of the user, so the same Google account signs in as a
    fresh user, and every `RefreshToken`;
-3. drops each membership whose group is not `BalancesPending` and whose net is exactly
+3. deletes every recurring expense the user pays for or appears in the split template of,
+   so nothing new is ever billed to the tombstone;
+4. drops each membership whose group is not `BalancesPending` and whose net is exactly
    zero, and keeps the rest on the tombstone so invariant 1 holds (a pending group's
    stored net may be stale);
-4. deletes every group of the user's left with no live member.
+5. deletes every group of the user's left with no live member.
 
-No recomputation is requested: the replay reads splits, not memberships. After the
+No recomputation is requested beyond catch-up's own: the replay reads splits, not
+memberships. After the
 commit, `IAvatarStorage.DeleteUserObjectsAsync` removes everything under
 `avatars/{userId}/`, best effort and logged on failure.
 

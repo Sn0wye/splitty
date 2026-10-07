@@ -25,3 +25,8 @@ that yet: add a conditional `AddedThrough` update when it shows up as a bug.
 A group nobody opens adds nothing. When it is next opened, every repeat due since then is added,
 with no limit. On that first open, the parallel expense and summary reads may miss the new
 expenses until the next refresh.
+
+Catch-up copies the split template without the membership checks an expense write runs. So
+every recurring expense a user pays for or shares in is deleted when that user leaves, is
+removed, or deletes their account (ADR 0004), and nothing is ever billed to someone outside
+the group or to a tombstone.
