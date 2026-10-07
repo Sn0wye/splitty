@@ -23,8 +23,7 @@ struct RecurringExpenseFormTests {
         _ = await viewModel.save()
 
         let request = try #require(api.created.first)
-        #expect(request.repeatFrequency == nil)
-        #expect(request.timeZone == nil)
+        #expect(request.repeats == nil)
     }
 
     @Test func aChosenFrequencySendsItWithTheDevicesTimeZone() async throws {
@@ -36,8 +35,7 @@ struct RecurringExpenseFormTests {
         let write = await viewModel.save()
 
         let request = try #require(api.created.first)
-        #expect(request.repeatFrequency == .monthly)
-        #expect(request.timeZone == "America/Sao_Paulo")
+        #expect(request.repeats == RepeatStart(frequency: .monthly, timeZone: "America/Sao_Paulo"))
         guard case .expenseCreated = write else {
             Issue.record("Expected a created expense, got \(String(describing: write))")
             return

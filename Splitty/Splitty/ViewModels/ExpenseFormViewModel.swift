@@ -365,7 +365,6 @@ class ExpenseFormViewModel: ObservableObject {
                 return scope == .following ? .expenseEditedWithFollowing(saved) : .expenseEdited(saved)
             }
 
-            let repeats = repeatFrequency != .never
             let saved = try await dataSource.create(NewExpenseRequest(
                 groupId: groupId,
                 description: trimmedDescription,
@@ -375,8 +374,9 @@ class ExpenseFormViewModel: ObservableObject {
                 category: category,
                 splitMode: configuration.mode.wireValue,
                 splits: splits(),
-                repeatFrequency: repeats ? repeatFrequency : nil,
-                timeZone: repeats ? timeZone().identifier : nil
+                repeats: repeatFrequency == .never
+                    ? nil
+                    : RepeatStart(frequency: repeatFrequency, timeZone: timeZone().identifier)
             ))
             return .expenseCreated(saved)
         } catch {

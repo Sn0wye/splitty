@@ -18,9 +18,15 @@ struct NewExpenseRequest: Equatable {
     let splitMode: ExpenseSplitMode
     let splits: [ExpenseSplitRequest]
     /// Nil unless it repeats: `never` is the server's default, so it is not sent.
-    var repeatFrequency: ExpenseRepeat? = nil
-    /// The IANA zone the repeats come due in. Sent only with `repeatFrequency`.
-    var timeZone: String? = nil
+    var repeats: RepeatStart? = nil
+}
+
+/// How a new expense repeats. The frequency and the zone travel together: the server
+/// needs the zone to know which day "the 1st" is.
+struct RepeatStart: Equatable {
+    let frequency: ExpenseRepeat
+    /// The device's IANA identifier when the expense was saved.
+    let timeZone: String
 }
 
 /// An edit. Every nil field is left unchanged by the server.
@@ -64,8 +70,10 @@ class ExpenseService {
             "splits": request.splits.map(Self.splitBody(_:))
         ]
         if let date = request.date { body["date"] = Self.timestamp(from: date) }
-        if let repeatFrequency = request.repeatFrequency { body["repeat"] = repeatFrequency.rawValue }
-        if let timeZone = request.timeZone { body["timeZone"] = timeZone }
+        if let repeats = request.repeats {
+            body["repeat"] = repeats.frequency.rawValue
+            body["timeZone"] = repeats.timeZone
+        }
 
         return try await APIClient.shared.request(
             endpoint: "/group/\(request.groupId)/expenses",
