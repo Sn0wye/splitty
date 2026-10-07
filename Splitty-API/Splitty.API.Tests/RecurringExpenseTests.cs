@@ -379,12 +379,7 @@ public sealed class RecurringExpenseTests : IDisposable
     [Fact]
     public async Task Moving_the_date_this_and_following_moves_the_later_expenses_onto_the_new_day()
     {
-        var start = new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);
-        _factory.Clock.Set(start);
-        var group = await GroupFixture.CreateAsync(_factory);
-        await group.CreateRecurringAsync("monthly", start.UtcDateTime);
-        _factory.Clock.Set(new DateTimeOffset(2030, 3, 10, 12, 0, 0, TimeSpan.Zero));
-        await group.OpenAsync();
+        var group = await MonthlyFromJanuaryAsync();
         var february = ExpenseOn(await group.ExpensesAsync(), Day(2030, 2, 1));
 
         (await group.Owner.UpdateExpenseAsync(group.Id, Id(february), "following",
