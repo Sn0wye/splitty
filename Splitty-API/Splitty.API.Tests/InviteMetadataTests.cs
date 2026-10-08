@@ -80,7 +80,11 @@ public sealed class InviteMetadataTests
         var second = await SignInAsync();
         var response = await second.Client.GetInviteAsync(code);
 
-        await ErrorResponseAssertions.AssertErrorAsync(response, HttpStatusCode.Conflict);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal(409, body.GetProperty("statusCode").GetInt32());
+        // Only refusals a client must tell apart carry a code; every other error keeps its shape.
+        Assert.False(body.TryGetProperty("code", out _));
     }
 
     [Fact]

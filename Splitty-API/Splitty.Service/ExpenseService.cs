@@ -119,6 +119,14 @@ public class ExpenseService(
             throw new ArgumentException("repeat changes the expenses that follow, so it needs scope=following.");
         }
 
+        if (dto.TimeZone is not null && dto.Scope != ExpenseScope.Following)
+        {
+            throw new ArgumentException("timeZone moves the expenses that follow, so it needs scope=following.");
+        }
+
+        // Resolved before anything is written, so an unknown zone refuses the whole edit.
+        var zone = dto.TimeZone is null ? null : RecurringExpenses.ZoneOrThrow(dto.TimeZone);
+
         var expense = await expenseRepository.GetForUpdateAsync(dto.Id);
 
         if (expense is null)
@@ -209,7 +217,7 @@ public class ExpenseService(
         
         if (recurringExpenseId is { } id)
         {
-            await UpdateFollowingAsync(expense, id, originalDate, dto.Repeat);
+            await UpdateFollowingAsync(expense, id, originalDate, dto.Repeat, zone);
         }
         else
         {
@@ -228,7 +236,12 @@ public class ExpenseService(
     /// plain. Either way the group catches up, all in one transaction, and the recomputation
     /// is requested once it has committed.
     /// </summary>
-    private async Task UpdateFollowingAsync(Expense expense, int recurringExpenseId, DateTime originalDate, Repeat? repeat)
+    private async Task UpdateFollowingAsync(
+        Expense expense,
+        int recurringExpenseId,
+        DateTime originalDate,
+        Repeat? repeat,
+        TimeZoneInfo? zone)
     {
         var later = await expenseRepository.GetAddedAfterAsync(recurringExpenseId, originalDate);
         var recurring = await recurringExpenseRepository.GetForUpdateAsync(recurringExpenseId)
@@ -237,7 +250,7 @@ public class ExpenseService(
         var frequency = repeat is { } r ? RecurringExpenses.FrequencyOf(r) : recurring.Frequency;
 
         var removed = frequency is { } f
-            ? RestartFrom(recurring, expense, originalDate, f, later)
+            ? RestartFrom(recurring, expense, originalDate, f, zone, later)
             : later;
 
         await expenseRepository.InTransactionAsync(async () =>
@@ -250,33 +263,53 @@ public class ExpenseService(
     }
 
     /// <summary>
-    /// Restarts <paramref name="recurring"/> from <paramref name="expense"/>'s values, day and
-    /// <paramref name="frequency"/>, and rewrites the <paramref name="later"/> expenses onto
-    /// the new days. Each keeps its place: the nth repeat after this expense stays the nth,
-    /// so one deleted on its own stays a gap rather than being added again. A place whose new
-    /// day is not due yet is dropped, since nothing is added before it is due. Returns the
-    /// expenses to delete.
+    /// Restarts <paramref name="recurring"/> from <paramref name="expense"/>'s values, day,
+    /// <paramref name="frequency"/> and, when one is given, <paramref name="newZone"/>, and
+    /// rewrites the <paramref name="later"/> expenses onto the new days. Each keeps its place:
+    /// the nth repeat after this expense stays the nth, so one deleted on its own stays a gap
+    /// rather than being added again. A place whose new day is not due yet is dropped, since
+    /// nothing is added before it is due. Returns the expenses to delete.
+    ///
+    /// An expense it added is stored as local midnight of its day in its zone. A new zone
+    /// keeps this expense and the later ones on their days and moves them to that midnight,
+    /// so a later edit made from the new zone reads the same days. Earlier expenses are not
+    /// part of the edit and keep their dates.
     /// </summary>
     private List<Expense> RestartFrom(
         RecurringExpense recurring,
         Expense expense,
         DateTime originalDate,
         RepeatFrequency frequency,
+        TimeZoneInfo? newZone,
         List<Expense> later)
     {
-        var zone = TimeZoneInfo.FindSystemTimeZoneById(recurring.TimeZone);
+        var oldZone = TimeZoneInfo.FindSystemTimeZoneById(recurring.TimeZone);
+        var zone = newZone ?? oldZone;
+        var originalDay = LocalCalendar.DayOf(originalDate, oldZone);
 
         // The places after this expense that were already added, under the old values.
         var oldDays = RecurringDueDays.DueDaysBetween(
             recurring.StartDate,
             recurring.Frequency,
-            LocalCalendar.DayOf(originalDate, zone),
+            originalDay,
             recurring.AddedThrough).ToList();
+
+        // Clients resend the date they were given, so only a different instant is a pick, and
+        // a pick is the day the member chose where they are: the zone they sent. An unchanged
+        // date stays the day it was. Whole seconds, since a client may drop the fraction.
+        var moved = WholeSeconds(DateOf(expense)) != WholeSeconds(originalDate);
+        var startDay = moved ? LocalCalendar.DayOf(DateOf(expense), zone) : originalDay;
 
         RecurringExpenses.CopyFrom(recurring, expense);
         recurring.Frequency = frequency;
-        recurring.StartDate = LocalCalendar.DayOf(DateOf(expense), zone);
+        recurring.StartDate = startDay;
         recurring.UpdatedAt = DateTime.UtcNow;
+
+        if (zone.Id != oldZone.Id)
+        {
+            expense.Date = LocalCalendar.MidnightUtc(startDay, zone);
+            recurring.TimeZone = zone.Id;
+        }
 
         var today = LocalCalendar.DayOf(timeProvider.GetUtcNow(), zone);
         var kept = Enumerable.Range(1, oldDays.Count)
@@ -291,7 +324,7 @@ public class ExpenseService(
         foreach (var laterExpense in later)
         {
             // An expense moved off its day on its own counts as the latest place on or before it.
-            var day = LocalCalendar.DayOf(DateOf(laterExpense), zone);
+            var day = LocalCalendar.DayOf(DateOf(laterExpense), oldZone);
             var place = Math.Max(1, oldDays.Count(d => d <= day));
 
             if (place > kept)
@@ -342,6 +375,9 @@ public class ExpenseService(
     private static int RecurringExpenseIdOrThrow(Expense expense) =>
         expense.RecurringExpenseId
             ?? throw new ArgumentException("This expense does not repeat, so no expenses follow it.");
+
+    private static DateTime WholeSeconds(DateTime instant) =>
+        instant.AddTicks(-(instant.Ticks % TimeSpan.TicksPerSecond));
 
     /// The date an expense reads as, the same fallback the expense list sorts by.
     private static DateTime DateOf(Expense expense) => expense.Date ?? expense.CreatedAt;

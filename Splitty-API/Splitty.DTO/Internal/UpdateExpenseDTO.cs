@@ -14,6 +14,7 @@ public class UpdateExpenseDTO
     public SplitMode? SplitMode { get; set; }
     public List<UpdateExpenseSplitDTO>? ExpenseSplits { get; set; }
     public Repeat? Repeat { get; set; }
+    public string? TimeZone { get; set; }
     public ExpenseScope Scope { get; set; } = ExpenseScope.This;
 }
 

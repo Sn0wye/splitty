@@ -8,10 +8,16 @@ namespace Splitty.Service;
 /// <summary>
 /// R2 through its S3-compatible API. The AWS SDK is here to sign requests — hand-rolling
 /// SigV4 reimplements a solved problem.
+///
+/// The client is built on first use. Every avatar read resolves through this storage but
+/// only needs <see cref="PublicUrl"/>, so a Development host without R2 settings, which
+/// Program.cs allows, serves reads instead of failing to build a client it never calls.
 /// </summary>
-public class R2AvatarStorage(IAmazonS3 s3, IOptions<R2Options> r2Options) : IAvatarStorage
+public class R2AvatarStorage(Lazy<IAmazonS3> client, IOptions<R2Options> r2Options) : IAvatarStorage
 {
     private readonly R2Options options = r2Options.Value;
+
+    private IAmazonS3 s3 => client.Value;
 
     public string ContentType => "image/jpeg";
 

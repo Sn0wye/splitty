@@ -1,3 +1,4 @@
+using Amazon.S3;
 using System.Globalization;
 using System.Security.Claims;
 using System.Text;
@@ -209,8 +210,8 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IJwtTokenIssuer, JwtTokenIssuer>();
 builder.Services.AddScoped<IGoogleTokenExchanger, GoogleTokenExchanger>();
 builder.Services.AddHttpClient(nameof(GoogleTokenExchanger));
-builder.Services.AddSingleton(services =>
-    R2AvatarStorage.CreateClient(services.GetRequiredService<IOptions<R2Options>>().Value));
+builder.Services.AddSingleton(services => new Lazy<IAmazonS3>(() =>
+    R2AvatarStorage.CreateClient(services.GetRequiredService<IOptions<R2Options>>().Value)));
 builder.Services.AddScoped<IAvatarStorage, R2AvatarStorage>();
 builder.Services.AddScoped<IAvatarResolver, AvatarResolver>();
 

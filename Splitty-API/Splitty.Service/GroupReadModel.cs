@@ -75,9 +75,16 @@ public class GroupReadModel(ApplicationDbContext context, IAvatarResolver avatar
             .SingleOrDefault() ?? throw new KeyNotFoundException("Expense not found");
     }
 
+    /// <summary>
+    /// One statement, so the expenses and their splits come from one snapshot. A split query
+    /// reads them in two, and an expense written in between, such as a repeat the parallel
+    /// group read adds (ADR 0006), leaves EF matching splits against rows it never read:
+    /// the expenses after it come back with none. Splits are the only collection, so the
+    /// join repeats each expense once per split and nothing multiplies.
+    /// </summary>
     private async Task<List<ExpenseResponse>> ReadExpensesAsync(IQueryable<Expense> query)
     {
-        var expenses = await query.AsNoTracking().AsSplitQuery()
+        var expenses = await query.AsNoTracking().AsSingleQuery()
             .OrderByDescending(e => e.Date ?? e.CreatedAt)
             .ThenByDescending(e => e.Id)
             .Select(e => new ExpenseResponse

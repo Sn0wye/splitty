@@ -379,12 +379,7 @@ public sealed class RecurringExpenseTests : IDisposable
     [Fact]
     public async Task Moving_the_date_this_and_following_moves_the_later_expenses_onto_the_new_day()
     {
-        var start = new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);
-        _factory.Clock.Set(start);
-        var group = await GroupFixture.CreateAsync(_factory);
-        await group.CreateRecurringAsync("monthly", start.UtcDateTime);
-        _factory.Clock.Set(new DateTimeOffset(2030, 3, 10, 12, 0, 0, TimeSpan.Zero));
-        await group.OpenAsync();
+        var group = await MonthlyFromJanuaryAsync();
         var february = ExpenseOn(await group.ExpensesAsync(), Day(2030, 2, 1));
 
         (await group.Owner.UpdateExpenseAsync(group.Id, Id(february), "following",
@@ -413,6 +408,144 @@ public sealed class RecurringExpenseTests : IDisposable
         Assert.Equal(
             [Day(2030, 1, 15), Day(2030, 1, 22), Day(2030, 2, 22)],
             (await group.ExpensesAsync()).Select(DayOf).Order());
+    }
+
+    // A member who moved sends their new zone with a "this and following" edit, so "every
+    // Tuesday" means Tuesday where they are now. Tokyo is ahead of UTC, so a local midnight
+    // there is the afternoon before in UTC.
+    [Fact]
+    public async Task A_new_zone_this_and_following_moves_the_later_expenses_to_its_midnight()
+    {
+        var group = await WeeklyThroughAsync(Now.AddDays(14));
+        var second = ExpenseOn(await group.ExpensesAsync(), Day(2030, 1, 22));
+
+        (await group.Owner.UpdateExpenseAsync(group.Id, Id(second), "following",
+            new { timeZone = "Asia/Tokyo" })).EnsureSuccessStatusCode();
+
+        var third = Assert.Single(await group.ExpensesAsync(), e => Id(e) != Id(second) && DayOf(e) > Day(2030, 1, 22));
+        Assert.Equal(new DateTime(2030, 1, 28, 15, 0, 0, DateTimeKind.Utc), third.GetProperty("date").GetDateTime());
+
+        // Just past midnight on 5 February in Tokyo, still the 4th in UTC.
+        _factory.Clock.Set(new DateTimeOffset(2030, 2, 4, 15, 1, 0, TimeSpan.Zero));
+        await group.OpenAsync();
+
+        var added = (await group.ExpensesAsync()).MaxBy(e => e.GetProperty("date").GetDateTime());
+        Assert.Equal(new DateTime(2030, 2, 4, 15, 0, 0, DateTimeKind.Utc), added.GetProperty("date").GetDateTime());
+    }
+
+    // West of UTC, the stored instant of "the 1st" is the evening of the 31st locally. A zone
+    // change keeps the day the expense was on and moves only its midnight; the app resends
+    // the date it was given, so an unchanged date counts as not moved.
+    [Fact]
+    public async Task A_new_zone_west_of_utc_keeps_the_day_the_expense_was_on()
+    {
+        var group = await MonthlyFromJanuaryAsync();
+        var february = ExpenseOn(await group.ExpensesAsync(), Day(2030, 2, 1));
+
+        (await group.Owner.UpdateExpenseAsync(group.Id, Id(february), "following", new
+        {
+            date = february.GetProperty("date").GetDateTime(),
+            timeZone = "America/Los_Angeles"
+        })).EnsureSuccessStatusCode();
+
+        // Midnight on 1 March in Los Angeles, eight hours behind UTC in winter.
+        var march = Assert.Single(await group.ExpensesAsync(), e => e.GetProperty("date").GetDateTime() > new DateTime(2030, 2, 2));
+        Assert.Equal(new DateTime(2030, 3, 1, 8, 0, 0, DateTimeKind.Utc), march.GetProperty("date").GetDateTime());
+
+        // Just past midnight on 1 April there, under daylight saving.
+        _factory.Clock.Set(new DateTimeOffset(2030, 4, 1, 7, 1, 0, TimeSpan.Zero));
+        await group.OpenAsync();
+
+        var added = (await group.ExpensesAsync()).MaxBy(e => e.GetProperty("date").GetDateTime());
+        Assert.Equal(new DateTime(2030, 4, 1, 7, 0, 0, DateTimeKind.Utc), added.GetProperty("date").GetDateTime());
+    }
+
+    // This expense and the following ones keep their days in the new zone, so a second edit
+    // made from there reads the same days as the first. Earlier ones are not part of a "this
+    // and following" edit and keep their dates.
+    [Fact]
+    public async Task A_second_edit_after_a_zone_change_still_lands_on_the_first()
+    {
+        var group = await MonthlyFromJanuaryAsync();
+        var february = ExpenseOn(await group.ExpensesAsync(), Day(2030, 2, 1));
+        (await group.Owner.UpdateExpenseAsync(group.Id, Id(february), "following", new
+        {
+            date = february.GetProperty("date").GetDateTime(),
+            timeZone = "America/Los_Angeles"
+        })).EnsureSuccessStatusCode();
+        var moved = Assert.Single(await group.ExpensesAsync(), e => Id(e) == Id(february));
+
+        (await group.Owner.UpdateExpenseAsync(group.Id, Id(moved), "following", new
+        {
+            amount = 30m,
+            splitMode = "equal",
+            splits = Splits(group, 15m),
+            date = moved.GetProperty("date").GetDateTime(),
+            timeZone = "America/Los_Angeles"
+        })).EnsureSuccessStatusCode();
+
+        Assert.Equal(
+            [
+                new DateTime(2030, 1, 1, 12, 0, 0, DateTimeKind.Utc),
+                new DateTime(2030, 2, 1, 8, 0, 0, DateTimeKind.Utc),
+                new DateTime(2030, 3, 1, 8, 0, 0, DateTimeKind.Utc)
+            ],
+            (await group.ExpensesAsync()).Select(e => e.GetProperty("date").GetDateTime()).Order());
+    }
+
+    // The date is the day the member picked where they are: the zone they sent. Here that
+    // is the 2nd in Tokyo, though still the 1st in the expense's old zone.
+    [Fact]
+    public async Task A_day_picked_in_the_new_zone_moves_the_expense_though_the_old_zone_disagrees()
+    {
+        var group = await MonthlyFromJanuaryAsync();
+        var february = ExpenseOn(await group.ExpensesAsync(), Day(2030, 2, 1));
+
+        (await group.Owner.UpdateExpenseAsync(group.Id, Id(february), "following", new
+        {
+            date = new DateTime(2030, 2, 1, 15, 0, 0, DateTimeKind.Utc),
+            timeZone = "Asia/Tokyo"
+        })).EnsureSuccessStatusCode();
+
+        // Midnight on 2 March in Tokyo.
+        var march = Assert.Single(await group.ExpensesAsync(), e => e.GetProperty("date").GetDateTime() > new DateTime(2030, 2, 15));
+        Assert.Equal(new DateTime(2030, 3, 1, 15, 0, 0, DateTimeKind.Utc), march.GetProperty("date").GetDateTime());
+        var january = ExpenseOn(await group.ExpensesAsync(), Day(2030, 1, 1));
+        Assert.Equal(new DateTime(2030, 1, 1, 12, 0, 0, DateTimeKind.Utc), january.GetProperty("date").GetDateTime());
+    }
+
+    // Any change to the date is a pick, even one that falls on the same day as the old date
+    // when read in the new zone: midnight on 31 January in Los Angeles is where 1 February
+    // at 00:00 UTC already is.
+    [Fact]
+    public async Task A_picked_day_is_kept_even_where_the_old_date_reads_the_same()
+    {
+        var group = await MonthlyFromJanuaryAsync();
+        var february = ExpenseOn(await group.ExpensesAsync(), Day(2030, 2, 1));
+        var picked = new DateTime(2030, 1, 31, 8, 0, 0, DateTimeKind.Utc);
+
+        (await group.Owner.UpdateExpenseAsync(group.Id, Id(february), "following", new
+        {
+            date = picked,
+            timeZone = "America/Los_Angeles"
+        })).EnsureSuccessStatusCode();
+
+        var dates = (await group.ExpensesAsync()).Select(e => e.GetProperty("date").GetDateTime()).Order().ToList();
+        // A month after the 31st clamps to the 28th.
+        Assert.Equal([new DateTime(2030, 1, 1, 12, 0, 0, DateTimeKind.Utc), picked, new DateTime(2030, 2, 28, 8, 0, 0, DateTimeKind.Utc)], dates);
+    }
+
+    [Fact]
+    public async Task A_zone_needs_scope_following_and_must_be_known()
+    {
+        var group = await WeeklyThroughAsync(Now);
+        var first = Assert.Single(await group.ExpensesAsync());
+
+        var withThis = await group.Owner.UpdateExpenseAsync(group.Id, Id(first), "this", new { timeZone = "Asia/Tokyo" });
+        var unknown = await group.Owner.UpdateExpenseAsync(group.Id, Id(first), "following", new { timeZone = "Mars/Olympus" });
+
+        await ErrorResponseAssertions.AssertErrorAsync(withThis, HttpStatusCode.BadRequest);
+        await ErrorResponseAssertions.AssertErrorAsync(unknown, HttpStatusCode.BadRequest);
     }
 
     [Fact]
@@ -500,6 +633,19 @@ public sealed class RecurringExpenseTests : IDisposable
         var group = await GroupFixture.CreateAsync(_factory);
         await group.CreateRecurringAsync("weekly", Now.UtcDateTime);
         _factory.Clock.Set(through);
+        await group.OpenAsync();
+        return group;
+    }
+
+    /// A monthly rent in UTC from 1 January 2030, opened on 10 March: the 1st of January,
+    /// February and March.
+    private async Task<GroupFixture> MonthlyFromJanuaryAsync()
+    {
+        var start = new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);
+        _factory.Clock.Set(start);
+        var group = await GroupFixture.CreateAsync(_factory);
+        await group.CreateRecurringAsync("monthly", start.UtcDateTime);
+        _factory.Clock.Set(new DateTimeOffset(2030, 3, 10, 12, 0, 0, TimeSpan.Zero));
         await group.OpenAsync();
         return group;
     }
