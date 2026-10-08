@@ -15,6 +15,10 @@ struct MembershipError: Equatable {
         case .httpError(403, _), .httpError(404, _):
             message = L10n.Errors.groupUnavailable
             shouldLeaveScreen = true
+        case .refused(409, .balancesPending, _):
+            // Retryable, so it gets the app's own copy rather than the server's English.
+            message = L10n.Errors.balancesUpdating
+            shouldLeaveScreen = false
         default:
             message = error.displayMessage
             shouldLeaveScreen = false

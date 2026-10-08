@@ -22,6 +22,49 @@ enum ExpenseSplitMode: String, Codable {
     case percentage
 }
 
+// MARK: - Repeat
+/// How often a recurring expense adds an expense. `never` exists only on the way in: the
+/// API answers with one of the other four, or with nothing for an expense entered by hand.
+enum ExpenseRepeat: String, Codable, CaseIterable, Identifiable {
+    case never
+    case weekly
+    case fortnightly
+    case monthly
+    case yearly
+
+    var id: String { rawValue }
+
+    /// What the Repeats picker lists for this choice.
+    var name: String {
+        switch self {
+        case .never: L10n.Repeat.never
+        case .weekly: L10n.Repeat.weekly
+        case .fortnightly: L10n.Repeat.fortnightly
+        case .monthly: L10n.Repeat.monthly
+        case .yearly: L10n.Repeat.yearly
+        }
+    }
+
+    /// The badge on an expense a recurring expense added. Nil for `never`, which no
+    /// such expense carries.
+    var badge: String? {
+        switch self {
+        case .never: nil
+        case .weekly: L10n.Repeat.repeatsWeekly
+        case .fortnightly: L10n.Repeat.repeatsFortnightly
+        case .monthly: L10n.Repeat.repeatsMonthly
+        case .yearly: L10n.Repeat.repeatsYearly
+        }
+    }
+}
+
+/// How far an edit or delete of an expense a recurring expense added reaches: that
+/// expense only, or it and every later one the same recurring expense added.
+enum ExpenseScope: String {
+    case this
+    case following
+}
+
 // MARK: - Expense Model
 struct Expense: Codable, Identifiable {
     let id: Int
@@ -42,16 +85,26 @@ struct Expense: Codable, Identifiable {
     let updatedAt: String
     let paidByUser: User
     let splits: [ExpenseSplit]
+    /// The recurring expense that added this expense; nil for one entered by hand, and
+    /// for one whose recurring expense has since stopped.
+    var recurringExpenseId: Int? = nil
+    /// How often `recurringExpenseId` repeats. Nil when it is nil, and on a frequency this
+    /// build does not recognise.
+    var repeatFrequency: ExpenseRepeat? = nil
 
     enum CodingKeys: String, CodingKey {
         case id, groupId, paidBy, amount, description, type, category, splitMode, date
-        case createdAt, updatedAt, paidByUser, splits
+        case createdAt, updatedAt, paidByUser, splits, recurringExpenseId
+        case repeatFrequency = "repeat"
     }
+
+    /// Added by a recurring expense, so editing or deleting it asks how far to reach.
+    var isRecurring: Bool { recurringExpenseId != nil }
 }
 
 extension Expense {
-    /// Decoded by hand for one field: an unrecognised `splitMode` becomes `nil` rather
-    /// than throwing. A mode added by a newer client must not fail the whole group's
+    /// Decoded by hand for two fields: an unrecognised `splitMode` or `repeat` becomes `nil`
+    /// rather than throwing. A mode added by a newer client must not fail the whole group's
     /// expense list over a value this build has no opinion about.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -68,6 +121,10 @@ extension Expense {
         updatedAt = try container.decode(String.self, forKey: .updatedAt)
         paidByUser = try container.decode(User.self, forKey: .paidByUser)
         splits = try container.decode([ExpenseSplit].self, forKey: .splits)
+        recurringExpenseId = try container.decodeIfPresent(Int.self, forKey: .recurringExpenseId)
+        // Lenient for the same reason as `splitMode`: a frequency added later must not
+        // fail the whole list.
+        repeatFrequency = try? container.decodeIfPresent(ExpenseRepeat.self, forKey: .repeatFrequency)
     }
 }
 

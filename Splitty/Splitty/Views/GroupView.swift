@@ -153,7 +153,8 @@ struct GroupView: View {
             }
         }
         // An alert, not a confirmation dialog: deleting is destructive and irreversible,
-        // and the question is worth a modal that names what it is about.
+        // and the question is worth a modal that names what it is about. One a recurring
+        // expense added asks the same two-way question the detail screen does.
         .alert(
             deletionTitle,
             isPresented: Binding(
@@ -162,13 +163,24 @@ struct GroupView: View {
             ),
             presenting: pendingDeletion
         ) { expense in
-            Button(role: .destructive) {
-                pendingDeletion = nil
-                session.delete(expense)
-            } label: { Text(L10n.Common.delete) }
+            if expense.isRecurring {
+                Button(role: .destructive) {
+                    pendingDeletion = nil
+                    session.delete(expense, scope: .this)
+                } label: { Text(L10n.Repeat.deleteOnlyThis) }
+                Button(role: .destructive) {
+                    pendingDeletion = nil
+                    session.delete(expense, scope: .following)
+                } label: { Text(L10n.Repeat.deleteThisAndFollowing) }
+            } else {
+                Button(role: .destructive) {
+                    pendingDeletion = nil
+                    session.delete(expense)
+                } label: { Text(L10n.Common.delete) }
+            }
             Button(role: .cancel) { pendingDeletion = nil } label: { Text(L10n.Common.cancel) }
-        } message: { _ in
-            Text(L10n.Group.deleteUndone)
+        } message: { expense in
+            Text(expense.isRecurring ? L10n.Repeat.deleteMessage : L10n.Group.deleteUndone)
         }
         .task {
             await session.appear().value
@@ -473,6 +485,24 @@ struct ActionButton: View {
     }
 }
 
+/// Marks an expense a recurring expense added. The glyph is decoration: the words say it.
+struct RepeatBadge: View {
+    let text: String
+
+    var body: some View {
+        Label {
+            Text(text)
+        } icon: {
+            Image(systemName: "repeat")
+                .accessibilityHidden(true)
+        }
+        .labelStyle(.titleAndIcon)
+        .font(.caption.weight(.medium))
+        .foregroundStyle(Color("muted-foreground"))
+        .accessibilityElement(children: .combine)
+    }
+}
+
 struct ExpenseRow: View {
     let expense: Expense
     let currentUserId: Int
@@ -487,6 +517,10 @@ struct ExpenseRow: View {
                     .foregroundColor(Color("card-foreground"))
                 
                 paymentText
+
+                if expense.isRecurring, let badge = expense.repeatFrequency?.badge {
+                    RepeatBadge(text: badge)
+                }
             }
             
             Spacer()
