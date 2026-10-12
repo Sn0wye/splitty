@@ -412,9 +412,12 @@ struct GroupView: View {
                 }
                 .disabled(session.group == nil || currentUserId == nil)
 
-                ActionButton(title: L10n.Group.export, color: Color("muted"), textColor: Color("foreground")) {
-                    // TODO: Export action
+                let csv = ExpenseCSV(groupName: session.group?.name ?? "", expenses: session.expenses)
+                ShareLink(item: csv, preview: SharePreview("\(csv.fileName).csv")) {
+                    ActionButtonLabel(title: L10n.Group.export, color: Color("muted"), textColor: Color("foreground"))
                 }
+                .buttonStyle(.pressable(scale: 0.94))
+                .disabled(session.expenses.isEmpty)
             }
         }
         .scrollIndicators(.hidden)
@@ -478,15 +481,25 @@ struct ActionButton: View {
     
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(textColor)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(color)
-                .cornerRadius(20)
+            ActionButtonLabel(title: title, color: color, textColor: textColor)
         }
         .buttonStyle(.pressable(scale: 0.94))
+    }
+}
+
+struct ActionButtonLabel: View {
+    let title: String
+    let color: Color
+    let textColor: Color
+
+    var body: some View {
+        Text(title)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundColor(textColor)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(color)
+            .cornerRadius(20)
     }
 }
 
