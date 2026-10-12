@@ -13,6 +13,8 @@ trigger it. A new commit cancels older runs for that PR.
 CI does not build or test the iOS app. Run `SplittyTests` locally with the
 pinned Xcode (see `xcode-metadata.md`) using the shared `SplittyUnitTests`
 scheme, which excludes `SplittyUITests` from both building and testing.
+`scripts/test-focused.sh` runs a selection through that scheme and checks the
+result bundle for executed and skipped counts.
 
 NuGet packages are cached and the job builds once. There is no coverage
 collection, scheduled execution, or automatic test retry.

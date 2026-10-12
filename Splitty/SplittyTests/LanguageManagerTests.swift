@@ -33,6 +33,30 @@ struct AppLanguageTests {
         #expect(AppLanguage.current(in: defaults) == .english)
     }
 
+    @Test func aPinOutranksTheStoredPreferenceForItsTaskOnly() async {
+        await AppLanguage.$pinned.withValue(.french) {
+            #expect(AppLanguage.current == .french)
+            #expect(AppLanguage.currentLocale == AppLanguage.french.locale)
+            // A child task inherits the pin, so async work started under it agrees.
+            #expect(await Task { AppLanguage.current }.value == .french)
+        }
+        #expect(AppLanguage.pinned == nil)
+    }
+
+    /// Format styles read the pin too, so a date assertion names its language the same
+    /// way a copy assertion does.
+    @Test func datesFollowThePinnedLanguage() {
+        let april = Expense.parseTimestamp("2026-04-12T12:00:00Z")!
+        let month = Date.FormatStyle.dateTime.month(.wide)
+
+        AppLanguage.$pinned.withValue(.english) {
+            #expect(april.formatted(month.inAppLanguage()) == "April")
+        }
+        AppLanguage.$pinned.withValue(.brazilianPortuguese) {
+            #expect(april.formatted(month.inAppLanguage()) == "abril")
+        }
+    }
+
     @Test func everyLanguageCarriesALocaleAndAnAutonym() {
         for language in AppLanguage.allCases {
             #expect(language.locale.identifier == language.rawValue)
@@ -66,33 +90,22 @@ struct LanguageManagerTests {
 /// Only the tokens that take arguments: a token that just returns its own default
 /// is worth nothing as a test, but an argument mismatch is a crash.
 ///
-/// `L10n` resolves through `UserDefaults.standard`, so these pin the language for
-/// the duration rather than inheriting whatever the device was last left in — a
-/// simulator someone switched to Portuguese used to fail the whole suite. Serialized
-/// because that store is process-wide.
-@Suite(.serialized)
+/// English unless a test pins another language. The pin is task-local, so these run
+/// alongside every other suite without touching the preference the simulator keeps —
+/// a simulator someone switched to Portuguese used to fail the whole suite.
+@Suite(.appLanguage(.english))
 struct L10nFormattingTests {
     private func withAppLanguage<T>(_ language: AppLanguage, _ body: () -> T) -> T {
-        let defaults = UserDefaults.standard
-        let previous = defaults.string(forKey: AppLanguage.storageKey)
-        defaults.set(language.rawValue, forKey: AppLanguage.storageKey)
-        defer {
-            if let previous {
-                defaults.set(previous, forKey: AppLanguage.storageKey)
-            } else {
-                defaults.removeObject(forKey: AppLanguage.storageKey)
-            }
-        }
-        return body()
+        AppLanguage.$pinned.withValue(language, operation: body)
     }
 
-    @Test func singleArgumentTokensSubstitute() { withAppLanguage(.english) {
+    @Test func singleArgumentTokensSubstitute() {
         #expect(L10n.Errors.status(500) == "Something went wrong (500). Try again.")
         #expect(L10n.Expense.percentLeft("20") == "20% left to assign")
         #expect(L10n.Group.deleteExpense("Tacos") == #"Delete "Tacos"?"#)
-    } }
+    }
 
-    @Test func multipleArgumentTokensKeepTheirOrder() { withAppLanguage(.english) {
+    @Test func multipleArgumentTokensKeepTheirOrder() {
         #expect(L10n.Balances.youOwePeer("Ana", "$4.00") == "You owe Ana $4.00")
         #expect(L10n.Balances.peerOwesYou("Ana", "$4.00") == "Ana owes you $4.00")
         #expect(L10n.Settlement.onlyOwe("Ana", "$4.00") == "You only owe Ana $4.00.")
@@ -110,15 +123,15 @@ struct L10nFormattingTests {
         #expect(
             L10n.Split.summaryPercentLeft("Ana", "20") == "Paid by Ana, 20% left to assign"
         )
-    } }
+    }
 
-    @Test func countsPickTheirPluralFromTheCatalog() { withAppLanguage(.english) {
+    @Test func countsPickTheirPluralFromTheCatalog() {
         #expect(L10n.Invite.members(1) == "1 member")
         #expect(L10n.Invite.members(0) == "0 members")
         #expect(L10n.Invite.members(3) == "3 members")
         #expect(L10n.Split.summaryEquallyBetween("Ana", 1) == "Paid by Ana and split equally between 1 person")
         #expect(L10n.Split.summaryEquallyBetween("Ana", 4) == "Paid by Ana and split equally between 4 people")
-    } }
+    }
 
     /// Each language brings its own plural rules. French counts 0 as singular,
     /// which is the point of keeping categories in the catalog.

@@ -263,7 +263,7 @@ struct GroupView: View {
                     FirstBalanceTip()
                 }
                 ForEach(session.groupedExpenses) { groupedExpense in
-                    dateHeader(for: groupedExpense)
+                    TimelineDateHeader(title: groupedExpense.dateString)
                     ForEach(groupedExpense.expenses) { expense in
                         expenseRow(expense)
                     }
@@ -423,9 +423,14 @@ struct GroupView: View {
         .contentMargins(.vertical, 0, for: .scrollContent)
         .padding(.vertical, 20)
     }
-    
-    private func dateHeader(for groupedExpense: GroupedExpense) -> some View {
-        Text(groupedExpense.dateString)
+}
+
+/// The day a run of timeline rows belongs to.
+struct TimelineDateHeader: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
             .font(.title2.weight(.semibold))
             .foregroundColor(Color("card-foreground"))
             .frame(maxWidth: .infinity, alignment: .leading)

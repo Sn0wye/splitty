@@ -9,7 +9,15 @@ struct SplittyApp: App {
 
     var body: some Scene {
         WindowGroup {
+            #if DEBUG
+            if let review = ReviewLaunch.current {
+                OnboardingReviewView(opening: review.screen)
+            } else {
+                RootView()
+            }
+            #else
             RootView()
+            #endif
         }
     }
 }

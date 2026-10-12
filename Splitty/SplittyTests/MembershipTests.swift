@@ -7,6 +7,7 @@ import Foundation
 import Testing
 @testable import Splitty
 
+@Suite(.appLanguage(.english))
 struct MembershipErrorTests {
 
     @Test func conflictUsesTheServersExplanation() {
@@ -66,6 +67,7 @@ struct MembershipErrorTests {
     }
 }
 
+@Suite(.appLanguage(.english))
 struct MemberDisplayTests {
 
     @Test func removedSentinelBecomesMutedCopyWithoutAnAvatar() {

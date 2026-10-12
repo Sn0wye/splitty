@@ -1,6 +1,7 @@
 import Testing
 @testable import Splitty
 
+@Suite(.appLanguage(.english))
 struct LeaveCopyTests {
     @Test func lastMemberSeesPermanentDeletionWarning() {
         let copy = LeaveCopy(memberCount: 1, groupName: "Weekend away")

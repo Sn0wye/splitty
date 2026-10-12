@@ -9,6 +9,7 @@ import Testing
 
 /// What the expense form sends once Repeats is in play. Every case reads the request the
 /// form built, never the view.
+@Suite(.appLanguage(.english))
 @MainActor
 struct RecurringExpenseFormTests {
 

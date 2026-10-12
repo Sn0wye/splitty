@@ -46,7 +46,12 @@ enum AppLanguage: String, CaseIterable, Identifiable, Sendable {
         return stored.flatMap(AppLanguage.init(rawValue:)) ?? .english
     }
 
-    nonisolated static var current: AppLanguage { current(in: .standard) }
+    /// Overrides the stored preference for one task and everything it starts. Tests pin
+    /// the language they assert on this way rather than writing `UserDefaults.standard`,
+    /// which the simulator keeps between runs and every suite shares.
+    @TaskLocal static var pinned: AppLanguage?
+
+    nonisolated static var current: AppLanguage { pinned ?? current(in: .standard) }
 
     nonisolated static var currentLocale: Locale { current.locale }
 }

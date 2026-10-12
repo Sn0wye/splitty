@@ -33,6 +33,7 @@ struct ExpenseSheet: View {
         currentUserId: Int,
         expense: Expense? = nil,
         timelineExpenses: [Expense] = [],
+        dataSource: ExpenseFormDataSource = .live,
         onSaved: @escaping (GroupMoneyWrite) -> Void
     ) {
         _viewModel = StateObject(wrappedValue: ExpenseFormViewModel(
@@ -40,7 +41,8 @@ struct ExpenseSheet: View {
             members: members,
             currentUserId: currentUserId,
             expense: expense,
-            timelineExpenses: timelineExpenses
+            timelineExpenses: timelineExpenses,
+            dataSource: dataSource
         ))
         self.timelineExpenses = timelineExpenses
         self.onSaved = onSaved

@@ -1,6 +1,7 @@
 import Testing
 @testable import Splitty
 
+@Suite(.appLanguage(.english))
 struct InviteShareTextTests {
 
     @Test func describesTheGroupAndEndsWithTheCode() {

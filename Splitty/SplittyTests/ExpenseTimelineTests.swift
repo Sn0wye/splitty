@@ -90,6 +90,7 @@ struct ExpenseReadingTests {
     }
 }
 
+@Suite(.appLanguage(.english))
 struct APIErrorMessageTests {
 
     // The server's own 400 is the only thing that knows why a split the client believed in
@@ -154,6 +155,7 @@ struct APIErrorMessageTests {
 
 // MARK: - Timeline construction
 
+@Suite(.appLanguage(.english))
 struct TimelineGroupingTests {
 
     @Test func ordersDaysAndRowsWithinADayNewestFirst() {
