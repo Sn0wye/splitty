@@ -7,6 +7,7 @@ import Foundation
 import Testing
 @testable import Splitty
 
+@Suite(.appLanguage(.english))
 @MainActor
 struct ExpenseFormViewModelTests {
 

@@ -89,6 +89,7 @@ struct ExpenseCategoryTests {
     }
 }
 
+@Suite(.appLanguage(.english))
 struct ExpenseRepeatDecodingTests {
     private func decode(_ extraFields: String) throws -> Expense {
         let json =

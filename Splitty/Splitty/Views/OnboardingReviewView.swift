@@ -4,6 +4,11 @@ import SwiftUI
 struct OnboardingReviewView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedScreen: ReviewScreen?
+
+    /// `opening` presents one screen straight away, for a launch that asks for it.
+    init(opening screen: ReviewScreen? = nil) {
+        _selectedScreen = State(initialValue: screen)
+    }
     @State private var previewTab: AppTab = .groups
     @State private var peoplePreviewTab: AppTab = .people
 
@@ -11,7 +16,7 @@ struct OnboardingReviewView: View {
         NavigationStack {
             List {
                 Section {
-                    Text("These screens use sample content. Creating, joining, and sharing are disabled in previews.")
+                    Text("These screens use sample content. Creating, joining, sharing, and saving are disabled in previews. A screen pushed from a component, like an expense's details, can still send a request, which the server refuses: sample group 0 does not exist.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -29,6 +34,18 @@ struct OnboardingReviewView: View {
                     row(.peopleEmpty)
                     row(.invite)
                     row(.balanceHint)
+                }
+
+                Section {
+                    row(.expenseForm)
+                    row(.timeline)
+                    row(.charts)
+                    row(.chartsFailed)
+                    row(.chartsEmpty)
+                } header: {
+                    Text("Components")
+                } footer: {
+                    Text("The app's own components on sample data, for states that are hard to reach on an account: motion, gestures, sheets and the bar's add button.")
                 }
             }
             .scrollContentBackground(.hidden)
@@ -108,11 +125,58 @@ struct OnboardingReviewView: View {
                 )
             }
             .background(Color("background").ignoresSafeArea())
+        case .expenseForm:
+            ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
+                ExpenseSheet(
+                    groupId: ReviewSamples.groupId,
+                    members: ReviewSamples.members,
+                    currentUserId: ReviewSamples.currentUserId,
+                    timelineExpenses: ReviewSamples.timeline(),
+                    dataSource: ReviewSamples.expenseForm
+                ) { _ in }
+            }
+        case .timeline:
+            ReviewTimelineView { selectedScreen = nil }
+        case .charts, .chartsFailed, .chartsEmpty:
+            ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
+                let expenses = ReviewSamples.timeline()
+                ChartsView(
+                    groupId: ReviewSamples.groupId,
+                    currentUserId: ReviewSamples.currentUserId,
+                    members: ReviewSamples.members,
+                    expenses: expenses,
+                    hasExpenses: screen != .chartsEmpty,
+                    onAddExpense: {},
+                    dataSource: ReviewSamples.charts(
+                        expenses: expenses,
+                        failingFirstLoad: screen == .chartsFailed
+                    )
+                )
+            }
         }
     }
 }
 
-private enum ReviewScreen: String, Identifiable {
+/// `-SplittyReview` opens the gallery instead of the app, and `-SplittyReview <screen>`
+/// opens one of its screens, so a UI review reaches the same state on every launch
+/// without signing in or tapping through Settings.
+struct ReviewLaunch: Equatable {
+    static let argument = "-SplittyReview"
+
+    /// Nil when the value names no screen; the gallery list opens instead.
+    let screen: ReviewScreen?
+
+    static var current: ReviewLaunch? { parse(ProcessInfo.processInfo.arguments) }
+
+    static func parse(_ arguments: [String]) -> ReviewLaunch? {
+        guard let index = arguments.firstIndex(of: argument) else { return nil }
+        let value = arguments.dropFirst(index + 1).first
+        return ReviewLaunch(screen: value.flatMap(ReviewScreen.init(rawValue:)))
+    }
+}
+
+/// Raw values are what `-SplittyReview` takes.
+enum ReviewScreen: String, CaseIterable, Identifiable {
     case welcome
     case setup
     case create
@@ -122,6 +186,11 @@ private enum ReviewScreen: String, Identifiable {
     case groupEmpty
     case peopleEmpty
     case balanceHint
+    case expenseForm
+    case timeline
+    case charts
+    case chartsFailed
+    case chartsEmpty
 
     var id: String { rawValue }
 
@@ -136,6 +205,11 @@ private enum ReviewScreen: String, Identifiable {
         case .groupEmpty: "No expenses"
         case .peopleEmpty: "No people"
         case .balanceHint: "First balance"
+        case .expenseForm: "Expense form"
+        case .timeline: "Timeline"
+        case .charts: "Charts"
+        case .chartsFailed: "Charts, first load fails"
+        case .chartsEmpty: "Charts, no expenses"
         }
     }
 
@@ -150,6 +224,11 @@ private enum ReviewScreen: String, Identifiable {
         case .groupEmpty: "tray"
         case .peopleEmpty: "person.2"
         case .balanceHint: "arrow.left.arrow.right"
+        case .expenseForm: "number"
+        case .timeline: "list.bullet.rectangle"
+        case .charts: "chart.pie"
+        case .chartsFailed: "exclamationmark.triangle"
+        case .chartsEmpty: "chart.pie.fill"
         }
     }
 }
