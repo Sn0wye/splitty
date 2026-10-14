@@ -91,15 +91,36 @@ struct Expense: Codable, Identifiable {
     /// How often `recurringExpenseId` repeats. Nil when it is nil, and on a frequency this
     /// build does not recognise.
     var repeatFrequency: ExpenseRepeat? = nil
+    /// The last day, `yyyy-MM-dd`, `recurringExpenseId` may add an expense on. Nil when it
+    /// never ends, and when there is no recurring expense.
+    var endsOn: String? = nil
+    /// Which installment this is. Nil for an expense entered by hand and for one added by
+    /// a recurring expense with no end.
+    var installment: ExpenseInstallment? = nil
 
     enum CodingKeys: String, CodingKey {
         case id, groupId, paidBy, amount, description, type, category, splitMode, date
-        case createdAt, updatedAt, paidByUser, splits, recurringExpenseId
+        case createdAt, updatedAt, paidByUser, splits, recurringExpenseId, endsOn, installment
         case repeatFrequency = "repeat"
     }
 
     /// Added by a recurring expense, so editing or deleting it asks how far to reach.
     var isRecurring: Bool { recurringExpenseId != nil }
+
+    /// The badge on a row or detail screen: how often it repeats, and which installment it
+    /// is when its recurring expense has an end. Nil for an expense that does not repeat.
+    var repeatBadge: String? {
+        guard isRecurring, let badge = repeatFrequency?.badge else { return nil }
+        guard let installment else { return badge }
+        return "\(badge) · \(installment.number)/\(installment.total)"
+    }
+}
+
+/// Installment `number` of `total`, both counted by the server from the expenses that
+/// exist, so deleting one on its own lowers both.
+struct ExpenseInstallment: Codable, Equatable {
+    let number: Int
+    let total: Int
 }
 
 extension Expense {
@@ -125,6 +146,8 @@ extension Expense {
         // Lenient for the same reason as `splitMode`: a frequency added later must not
         // fail the whole list.
         repeatFrequency = try? container.decodeIfPresent(ExpenseRepeat.self, forKey: .repeatFrequency)
+        endsOn = try? container.decodeIfPresent(String.self, forKey: .endsOn)
+        installment = try? container.decodeIfPresent(ExpenseInstallment.self, forKey: .installment)
     }
 }
 

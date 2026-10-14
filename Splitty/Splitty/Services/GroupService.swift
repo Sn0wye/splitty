@@ -34,6 +34,12 @@ class GroupService {
         try await APIClient.shared.request(endpoint: "/group/\(groupId)/expenses/summary")
     }
 
+    /// The group's active recurring expenses: not finished and not stopped. Does not add
+    /// repeats that came due; only opening the group does.
+    func getRecurringPlans(groupId: Int) async throws -> [RecurringPlan] {
+        try await APIClient.shared.request(endpoint: "/group/\(groupId)/recurring")
+    }
+
     /// Group spend and the caller's share over `query`'s local dates, which the server
     /// resolves in `query.timeZone`. Omitted dates leave that end open.
     func getStats(groupId: Int, query: StatsQuery) async throws -> GroupStats {

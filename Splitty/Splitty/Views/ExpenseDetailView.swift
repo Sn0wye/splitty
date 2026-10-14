@@ -126,7 +126,7 @@ struct ExpenseDetailView: View {
                 .foregroundStyle(Color("muted-foreground"))
                 .multilineTextAlignment(.center)
 
-            if expense.isRecurring, let badge = expense.repeatFrequency?.badge {
+            if let badge = expense.repeatBadge {
                 RepeatBadge(text: badge)
                     .padding(.top, 2)
             }

@@ -25,6 +25,8 @@ struct GroupView: View {
     @State private var selectedExpenseId: Int?
     @State private var selectedExpense: Expense?
     @State private var backgroundedAt: Date?
+    @State private var section: GroupSection = .expenses
+    @StateObject private var plans: PlansViewModel
 
     /// Roughly the height of the in-list title, so the toolbar picks the name up
     /// as the header leaves rather than while it is still readable.
@@ -35,6 +37,8 @@ struct GroupView: View {
     init(session: GroupSession, onAddExpense: @escaping () -> Void = {}) {
         self.session = session
         self.onAddExpense = onAddExpense
+        // The view is rebuilt per group (`.id(groupId)` in ContentView), so the group is fixed.
+        _plans = StateObject(wrappedValue: PlansViewModel(groupId: session.groupId))
     }
 
     var body: some View {
@@ -213,7 +217,14 @@ struct GroupView: View {
                         .padding(.bottom, 16)
                 }
 
-                timeline
+                sectionPicker
+
+                switch section {
+                case .expenses:
+                    timeline
+                case .plans:
+                    PlansView(viewModel: plans, onOpenPlan: open)
+                }
             }
             .frame(maxWidth: 760)
             .frame(maxWidth: .infinity)
@@ -222,7 +233,10 @@ struct GroupView: View {
         .accessibilityIdentifier("group.timeline")
         .performanceScrollSignpost(.timelineScroll)
         .refreshable {
-            await session.refresh()
+            switch section {
+            case .expenses: await session.refresh()
+            case .plans: await plans.load()
+            }
         }
         // The title lives in the scroll content, so the toolbar picks it up as it leaves.
         .onScrollGeometryChange(for: Bool.self) { geometry in
@@ -236,6 +250,29 @@ struct GroupView: View {
                 detail(for: expenseId, currentUserId: currentUserId)
             }
         }
+    }
+
+    /// Expenses or Plans, for the group already open: Plans never asks for a group.
+    private var sectionPicker: some View {
+        Picker(selection: $section) {
+            ForEach(GroupSection.allCases) { section in
+                Text(section.title).tag(section)
+            }
+        } label: {
+            Text(L10n.Plans.sectionLabel)
+        }
+        .pickerStyle(.segmented)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 16)
+        .accessibilityIdentifier("group.section")
+    }
+
+    /// A recurring expense is edited or stopped from one of its expenses, so a Plans row
+    /// opens the newest one.
+    private func open(_ plan: RecurringPlan) {
+        guard let expense = plan.latestExpense(in: session.expenses) else { return }
+        selectedExpense = expense
+        selectedExpenseId = expense.id
     }
 
     @ViewBuilder
@@ -428,6 +465,21 @@ struct GroupView: View {
     }
 }
 
+/// What the group screen shows under its header.
+enum GroupSection: String, CaseIterable, Identifiable {
+    case expenses
+    case plans
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .expenses: L10n.Plans.expenses
+        case .plans: L10n.Plans.title
+        }
+    }
+}
+
 /// The day a run of timeline rows belongs to.
 struct TimelineDateHeader: View {
     let title: String
@@ -536,7 +588,7 @@ struct ExpenseRow: View {
                 
                 paymentText
 
-                if expense.isRecurring, let badge = expense.repeatFrequency?.badge {
+                if let badge = expense.repeatBadge {
                     RepeatBadge(text: badge)
                 }
             }

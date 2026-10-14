@@ -27,6 +27,8 @@ struct RepeatStart: Equatable {
     let frequency: ExpenseRepeat
     /// The device's IANA identifier when the expense was saved.
     let timeZone: String
+    /// The last day an expense may be added on, `yyyy-MM-dd`; nil when it never ends.
+    var endsOn: String? = nil
 }
 
 /// An edit. Every nil field is left unchanged by the server.
@@ -45,13 +47,14 @@ struct ExpenseUpdateRequest: Equatable {
 }
 
 /// How far an edit of an expense a recurring expense added reaches. Only "this and
-/// following" changes the recurring expense itself, so only it carries a frequency and a
-/// zone; the server refuses either on `this`.
+/// following" changes the recurring expense itself, so only it carries a frequency, a zone
+/// and an end; the server refuses any of them on `this`.
 enum EditReach: Equatable {
     case this
     /// `repeat` is nil to keep the frequency, or `never` to stop. `timeZone` is the device's
-    /// current IANA identifier, so later repeats come due where the member is now.
-    case following(repeat: ExpenseRepeat?, timeZone: String)
+    /// current IANA identifier, so later repeats come due where the member is now. `end` is
+    /// nil to keep the end.
+    case following(repeat: ExpenseRepeat?, timeZone: String, end: RepeatEndChange? = nil)
 
     var scope: ExpenseScope {
         switch self {
@@ -88,6 +91,7 @@ class ExpenseService {
         if let repeats = request.repeats {
             body["repeat"] = repeats.frequency.rawValue
             body["timeZone"] = repeats.timeZone
+            if let endsOn = repeats.endsOn { body["endsOn"] = endsOn }
         }
 
         return try await APIClient.shared.request(
@@ -108,9 +112,14 @@ class ExpenseService {
         // a mode is rejected, so they travel together or not at all.
         if let splitMode = request.splitMode { body["splitMode"] = splitMode.rawValue }
         if let splits = request.splits { body["splits"] = splits.map(Self.splitBody(_:)) }
-        if case .following(let repeatFrequency, let timeZone) = request.reach {
+        if case .following(let repeatFrequency, let timeZone, let end) = request.reach {
             if let repeatFrequency { body["repeat"] = repeatFrequency.rawValue }
             body["timeZone"] = timeZone
+            switch end {
+            case .on(let endsOn): body["endsOn"] = endsOn
+            case .never: body["endsNever"] = true
+            case nil: break
+            }
         }
 
         return try await APIClient.shared.request(

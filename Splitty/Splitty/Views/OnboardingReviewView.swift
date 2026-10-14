@@ -42,6 +42,8 @@ struct OnboardingReviewView: View {
                     row(.charts)
                     row(.chartsFailed)
                     row(.chartsEmpty)
+                    row(.plans)
+                    row(.plansEmpty)
                 } header: {
                     Text("Components")
                 } footer: {
@@ -137,6 +139,8 @@ struct OnboardingReviewView: View {
             }
         case .timeline:
             ReviewTimelineView { selectedScreen = nil }
+        case .plans, .plansEmpty:
+            ReviewPlansView(plans: screen == .plans ? ReviewSamples.plans : []) { selectedScreen = nil }
         case .charts, .chartsFailed, .chartsEmpty:
             ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
                 let expenses = ReviewSamples.timeline()
@@ -191,6 +195,8 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
     case charts
     case chartsFailed
     case chartsEmpty
+    case plans
+    case plansEmpty
 
     var id: String { rawValue }
 
@@ -210,6 +216,8 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .charts: "Charts"
         case .chartsFailed: "Charts, first load fails"
         case .chartsEmpty: "Charts, no expenses"
+        case .plans: "Plans"
+        case .plansEmpty: "Plans, no installments"
         }
     }
 
@@ -229,6 +237,8 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .charts: "chart.pie"
         case .chartsFailed: "exclamationmark.triangle"
         case .chartsEmpty: "chart.pie.fill"
+        case .plans: "repeat"
+        case .plansEmpty: "repeat.circle"
         }
     }
 }
