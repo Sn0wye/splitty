@@ -188,7 +188,12 @@ _Avoid_: tag, label, type (`ExpenseType` already owns "type")
 
 **Recurring expense**:
 A rule that adds an ordinary expense to a group each time it comes due, weekly, fortnightly,
-monthly, or yearly from a start date of today or later, until it is stopped. Creating one
+monthly, or yearly from a start date of today or later, until it is stopped or reaches its end.
+An end is optional: the last day an installment may be due (`EndsOn`), never before the start.
+A "this and following" edit can change it, add it, or clear it (`endsNever`), and a new start
+does not move it. Once the last due day on or before the end has been added, the recurring
+expense is **finished**: it adds nothing more and leaves the Plans list, but its row stays,
+because its installments are numbered from it. Creating one
 adds its first expense at once, on the start date; after that, nothing is added before it is
 due. Each added expense is a normal expense. It comes due at local midnight in the zone it
 was created in, or the zone sent with its latest "this and following" edit; a new zone keeps
@@ -199,6 +204,15 @@ the recurring expense is edited. It ends when its payer or anyone in its split l
 removed, or deletes their account; deactivating does not end it. Only expenses recur, never
 settlements.
 _Avoid_: subscription, template, schedule, series, occurrence, revision
+
+**Installment**:
+One of the expenses a recurring expense with an end adds, numbered n of total. Both come
+from the rows that exist: n is 1 plus the linked expenses dated before it (`Date ??
+CreatedAt`, ties by id), and the total is the linked expenses plus the due days after
+`AddedThrough` up to the end. Deleting one on its own lowers both. A recurring expense with
+no end has no installments, only expenses. "After N times" is a client idea: the app sends the
+Nth due day as the end.
+_Avoid_: payment (a settlement), part
 
 **Group spend**:
 The sum of a group's expense totals, each at its full amount. Settlements are not spend and
@@ -290,6 +304,14 @@ ranges — "this month" is two dates the client computes in its own zone.
 Categories are returned per leaf, not per heading, so regrouping leaves is a client-only
 change. The five-per-category cap is exactly enough for the client to derive the top five
 overall or under any heading.
+
+## Plans
+
+`GET /group/{groupId}/recurring` answers the Plans screen's Installments section: the group's
+active recurring expenses (neither finished nor stopped), soonest due first, each with its
+frequency, `nextDueOn`, `endsOn`, and `progress { added, total }`, where `total` is null for
+one with no end. Members only (invariant 3). It does not catch up: only `GET group` does
+(ADR 0006), and the app opens the group before Plans.
 
 ## Auth
 

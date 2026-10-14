@@ -49,4 +49,11 @@ public class CreateExpenseRequest
 
     /// <summary>The IANA zone a repeat comes due in. Required unless the expense never repeats.</summary>
     public string? TimeZone { get; set; }
+
+    /// <summary>
+    /// The last day, in <see cref="TimeZone"/>, an installment may be due. Absent means the
+    /// recurring expense never ends. Refused unless the expense repeats, and when it is
+    /// before the start day. A client asking for "after N times" sends the Nth due day.
+    /// </summary>
+    public DateOnly? EndsOn { get; set; }
 }

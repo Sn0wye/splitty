@@ -9,6 +9,9 @@ public interface IGroupReadModel
     Task<GroupDTO?> GetGroupAsync(int groupId, int userId);
     Task<List<ExpenseResponse>> GetExpensesAsync(int groupId, int userId);
     Task<ExpenseResponse> GetExpenseAsync(int groupId, int expenseId, int userId);
+
+    /// The group's active recurring expenses, soonest due first. Never catches up.
+    Task<List<RecurringExpenseResponse>> GetRecurringExpensesAsync(int groupId, int userId);
     Task<bool> GroupExistsAsync(int groupId);
     Task<bool> IsMemberAsync(int groupId, int userId);
     Task<decimal> GetMemberNetAsync(int groupId, int userId);

@@ -75,6 +75,7 @@ public sealed class InviteAcceptanceTests
         public Task<List<GroupDTO>> GetGroupsByUserId(int userId) => inner.GetGroupsByUserId(userId);
         public Task<List<ExpenseResponse>> GetExpensesAsync(int groupId, int userId) => inner.GetExpensesAsync(groupId, userId);
         public Task<ExpenseResponse> GetExpenseAsync(int groupId, int expenseId, int userId) => inner.GetExpenseAsync(groupId, expenseId, userId);
+        public Task<List<RecurringExpenseResponse>> GetRecurringExpensesAsync(int groupId, int userId) => inner.GetRecurringExpensesAsync(groupId, userId);
         public Task<bool> GroupExistsAsync(int groupId) => inner.GroupExistsAsync(groupId);
         public Task<bool> IsMemberAsync(int groupId, int userId) => inner.IsMemberAsync(groupId, userId);
         public Task<decimal> GetMemberNetAsync(int groupId, int userId) => inner.GetMemberNetAsync(groupId, userId);

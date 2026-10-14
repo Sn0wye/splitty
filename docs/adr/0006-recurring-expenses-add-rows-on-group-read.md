@@ -35,3 +35,7 @@ A "this and following" edit rewrites the later expenses that are still there ins
 deleting and adding them again. Each keeps its place, so the nth repeat after the edited
 expense stays the nth, and one deleted on its own stays deleted. A place whose new day is not
 due yet is dropped, because nothing is added before it is due.
+
+A recurring expense with an end adds no day after it, and a following edit drops a place
+after the end the same way. When it has added its last due day it is finished, not deleted:
+its installments are numbered by counting the rows linked to it, so the row must stay.

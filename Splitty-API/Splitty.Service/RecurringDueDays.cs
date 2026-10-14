@@ -21,6 +21,17 @@ internal static class RecurringDueDays
         _ => throw new ArgumentOutOfRangeException(nameof(frequency), frequency, null)
     };
 
+    /// The first due day later than <paramref name="after"/>.
+    public static DateOnly NextAfter(DateOnly start, RepeatFrequency frequency, DateOnly after)
+    {
+        for (var n = 1; ; n++)
+        {
+            var day = DueDay(start, frequency, n);
+
+            if (day > after) return day;
+        }
+    }
+
     /// Every due day later than <paramref name="after"/>, up to and including <paramref name="through"/>.
     public static IEnumerable<DateOnly> DueDaysBetween(
         DateOnly start,

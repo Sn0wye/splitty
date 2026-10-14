@@ -21,8 +21,24 @@ public sealed class ExpenseResponse
 
     /// How often <see cref="RecurringExpenseId"/> repeats, null when it is null.
     public RepeatFrequency? Repeat { get; init; }
+
+    /// <summary>
+    /// Which installment of its recurring expense this is. Null for an expense entered by
+    /// hand and for one added by a recurring expense with no end.
+    /// </summary>
+    public InstallmentResponse? Installment { get; set; }
     public ExpenseUserResponse PaidByUser { get; set; } = null!;
     public List<ExpenseSplitResponse> Splits { get; init; } = [];
+}
+
+/// <summary>
+/// Installment <see cref="Number"/> of <see cref="Total"/>, both counted from the expenses
+/// that exist: one deleted on its own lowers both.
+/// </summary>
+public sealed class InstallmentResponse
+{
+    public int Number { get; init; }
+    public int Total { get; init; }
 }
 
 public sealed class ExpenseSplitResponse

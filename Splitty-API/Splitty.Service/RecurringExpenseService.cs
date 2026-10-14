@@ -27,13 +27,15 @@ public class RecurringExpenseService(
         foreach (var recurring in await recurringExpenseRepository.GetByGroupAsync(groupId))
         {
             var zone = TimeZoneInfo.FindSystemTimeZoneById(recurring.TimeZone);
+            var today = LocalCalendar.DayOf(now, zone);
 
-            // Due once local midnight has passed, so every day up to today in the zone.
+            // Due once local midnight has passed, so every day up to today in the zone, and
+            // none after the end. A finished one has no day left and adds nothing.
             foreach (var day in RecurringDueDays.DueDaysBetween(
                          recurring.StartDate,
                          recurring.Frequency,
                          recurring.AddedThrough,
-                         LocalCalendar.DayOf(now, zone)))
+                         recurring.EndsOn is { } end && end < today ? end : today))
             {
                 added.Add(RecurringExpenses.ExpenseFor(recurring, LocalCalendar.MidnightUtc(day, zone)));
                 recurring.AddedThrough = day;
