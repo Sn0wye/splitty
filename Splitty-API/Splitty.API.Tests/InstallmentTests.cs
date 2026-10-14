@@ -79,6 +79,7 @@ public sealed class InstallmentTests : IDisposable
         var first = await group.CreateRecurringAsync("monthly", Now.UtcDateTime, endsOn: Day(2030, 12, 15));
 
         Assert.Equal((1, 12), Installment(first));
+        Assert.Equal("2030-12-15", first.GetProperty("endsOn").GetString());
     }
 
     [Fact]
@@ -217,6 +218,7 @@ public sealed class InstallmentTests : IDisposable
             new { endsNever = true }));
 
         Assert.Equal(JsonValueKind.Null, edited.GetProperty("installment").ValueKind);
+        Assert.Equal(JsonValueKind.Null, edited.GetProperty("endsOn").ValueKind);
 
         _factory.Clock.Set(new DateTimeOffset(2031, 3, 1, 12, 0, 0, TimeSpan.Zero));
         await group.OpenAsync();

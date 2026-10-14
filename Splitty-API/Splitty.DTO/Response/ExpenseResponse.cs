@@ -22,6 +22,10 @@ public sealed class ExpenseResponse
     /// How often <see cref="RecurringExpenseId"/> repeats, null when it is null.
     public RepeatFrequency? Repeat { get; init; }
 
+    /// The last day <see cref="RecurringExpenseId"/> may add an expense on, null when it
+    /// never ends or when there is none. What an edit form shows as the current end.
+    public DateOnly? EndsOn { get; init; }
+
     /// <summary>
     /// Which installment of its recurring expense this is. Null for an expense entered by
     /// hand and for one added by a recurring expense with no end.
