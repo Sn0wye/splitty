@@ -327,8 +327,8 @@ struct ReviewTimelineView: View {
             .padding(.top, -BottomBar.overhang)
         }
         .background(Color("background").ignoresSafeArea())
-        // The group screen's question, answered locally. Removal is a plain state change
-        // there too, so the row leaves the same way.
+        // The group screen's question, answered locally, with the same animated removal,
+        // so the row leaves the same way.
         .alert(
             deletionTitle,
             isPresented: Binding(
@@ -363,7 +363,9 @@ struct ReviewTimelineView: View {
 
     private func remove(_ expense: Expense) {
         pendingDeletion = nil
-        expenses.removeAll { $0.id == expense.id }
+        withAnimation(.snappy) {
+            expenses.removeAll { $0.id == expense.id }
+        }
     }
 }
 

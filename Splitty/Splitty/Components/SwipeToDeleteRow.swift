@@ -60,6 +60,7 @@ struct SwipeToDeleteRow<Content: View>: View {
                 .offset(x: shownOffset)
         }
         .clipped()
+        .transition(removal)
         .accessibilityIdentifier("timeline.row")
         .sensoryFeedback(.impact(flexibility: .rigid), trigger: commitCount)
         // Simultaneous, not exclusive: a plain `.gesture` loses the drag to the scroll view's
@@ -127,6 +128,16 @@ struct SwipeToDeleteRow<Content: View>: View {
             commitCount += 1
             onDelete()
         }
+    }
+
+    /// A deleted row leaves the way the swipe was sending it. Removal only: a row that
+    /// arrives, or comes back after a failed delete, has no swipe to continue. Reduce
+    /// Motion fades it instead.
+    private var removal: AnyTransition {
+        .asymmetric(
+            insertion: .identity,
+            removal: reduceMotion ? .opacity : .move(edge: .leading).combined(with: .opacity)
+        )
     }
 
     /// Reduce Motion keeps the row coming home, without the overshoot.
