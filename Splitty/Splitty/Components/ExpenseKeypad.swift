@@ -241,11 +241,11 @@ struct ExpenseDatePicker: View {
 
     private var showsEnd: Bool { (repeatFrequency?.wrappedValue ?? .never) != .never }
 
-    /// Grows by a row for Ends, and by another for its count or day.
+    /// Grows by a row for Repeats, and by the Ends card once it repeats. The card is one
+    /// height whatever it ends on, so switching between them never moves the button.
     private var detentHeight: CGFloat {
         guard repeatFrequency != nil else { return 460 }
-        guard showsEnd, let repeatEnd else { return 520 }
-        return repeatEnd.wrappedValue.kind == .never ? 580 : 650
+        return showsEnd && repeatEnd != nil ? 660 : 520
     }
 
     @ViewBuilder
@@ -260,8 +260,9 @@ struct ExpenseDatePicker: View {
     }
 }
 
-/// Never, after a number of times, or on a day. A count says which day it lands on, since
-/// "12 times" is a date to the server.
+/// Never, after a number of times, or on a day: three segments, and below them one row
+/// that always takes the same room. A count says which day it lands on, since "12 times"
+/// is a date to the server.
 private struct RepeatEndControl: View {
     @Binding var end: RepeatEndDraft
     let startDate: Date
@@ -269,7 +270,7 @@ private struct RepeatEndControl: View {
     let message: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 14) {
                 Image(systemName: "flag.checkered")
                     .font(.system(size: 16))
@@ -280,65 +281,89 @@ private struct RepeatEndControl: View {
                 Text(L10n.Repeat.ends)
                     .font(.subheadline)
                     .foregroundStyle(Color.expenseForeground)
+            }
+
+            Picker(L10n.Repeat.ends, selection: $end.kind) {
+                ForEach(RepeatEndKind.allCases) { kind in
+                    Text(kind.name).tag(kind)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("expense.repeatEnd")
+
+            detail
+                .frame(height: 44)
+                .animation(.spring(duration: 0.3, bounce: 0), value: end.kind)
+        }
+        .padding(16)
+        .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        switch end.kind {
+        case .never:
+            Text(L10n.Repeat.untilStopped)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        case .afterCount:
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.Repeat.times(end.count))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.expenseForeground)
+                        .contentTransition(.numericText(value: Double(end.count)))
+                    Text(caption)
+                        .font(.caption)
+                        .foregroundStyle(message == nil ? .secondary : Color.orange)
+                }
+                .monospacedDigit()
+                .animation(.spring(duration: 0.3, bounce: 0), value: end.count)
 
                 Spacer(minLength: 8)
 
-                Picker(selection: $end.kind) {
-                    ForEach(RepeatEndKind.allCases) { kind in
-                        Text(kind.name).tag(kind)
-                    }
-                } label: {
-                    Text(L10n.Repeat.ends)
-                }
-                .pickerStyle(.menu)
-                .fixedSize()
-                .tint(Color.expenseForeground)
-                .accessibilityIdentifier("expense.repeatEnd")
+                Stepper(L10n.Repeat.times(end.count), value: $end.count, in: 1...999)
+                    .labelsHidden()
+                    .accessibilityIdentifier("expense.repeatEnd.count")
             }
-
-            switch end.kind {
-            case .never:
-                EmptyView()
-            case .afterCount:
-                Stepper(value: $end.count, in: 1...999) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(L10n.Repeat.times(end.count))
-                            .font(.subheadline)
-                            .foregroundStyle(Color.expenseForeground)
-                        if let lastExpenseDate {
-                            Text(L10n.Repeat.lastOn(lastExpenseDate.formatted(
-                                .dateTime.day().month(.abbreviated).year().inAppLanguage()
-                            )))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        }
-                    }
+        case .onDate:
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.Repeat.endDate)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.expenseForeground)
+                    // The last expense, not the picked day: monthly from the 14th to the
+                    // 20th of next year still lands on the 14th.
+                    Text(caption)
+                        .font(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(message == nil ? .secondary : Color.orange)
                 }
-                .padding(.leading, 38)
-                .accessibilityIdentifier("expense.repeatEnd.count")
-            case .onDate:
+
+                Spacer(minLength: 8)
+
                 DatePicker(
+                    L10n.Repeat.endDate,
                     selection: $end.date,
                     in: Calendar.current.startOfDay(for: startDate)...,
                     displayedComponents: .date
-                ) {
-                    Text(L10n.Repeat.endDate)
-                        .font(.subheadline)
-                        .foregroundStyle(Color.expenseForeground)
-                }
-                .padding(.leading, 38)
+                )
+                .labelsHidden()
+                // The compact field otherwise follows the device region, not the app's
+                // language, and disagrees with every other date on the form.
+                .environment(\.locale, AppLanguage.currentLocale)
                 .accessibilityIdentifier("expense.repeatEnd.date")
             }
-
-            if let message {
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-                    .padding(.leading, 38)
-            }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 6)
-        .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    /// The day the last one lands on, or why the count cannot be saved.
+    private var caption: String {
+        if let message { return message }
+        guard let lastExpenseDate else { return " " }
+        return L10n.Repeat.lastOn(
+            lastExpenseDate.formatted(.dateTime.day().month(.abbreviated).year().inAppLanguage())
+        )
     }
 }

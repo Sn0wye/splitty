@@ -8826,31 +8826,31 @@
         }
       }
     },
-    "repeat.ends_after_count" : {
+    "repeat.ends_after" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "After a number of times"
+            "value" : "After"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tras varias veces"
+            "value" : "Después de"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Après un nombre de fois"
+            "value" : "Après"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Após algumas vezes"
+            "value" : "Depois de"
           }
         }
       }
@@ -9421,6 +9421,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Até %@"
+          }
+        }
+      }
+    },
+    "repeat.until_stopped" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Until you stop it"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hasta que la detengas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jusqu'à ce que vous l'arrêtiez"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Até você parar"
           }
         }
       }

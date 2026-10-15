@@ -441,7 +441,8 @@ enum L10n {
         }
         static var ends: String { text("repeat.ends", default: "Ends") }
         static var endsNever: String { text("repeat.ends_never", default: "Never") }
-        static var endsAfterCount: String { text("repeat.ends_after_count", default: "After a number of times") }
+        static var endsAfter: String { text("repeat.ends_after", default: "After") }
+        static var untilStopped: String { text("repeat.until_stopped", default: "Until you stop it") }
         static var endsOnDate: String { text("repeat.ends_on_date", default: "On a date") }
         static var endDate: String { text("repeat.end_date", default: "Last day") }
         static func times(_ count: Int) -> String {

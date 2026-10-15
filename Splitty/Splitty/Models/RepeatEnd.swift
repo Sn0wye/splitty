@@ -17,7 +17,7 @@ enum RepeatEndKind: String, CaseIterable, Identifiable {
     var name: String {
         switch self {
         case .never: L10n.Repeat.endsNever
-        case .afterCount: L10n.Repeat.endsAfterCount
+        case .afterCount: L10n.Repeat.endsAfter
         case .onDate: L10n.Repeat.endsOnDate
         }
     }
