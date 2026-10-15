@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct GroupView: View {
+    @Environment(\.prototypeAddExpense) private var prototypeAddExpense
     @ObservedObject var session: GroupSession
     var onAddExpense: () -> Void = {}
     @EnvironmentObject private var appState: AppState
@@ -93,6 +94,13 @@ struct GroupView: View {
                 }
                 .disabled(session.group == nil || currentUserId == nil)
                 .accessibilityLabel(L10n.Group.settings)
+            }
+
+            // PROTOTYPE: glass navbar variant B. See PrototypeGlassNavbar.swift.
+            if let prototypeAddExpense {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    PrototypeToolbarAddButton(action: prototypeAddExpense)
+                }
             }
         }
         .navigationDestination(isPresented: $showingSettings) {

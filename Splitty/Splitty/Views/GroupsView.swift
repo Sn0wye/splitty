@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct GroupsView: View {
+    @Environment(\.prototypeAddExpense) private var prototypeAddExpense
     var isReview = false
     var onReviewDone: (() -> Void)?
 
@@ -110,6 +111,13 @@ struct GroupsView: View {
                             .accessibilityLabel(L10n.Settings.account)
                         }
                         .hidingSharedBackground()
+                    }
+                }
+
+                // PROTOTYPE: glass navbar variant B. See PrototypeGlassNavbar.swift.
+                if let prototypeAddExpense {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        PrototypeToolbarAddButton(action: prototypeAddExpense)
                     }
                 }
             }

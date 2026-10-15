@@ -15,37 +15,79 @@ struct ContentView: View {
     @State private var pendingExpenseGroup: Group?
     @State private var isResolvingAdd = false
     @State private var addErrorMessage: String?
+    // PROTOTYPE: glass navbar variants. See PrototypeGlassNavbar.swift.
+    @State private var navbarVariant = PrototypeNavbarVariant.launch
 
     var body: some View {
-        // A VStack, not a safeAreaInset: the inset never reaches scroll views inside a
-        // NavigationStack, so lists would end under the bar. Stacked, the bar owns its
-        // space and only overhangs the content by the strip beside the add button.
-        VStack(spacing: 0) {
-            ZStack {
-                // Keep the list and its header alive while viewing a group. Recreating
-                // the header on every tab switch flashes the avatar and add menu.
-                GroupsView()
-                    .opacity(appState.selectedTab == .groups ? 1 : 0)
-                    .allowsHitTesting(appState.selectedTab == .groups)
-                    .accessibilityHidden(appState.selectedTab != .groups)
+        prototypeShell
+            .overlay(alignment: .topLeading) {
+                PrototypeNavbarSwitcher(variant: $navbarVariant)
+                    .padding(.leading, 12)
+                    .offset(y: -8)
+            }
+            .animation(.default, value: navbarVariant)
+            .background(Color("background").ignoresSafeArea())
+            .modifier(presentations)
+            .environmentObject(appState)
+    }
 
-                switch appState.selectedTab {
+    @ViewBuilder
+    private var prototypeShell: some View {
+        if #available(iOS 26.0, *), navbarVariant == .b {
+            PrototypeNativeTabShell(selection: $appState.selectedTab) { tab in
+                switch tab {
                 case .groups:
-                    EmptyView()
+                    // From the list, "+" always asks which group.
+                    GroupsView()
+                        .environment(\.prototypeAddExpense, addAction(askForGroup: true))
                 case .group:
                     CurrentGroupView {
                         Task { await beginAddingExpense() }
                     }
-                case .people:
-                    PeopleView(viewModel: peopleViewModel)
-                case .settings:
-                    SettingsView()
+                    .environment(\.prototypeAddExpense, addAction(askForGroup: false))
+                case .people: PeopleView(viewModel: peopleViewModel)
+                case .settings: SettingsView()
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // Rows scroll on under the overhang, but the last one still comes to rest
-            // above the add button.
-            .contentMargins(.bottom, BottomBar.overhang, for: .scrollContent)
+        } else {
+            currentShell
+        }
+    }
+
+    private var tabContent: some View {
+        ZStack {
+            // Keep the list and its header alive while viewing a group. Recreating
+            // the header on every tab switch flashes the avatar and add menu.
+            GroupsView()
+                .opacity(appState.selectedTab == .groups ? 1 : 0)
+                .allowsHitTesting(appState.selectedTab == .groups)
+                .accessibilityHidden(appState.selectedTab != .groups)
+
+            switch appState.selectedTab {
+            case .groups:
+                EmptyView()
+            case .group:
+                CurrentGroupView {
+                    Task { await beginAddingExpense() }
+                }
+            case .people:
+                PeopleView(viewModel: peopleViewModel)
+            case .settings:
+                SettingsView()
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var currentShell: some View {
+        // A VStack, not a safeAreaInset: the inset never reaches scroll views inside a
+        // NavigationStack, so lists would end under the bar. Stacked, the bar owns its
+        // space and only overhangs the content by the strip beside the add button.
+        VStack(spacing: 0) {
+            tabContent
+                // Rows scroll on under the overhang, but the last one still comes to rest
+                // above the add button.
+                .contentMargins(.bottom, BottomBar.overhang, for: .scrollContent)
 
             BottomBar(
                 selection: $appState.selectedTab,
@@ -56,8 +98,56 @@ struct ContentView: View {
             }
             .padding(.top, -BottomBar.overhang)
         }
-        .background(Color("background").ignoresSafeArea())
-        .environmentObject(appState)
+    }
+
+    private var presentations: Presentations {
+        Presentations(
+            addDestination: $addDestination,
+            pendingExpenseGroup: $pendingExpenseGroup,
+            addErrorMessage: $addErrorMessage
+        )
+    }
+
+    private func addAction(askForGroup: Bool) -> (() -> Void)? {
+        guard authManager.currentUser != nil, !isResolvingAdd else { return nil }
+        return { Task { await beginAddingExpense(askForGroup: askForGroup) } }
+    }
+
+    private func beginAddingExpense(askForGroup: Bool = false) async {
+        guard authManager.currentUser != nil, !isResolvingAdd else { return }
+        isResolvingAdd = true
+        defer { isResolvingAdd = false }
+
+        let fetchGroups: () async throws -> [Group] = {
+            if PerformanceScenarioLaunch.isEnabled {
+                PerformanceScenarios.groups
+            } else {
+                try await GroupService.shared.getGroups()
+            }
+        }
+        do {
+            addDestination = askForGroup
+                ? .resolve(groups: try await fetchGroups(), currentGroupId: nil)
+                : try await appState.resolveAddExpenseDestination(fetchGroups: fetchGroups)
+        } catch where error.isCancellation {
+            return
+        } catch {
+            addErrorMessage = error.displayMessage
+        }
+    }
+}
+
+// PROTOTYPE: the sheet and alert, lifted out of ContentView.body unchanged so the
+// shell above can switch without retyping them.
+private struct Presentations: ViewModifier {
+    @EnvironmentObject private var appState: AppState
+    @StateObject private var authManager = AuthenticationManager.shared
+    @Binding var addDestination: AddExpenseDestination?
+    @Binding var pendingExpenseGroup: Group?
+    @Binding var addErrorMessage: String?
+
+    func body(content: Content) -> some View {
+        content
         .sheet(item: $addDestination, onDismiss: continueAfterGroupChoice) { destination in
             switch destination {
             case .createGroup:
@@ -101,26 +191,6 @@ struct ContentView: View {
             Button(role: .cancel) { addErrorMessage = nil } label: { Text(L10n.Common.ok) }
         } message: {
             Text(addErrorMessage ?? "")
-        }
-    }
-
-    private func beginAddingExpense() async {
-        guard authManager.currentUser != nil, !isResolvingAdd else { return }
-        isResolvingAdd = true
-        defer { isResolvingAdd = false }
-
-        do {
-            addDestination = try await appState.resolveAddExpenseDestination {
-                if PerformanceScenarioLaunch.isEnabled {
-                    PerformanceScenarios.groups
-                } else {
-                    try await GroupService.shared.getGroups()
-                }
-            }
-        } catch where error.isCancellation {
-            return
-        } catch {
-            addErrorMessage = error.displayMessage
         }
     }
 
