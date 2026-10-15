@@ -109,23 +109,68 @@ struct AvatarCropView: View {
 
     private func imageGesture(cropSide: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 0)
-            .simultaneously(with: MagnificationGesture())
+            .simultaneously(with: MagnifyGesture())
             .onChanged { value in
                 let translation = value.first?.translation ?? .zero
-                let magnification = value.second ?? 1
-                let proposedZoom = min(max(settledZoom * magnification, 1), maximumZoom)
-                let proposedOffset = CGSize(
-                    width: settledImageOffset.width + translation.width,
-                    height: settledImageOffset.height + translation.height
+                let rawZoom = settledZoom * (value.second?.magnification ?? 1)
+                let displayedZoom = AvatarCropMotion.rubberBand(
+                    rawZoom,
+                    in: 1...maximumZoom,
+                    dimension: maximumZoom / 2
+                )
+                let rawOffset = offset(
+                    zoomingTo: displayedZoom,
+                    anchor: value.second.map { anchorPoint($0.startAnchor, cropSide: cropSide) },
+                    translation: translation
                 )
 
-                zoom = proposedZoom
-                imageOffset = constrained(proposedOffset, cropSide: cropSide, zoom: proposedZoom)
+                zoom = displayedZoom
+                imageOffset = rubberBanded(rawOffset, cropSide: cropSide, zoom: displayedZoom)
             }
-            .onEnded { _ in
-                settledZoom = zoom
-                settledImageOffset = imageOffset
+            .onEnded { value in
+                let translation = value.first?.translation ?? .zero
+                let velocity = value.first?.velocity ?? .zero
+                let rawZoom = settledZoom * (value.second?.magnification ?? 1)
+                let displayedZoom = AvatarCropMotion.rubberBand(
+                    rawZoom,
+                    in: 1...maximumZoom,
+                    dimension: maximumZoom / 2
+                )
+                let targetZoom = min(max(displayedZoom, 1), maximumZoom)
+                let anchor = value.second.map { anchorPoint($0.startAnchor, cropSide: cropSide) }
+                let projected = offset(
+                    zoomingTo: targetZoom,
+                    anchor: anchor,
+                    translation: CGSize(
+                        width: translation.width + AvatarCropMotion.projectedDistance(velocity.width),
+                        height: translation.height + AvatarCropMotion.projectedDistance(velocity.height)
+                    )
+                )
+                let targetOffset = constrained(projected, cropSide: cropSide, zoom: targetZoom)
+
+                settledZoom = targetZoom
+                settledImageOffset = targetOffset
+                withAnimation(.spring(response: 0.4, dampingFraction: 1)) {
+                    zoom = targetZoom
+                    imageOffset = targetOffset
+                }
             }
+    }
+
+    /// The pinch's start point relative to the crop square's centre, in points.
+    private func anchorPoint(_ anchor: UnitPoint, cropSide: CGFloat) -> CGPoint {
+        CGPoint(x: (anchor.x - 0.5) * cropSide, y: (anchor.y - 0.5) * cropSide)
+    }
+
+    /// The image offset after zooming from `settledZoom` to `newZoom` about `anchor`, so the
+    /// point first under the fingers stays under them, and then moving by `translation`.
+    private func offset(zoomingTo newZoom: CGFloat, anchor: CGPoint?, translation: CGSize) -> CGSize {
+        let anchor = anchor ?? .zero
+        let scale = settledZoom > 0 ? newZoom / settledZoom : 1
+        return CGSize(
+            width: anchor.x + translation.width - (anchor.x - settledImageOffset.width) * scale,
+            height: anchor.y + translation.height - (anchor.y - settledImageOffset.height) * scale
+        )
     }
 
     private var crop: AvatarCrop {
@@ -164,6 +209,16 @@ struct AvatarCropView: View {
         )
     }
 
+    private func rubberBanded(_ proposed: CGSize, cropSide: CGFloat, zoom: CGFloat) -> CGSize {
+        let imageSize = displayedImageSize(for: cropSide, zoom: zoom)
+        let maximumX = max(0, (imageSize.width - cropSide) / 2)
+        let maximumY = max(0, (imageSize.height - cropSide) / 2)
+        return CGSize(
+            width: AvatarCropMotion.rubberBand(proposed.width, in: -maximumX...maximumX, dimension: cropSide),
+            height: AvatarCropMotion.rubberBand(proposed.height, in: -maximumY...maximumY, dimension: cropSide)
+        )
+    }
+
     private func updateCropSide(to newSide: CGFloat) {
         guard newSide > 0 else { return }
 
@@ -192,5 +247,33 @@ struct AvatarCropView: View {
         settledZoom = 1
         imageOffset = .zero
         settledImageOffset = .zero
+    }
+}
+
+/// The crop screen's gesture physics, matching the feel of Photos and scroll views.
+enum AvatarCropMotion {
+    /// UIScrollView's normal deceleration rate.
+    static let decelerationRate: CGFloat = 0.998
+
+    /// Resists a value pulled past `bounds`: the overshoot grows ever more slowly and
+    /// never passes `dimension`.
+    static func rubberBand(_ value: CGFloat, in bounds: ClosedRange<CGFloat>, dimension: CGFloat) -> CGFloat {
+        if value < bounds.lowerBound {
+            return bounds.lowerBound - resisted(bounds.lowerBound - value, dimension: dimension)
+        }
+        if value > bounds.upperBound {
+            return bounds.upperBound + resisted(value - bounds.upperBound, dimension: dimension)
+        }
+        return value
+    }
+
+    /// How far a flick at `velocity` points per second would carry before stopping.
+    static func projectedDistance(_ velocity: CGFloat) -> CGFloat {
+        velocity / 1000 * decelerationRate / (1 - decelerationRate)
+    }
+
+    private static func resisted(_ overshoot: CGFloat, dimension: CGFloat) -> CGFloat {
+        guard dimension > 0 else { return 0 }
+        return overshoot * dimension * 0.55 / (dimension + 0.55 * overshoot)
     }
 }
