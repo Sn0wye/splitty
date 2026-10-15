@@ -36,7 +36,7 @@ Screen names are the raw values of `ReviewScreen` in
 | `welcome`, `setup`, `create`, `join`, `invite` | First-run flow |
 | `groupsEmpty`, `groupEmpty`, `peopleEmpty`, `balanceHint` | Empty states |
 | `expenseForm` | The real expense sheet: amount digits, keypad, details step with the keyboard, split screens. Saving fails on purpose. |
-| `timeline` | Real timeline rows on sample data: every row shape (an installment badge among them), date headers, swipe to delete, the last row's clearance above the add button. Reset restores deleted rows. |
+| `timeline` | Real timeline rows on sample data: every row shape (an installment badge among them), date headers, swipe to delete, the last row's clearance above the tab bar. Reset restores deleted rows. |
 | `charts` | The real Charts sheet; each range lands on different numbers after a short delay. |
 | `chartsFailed` | The first load fails; Try again succeeds. |
 | `chartsEmpty` | Charts for a group with no expenses. |
@@ -78,5 +78,5 @@ and #104 is the example.
   the fold, dark mode, Reduce Motion, larger text, iPad, or the keyboard up.
   Unseen states are open risks; say so rather than implying coverage.
 - Check the recurring trouble spots when the change is near them: keyboard
-  overlap, the add button covering the last row, sheet detents and sizing,
+  overlap, the tab bar covering the last row, sheet detents and sizing,
   empty states, swipe to delete.

@@ -103,37 +103,31 @@ struct OnboardingReviewView: View {
                     }
             }
         case .groupsEmpty:
-            VStack(spacing: 0) {
-                GroupsView(isReview: true) { selectedScreen = nil }
-                    .environmentObject(AppState())
-                BottomBar(
-                    selection: $previewTab,
-                    isAdding: false,
-                    isAddEnabled: false,
-                    onAdd: {}
-                )
+            AppTabView(selection: $previewTab) { tab in
+                if tab == .groups {
+                    GroupsView(onAddExpense: {}, isReview: true) { selectedScreen = nil }
+                        .environmentObject(AppState())
+                } else {
+                    Color("background").ignoresSafeArea()
+                }
             }
-            .background(Color("background").ignoresSafeArea())
         case .groupEmpty, .balanceHint:
             OnboardingGroupReviewView(showsBalanceHint: screen == .balanceHint) {
                 selectedScreen = nil
             }
         case .peopleEmpty:
-            VStack(spacing: 0) {
-                PeopleView(
-                    isReview: true,
-                    onReviewDone: { selectedScreen = nil },
-                    onShowGroups: { selectedScreen = .groupsEmpty }
-                )
+            AppTabView(selection: $peoplePreviewTab) { tab in
+                if tab == .people {
+                    PeopleView(
+                        isReview: true,
+                        onReviewDone: { selectedScreen = nil },
+                        onShowGroups: { selectedScreen = .groupsEmpty }
+                    )
                     .environmentObject(AppState())
-                BottomBar(
-                    selection: $peoplePreviewTab,
-                    isAdding: false,
-                    isAddEnabled: false,
-                    onAdd: {}
-                )
+                } else {
+                    Color("background").ignoresSafeArea()
+                }
             }
-            .background(Color("background").ignoresSafeArea())
         case .expenseForm:
             ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
                 ExpenseSheet(
@@ -281,65 +275,13 @@ private struct OnboardingGroupReviewView: View {
     @State private var selectedTab: AppTab = .group
 
     var body: some View {
-        VStack(spacing: 0) {
-            NavigationStack {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Weekend trip")
-                                .font(.largeTitle.bold())
-                                .foregroundStyle(Color("foreground"))
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.title)
-                                .foregroundStyle(Color("muted-foreground"))
-                            Text(L10n.Balances.allSettled)
-                                .font(.subheadline)
-                                .foregroundStyle(Color("muted-foreground"))
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 10)
-
-                        HStack(spacing: 12) {
-                            ActionButton(
-                                title: L10n.Group.balances,
-                                color: Color("muted"),
-                                textColor: Color("foreground"),
-                                action: {}
-                            )
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 20)
-
-                        if showsBalanceHint {
-                            VStack(spacing: 0) {
-                                FirstBalanceTip()
-                                sampleExpense
-                            }
-                            .background(Color("card"))
-                        } else {
-                            GroupEmptyState(
-                                memberCount: 1,
-                                onAddExpense: { showingAddInfo = true },
-                                onInvite: { showingInvite = true }
-                            )
-                        }
-                    }
-                }
-                .background(Color("background").ignoresSafeArea())
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button(L10n.Common.done, action: onDone)
-                    }
-                }
+        AppTabView(selection: $selectedTab) { tab in
+            if tab == .group {
+                groupScreen
+            } else {
+                Color("background").ignoresSafeArea()
             }
-
-            BottomBar(
-                selection: $selectedTab,
-                isAdding: false,
-                isAddEnabled: true
-            ) { showingAddInfo = true }
         }
-        .background(Color("background"))
         .sheet(isPresented: $showingInvite) {
             NavigationStack {
                 InviteView(groupId: 0, groupName: "Weekend trip", isReview: true)
@@ -354,6 +296,62 @@ private struct OnboardingGroupReviewView: View {
             Button(L10n.Common.ok, role: .cancel) {}
         } message: {
             Text("Adding an expense here would change your account. This review uses sample content.")
+        }
+    }
+
+    private var groupScreen: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Weekend trip")
+                            .font(.largeTitle.bold())
+                            .foregroundStyle(Color("foreground"))
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.title)
+                            .foregroundStyle(Color("muted-foreground"))
+                        Text(L10n.Balances.allSettled)
+                            .font(.subheadline)
+                            .foregroundStyle(Color("muted-foreground"))
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 10)
+
+                    HStack(spacing: 12) {
+                        ActionButton(
+                            title: L10n.Group.balances,
+                            color: Color("muted"),
+                            textColor: Color("foreground"),
+                            action: {}
+                        )
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 20)
+
+                    if showsBalanceHint {
+                        VStack(spacing: 0) {
+                            FirstBalanceTip()
+                            sampleExpense
+                        }
+                        .background(Color("card"))
+                    } else {
+                        GroupEmptyState(
+                            memberCount: 1,
+                            onAddExpense: { showingAddInfo = true },
+                            onInvite: { showingInvite = true }
+                        )
+                    }
+                }
+            }
+            .background(Color("background").ignoresSafeArea())
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L10n.Common.done, action: onDone)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    AddExpenseButton { showingAddInfo = true }
+                }
+            }
         }
     }
 

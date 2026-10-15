@@ -8,6 +8,9 @@
 import SwiftUI
 
 struct GroupsView: View {
+    /// Shows the toolbar's add button. Declared first so a trailing closure still
+    /// lands on `onReviewDone`.
+    var onAddExpense: (() -> Void)?
     var isReview = false
     var onReviewDone: (() -> Void)?
 
@@ -110,6 +113,13 @@ struct GroupsView: View {
                             .accessibilityLabel(L10n.Settings.account)
                         }
                         .hidingSharedBackground()
+                    }
+                }
+
+                if let onAddExpense {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        AddExpenseButton(action: onAddExpense)
+                            .accessibilityIdentifier("groups.addExpense")
                     }
                 }
             }

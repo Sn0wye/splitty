@@ -17,44 +17,22 @@ struct ContentView: View {
     @State private var addErrorMessage: String?
 
     var body: some View {
-        // A VStack, not a safeAreaInset: the inset never reaches scroll views inside a
-        // NavigationStack, so lists would end under the bar. Stacked, the bar owns its
-        // space and only overhangs the content by the strip beside the add button.
-        VStack(spacing: 0) {
-            ZStack {
-                // Keep the list and its header alive while viewing a group. Recreating
-                // the header on every tab switch flashes the avatar and add menu.
-                GroupsView()
-                    .opacity(appState.selectedTab == .groups ? 1 : 0)
-                    .allowsHitTesting(appState.selectedTab == .groups)
-                    .accessibilityHidden(appState.selectedTab != .groups)
-
-                switch appState.selectedTab {
-                case .groups:
-                    EmptyView()
-                case .group:
-                    CurrentGroupView {
-                        Task { await beginAddingExpense() }
-                    }
-                case .people:
-                    PeopleView(viewModel: peopleViewModel)
-                case .settings:
-                    SettingsView()
+        AppTabView(selection: $appState.selectedTab) { tab in
+            switch tab {
+            case .groups:
+                // From the list there is no group in view, so "+" always asks which one.
+                GroupsView(onAddExpense: {
+                    Task { await beginAddingExpense(askingForGroup: true) }
+                })
+            case .group:
+                CurrentGroupView {
+                    Task { await beginAddingExpense() }
                 }
+            case .people:
+                PeopleView(viewModel: peopleViewModel)
+            case .settings:
+                SettingsView()
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // Rows scroll on under the overhang, but the last one still comes to rest
-            // above the add button.
-            .contentMargins(.bottom, BottomBar.overhang, for: .scrollContent)
-
-            BottomBar(
-                selection: $appState.selectedTab,
-                isAdding: isResolvingAdd,
-                isAddEnabled: authManager.currentUser != nil
-            ) {
-                Task { await beginAddingExpense() }
-            }
-            .padding(.top, -BottomBar.overhang)
         }
         .background(Color("background").ignoresSafeArea())
         .environmentObject(appState)
@@ -104,19 +82,22 @@ struct ContentView: View {
         }
     }
 
-    private func beginAddingExpense() async {
+    private func beginAddingExpense(askingForGroup: Bool = false) async {
         guard authManager.currentUser != nil, !isResolvingAdd else { return }
         isResolvingAdd = true
         defer { isResolvingAdd = false }
 
-        do {
-            addDestination = try await appState.resolveAddExpenseDestination {
-                if PerformanceScenarioLaunch.isEnabled {
-                    PerformanceScenarios.groups
-                } else {
-                    try await GroupService.shared.getGroups()
-                }
+        let fetchGroups: () async throws -> [Group] = {
+            if PerformanceScenarioLaunch.isEnabled {
+                PerformanceScenarios.groups
+            } else {
+                try await GroupService.shared.getGroups()
             }
+        }
+        do {
+            addDestination = askingForGroup
+                ? .resolve(groups: try await fetchGroups(), currentGroupId: nil)
+                : try await appState.resolveAddExpenseDestination(fetchGroups: fetchGroups)
         } catch where error.isCancellation {
             return
         } catch {

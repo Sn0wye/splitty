@@ -4,10 +4,10 @@ iPad remains enabled by `TARGETED_DEVICE_FAMILY = 1,2` in
 `Splitty/Config/App.xcconfig`. The Info.plist permits all four iPad orientations.
 
 Wide windows center group cards, the expense timeline, People content, and
-Settings within 760 points. Tab controls use at most 600 points; login and
-onboarding use at most 560. These are maximum widths, so narrower windows can
-still use their available width. Backgrounds and the tab bar border fill the
-window.
+Settings within 760 points; login and onboarding use at most 560. These are
+maximum widths, so narrower windows can still use their available width.
+Backgrounds fill the window. The tabs are the system tab bar, which iPad shows
+at the top of the window.
 
 ## Simulator check, October 4, 2026
 
@@ -33,9 +33,9 @@ and accessibility text sizes were not verified. No unit or UI suites were run.
 ## Repeat the review
 
 Build the Splitty scheme for an iPad simulator, install the app, and launch with
-`-SplittyPerformanceScenario`. Open a group and use the central plus button to
-review expense entry. Settings > Development > Review onboarding opens the
-local first-run gallery. Launch without the argument to review the login screen.
+`-SplittyPerformanceScenario`. Open a group and use the plus button in its
+toolbar to review expense entry. Settings > Development > Review onboarding
+opens the local first-run gallery. Launch without the argument to review the login screen.
 
 For App Store captures, use a release build or otherwise exclude development
 controls, and prepare representative screenshot content instead of the large

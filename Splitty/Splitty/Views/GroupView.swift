@@ -94,6 +94,12 @@ struct GroupView: View {
                 .disabled(session.group == nil || currentUserId == nil)
                 .accessibilityLabel(L10n.Group.settings)
             }
+
+            ToolbarItem(placement: .navigationBarTrailing) {
+                AddExpenseButton(action: onAddExpense)
+                    .disabled(session.group == nil)
+                    .accessibilityIdentifier("group.addExpense")
+            }
         }
         .navigationDestination(isPresented: $showingSettings) {
             if let group = session.group, let currentUserId {
