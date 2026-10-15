@@ -12,6 +12,14 @@ PRODUCT_BUNDLE_IDENTIFIER = com.snowye.splitty
 PRODUCT_NAME = $(TARGET_NAME)
 URL_SLASH = /
 SPLITTY_API_BASE_URL = https:$(URL_SLASH)$(URL_SLASH)splitty.snowye.dev
+// Debug talks to the API running on the developer's Mac, on the port Kestrel binds in
+// appsettings.json. The simulator reaches it as localhost; a physical device needs the
+// Mac's Bonjour name, set in a gitignored Local.xcconfig next to this file:
+//   SPLITTY_LOCAL_API_HOST = Your-Mac.local
+SPLITTY_LOCAL_API_HOST = localhost
+SPLITTY_API_BASE_URL[config=Debug] = http:$(URL_SLASH)$(URL_SLASH)$(SPLITTY_LOCAL_API_HOST):8080
 SWIFT_EMIT_LOC_STRINGS = NO
 SWIFT_VERSION = 5.0
 TARGETED_DEVICE_FAMILY = 1,2
+
+#include? "Local.xcconfig"

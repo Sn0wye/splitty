@@ -41,15 +41,11 @@
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>localhost</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-			</dict>
-		</dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
 	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Debug builds reach the Splitty API running on your Mac.</string>
 	<key>SplittyAPIBaseURL</key>
 	<string>$(SPLITTY_API_BASE_URL)</string>
 	<key>UIApplicationSceneManifest</key>

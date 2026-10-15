@@ -12,3 +12,6 @@ xcuserdata/
 
 # env
 **/.env
+
+# Per-developer Xcode overrides, e.g. the Mac a device reaches the local API on
+Splitty/Config/Local.xcconfig
