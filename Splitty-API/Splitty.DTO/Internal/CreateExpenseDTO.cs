@@ -14,6 +14,7 @@ public class CreateExpenseDTO
     public required List<ExpenseSplitDTO> ExpenseSplits { get; set; }
     public Repeat? Repeat { get; set; }
     public string? TimeZone { get; set; }
+    public DateOnly? EndsOn { get; set; }
 }
 
 public partial class ExpenseSplitDTO

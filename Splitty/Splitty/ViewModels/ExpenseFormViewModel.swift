@@ -35,6 +35,8 @@ class ExpenseFormViewModel: ObservableObject {
             date = Date()
         }
     }
+    /// When the recurring expense ends. Read only while `repeatFrequency` repeats.
+    @Published var repeatEnd: RepeatEndDraft
     @Published var configuration: SplitConfiguration
     @Published var errorMessage: String?
     @Published var isSaving = false
@@ -65,6 +67,8 @@ class ExpenseFormViewModel: ObservableObject {
     /// The frequency of the recurring expense that added the expense being edited; nil
     /// when creating, and when editing an expense entered by hand.
     private let linkedFrequency: ExpenseRepeat?
+    /// The end of that recurring expense, `yyyy-MM-dd`; nil when it never ends.
+    private let linkedEndsOn: String?
     private let dataSource: ExpenseFormDataSource
     private let timeZone: () -> TimeZone
 
@@ -90,6 +94,15 @@ class ExpenseFormViewModel: ObservableObject {
         let linkedFrequency = expense?.isRecurring == true ? expense?.repeatFrequency : nil
         self.linkedFrequency = linkedFrequency
         repeatFrequency = linkedFrequency ?? .never
+        let linkedEndsOn = linkedFrequency == nil ? nil : expense?.endsOn
+        self.linkedEndsOn = linkedEndsOn
+        let calendar = RecurringDueDays.calendar(in: timeZone())
+        let startsOn = expense?.effectiveDate ?? Date()
+        if let linkedEndsOn, let endDate = RecurringDueDays.date(fromDay: linkedEndsOn, calendar: calendar) {
+            repeatEnd = RepeatEndDraft(kind: .onDate, date: endDate)
+        } else {
+            repeatEnd = RepeatEndDraft(date: calendar.date(byAdding: .year, value: 1, to: startsOn) ?? startsOn)
+        }
 
         if let expense {
             amount = AmountExpression(cents: Money.cents(from: expense.amount))
@@ -167,11 +180,58 @@ class ExpenseFormViewModel: ObservableObject {
     }
 
     /// Saving asks "Only this one" or "This and following" only when both make sense. A
-    /// changed frequency belongs to the recurring expense, so it reaches the following
-    /// expenses without asking.
+    /// changed frequency or end belongs to the recurring expense, so it reaches the
+    /// following expenses without asking.
     var needsScopeChoice: Bool {
         guard let linkedFrequency else { return false }
-        return repeatFrequency == linkedFrequency
+        return repeatFrequency == linkedFrequency && !endChanged
+    }
+
+    // MARK: - Ends
+
+    /// The last day an expense may be added on, `yyyy-MM-dd`, in the device's zone: the
+    /// picked day, or the due day of the last of `count` expenses counted from this one.
+    /// Nil when it never ends, does not repeat, or the draft is not valid.
+    var endsOn: String? {
+        guard repeatFrequency != .never, repeatEndMessage == nil else { return nil }
+        let calendar = RecurringDueDays.calendar(in: timeZone())
+        switch repeatEnd.kind {
+        case .never:
+            return nil
+        case .afterCount:
+            return RecurringDueDays.dueDay(start: date, frequency: repeatFrequency, n: repeatEnd.count - 1, calendar: calendar)
+                .map { RecurringDueDays.dayString($0, calendar: calendar) }
+        case .onDate:
+            return RecurringDueDays.dayString(repeatEnd.date, calendar: calendar)
+        }
+    }
+
+    /// The day the last expense is added on, for the Ends control to show what a count
+    /// works out to. Nil when there is no last one.
+    var lastExpenseDate: Date? {
+        endsOn.flatMap { RecurringDueDays.date(fromDay: $0, calendar: RecurringDueDays.calendar(in: timeZone())) }
+    }
+
+    /// Why the end cannot be saved: a count below one, or a day before the start.
+    var repeatEndMessage: String? {
+        guard repeatFrequency != .never else { return nil }
+        switch repeatEnd.kind {
+        case .never:
+            return nil
+        case .afterCount:
+            return repeatEnd.count < 1 ? L10n.Repeat.countAtLeastOne : nil
+        case .onDate:
+            let calendar = RecurringDueDays.calendar(in: timeZone())
+            let endDay = RecurringDueDays.dayString(repeatEnd.date, calendar: calendar)
+            let startDay = RecurringDueDays.dayString(date, calendar: calendar)
+            return endDay < startDay ? L10n.Repeat.endsBeforeStart : nil
+        }
+    }
+
+    /// An edit of a linked expense that sets, moves or removes the end. Stopping it
+    /// altogether is a frequency change, not an end change.
+    private var endChanged: Bool {
+        linkedFrequency != nil && repeatFrequency != .never && endsOn != linkedEndsOn
     }
 
     var categorySuggestions: [ExpenseCategory] {
@@ -203,6 +263,7 @@ class ExpenseFormViewModel: ObservableObject {
             && !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && configuration.blockingReason(totalCents: totalCents) == nil
             && repeatDateMessage == nil
+            && repeatEndMessage == nil
     }
 
     var descriptionRequiredMessage: String? {
@@ -373,7 +434,7 @@ class ExpenseFormViewModel: ObservableObject {
                 splits: splits(),
                 repeats: repeatFrequency == .never
                     ? nil
-                    : RepeatStart(frequency: repeatFrequency, timeZone: timeZone().identifier)
+                    : RepeatStart(frequency: repeatFrequency, timeZone: timeZone().identifier, endsOn: endsOn)
             ))
             return .expenseCreated(saved)
         } catch {
@@ -382,8 +443,8 @@ class ExpenseFormViewModel: ObservableObject {
         }
     }
 
-    /// Nil for a plain expense, which has nothing after it to reach. A frequency is sent only
-    /// when it changed: omitted keeps the current one.
+    /// Nil for a plain expense, which has nothing after it to reach. A frequency and an end
+    /// are sent only when they changed: omitted keeps the current one.
     private func resolvedReach(_ chosen: ExpenseScope?) -> EditReach? {
         guard linkedFrequency != nil else { return nil }
         switch needsScopeChoice ? chosen ?? .this : .following {
@@ -392,7 +453,8 @@ class ExpenseFormViewModel: ObservableObject {
         case .following:
             return .following(
                 repeat: repeatFrequency != linkedFrequency ? repeatFrequency : nil,
-                timeZone: timeZone().identifier
+                timeZone: timeZone().identifier,
+                end: endChanged ? endsOn.map(RepeatEndChange.on) ?? .never : nil
             )
         }
     }

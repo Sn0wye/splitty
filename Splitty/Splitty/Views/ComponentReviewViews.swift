@@ -26,6 +26,7 @@ enum ReviewSamples {
             (0, "Groceries", .groceries, users[0], 84.30, [1: 28.10, 2: 28.10, 3: 28.10]),
             (1, "Dinner at the sushi place", .diningOut, users[1], 120, [1: 40, 2: 40, 3: 40]),
             (1, "Rent", .rent, users[0], 1_500, [1: 750, 4: 750]),
+            (2, "New phone", .electronics, users[0], 100, [1: 50, 2: 50]),
             (3, "Taxi from the airport after the delayed flight, split four ways", .taxi, users[2], 48, [1: 12, 2: 12, 3: 12, 4: 12]),
             (3, "Coffee", .diningOut, users[0], 4.50, [1: 4.50]),
             (5, "Concert tickets", .music, users[1], 90, [2: 45, 3: 45]),
@@ -48,7 +49,9 @@ enum ReviewSamples {
                 payer: row.payer,
                 amount: row.amount,
                 shares: row.shares,
-                recurring: row.category == .rent ? .monthly : nil
+                recurring: [.rent, .electronics].contains(row.category) ? .monthly : nil,
+                // The phone is paid in twelve parts, the rent has no end.
+                installment: row.category == .electronics ? ExpenseInstallment(number: 4, total: 12) : nil
             )
         }
 
@@ -97,6 +100,34 @@ enum ReviewSamples {
             attempts.count += 1
             if failingFirstLoad, attempts.count == 1 { throw APIError.networkError(URLError(.notConnectedToInternet)) }
             return stats(for: query, expenses: expenses)
+        }
+    }
+
+    /// The Installments section of a group paying for a phone and a course in parts, and
+    /// rent with no end.
+    static let plans: [RecurringPlan] = [
+        RecurringPlan(
+            id: 1, description: "New phone", amount: 100, category: .electronics, paidBy: 1,
+            frequency: .monthly, nextDueOn: "2026-11-02", endsOn: "2027-07-02",
+            progress: .init(added: 4, total: 12)
+        ),
+        RecurringPlan(
+            id: 2, description: "Rent", amount: 1_500, category: .rent, paidBy: 1,
+            frequency: .monthly, nextDueOn: "2026-11-13", endsOn: nil,
+            progress: .init(added: 9, total: nil)
+        ),
+        RecurringPlan(
+            id: 3, description: "Spanish course with a very long name that wraps", amount: 45, category: .general,
+            paidBy: 2, frequency: .fortnightly, nextDueOn: "2026-10-20", endsOn: "2026-12-29",
+            progress: .init(added: 2, total: 8)
+        ),
+    ]
+
+    /// Waits long enough for the loading state to be seen, then answers.
+    static func plansSource(_ plans: [RecurringPlan]) -> PlansDataSource {
+        PlansDataSource { _ in
+            try await Task.sleep(for: .milliseconds(600))
+            return plans
         }
     }
 
@@ -164,7 +195,8 @@ enum ReviewSamples {
         amount: Double,
         shares: [Int: Double],
         type: ExpenseType = .expense,
-        recurring: ExpenseRepeat? = nil
+        recurring: ExpenseRepeat? = nil,
+        installment: ExpenseInstallment? = nil
     ) -> Expense {
         let people = users + [user(9, MemberDisplay.tombstoneName)]
         let splits = shares.sorted { $0.key < $1.key }.enumerated().map { index, share in
@@ -192,7 +224,8 @@ enum ReviewSamples {
             paidByUser: payer,
             splits: splits,
             recurringExpenseId: recurring == nil ? nil : 1,
-            repeatFrequency: recurring
+            repeatFrequency: recurring,
+            installment: installment
         )
     }
 
@@ -303,6 +336,47 @@ struct ReviewTimelineView: View {
     private func remove(_ expense: Expense) {
         pendingDeletion = nil
         expenses.removeAll { $0.id == expense.id }
+    }
+}
+
+/// The Plans screen under the group screen's toggle, on sample data. Pull to refresh
+/// reloads it; opening a row says where it would go.
+struct ReviewPlansView: View {
+    let onDone: () -> Void
+
+    @StateObject private var viewModel: PlansViewModel
+    @State private var opened: RecurringPlan?
+
+    init(plans: [RecurringPlan], onDone: @escaping () -> Void) {
+        self.onDone = onDone
+        _viewModel = StateObject(wrappedValue: PlansViewModel(
+            groupId: ReviewSamples.groupId,
+            dataSource: ReviewSamples.plansSource(plans)
+        ))
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                PlansView(viewModel: viewModel) { opened = $0 }
+                    .frame(maxWidth: 760)
+                    .frame(maxWidth: .infinity)
+            }
+            .refreshable { await viewModel.load() }
+            .background(Color("background"))
+            .navigationTitle(L10n.Plans.title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L10n.Common.done, action: onDone)
+                }
+            }
+        }
+        .alert("Preview only", isPresented: Binding(get: { opened != nil }, set: { if !$0 { opened = nil } })) {
+            Button(L10n.Common.ok, role: .cancel) {}
+        } message: {
+            Text("In the app this opens the newest expense of \(opened?.description ?? "").")
+        }
     }
 }
 

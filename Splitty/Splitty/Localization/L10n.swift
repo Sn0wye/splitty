@@ -439,6 +439,45 @@ enum L10n {
         static var deleteMessage: String {
             text("repeat.delete_message", default: "This expense repeats. Deleting this and following also stops it.")
         }
+        static var ends: String { text("repeat.ends", default: "Ends") }
+        static var endsNever: String { text("repeat.ends_never", default: "Never") }
+        static var endsAfter: String { text("repeat.ends_after", default: "After") }
+        static var untilStopped: String { text("repeat.until_stopped", default: "Until you stop it") }
+        static var endsOnDate: String { text("repeat.ends_on_date", default: "On a date") }
+        static var endDate: String { text("repeat.end_date", default: "Last day") }
+        static func times(_ count: Int) -> String {
+            text("repeat.times", default: "\(count) times")
+        }
+        static func lastOn(_ date: String) -> String {
+            format("repeat.last_on", default: "Last one on %@", date)
+        }
+        static func until(_ date: String) -> String {
+            format("repeat.until", default: "Until %@", date)
+        }
+        static var countAtLeastOne: String {
+            text("repeat.count_at_least_one", default: "It has to repeat at least once")
+        }
+        static var endsBeforeStart: String {
+            text("repeat.ends_before_start", default: "A repeating expense can't end before it starts")
+        }
+    }
+
+    enum Plans {
+        static var title: String { text("plans.title", default: "Plans") }
+        static var expenses: String { text("plans.expenses", default: "Expenses") }
+        static var sectionLabel: String { text("plans.section_label", default: "Show") }
+        static var installments: String { text("plans.installments", default: "Installments") }
+        static func progress(_ added: Int, _ total: Int) -> String {
+            format("plans.progress", default: "%1$lld of %2$lld", added, total)
+        }
+        static var noEnd: String { text("plans.no_end", default: "No end") }
+        static var noInstallments: String { text("plans.no_installments", default: "No installments") }
+        static var noInstallmentsDetail: String {
+            text(
+                "plans.no_installments_detail",
+                default: "Expenses this group repeats show up here, with how far along they are."
+            )
+        }
     }
 
     enum CategoryHeading {

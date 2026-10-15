@@ -35,6 +35,13 @@ public class ExpenseService(
             dto.Amount,
             dto.ExpenseSplits.Zip(percentages, (s, p) => new SplitShape(s.Amount, p)));
 
+        var frequency = dto.Repeat is { } repeat ? RecurringExpenses.FrequencyOf(repeat) : null;
+
+        if (dto.EndsOn is not null && frequency is null)
+        {
+            throw new ArgumentException("endsOn ends a repeat, so it needs a repeat other than never.");
+        }
+
         var splits = dto.ExpenseSplits;
 
         await EnsureMemberAsync(dto.GroupId, userId);
@@ -59,9 +66,9 @@ public class ExpenseService(
         };
 
         // Saved with its first expense in one insert, so neither exists without the other.
-        if (dto.Repeat is { } repeat && RecurringExpenses.FrequencyOf(repeat) is { } frequency)
+        if (frequency is { } f)
         {
-            expense.RecurringExpense = StartRecurring(expense, frequency, dto.TimeZone);
+            expense.RecurringExpense = StartRecurring(expense, f, dto.TimeZone, dto.EndsOn);
         }
 
         await expenseRepository.CreateAsync(expense);
@@ -122,6 +129,21 @@ public class ExpenseService(
         if (dto.TimeZone is not null && dto.Scope != ExpenseScope.Following)
         {
             throw new ArgumentException("timeZone moves the expenses that follow, so it needs scope=following.");
+        }
+
+        if ((dto.EndsOn is not null || dto.EndsNever) && dto.Scope != ExpenseScope.Following)
+        {
+            throw new ArgumentException("endsOn and endsNever change the expenses that follow, so they need scope=following.");
+        }
+
+        if (dto.EndsOn is not null && dto.EndsNever)
+        {
+            throw new ArgumentException("Send endsOn or endsNever, not both.");
+        }
+
+        if (dto.Repeat == Repeat.Never && (dto.EndsOn is not null || dto.EndsNever))
+        {
+            throw new ArgumentException("repeat=never stops the expense, so it takes no end.");
         }
 
         // Resolved before anything is written, so an unknown zone refuses the whole edit.
@@ -217,7 +239,7 @@ public class ExpenseService(
         
         if (recurringExpenseId is { } id)
         {
-            await UpdateFollowingAsync(expense, id, originalDate, dto.Repeat, zone);
+            await UpdateFollowingAsync(expense, id, originalDate, dto.Repeat, zone, EndFor(dto));
         }
         else
         {
@@ -241,7 +263,8 @@ public class ExpenseService(
         int recurringExpenseId,
         DateTime originalDate,
         Repeat? repeat,
-        TimeZoneInfo? zone)
+        TimeZoneInfo? zone,
+        RecurringEnd? end)
     {
         var later = await expenseRepository.GetAddedAfterAsync(recurringExpenseId, originalDate);
         var recurring = await recurringExpenseRepository.GetForUpdateAsync(recurringExpenseId)
@@ -250,7 +273,7 @@ public class ExpenseService(
         var frequency = repeat is { } r ? RecurringExpenses.FrequencyOf(r) : recurring.Frequency;
 
         var removed = frequency is { } f
-            ? RestartFrom(recurring, expense, originalDate, f, zone, later)
+            ? RestartFrom(recurring, expense, originalDate, f, zone, end, later)
             : later;
 
         await expenseRepository.InTransactionAsync(async () =>
@@ -274,6 +297,9 @@ public class ExpenseService(
     /// keeps this expense and the later ones on their days and moves them to that midnight,
     /// so a later edit made from the new zone reads the same days. Earlier expenses are not
     /// part of the edit and keep their dates.
+    ///
+    /// The end is an absolute day and stays put when the start moves; <paramref name="end"/>
+    /// replaces it when given. A place after the end is dropped like one not due yet.
     /// </summary>
     private List<Expense> RestartFrom(
         RecurringExpense recurring,
@@ -281,6 +307,7 @@ public class ExpenseService(
         DateTime originalDate,
         RepeatFrequency frequency,
         TimeZoneInfo? newZone,
+        RecurringEnd? end,
         List<Expense> later)
     {
         var oldZone = TimeZoneInfo.FindSystemTimeZoneById(recurring.TimeZone);
@@ -299,10 +326,15 @@ public class ExpenseService(
         // date stays the day it was. Whole seconds, since a client may drop the fraction.
         var moved = WholeSeconds(DateOf(expense)) != WholeSeconds(originalDate);
         var startDay = moved ? LocalCalendar.DayOf(DateOf(expense), zone) : originalDay;
+        var endsOn = end is { } e ? e.EndsOn : recurring.EndsOn;
+
+        // Checked before the recurring expense is touched, so a refusal changes nothing.
+        EnsureEndNotBeforeStart(startDay, endsOn);
 
         RecurringExpenses.CopyFrom(recurring, expense);
         recurring.Frequency = frequency;
         recurring.StartDate = startDay;
+        recurring.EndsOn = endsOn;
         recurring.UpdatedAt = DateTime.UtcNow;
 
         if (zone.Id != oldZone.Id)
@@ -313,7 +345,8 @@ public class ExpenseService(
 
         var today = LocalCalendar.DayOf(timeProvider.GetUtcNow(), zone);
         var kept = Enumerable.Range(1, oldDays.Count)
-            .TakeWhile(n => RecurringDueDays.DueDay(recurring.StartDate, frequency, n) <= today)
+            .Select(n => RecurringDueDays.DueDay(recurring.StartDate, frequency, n))
+            .TakeWhile(day => day <= today && (endsOn is null || day <= endsOn))
             .Count();
 
         // Covers the gaps too, so catch-up adds only places that were never added.
@@ -346,7 +379,11 @@ public class ExpenseService(
     /// expense's date, or now, as a day in <paramref name="timeZone"/>, and may not be
     /// before today there: a mistyped date must not add months of expenses.
     /// </summary>
-    private RecurringExpense StartRecurring(Expense first, RepeatFrequency frequency, string? timeZone)
+    private RecurringExpense StartRecurring(
+        Expense first,
+        RepeatFrequency frequency,
+        string? timeZone,
+        DateOnly? endsOn)
     {
         var zone = RecurringExpenses.ZoneOrThrow(timeZone);
         var now = timeProvider.GetUtcNow();
@@ -358,6 +395,8 @@ public class ExpenseService(
             throw new ArgumentException("A repeating expense cannot start before today.");
         }
 
+        EnsureEndNotBeforeStart(start, endsOn);
+
         var recurring = new RecurringExpense
         {
             GroupId = first.GroupId,
@@ -365,11 +404,32 @@ public class ExpenseService(
             Frequency = frequency,
             StartDate = start,
             AddedThrough = start,
+            EndsOn = endsOn,
             TimeZone = zone.Id
         };
         RecurringExpenses.CopyFrom(recurring, first);
 
         return recurring;
+    }
+
+    /// <summary>
+    /// The end a "this and following" edit asks for: a new day, none at all, or null when
+    /// the edit leaves the end as it is.
+    /// </summary>
+    private sealed record RecurringEnd(DateOnly? EndsOn);
+
+    private static RecurringEnd? EndFor(UpdateExpenseDTO dto) =>
+        dto.EndsNever ? new RecurringEnd(null)
+        : dto.EndsOn is { } endsOn ? new RecurringEnd(endsOn)
+        : null;
+
+    /// An end before the start would leave a recurring expense with no installment.
+    private static void EnsureEndNotBeforeStart(DateOnly start, DateOnly? endsOn)
+    {
+        if (endsOn < start)
+        {
+            throw new ArgumentException("A repeating expense cannot end before it starts.");
+        }
     }
 
     private static int RecurringExpenseIdOrThrow(Expense expense) =>

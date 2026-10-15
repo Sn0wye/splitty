@@ -191,6 +191,22 @@ public class GroupController(
         return Ok(await readModel.GetExpenseAsync(groupId, expenseId, int.Parse(userId)));
     }
 
+    /// <summary>
+    /// The group's active recurring expenses: not finished and not stopped. Does not catch
+    /// up; only <c>GET group</c> does (ADR 0006).
+    /// </summary>
+    [HttpGet("{groupId}/recurring")]
+    public async Task<ActionResult<List<RecurringExpenseResponse>>> GetRecurringExpenses(int groupId)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
+        return Ok(await readModel.GetRecurringExpensesAsync(groupId, int.Parse(userId)));
+    }
+
     [HttpPost("{groupId}/expenses")]
     public async Task<ActionResult<ExpenseResponse>> CreateExpense(
         [FromBody] CreateExpenseRequest request,
@@ -219,7 +235,8 @@ public class GroupController(
             SplitMode = request.SplitMode,
             ExpenseSplits = request.Splits,
             Repeat = request.Repeat,
-            TimeZone = request.TimeZone
+            TimeZone = request.TimeZone,
+            EndsOn = request.EndsOn
         };
 
         var expense = await expenseService.CreateAsync(dto, int.Parse(userId));
@@ -260,6 +277,8 @@ public class GroupController(
             ExpenseSplits = request.Splits,
             Repeat = request.Repeat,
             TimeZone = request.TimeZone,
+            EndsOn = request.EndsOn,
+            EndsNever = request.EndsNever,
             Scope = scope
         };
 

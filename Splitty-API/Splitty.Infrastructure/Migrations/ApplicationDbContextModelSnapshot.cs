@@ -318,6 +318,9 @@ namespace Splitty.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<DateOnly?>("EndsOn")
+                        .HasColumnType("date");
+
                     b.Property<string>("Frequency")
                         .IsRequired()
                         .HasColumnType("text");

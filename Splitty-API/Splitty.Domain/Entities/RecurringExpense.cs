@@ -70,6 +70,14 @@ public class RecurringExpense
     /// </summary>
     public DateOnly AddedThrough { get; set; }
 
+    /// <summary>
+    /// The last day, in <see cref="TimeZone"/>, an installment may be due; null means it never
+    /// ends. An absolute day: a "this and following" edit moves <see cref="StartDate"/> but
+    /// not this. Once the last due day on or before it has been added the recurring expense
+    /// is finished. The row stays, because its expenses are numbered from it.
+    /// </summary>
+    public DateOnly? EndsOn { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

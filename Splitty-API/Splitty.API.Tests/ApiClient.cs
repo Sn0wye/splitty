@@ -118,6 +118,9 @@ public sealed class ApiClient
     public Task<HttpResponseMessage> DeleteExpenseAsync(int groupId, int expenseId, string scope) =>
         _http.DeleteAsync($"/group/{groupId}/expenses/{expenseId}?scope={scope}");
 
+    public Task<HttpResponseMessage> GetRecurringAsync(int groupId) =>
+        _http.GetAsync($"/group/{groupId}/recurring");
+
     public Task<HttpResponseMessage> UpdateSettlementAsync(int groupId, int expenseId, object body) =>
         _http.PutAsJsonAsync($"/group/{groupId}/settlements/{expenseId}", body);
 

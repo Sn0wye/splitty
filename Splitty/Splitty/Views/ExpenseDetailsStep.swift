@@ -40,7 +40,7 @@ struct ExpenseDetailsStep: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 dateRow
-                if let message = viewModel.repeatDateMessage {
+                if let message = viewModel.repeatDateMessage ?? viewModel.repeatEndMessage {
                     Text(message)
                         .font(.subheadline)
                         .foregroundStyle(.orange)
@@ -86,7 +86,10 @@ struct ExpenseDetailsStep: View {
             ExpenseDatePicker(
                 date: $viewModel.date,
                 earliestDate: viewModel.earliestDate,
-                repeatFrequency: viewModel.showsRepeatPicker ? $viewModel.repeatFrequency : nil
+                repeatFrequency: viewModel.showsRepeatPicker ? $viewModel.repeatFrequency : nil,
+                repeatEnd: viewModel.showsRepeatPicker ? $viewModel.repeatEnd : nil,
+                lastExpenseDate: viewModel.lastExpenseDate,
+                repeatEndMessage: viewModel.repeatEndMessage
             )
         }
         .alert(L10n.Repeat.saveTitle, isPresented: $showingScopeChoice) {
@@ -262,10 +265,19 @@ struct ExpenseDetailsStep: View {
             .frame(width: 24)
     }
 
-    /// The day, then how often it repeats when it does.
+    /// The day, then how often it repeats when it does, and how many times or until when.
     private var dateLabel: String {
         guard let badge = viewModel.repeatFrequency.badge else { return dayLabel }
-        return "\(dayLabel) · \(badge)"
+        let label = "\(dayLabel) · \(badge)"
+        switch viewModel.repeatEnd.kind {
+        case .never:
+            return label
+        case .afterCount:
+            return "\(label) · \(L10n.Repeat.times(viewModel.repeatEnd.count))"
+        case .onDate:
+            guard let last = viewModel.lastExpenseDate else { return label }
+            return "\(label) · \(L10n.Repeat.until(last.formatted(.dateTime.day().month(.abbreviated).year().inAppLanguage())))"
+        }
     }
 
     private var dayLabel: String {

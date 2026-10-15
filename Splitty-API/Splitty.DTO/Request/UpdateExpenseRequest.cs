@@ -43,4 +43,18 @@ public class UpdateExpenseRequest
     /// current zone.
     /// </summary>
     public string? TimeZone { get; set; }
+
+    /// <summary>
+    /// The new last day an installment may be due, from this expense on. Only accepted with
+    /// <c>scope=following</c>, and never before this expense's day. Omitted keeps the current
+    /// end, so clearing it is <see cref="EndsNever"/>, not a null here.
+    /// </summary>
+    public DateOnly? EndsOn { get; set; }
+
+    /// <summary>
+    /// <c>true</c> removes the end, so the recurring expense never ends. Only accepted with
+    /// <c>scope=following</c>, and not together with <see cref="EndsOn"/>. Omitted or
+    /// <c>false</c> leaves the end to <see cref="EndsOn"/>.
+    /// </summary>
+    public bool EndsNever { get; set; }
 }

@@ -36,10 +36,12 @@ Screen names are the raw values of `ReviewScreen` in
 | `welcome`, `setup`, `create`, `join`, `invite` | First-run flow |
 | `groupsEmpty`, `groupEmpty`, `peopleEmpty`, `balanceHint` | Empty states |
 | `expenseForm` | The real expense sheet: amount digits, keypad, details step with the keyboard, split screens. Saving fails on purpose. |
-| `timeline` | Real timeline rows on sample data: every row shape, date headers, swipe to delete, the last row's clearance above the add button. Reset restores deleted rows. |
+| `timeline` | Real timeline rows on sample data: every row shape (an installment badge among them), date headers, swipe to delete, the last row's clearance above the add button. Reset restores deleted rows. |
 | `charts` | The real Charts sheet; each range lands on different numbers after a short delay. |
 | `chartsFailed` | The first load fails; Try again succeeds. |
 | `chartsEmpty` | Charts for a group with no expenses. |
+| `plans` | The Plans screen's Installments section on sample data: one with an end, one with none, a long name. Loads after a short delay; pull to refresh reloads. |
+| `plansEmpty` | Plans for a group with no active recurring expense. |
 
 The same gallery opens from Settings > Development > Review onboarding.
 `-SplittyPerformanceScenario` remains the way to load the real app with large

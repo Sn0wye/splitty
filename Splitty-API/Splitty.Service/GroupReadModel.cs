@@ -81,13 +81,19 @@ public class GroupReadModel(ApplicationDbContext context, IAvatarResolver avatar
     /// group read adds (ADR 0006), leaves EF matching splits against rows it never read:
     /// the expenses after it come back with none. Splits are the only collection, so the
     /// join repeats each expense once per split and nothing multiplies.
+    ///
+    /// An installment's number and total are counted from the rows linked to its recurring
+    /// expense, in the same statement. Counting from the start day cannot work: a "this and
+    /// following" edit moves it.
     /// </summary>
     private async Task<List<ExpenseResponse>> ReadExpensesAsync(IQueryable<Expense> query)
     {
-        var expenses = await query.AsNoTracking().AsSingleQuery()
+        var rows = await query.AsNoTracking().AsSingleQuery()
             .OrderByDescending(e => e.Date ?? e.CreatedAt)
             .ThenByDescending(e => e.Id)
-            .Select(e => new ExpenseResponse
+            .Select(e => new
+            {
+                Expense = new ExpenseResponse
             {
                 Id = e.Id,
                 GroupId = e.GroupId,
@@ -102,6 +108,7 @@ public class GroupReadModel(ApplicationDbContext context, IAvatarResolver avatar
                 UpdatedAt = e.UpdatedAt,
                 RecurringExpenseId = e.RecurringExpenseId,
                 Repeat = e.RecurringExpense == null ? null : e.RecurringExpense.Frequency,
+                EndsOn = e.RecurringExpense == null ? null : e.RecurringExpense.EndsOn,
                 Splits = e.Splits.OrderBy(s => s.Id).Select(s => new ExpenseSplitResponse
                 {
                     Id = s.Id,
@@ -110,9 +117,36 @@ public class GroupReadModel(ApplicationDbContext context, IAvatarResolver avatar
                     Amount = s.Amount,
                     Percentage = s.Percentage
                 }).ToList()
+            },
+                Installment = e.RecurringExpense == null || e.RecurringExpense.EndsOn == null
+                    ? null
+                    : new InstallmentRow
+                    {
+                        // Ordered like the expense list, oldest first, ties by id.
+                        Before = context.Expense.Count(o => o.RecurringExpenseId == e.RecurringExpenseId
+                            && ((o.Date ?? o.CreatedAt) < (e.Date ?? e.CreatedAt)
+                                || ((o.Date ?? o.CreatedAt) == (e.Date ?? e.CreatedAt) && o.Id < e.Id))),
+                        Added = context.Expense.Count(o => o.RecurringExpenseId == e.RecurringExpenseId),
+                        StartDate = e.RecurringExpense.StartDate,
+                        Frequency = e.RecurringExpense.Frequency,
+                        AddedThrough = e.RecurringExpense.AddedThrough,
+                        EndsOn = e.RecurringExpense.EndsOn.Value
+                    }
             }).ToListAsync();
 
+        var expenses = rows.Select(r => r.Expense).ToList();
+
         if (expenses.Count == 0) return expenses;
+
+        foreach (var row in rows.Where(r => r.Installment is not null))
+        {
+            var installment = row.Installment!;
+            row.Expense.Installment = new InstallmentResponse
+            {
+                Number = installment.Before + 1,
+                Total = installment.Added + installment.Remaining
+            };
+        }
 
         // Include payers even when they are not participants, and departed members whose
         // historical expenses remain. User rows are projected once for the whole response.
@@ -141,6 +175,60 @@ public class GroupReadModel(ApplicationDbContext context, IAvatarResolver avatar
         return expenses;
     }
 
+    /// <summary>
+    /// Active means neither stopped, which deletes the row, nor finished: some due day after
+    /// the last one added is still on or before the end.
+    /// </summary>
+    public async Task<List<RecurringExpenseResponse>> GetRecurringExpensesAsync(int groupId, int userId)
+    {
+        await EnsureMemberAsync(groupId, userId);
+
+        var rows = await context.RecurringExpense.AsNoTracking()
+            .Where(r => r.GroupId == groupId)
+            .Select(r => new
+            {
+                r.Id,
+                r.Description,
+                r.Amount,
+                r.Category,
+                r.PaidBy,
+                r.Frequency,
+                r.StartDate,
+                r.AddedThrough,
+                r.EndsOn,
+                Added = context.Expense.Count(e => e.RecurringExpenseId == r.Id)
+            }).ToListAsync();
+
+        return rows
+            .Select(r => new
+            {
+                Row = r,
+                NextDueOn = RecurringDueDays.NextAfter(r.StartDate, r.Frequency, r.AddedThrough)
+            })
+            .Where(r => r.Row.EndsOn is null || r.NextDueOn <= r.Row.EndsOn)
+            .OrderBy(r => r.NextDueOn)
+            .ThenBy(r => r.Row.Id)
+            .Select(r => new RecurringExpenseResponse
+            {
+                Id = r.Row.Id,
+                Description = r.Row.Description,
+                Amount = r.Row.Amount,
+                Category = r.Row.Category,
+                PaidBy = r.Row.PaidBy,
+                Frequency = r.Row.Frequency,
+                NextDueOn = r.NextDueOn,
+                EndsOn = r.Row.EndsOn,
+                Progress = new InstallmentProgressResponse
+                {
+                    Added = r.Row.Added,
+                    Total = r.Row.EndsOn is { } endsOn
+                        ? r.Row.Added + RecurringDueDays.DueDaysBetween(
+                            r.Row.StartDate, r.Row.Frequency, r.Row.AddedThrough, endsOn).Count()
+                        : null
+                }
+            }).ToList();
+    }
+
     public Task<bool> GroupExistsAsync(int groupId) =>
         context.Group.AnyAsync(g => g.Id == groupId);
 
@@ -160,4 +248,19 @@ public class GroupReadModel(ApplicationDbContext context, IAvatarResolver avatar
         if (!await IsMemberAsync(groupId, userId))
             throw new UnauthorizedAccessException("User is not a member of the group");
     }
+}
+
+/// What numbering an installment needs, read in the expense list's statement.
+internal sealed class InstallmentRow
+{
+    public int Before { get; init; }
+    public int Added { get; init; }
+    public DateOnly StartDate { get; init; }
+    public RepeatFrequency Frequency { get; init; }
+    public DateOnly AddedThrough { get; init; }
+    public DateOnly EndsOn { get; init; }
+
+    /// Due days not added yet, up to and including the end.
+    public int Remaining =>
+        RecurringDueDays.DueDaysBetween(StartDate, Frequency, AddedThrough, EndsOn).Count();
 }

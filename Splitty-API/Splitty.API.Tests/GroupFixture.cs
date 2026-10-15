@@ -104,7 +104,8 @@ public sealed class GroupFixture
         string? timeZone = "UTC",
         int? paidBy = null,
         int[]? participants = null,
-        decimal share = 10m)
+        decimal share = 10m,
+        DateOnly? endsOn = null)
     {
         participants ??= [OwnerId, GuestId];
 
@@ -118,6 +119,7 @@ public sealed class GroupFixture
             splitMode = "equal",
             repeat,
             timeZone,
+            endsOn,
             splits = participants.Select(userId => new { userId, amount = share }).ToArray()
         };
     }
@@ -128,9 +130,11 @@ public sealed class GroupFixture
         DateTime? date,
         string? timeZone = "UTC",
         int? paidBy = null,
-        int[]? participants = null)
+        int[]? participants = null,
+        DateOnly? endsOn = null)
     {
-        var response = await Owner.CreateExpenseAsync(Id, RecurringBody(repeat, date, timeZone, paidBy, participants));
+        var response = await Owner.CreateExpenseAsync(Id,
+            RecurringBody(repeat, date, timeZone, paidBy, participants, endsOn: endsOn));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return await response.Content.ReadFromJsonAsync<JsonElement>(Json);
     }
