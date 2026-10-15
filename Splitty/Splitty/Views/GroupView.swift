@@ -170,16 +170,16 @@ struct GroupView: View {
             if expense.isRecurring {
                 Button(role: .destructive) {
                     pendingDeletion = nil
-                    session.delete(expense, scope: .this)
+                    remove(expense, scope: .this)
                 } label: { Text(L10n.Repeat.deleteOnlyThis) }
                 Button(role: .destructive) {
                     pendingDeletion = nil
-                    session.delete(expense, scope: .following)
+                    remove(expense, scope: .following)
                 } label: { Text(L10n.Repeat.deleteThisAndFollowing) }
             } else {
                 Button(role: .destructive) {
                     pendingDeletion = nil
-                    session.delete(expense)
+                    remove(expense)
                 } label: { Text(L10n.Common.delete) }
             }
             Button(role: .cancel) { pendingDeletion = nil } label: { Text(L10n.Common.cancel) }
@@ -365,6 +365,14 @@ struct GroupView: View {
                     session: session
                 )
             }
+        }
+    }
+
+    /// The session drops the row synchronously, so animating the call is what lets it
+    /// leave and the rows below close the gap. No bounce: nothing was thrown.
+    private func remove(_ expense: Expense, scope: ExpenseScope? = nil) {
+        withAnimation(.snappy) {
+            _ = session.delete(expense, scope: scope)
         }
     }
 
