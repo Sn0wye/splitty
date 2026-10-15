@@ -4,6 +4,7 @@ import SwiftUI
 struct OnboardingReviewView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var selectedScreen: ReviewScreen?
+    @ObservedObject private var themeManager = ThemeManager.shared
 
     /// `opening` presents one screen straight away, for a launch that asks for it.
     init(opening screen: ReviewScreen? = nil) {
@@ -45,6 +46,7 @@ struct OnboardingReviewView: View {
                     row(.plans)
                     row(.plansEmpty)
                     row(.avatarCrop)
+                    row(.appearance)
                 } header: {
                     Text("Components")
                 } footer: {
@@ -62,7 +64,11 @@ struct OnboardingReviewView: View {
         }
         .fullScreenCover(item: $selectedScreen) { screen in
             preview(for: screen)
+                .preferredColorScheme(themeManager.theme.colorScheme)
         }
+        // A `-SplittyReview` launch replaces RootView, which applies the theme.
+        // The cover sets it again: it does not follow a change made from inside it.
+        .preferredColorScheme(themeManager.theme.colorScheme)
     }
 
     private func row(_ screen: ReviewScreen) -> some View {
@@ -148,6 +154,16 @@ struct OnboardingReviewView: View {
                 onCancel: { selectedScreen = nil },
                 onCrop: { _ in selectedScreen = nil }
             )
+        case .appearance:
+            // The real setting: picking a theme here changes the app's theme.
+            NavigationStack {
+                AppearanceView()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(L10n.Common.done) { selectedScreen = nil }
+                        }
+                    }
+            }
         case .charts, .chartsFailed, .chartsEmpty:
             ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
                 let expenses = ReviewSamples.timeline()
@@ -205,6 +221,7 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
     case plans
     case plansEmpty
     case avatarCrop
+    case appearance
 
     var id: String { rawValue }
 
@@ -227,6 +244,7 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .plans: "Plans"
         case .plansEmpty: "Plans, no installments"
         case .avatarCrop: "Avatar crop"
+        case .appearance: "Appearance"
         }
     }
 
@@ -249,6 +267,7 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .plans: "repeat"
         case .plansEmpty: "repeat.circle"
         case .avatarCrop: "crop"
+        case .appearance: "circle.lefthalf.filled"
         }
     }
 }

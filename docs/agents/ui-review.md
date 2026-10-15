@@ -43,6 +43,7 @@ Screen names are the raw values of `ReviewScreen` in
 | `plans` | The Plans screen's Installments section on sample data: one with an end, one with none, a long name. Loads after a short delay; pull to refresh reloads. |
 | `plansEmpty` | Plans for a group with no active recurring expense. |
 | `avatarCrop` | The real avatar crop screen on a generated landscape photo with a grid: pan, flick and pinch past the bounds. |
+| `appearance` | The real Appearance setting. Picking a theme changes and stores the app's theme. |
 
 The same gallery opens from Settings > Development > Review onboarding.
 `-SplittyPerformanceScenario` remains the way to load the real app with large
