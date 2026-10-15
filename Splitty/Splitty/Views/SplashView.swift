@@ -23,26 +23,30 @@ struct SplashView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityHidden(true)
+        // Touches go to the content underneath while the splash fades out.
+        .allowsHitTesting(false)
         .task {
             if reduceMotion {
                 separation = 1
                 scale = 1
                 try? await Task.sleep(for: .milliseconds(150))
-            } else {
-                // Give the launch frame time to render before the coin moves.
-                try? await Task.sleep(for: .milliseconds(80))
                 guard !Task.isCancelled else { return }
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.82)) {
-                    scale = 1
-                }
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.68).delay(0.18)) {
-                    separation = 1
-                }
-                try? await Task.sleep(for: .milliseconds(850))
+                onFinished()
+                return
             }
 
+            // Give the launch frame time to render before the coin moves.
+            try? await Task.sleep(for: .milliseconds(80))
             guard !Task.isCancelled else { return }
-            onFinished()
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) {
+                scale = 1
+            }
+            // Hand off once the cut has visibly landed, not after a fixed wait.
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.68).delay(0.1)) {
+                separation = 1
+            } completion: {
+                onFinished()
+            }
         }
     }
 }
