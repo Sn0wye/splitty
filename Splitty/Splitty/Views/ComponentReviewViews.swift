@@ -18,6 +18,34 @@ enum ReviewSamples {
         GroupMember(id: $0.id, userId: $0.id, name: $0.name, email: $0.email, avatarUrl: "")
     }
 
+    /// A landscape photo stand-in with a grid, so panning, zooming and the bounds show.
+    static let avatarPhoto: UIImage = {
+        let size = CGSize(width: 1_600, height: 1_000)
+        return UIGraphicsImageRenderer(size: size).image { context in
+            let colors = [UIColor.systemTeal.cgColor, UIColor.systemIndigo.cgColor] as CFArray
+            if let gradient = CGGradient(colorsSpace: nil, colors: colors, locations: nil) {
+                context.cgContext.drawLinearGradient(
+                    gradient,
+                    start: .zero,
+                    end: CGPoint(x: size.width, y: size.height),
+                    options: []
+                )
+            }
+            UIColor.white.withAlphaComponent(0.35).setStroke()
+            for x in stride(from: CGFloat(0), through: size.width, by: 100) {
+                context.cgContext.strokeLineSegments(between: [CGPoint(x: x, y: 0), CGPoint(x: x, y: size.height)])
+            }
+            for y in stride(from: CGFloat(0), through: size.height, by: 100) {
+                context.cgContext.strokeLineSegments(between: [CGPoint(x: 0, y: y), CGPoint(x: size.width, y: y)])
+            }
+            UIColor.systemYellow.setFill()
+            context.cgContext.fillEllipse(in: CGRect(x: 650, y: 350, width: 300, height: 300))
+            UIColor.systemPink.setFill()
+            context.cgContext.fill(CGRect(x: 120, y: 120, width: 160, height: 160))
+            context.cgContext.fill(CGRect(x: 1_320, y: 720, width: 160, height: 160))
+        }
+    }()
+
     /// Every row shape the timeline draws, spread over enough days that the last row has
     /// to scroll clear of the add button.
     static func timeline(now: Date = Date(), calendar: Calendar = .current) -> [Expense] {
