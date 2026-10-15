@@ -28,7 +28,7 @@ enum RepeatEndKind: String, CaseIterable, Identifiable {
 struct RepeatEndDraft: Equatable {
     var kind: RepeatEndKind = .never
     /// How many expenses, counting the one being saved.
-    var count = 12
+    var count = 1
     var date: Date
 }
 

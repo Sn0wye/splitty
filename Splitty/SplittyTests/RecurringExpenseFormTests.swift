@@ -202,6 +202,16 @@ struct RecurringExpenseFormTests {
         #expect(try #require(api.created.first).repeats?.endsOn == "2030-04-30")
     }
 
+    @Test func afterACountStartsAtOne() throws {
+        let viewModel = newExpense(RecordingExpenseAPI(), timeZone: Self.utc)
+        viewModel.repeatFrequency = .monthly
+        viewModel.date = try Self.day(2030, 1, 15)
+        viewModel.repeatEnd.kind = .afterCount
+
+        #expect(viewModel.repeatEnd.count == 1)
+        #expect(viewModel.endsOn == "2030-01-15")
+    }
+
     @Test func aCountOfOneEndsOnTheStartDay() throws {
         let viewModel = newExpense(RecordingExpenseAPI(), timeZone: Self.utc)
         viewModel.repeatFrequency = .weekly
