@@ -9,6 +9,13 @@ public class ErrorResponse
     public string? Details { get; set; }
 
     /// <summary>
+    /// The request's id, also sent as the <c>X-Trace-Id</c> header on every response. Quote it to
+    /// find the request's log events in Seq. Set on responses from the exception middleware.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TraceId { get; set; }
+
+    /// <summary>
     /// Set only where a client must tell two refusals with the same status apart. The message
     /// is English prose for people; this is the part a client may branch on. Omitted otherwise.
     /// </summary>

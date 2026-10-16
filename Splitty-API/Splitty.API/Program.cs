@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using Splitty.API;
@@ -30,6 +31,13 @@ DotEnvFile.Load(Directory.GetCurrentDirectory());
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.AddConsole();
+
+// Production only: Coolify sets Seq__ServerUrl and Seq__ApiKey there and nowhere else, so dev
+// and the test host keep logging to the console alone.
+if (!string.IsNullOrWhiteSpace(builder.Configuration["Seq:ServerUrl"]))
+{
+    builder.Logging.AddSeq(builder.Configuration.GetSection("Seq"));
+}
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -160,6 +168,18 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0
             }));
 
+    // Behind Coolify's proxy every anonymous caller shares one address, so anonymous reports
+    // share one bucket too. Enough for a crash wave to be seen, not enough to flood Seq.
+    options.AddPolicy(RateLimitPolicies.ClientReports, context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
     options.OnRejected = async (context, cancellationToken) =>
     {
         if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
@@ -178,6 +198,10 @@ builder.Services.AddRateLimiter(options =>
         }, cancellationToken);
     };
 });
+
+// /healthz/livez answers without running any check; /healthz/readyz runs the "ready" ones.
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<ApplicationDbContext>("database", tags: ["ready"]);
 
 // Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -239,6 +263,13 @@ if (app.Environment.IsDevelopment())
 }
 
 // Middleware
+// First, so every response carries the id, including 401s, 429s and validation problems. It
+// matches the RequestId scope on this request's log events in Seq.
+app.Use((context, next) =>
+{
+    context.Response.Headers["X-Trace-Id"] = context.TraceIdentifier;
+    return next(context);
+});
 app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -248,6 +279,12 @@ app.UseRateLimiter();
 // app.UseHttpsRedirection();
 
 app.MapControllers();
+
+// Liveness restarts a wedged container (the Docker HEALTHCHECK); readiness also needs the
+// database. Plain-text status only, so no exception or connection detail reaches the body.
+var healthz = app.MapGroup("/healthz");
+healthz.MapHealthChecks("/livez", new HealthCheckOptions { Predicate = _ => false });
+healthz.MapHealthChecks("/readyz", new HealthCheckOptions { Predicate = check => check.Tags.Contains("ready") });
 
 // The seed command runs the host: the recomputation it requests is performed by a hosted
 // service, so seeding and returning would queue work no worker is there to do.
