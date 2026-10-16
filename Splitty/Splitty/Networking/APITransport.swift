@@ -56,6 +56,10 @@ struct APITransport: Sendable {
         response: HTTPURLResponse
     ) throws -> T {
         guard 200...299 ~= response.statusCode else {
+            if response.statusCode >= 500 {
+                ClientReporter.reportFailure(endpoint: endpoint, "HTTP \(response.statusCode)"
+                    + (response.value(forHTTPHeaderField: "X-Trace-Id").map { " (\($0))" } ?? ""))
+            }
             throw Self.refusal(status: response.statusCode, data: data)
         }
 
@@ -72,6 +76,7 @@ struct APITransport: Sendable {
                 print("❌ Decoding error for endpoint \(endpoint)")
                 print("📄 JSON Response: \(jsonString)")
             }
+            ClientReporter.reportFailure(endpoint: endpoint, "Cannot decode \(T.self): \(error)")
             throw APIError.decodingError(error)
         }
     }

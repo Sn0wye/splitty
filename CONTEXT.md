@@ -595,6 +595,12 @@ request's log events in Seq.
   because a crash can come before sign-in, and rate-limited to 30 a minute per user, with all
   anonymous callers sharing one bucket. The app reports through the API so that no Seq key
   ships in the binary.
+- **iOS side:** `ClientReporter`, in Release builds only. MetricKit hands over crash and hang
+  diagnostics on a later launch, with unsymbolicated stacks; symbolicate them against the
+  archive's dSYM. `APITransport.decode` also reports 5xx responses, with their `X-Trace-Id`,
+  and decoding failures, once per route per session. Reports are sent anonymously and wait in
+  Application Support until the API accepts them. The privacy manifest declares crash,
+  performance and diagnostic data as not linked to the user.
 
 ## iOS client
 
