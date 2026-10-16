@@ -1,8 +1,12 @@
+using System.Security.Claims;
 using Splitty.DTO.Response;
 
 namespace Splitty.API.Middleware;
 
-public class GlobalExceptionHandlingMiddleware(RequestDelegate next, IHostEnvironment environment)
+public class GlobalExceptionHandlingMiddleware(
+    RequestDelegate next,
+    IHostEnvironment environment,
+    ILogger<GlobalExceptionHandlingMiddleware> logger)
 {
     public async Task InvokeAsync(HttpContext context)
     {
@@ -28,6 +32,14 @@ public class GlobalExceptionHandlingMiddleware(RequestDelegate next, IHostEnviro
         }
         catch (Exception ex)
         {
+            // The mapped exceptions above are refusals the service meant to make; only this one
+            // is a fault, so only this one is logged.
+            logger.LogError(ex, "Unhandled exception on {Method} {Path} for user {UserId} ({TraceId})",
+                context.Request.Method,
+                context.Request.Path.Value,
+                context.User.FindFirstValue(ClaimTypes.NameIdentifier),
+                context.TraceIdentifier);
+
             await WriteAsync(context, 500, "An error occurred while processing your request.", ex);
         }
     }
@@ -42,7 +54,8 @@ public class GlobalExceptionHandlingMiddleware(RequestDelegate next, IHostEnviro
             StatusCode = statusCode,
             Message = message,
             // Stack traces leak internals; development only.
-            Details = environment.IsDevelopment() ? ex.StackTrace : null
+            Details = environment.IsDevelopment() ? ex.StackTrace : null,
+            TraceId = context.TraceIdentifier
         });
     }
 }

@@ -1,4 +1,9 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+# The health check below, and Coolify's, run curl inside the container; the aspnet image ships
+# neither curl nor wget. Installed before USER drops root.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 USER $APP_UID
 WORKDIR /app
 EXPOSE 8080
@@ -25,4 +30,8 @@ RUN dotnet publish "Splitty.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish 
 FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
+# Liveness only: a database outage should not restart a container that cannot fix it.
+# The start period covers migrations, which run before Kestrel listens.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -fsS http://localhost:8080/healthz/livez || exit 1
 ENTRYPOINT ["dotnet", "Splitty.API.dll"]

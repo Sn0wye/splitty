@@ -574,6 +574,28 @@ apart: leaving or removing a member answers 409 with `outstanding_balance` or
 `balances_pending`. Branch on the code, never on `message`, which is English prose. Every
 other error omits the key.
 
+Every response carries an `X-Trace-Id` header, the request's `TraceIdentifier`. Errors from
+the middleware also put it in `ErrorResponse.traceId`. It is the `RequestId` property on that
+request's log events in Seq.
+
+## Health and logs
+
+- `/healthz/livez` runs no check: the process answers. The Dockerfile's `HEALTHCHECK` curls it,
+  so a wedged container restarts and a database outage does not.
+- `/healthz/readyz` also needs Postgres (`AddDbContextCheck`). 503 when a check fails. Point
+  external uptime monitors here.
+- Both are anonymous and answer plain text (`Healthy`, `Unhealthy`), never exception detail.
+- **Seq** receives every `ILogger` event when `Seq__ServerUrl` and `Seq__ApiKey` are set, which
+  is in production only (Coolify). The key is ingest-only and stamps `Application=Splitty`
+  and `Environment=Production`. Unset, the API logs to the console alone.
+- The exception middleware logs only the unmapped 500 case. The mapped 4xx exceptions are
+  refusals the service meant to make.
+- `POST /client-reports` takes crashes, hangs and non-fatal errors from the iOS app and logs
+  them, crashes and hangs at Error, the rest at Warning. It stores nothing. It is anonymous,
+  because a crash can come before sign-in, and rate-limited to 30 a minute per user, with all
+  anonymous callers sharing one bucket. The app reports through the API so that no Seq key
+  ships in the binary.
+
 ## iOS client
 
 SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
