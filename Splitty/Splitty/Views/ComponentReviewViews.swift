@@ -280,51 +280,12 @@ struct ReviewTimelineView: View {
     @State private var showingAddInfo = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            NavigationStack {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(Expense.groupExpensesByDate(expenses)) { day in
-                            TimelineDateHeader(title: day.dateString)
-                            ForEach(day.expenses) { expense in
-                                SwipeToDeleteRow {
-                                } onDelete: {
-                                    pendingDeletion = expense
-                                } content: {
-                                    ExpenseRow(expense: expense, currentUserId: ReviewSamples.currentUserId)
-                                }
-                            }
-                        }
-                    }
-                    .background(Color("card"))
-                    .clipShape(
-                        UnevenRoundedRectangle(
-                            topLeadingRadius: 28,
-                            topTrailingRadius: 28,
-                            style: .continuous
-                        )
-                    )
-                    .frame(maxWidth: 760)
-                    .frame(maxWidth: .infinity)
-                }
-                .background(Color("background"))
-                .navigationTitle("Timeline")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Reset") { expenses = ReviewSamples.timeline() }
-                    }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button(L10n.Common.done, action: onDone)
-                    }
-                }
+        AppTabView(selection: $selectedTab) { tab in
+            if tab == .group {
+                timeline
+            } else {
+                Color("background").ignoresSafeArea()
             }
-            .contentMargins(.bottom, BottomBar.overhang, for: .scrollContent)
-
-            BottomBar(selection: $selectedTab, isAdding: false, isAddEnabled: true) {
-                showingAddInfo = true
-            }
-            .padding(.top, -BottomBar.overhang)
         }
         .background(Color("background").ignoresSafeArea())
         // The group screen's question, answered locally, with the same animated removal,
@@ -351,6 +312,50 @@ struct ReviewTimelineView: View {
             Button(L10n.Common.ok, role: .cancel) {}
         } message: {
             Text("Review the expense form from its own entry in the gallery.")
+        }
+    }
+
+    private var timeline: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(Expense.groupExpensesByDate(expenses)) { day in
+                        TimelineDateHeader(title: day.dateString)
+                        ForEach(day.expenses) { expense in
+                            SwipeToDeleteRow {
+                            } onDelete: {
+                                pendingDeletion = expense
+                            } content: {
+                                ExpenseRow(expense: expense, currentUserId: ReviewSamples.currentUserId)
+                            }
+                        }
+                    }
+                }
+                .background(Color("card"))
+                .clipShape(
+                    UnevenRoundedRectangle(
+                        topLeadingRadius: 28,
+                        topTrailingRadius: 28,
+                        style: .continuous
+                    )
+                )
+                .frame(maxWidth: 760)
+                .frame(maxWidth: .infinity)
+            }
+            .background(Color("background"))
+            .navigationTitle("Timeline")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Reset") { expenses = ReviewSamples.timeline() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(L10n.Common.done, action: onDone)
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    AddExpenseButton { showingAddInfo = true }
+                }
+            }
         }
     }
 

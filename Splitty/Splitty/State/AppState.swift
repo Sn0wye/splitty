@@ -6,7 +6,7 @@
 import Combine
 import SwiftUI
 
-enum AppTab: Int {
+enum AppTab: Int, CaseIterable {
     case groups
     case group
     case people
