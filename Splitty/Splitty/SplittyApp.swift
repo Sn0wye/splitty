@@ -5,6 +5,7 @@ struct SplittyApp: App {
     init() {
         PerformanceSignpost.beginLaunch()
         PerformanceScenarioLaunch.logDeviceConditions()
+        ClientReporter.start()
     }
 
     var body: some Scene {
