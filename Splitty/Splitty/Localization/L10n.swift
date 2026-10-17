@@ -544,11 +544,17 @@ enum L10n {
         static var amounts: String { text("split.amounts", default: "Amounts") }
         static var percentages: String { text("split.percentages", default: "Percentages") }
         static var between: String { text("split.between", default: "Split between") }
-        static var blankHint: String {
-            text(
-                "split.blank_hint",
-                default: "Everything is assigned. A blank field is someone left out."
-            )
+        static var selectAll: String { text("split.select_all", default: "All") }
+        static var selectNone: String { text("split.select_none", default: "None") }
+        static var allAssigned: String { text("split.all_assigned", default: "All assigned") }
+        static func each(_ amount: String) -> String {
+            format("split.each", default: "%@ each", amount)
+        }
+        static func people(_ count: Int) -> String {
+            text("split.people", default: "\(count) people")
+        }
+        static func assignedOf(_ assigned: String, _ total: String) -> String {
+            format("split.assigned_of", default: "%1$@ of %2$@", assigned, total)
         }
         static var you: String { text("split.you", default: "you") }
         static var someoneElse: String { text("split.someone_else", default: "someone else") }
