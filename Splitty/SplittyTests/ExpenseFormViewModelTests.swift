@@ -262,6 +262,16 @@ struct ExpenseFormViewModelTests {
         #expect(viewModel.splits().map(\.userId) == [1, 3])
     }
 
+    @Test func allAndNoneTickEveryoneOrNoOne() {
+        let viewModel = newExpense()
+        #expect(viewModel.includesEveryParticipant)
+        viewModel.setEveryParticipant(included: false)
+        #expect(viewModel.configuration.mode == .equal(participants: []))
+        #expect(viewModel.includesEveryParticipant == false)
+        viewModel.setEveryParticipant(included: true)
+        #expect(viewModel.configuration.mode == .equal(participants: [1, 2, 3]))
+    }
+
     // The checkbox set is a draft like any other: unchecking someone, wandering through
     // the other two modes and coming back finds the same boxes ticked.
     @Test func keepsTheCheckboxSetAcrossASwitch() {

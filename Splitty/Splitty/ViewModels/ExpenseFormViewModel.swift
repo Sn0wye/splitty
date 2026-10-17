@@ -353,6 +353,22 @@ class ExpenseFormViewModel: ObservableObject {
         }
     }
 
+    /// Whether every member who can take a share is ticked on an equal split.
+    var includesEveryParticipant: Bool {
+        guard case .equal(let participants) = configuration.mode else { return false }
+        return participantChoices.allSatisfy { participants.contains($0.userId) }
+    }
+
+    /// The header's All / None: ticks everyone who can take a share, or no one.
+    func setEveryParticipant(included: Bool) {
+        PerformanceSignpost.around(.splitEdit) {
+            guard case .equal = configuration.mode else { return }
+            let participants: Set<Int> = included ? Set(participantChoices.map(\.userId)) : []
+            equalParticipants = participants
+            configuration.mode = .equal(participants: participants)
+        }
+    }
+
     /// A blank field is not a participant, which is why the row is removed rather than set
     /// to zero: zero would be a share the API refuses, blank is someone left out.
     func setCustomText(_ text: String, for userId: Int) {
