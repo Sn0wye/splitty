@@ -1,0 +1,1832 @@
+---
+/**
+ * The product, told as the four things a group does: log, split, simplify, settle. A sticky
+ * phone plays each step as its text reaches the middle of the screen.
+ *
+ * The numbers are one consistent group. Ana paid the apartment (480), Caio the dinner (120),
+ * Bruno the taxi (60), each split four ways. That leaves six pairwise debts, which net down
+ * to three payments, all to Ana. You owe her 165.
+ */
+import Coin from "./Coin.astro";
+import Icon from "./PhoneIcon.astro";
+import { currency, fill, formatMoney, htmlLang, t, type Locale } from "../i18n";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const copy = t(locale);
+const p = copy.phone;
+const money = (value: number) => formatMoney(locale, value);
+// The keypad sets the symbol after the digits, as `AmountDisplay` does.
+const symbol =
+  new Intl.NumberFormat(htmlLang[locale], { style: "currency", currency: currency[locale] })
+    .formatToParts(0)
+    .find((part) => part.type === "currency")?.value ?? "$";
+
+const members = [
+  { id: "you", name: p.you, initial: p.you[0], tint: "#3f3f46" },
+  { id: "ana", name: "Ana", initial: "A", tint: "#6d28d9" },
+  { id: "bruno", name: "Bruno", initial: "B", tint: "#0f766e" },
+  { id: "caio", name: "Caio", initial: "C", tint: "#b45309" },
+];
+
+// Shares of the 120 dinner per split mode, in member order.
+const splits = {
+  equally: [30, 30, 30, 30],
+  amounts: [25, 30, 20, 45],
+  percentages: [24, 24, 24, 48],
+};
+const percents = [20, 20, 20, 40];
+
+// Graph nodes on a 300×260 board and the debts between them, before and after netting.
+const nodes = {
+  ana: { x: 150, y: 34 },
+  you: { x: 40, y: 150 },
+  bruno: { x: 260, y: 150 },
+  caio: { x: 150, y: 228 },
+};
+const edges = [
+  { from: "you", to: "ana", before: 120, after: 165, keep: true, at: 0.4 },
+  { from: "bruno", to: "ana", before: 105, after: 105, keep: true, at: 0.4 },
+  // Labelled nearer Ana, clear of the You→Bruno edge it crosses.
+  { from: "caio", to: "ana", before: 90, after: 45, keep: true, at: 0.72 },
+  { from: "you", to: "caio", before: 30, keep: false },
+  { from: "you", to: "bruno", before: 15, keep: false },
+  { from: "bruno", to: "caio", before: 15, keep: false },
+] as const;
+
+function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
+  const a = nodes[from];
+  const b = nodes[to];
+  const len = Math.hypot(b.x - a.x, b.y - a.y);
+  // Stop short of each avatar (radius 22) and leave room for the arrowhead.
+  const ux = (b.x - a.x) / len;
+  const uy = (b.y - a.y) / len;
+  const start = { x: a.x + ux * 26, y: a.y + uy * 26 };
+  const end = { x: b.x - ux * 30, y: b.y - uy * 30 };
+  return {
+    d: `M${start.x.toFixed(1)} ${start.y.toFixed(1)}L${end.x.toFixed(1)} ${end.y.toFixed(1)}`,
+    mid: { x: start.x + (end.x - start.x) * at, y: start.y + (end.y - start.y) * at },
+  };
+}
+---
+
+<section
+  class="story wrap"
+  data-story
+  data-lang={htmlLang[locale]}
+  data-currency={currency[locale]}
+  data-owe-template={p.oweOverall}
+  data-description={p.expenses.dinner}
+>
+  <div class="steps">
+    {
+      copy.story.steps.map((step, index) => (
+        <article class="step" data-step={index}>
+          <div class="step-text">
+            <h2>{step.title}</h2>
+            <p>{step.body}</p>
+          </div>
+        </article>
+      ))
+    }
+  </div>
+
+  <div class="stage" aria-hidden="true">
+    <div class="phone">
+      <div class="island"></div>
+
+      <!-- Log: the group screen, then the expense sheet over it -->
+      <div class="screen" data-screen="0">
+        <div class="pt">
+          <div class="nav">
+            <span class="glass round"><Icon name="back" /></span>
+            <span class="nav-trailing">
+              <span class="glass round"><Icon name="gear" /></span>
+              <span class="add" data-add><Icon name="plus" /></span>
+            </span>
+          </div>
+          <div class="group-head">
+            <h3 class="large-title">{p.group}</h3>
+            <span class="faces">
+              {members.map((member) => <span class="avatar" style={`--tint:${member.tint}`}>{member.initial}</span>)}
+            </span>
+            <p class="overall" data-owe>{fill(p.oweOverall, { amount: money(135) })}</p>
+          </div>
+          <div class="actions">
+            <span class="action primary">{p.settleUp}</span>
+            <span class="action">{p.balances}</span>
+            <span class="action">{p.charts}</span>
+            <span class="action">{p.export}</span>
+          </div>
+          <div class="seg section-picker">
+            <span class="seg-thumb" style="left:2px;width:calc(50% - 2px)"></span>
+            <span class="seg-item" data-on>{p.expensesTab}</span>
+            <span class="seg-item">{p.plansTab}</span>
+          </div>
+          <div class="timeline">
+            <div class="inserted" data-inserted>
+              <h4 class="day">{p.today}</h4>
+              <div class="row">
+                <span class="glyph food"><Icon name="food" /></span>
+                <span class="what">
+                  <strong>{p.expenses.dinner}</strong>
+                  <span>{fill(p.paid, { name: "Caio", amount: money(120) })}</span>
+                </span>
+                <span class="share"><span>{p.youBorrowed}</span><strong>{money(30)}</strong></span>
+              </div>
+            </div>
+            <h4 class="day">{p.yesterday}</h4>
+            <div class="row">
+              <span class="glyph transport"><Icon name="car" /></span>
+              <span class="what">
+                <strong>{p.expenses.taxi}</strong>
+                <span>{fill(p.paid, { name: "Bruno", amount: money(60) })}</span>
+              </span>
+              <span class="share"><span>{p.youBorrowed}</span><strong>{money(15)}</strong></span>
+            </div>
+            <div class="row">
+              <span class="glyph home"><Icon name="house" /></span>
+              <span class="what">
+                <strong>{p.expenses.apartment}</strong>
+                <span>{fill(p.paid, { name: "Ana", amount: money(480) })}</span>
+              </span>
+              <span class="share"><span>{p.youBorrowed}</span><strong>{money(120)}</strong></span>
+            </div>
+          </div>
+
+          <div class="dim" data-dim></div>
+          <div class="sheet" data-sheet>
+            <div class="pages" data-pages>
+              <!-- Amount: the keypad -->
+              <div class="page">
+                <div class="nav"><span class="glass capsule">{p.cancel}</span></div>
+                <div class="amount">
+                  <span class="digits" data-digits><span>0</span></span>
+                  <span class="symbol">{symbol}</span>
+                </div>
+                <span class="primary-button" data-next>{p.next}</span>
+                <div class="keys">
+                  {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0"].map((key) => <span data-key={key}>{key}</span>)}
+                  <span><Icon name="back" /></span>
+                </div>
+              </div>
+              <!-- Details: what it was for, and how it splits -->
+              <div class="page">
+                <div class="nav">
+                  <span class="glass round"><Icon name="back" /></span>
+                  <span class="nav-title">{money(120)}</span>
+                </div>
+                <div class="form">
+                  <div class="field">
+                    <Icon name="lines" />
+                    <span class="placeholder" data-placeholder>{p.whatFor}</span>
+                    <span class="typed" data-desc></span>
+                  </div>
+                  <div class="chips">
+                    <span class="chip-row">
+                      <span class="chip" data-chip><Icon name="food" />{p.diningOut}<span class="tick"><Icon name="check" /></span></span>
+                      <span class="chip"><Icon name="cart" />{p.groceries}</span>
+                      <span class="chip"><Icon name="games" />{p.games}</span>
+                    </span>
+                    <span class="chip-list"><Icon name="list" /></span>
+                  </div>
+                  <div class="field link"><Icon name="people" /><span>{p.summary.equally}</span><Icon name="chevron" /></div>
+                  <div class="field link"><Icon name="calendar" /><span>{p.today}</span><Icon name="chevron" /></div>
+                </div>
+                <span class="primary-button ready" data-save>{p.save}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Split: the expense's split screen, cycling through its three modes -->
+      <div class="screen" data-screen="1" data-mode="equally">
+        <div class="pt split">
+          <div class="nav">
+            <span class="glass round"><Icon name="back" /></span>
+            <span class="nav-title">{p.splitTitle}</span>
+            <span class="glass capsule strong">{p.done}</span>
+          </div>
+          <div class="split-stack">
+            <div class="total">
+              <strong>{money(120)}</strong>
+              <span data-caption data-each={p.each} data-people={p.people}>
+                {fill(p.each, { amount: money(30) })} · {fill(p.people, { count: "4" })}
+              </span>
+            </div>
+            <div class="payers">
+              <h4 class="section-label">{p.paidBy}</h4>
+              <div class="payer-row">
+                {
+                  members.map((member) => (
+                    <span class="payer" data-on={member.id === "caio" ? "" : undefined}>
+                      <span class="ring"><span class="face large">{member.initial}</span></span>
+                      <span>{member.name}</span>
+                    </span>
+                  ))
+                }
+              </div>
+            </div>
+            <div class="seg" data-segmented>
+              <span class="seg-thumb" data-thumb></span>
+              <button type="button" tabindex="-1" class="seg-item" data-pick="equally" data-on>{p.equally}</button>
+              <button type="button" tabindex="-1" class="seg-item" data-pick="amounts">{p.amounts}</button>
+              <button type="button" tabindex="-1" class="seg-item" data-pick="percentages">{p.percentages}</button>
+            </div>
+            <div data-split-body>
+              <div class="section-head">
+                <h4 class="section-label">
+                  <span data-for="equally">{p.splitBetween}</span>
+                  <span data-for="amounts">{p.amounts}</span>
+                  <span data-for="percentages">{p.percentages}</span>
+                </h4>
+                <button
+                  type="button"
+                  tabindex="-1"
+                  class="select-all"
+                  data-for="equally"
+                  data-select-all
+                  data-all={p.selectAll}
+                  data-none={p.selectNone}>{p.selectNone}</button
+                >
+              </div>
+              <ul class="members">
+                {
+                  members.map((member, index) => (
+                    <li class="member" data-member>
+                      <span class="face">{member.initial}</span>
+                      <span class="who">
+                        <span>{member.name}</span>
+                        <span class="subline" data-for="percentages">{money(splits.percentages[index])}</span>
+                      </span>
+                      <span class="portion" data-for="equally" data-share>{money(splits.equally[index])}</span>
+                      <span class="mark" data-for="equally"><Icon name="checkFill" /><Icon name="circle" /></span>
+                      <span class="entry" data-for="amounts">
+                        <span class="affix">{symbol}</span><span class="digits-field wide">{splits.amounts[index]}</span>
+                      </span>
+                      <span class="entry" data-for="percentages">
+                        <span class="digits-field">{percents[index]}</span><span class="affix">%</span>
+                      </span>
+                    </li>
+                  ))
+                }
+              </ul>
+            </div>
+          </div>
+          <div class="assigned" data-for="amounts percentages" data-assigned>
+            <span class="track"><span class="fill" data-assigned-fill></span></span>
+            <span class="assigned-text">
+              <span data-for="amounts">{fill(p.assignedOf, { assigned: money(120), total: money(120) })}</span>
+              <span data-for="percentages">100%</span>
+              <strong>{p.allAssigned}</strong>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simplify: six debts net down to three -->
+      <div class="screen graph" data-screen="2">
+        <div class="bar"><span class="bar-title">{p.balances}</span></div>
+        <p class="count">
+          <span data-count-before>{p.payments.before}</span>
+          <span data-count-after>{p.payments.after}</span>
+        </p>
+        <svg viewBox="0 0 300 260" class="board">
+          <defs>
+            <marker id="head" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M1 1.5 8 5 1 8.5" fill="none" stroke="var(--negative)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+            </marker>
+          </defs>
+          {
+            edges.map((edge, index) => {
+              // Wide enough for the longest value this label will count through.
+              const pillWidth = Math.max(54, Math.max(...[edge.before, "after" in edge ? edge.after : 0].map((v) => money(v).length)) * 6.4 + 14);
+              const { d, mid } = edgePath(edge.from, edge.to, "at" in edge ? edge.at : undefined);
+              return (
+                <g class="edge" data-edge={index} data-keep={edge.keep ? "" : undefined}>
+                  <path d={d} pathLength="1" marker-end="url(#head)" />
+                  <g transform={`translate(${mid.x.toFixed(1)} ${mid.y.toFixed(1)})`}>
+                    {/* Its own group, so scaling the pill never replaces the translate above. */}
+                    <g class="pill">
+                      <rect x={-pillWidth / 2} y="-11" width={pillWidth} height="22" rx="11" />
+                      <text
+                        text-anchor="middle"
+                        dy="4.5"
+                        data-before={edge.before}
+                        data-after={"after" in edge ? edge.after : undefined}
+                      >
+                        {money(edge.before)}
+                      </text>
+                    </g>
+                  </g>
+                </g>
+              );
+            })
+          }
+          {
+            members.map((member) => {
+              const node = nodes[member.id as keyof typeof nodes];
+              return (
+                <g transform={`translate(${node.x} ${node.y})`} class="node">
+                  <circle r="21" style={`fill:${member.tint}`} />
+                  <text text-anchor="middle" dy="6">{member.initial}</text>
+                </g>
+              );
+            })
+          }
+        </svg>
+        <ul class="owed" data-owed>
+          {
+            edges
+              .filter((edge) => edge.keep)
+              .map((edge) => {
+                const from = members.find((m) => m.id === edge.from)!;
+                // Every kept edge carries its netted amount.
+                const amount = money("after" in edge ? edge.after : 0);
+                return (
+                  <li>
+                    <span class="avatar" style={`--tint:${from.tint}`}>{from.initial}</span>
+                    <span>
+                      {from.id === "you"
+                        ? fill(p.youOwePeer, { name: "Ana", amount })
+                        : fill(p.peerOwesPeer, { from: from.name, to: "Ana", amount })}
+                    </span>
+                  </li>
+                );
+              })
+          }
+        </ul>
+      </div>
+
+      <!-- Settle: pay, and the halves meet -->
+      <div class="screen settle" data-screen="3">
+        <div class="bar"><span class="bar-title">{p.group}</span></div>
+        <div class="settle-card" data-settle-card>
+          <span class="avatar large" style={`--tint:${members[1].tint}`}>A</span>
+          <p>{fill(p.youOwePeer, { name: "Ana", amount: money(165) })}</p>
+          <span class="pay" data-pay>{fill(p.pay, { amount: money(165) })}</span>
+        </div>
+        <div class="settled" data-settled>
+          <Coin separation={1} size={180} id="settle-coin" />
+          <p>{p.settled}</p>
+        </div>
+      </div>
+    </div>
+    <!-- Narrow screens only: the current step's text, under the pinned phone. -->
+    <div class="caption">
+      {
+        copy.story.steps.map((step, index) => (
+          <div data-caption={index}>
+            <h2>{step.title}</h2>
+            <p>{step.body}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<script>
+  import { animate, inView, stagger } from "motion";
+  import { Coin, countTo, springs, wait } from "../scripts/motion";
+
+  const story = document.querySelector<HTMLElement>("[data-story]")!;
+  const lang = story.dataset.lang!;
+  const money = new Intl.NumberFormat(lang, { style: "currency", currency: story.dataset.currency });
+  const fmt = (value: number) => money.format(value);
+  const screens = [...story.querySelectorAll<HTMLElement>("[data-screen]")];
+
+  // Each step's playback checks this token after every pause and stops if a newer step
+  // took over, so scrolling quickly never leaves two sequences fighting over the phone.
+  let token = 0;
+  let current = -1;
+
+  // Every animation a step starts, so the next step can stop them all. A stopped
+  // animation never writes its final frame over the reset that follows.
+  type Playback = { stop(): void };
+  const running = new Set<Playback>();
+  function track<T extends Playback>(playback: T): T {
+    running.add(playback);
+    return playback;
+  }
+  function stopAll() {
+    running.forEach((playback) => playback.stop());
+    running.clear();
+  }
+
+  // Resets go through Motion rather than `style`: Motion animates from the value it last
+  // wrote, so a reset it never saw would be undone by the next animation.
+  type Target = Parameters<typeof animate>[0];
+  const set = (el: Target, values: Record<string, string | number>) =>
+    animate(el as HTMLElement, values, { duration: 0 });
+  const play = (...args: Parameters<typeof animate>) => track(animate(...args));
+
+  function show(index: number) {
+    screens.forEach((screen, i) => {
+      if (i === index) {
+        screen.dataset.active = "";
+        animate(screen, { opacity: [0, 1], scale: [0.97, 1] }, { ...springs.snappy, opacity: { duration: 0.25 } });
+      } else {
+        // Every other screen, not only the last active one: the first screen rests
+        // visible, and landing mid-story never activates it.
+        delete screen.dataset.active;
+        animate(screen, { opacity: 0 }, { duration: 0.15 });
+      }
+    });
+  }
+
+  /** A tap: the press the app's `.pressable` style gives a control. */
+  const press = (el: Element, scale = 0.94) =>
+    play(el, { scale: [1, scale, 1] }, { duration: 0.3, ease: "easeOut" });
+
+  // Log ------------------------------------------------------------------------------------
+
+  const logScreen = screens[0];
+  const addButton = logScreen.querySelector<HTMLElement>("[data-add]")!;
+  const dim = logScreen.querySelector<HTMLElement>("[data-dim]")!;
+  const sheet = logScreen.querySelector<HTMLElement>("[data-sheet]")!;
+  const pages = logScreen.querySelector<HTMLElement>("[data-pages]")!;
+  const digits = logScreen.querySelector<HTMLElement>("[data-digits]")!;
+  const next = logScreen.querySelector<HTMLElement>("[data-next]")!;
+  const placeholder = logScreen.querySelector<HTMLElement>("[data-placeholder]")!;
+  const desc = logScreen.querySelector<HTMLElement>("[data-desc]")!;
+  const chip = logScreen.querySelector<HTMLElement>("[data-chip]")!;
+  const save = logScreen.querySelector<HTMLElement>("[data-save]")!;
+  const inserted = logScreen.querySelector<HTMLElement>("[data-inserted]")!;
+  const owe = logScreen.querySelector<HTMLElement>("[data-owe]")!;
+  const oweTemplate = story.dataset.oweTemplate!;
+  const oweText = (value: number) => oweTemplate.replace("{amount}", fmt(value));
+  const description = story.dataset.description!;
+
+  function resetLog() {
+    set(sheet, { y: "100%" });
+    set(dim, { opacity: 0 });
+    set(pages, { x: "0%" });
+    set(inserted, { height: 0, opacity: 0 });
+    digits.innerHTML = "<span>0</span>";
+    next.classList.remove("ready");
+    placeholder.hidden = false;
+    desc.textContent = "";
+    chip.removeAttribute("data-on");
+    owe.textContent = oweText(135);
+  }
+
+  /** `AmountDisplay`: each new digit pushes in from below through a blur. */
+  function typeDigit(typed: string) {
+    if (typed.length === 1) digits.innerHTML = "";
+    const glyph = document.createElement("span");
+    glyph.textContent = typed.at(-1)!;
+    digits.append(glyph);
+    play(glyph, { y: ["0.5em", 0], opacity: [0, 1], filter: ["blur(6px)", "blur(0px)"] }, springs.amount);
+  }
+
+  async function playLog(run: number) {
+    resetLog();
+    const live = () => run === token;
+
+    await wait(700);
+    if (!live()) return;
+    press(addButton, 0.9);
+    await wait(180);
+    if (!live()) return;
+    play(dim, { opacity: [0, 1] }, { duration: 0.3 });
+    await play(sheet, { y: ["100%", "0%"] }, springs.snappy);
+
+    let typed = "";
+    for (const digit of ["1", "2", "0"]) {
+      await wait(digit === "1" ? 260 : 300);
+      if (!live()) return;
+      const key = sheet.querySelector<HTMLElement>(`[data-key="${digit}"]`)!;
+      play(key, { scale: [1, 0.86, 1], opacity: [1, 0.5, 1] }, { duration: 0.26 });
+      typed += digit;
+      typeDigit(typed);
+      if (typed.length === 1) next.classList.add("ready");
+    }
+
+    await wait(450);
+    if (!live()) return;
+    press(next, 0.97);
+    await wait(160);
+    if (!live()) return;
+    await play(pages, { x: ["0%", "-50%"] }, springs.snappy);
+
+    // The description, typed; then the category it suggests.
+    await wait(200);
+    placeholder.hidden = true;
+    for (let i = 1; i <= description.length; i++) {
+      if (!live()) return;
+      desc.textContent = description.slice(0, i);
+      await wait(32);
+    }
+    await wait(250);
+    if (!live()) return;
+    press(chip, 0.96);
+    chip.dataset.on = "";
+
+    await wait(700);
+    if (!live()) return;
+    press(save, 0.97);
+    await wait(180);
+    if (!live()) return;
+    play(dim, { opacity: [1, 0] }, { duration: 0.3 });
+    await play(sheet, { y: ["0%", "100%"] }, springs.snappy);
+    if (!live()) return;
+
+    const height = inserted.scrollHeight;
+    play(inserted, { height: [0, height], opacity: [0, 1] }, { ...springs.cut, opacity: { duration: 0.3, delay: 0.08 } });
+    await wait(120);
+    if (!live()) return;
+    track(countTo(owe, 135, 165, oweText));
+  }
+
+  // Split ----------------------------------------------------------------------------------
+
+  const modes = ["equally", "amounts", "percentages"] as const;
+  type Mode = (typeof modes)[number];
+  const splitScreen = screens[1];
+  const segmented = splitScreen.querySelector<HTMLElement>("[data-segmented]")!;
+  const thumb = splitScreen.querySelector<HTMLElement>("[data-thumb]")!;
+  const splitBody = splitScreen.querySelector<HTMLElement>("[data-split-body]")!;
+  const caption = splitScreen.querySelector<HTMLElement>("[data-caption]")!;
+  const selectAll = splitScreen.querySelector<HTMLElement>("[data-select-all]")!;
+  const memberRows = [...splitScreen.querySelectorAll<HTMLElement>("[data-member]")];
+  const assigned = splitScreen.querySelector<HTMLElement>("[data-assigned]")!;
+  const assignedFill = splitScreen.querySelector<HTMLElement>("[data-assigned-fill]")!;
+  const dinner = 120;
+  let userPicked = false;
+
+  /** The caption under the total: what each pays on an equal split, and how many share it. */
+  function writeCaption() {
+    const included = memberRows.filter((row) => !row.hasAttribute("data-out")).length;
+    const people = caption.dataset.people!.replace("{count}", String(included));
+    caption.textContent =
+      splitScreen.dataset.mode === "equally" && included > 0
+        ? `${caption.dataset.each!.replace("{amount}", fmt(dinner / included))} · ${people}`
+        : people;
+  }
+
+  /** Ticks or unticks a member of the equal split; the others' shares roll to the new value. */
+  function setIncluded(row: HTMLElement, included: boolean, animated = true) {
+    row.toggleAttribute("data-out", !included);
+    const rows = memberRows.filter((r) => !r.hasAttribute("data-out"));
+    selectAll.textContent = rows.length === memberRows.length ? selectAll.dataset.none! : selectAll.dataset.all!;
+    rows.forEach((r) => {
+      const share = r.querySelector<HTMLElement>("[data-share]")!;
+      share.textContent = fmt(dinner / rows.length);
+      // `.contentTransition(.numericText())`, approximated: the new value blurs in.
+      if (animated) play(share, { opacity: [0, 1], y: [-6, 0], filter: ["blur(3px)", "blur(0px)"] }, { duration: 0.25, ease: "easeOut" });
+    });
+    writeCaption();
+  }
+
+  function setMode(mode: Mode, animated = true) {
+    const button = segmented.querySelector<HTMLElement>(`[data-pick="${mode}"]`)!;
+    segmented.querySelectorAll("[data-pick]").forEach((b) => b.toggleAttribute("data-on", b === button));
+    const box = { x: button.offsetLeft, width: button.offsetWidth };
+    if (animated) play(thumb, { x: box.x, width: box.width }, springs.snappy);
+    else set(thumb, { x: box.x, width: box.width });
+    const from = splitScreen.dataset.mode;
+    if (from === mode) return;
+    splitScreen.dataset.mode = mode;
+    writeCaption();
+    if (!animated) return;
+    // The rows change kind with the mode, as the app's list does: a quick cross-fade.
+    play(splitBody, { opacity: [0.2, 1], y: [4, 0] }, { duration: 0.22, ease: "easeOut" });
+    // The bar arrives with the first typed mode and fills to what is assigned.
+    if (from === "equally") {
+      play(assigned, { opacity: [0, 1], y: [8, 0] }, { duration: 0.25, ease: "easeOut" });
+      play(assignedFill, { scaleX: [0, 1] }, springs.snappy);
+    }
+  }
+
+  segmented.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement).closest<HTMLElement>("[data-pick]");
+    if (!button) return;
+    userPicked = true;
+    setMode(button.dataset.pick as Mode);
+  });
+
+  splitBody.addEventListener("click", (event) => {
+    if (splitScreen.dataset.mode !== "equally") return;
+    const target = event.target as HTMLElement;
+    if (target.closest("[data-select-all]")) {
+      userPicked = true;
+      const everyone = memberRows.every((row) => !row.hasAttribute("data-out"));
+      memberRows.forEach((row) => row.toggleAttribute("data-out", everyone));
+      setIncluded(memberRows[0], !everyone);
+      return;
+    }
+    const row = target.closest<HTMLElement>("[data-member]");
+    if (!row) return;
+    userPicked = true;
+    setIncluded(row, row.hasAttribute("data-out"));
+  });
+
+  function resetSplit() {
+    memberRows.forEach((row) => row.removeAttribute("data-out"));
+    setIncluded(memberRows[0], true, false);
+    setMode("equally", false);
+  }
+
+  async function playSplit(run: number) {
+    userPicked = false;
+    resetSplit();
+    const bruno = memberRows[2];
+    const stopped = () => run !== token || userPicked;
+    while (!stopped()) {
+      // Bruno sits this one out, then is back in.
+      await wait(1400);
+      if (stopped()) return;
+      press(bruno, 0.98);
+      setIncluded(bruno, false);
+      await wait(1500);
+      if (stopped()) return;
+      press(bruno, 0.98);
+      setIncluded(bruno, true);
+      for (const mode of ["amounts", "percentages", "equally"] as const) {
+        await wait(mode === "amounts" ? 1300 : 2200);
+        if (stopped()) return;
+        setMode(mode);
+      }
+    }
+  }
+
+  // Simplify -------------------------------------------------------------------------------
+
+  const edgeEls = [...story.querySelectorAll<SVGGElement>("[data-edge]")];
+  const countBefore = story.querySelector<HTMLElement>("[data-count-before]")!;
+  const countAfter = story.querySelector<HTMLElement>("[data-count-after]")!;
+
+  const owed = [...story.querySelectorAll<HTMLElement>("[data-owed] li")];
+
+  function resetGraph() {
+    set(owed, { opacity: 0, y: 0 });
+    edgeEls.forEach((edge) => {
+      set(edge, { opacity: 1 });
+      set(edge.querySelector("path")!, { strokeDashoffset: 0 });
+      set(edge.querySelector(".pill")!, { scale: 1 });
+      const label = edge.querySelector<SVGTextElement>("text")!;
+      label.textContent = fmt(Number(label.dataset.before));
+    });
+    set(countBefore, { opacity: 1, y: 0 });
+    set(countAfter, { opacity: 0, y: 0 });
+  }
+
+  async function playSimplify(run: number) {
+    resetGraph();
+    await wait(1100);
+    if (run !== token) return;
+    // The debts that net away retract into their source, then the rest take the totals.
+    edgeEls
+      .filter((edge) => !edge.hasAttribute("data-keep"))
+      .forEach((edge, i) => {
+        play(edge.querySelector("path")!, { strokeDashoffset: [0, 1] }, { ...springs.snappy, delay: i * 0.06 });
+        play(edge, { opacity: [1, 0] }, { duration: 0.3, delay: 0.12 + i * 0.06 });
+      });
+    play(countBefore, { opacity: [1, 0], y: [0, -10] }, { duration: 0.2 });
+    play(countAfter, { opacity: [0, 1], y: [10, 0] }, { ...springs.snappy, delay: 0.1 });
+    await wait(280);
+    if (run !== token) return;
+    edgeEls
+      .filter((edge) => edge.hasAttribute("data-keep"))
+      .forEach((edge) => {
+        const label = edge.querySelector<SVGTextElement>("text")!;
+        const from = Number(label.dataset.before);
+        const to = Number(label.dataset.after);
+        if (from !== to) {
+          track(countTo(label, from, to, fmt));
+          play(label.parentElement!, { scale: [1, 1.15, 1] }, { duration: 0.4 });
+        }
+      });
+    play(owed, { opacity: [0, 1], y: [12, 0] }, { ...springs.snappy, delay: stagger(0.06, { startDelay: 0.2 }) });
+  }
+
+  // Settle ---------------------------------------------------------------------------------
+
+  const settleCard = story.querySelector<HTMLElement>("[data-settle-card]")!;
+  const pay = story.querySelector<HTMLElement>("[data-pay]")!;
+  const settled = story.querySelector<HTMLElement>("[data-settled]")!;
+  const settleCoin = new Coin(story.querySelector<SVGSVGElement>("#settle-coin")!);
+
+  async function playSettle(run: number) {
+    set(settleCard, { opacity: 1, scale: 1 });
+    set(settled, { opacity: 0 });
+    settled.removeAttribute("data-done");
+    settleCoin.render(1);
+
+    await wait(900);
+    if (run !== token) return;
+    await press(pay, 0.96);
+    if (run !== token) return;
+    play(settleCard, { opacity: [1, 0], scale: [1, 0.96] }, { duration: 0.2 });
+    play(settled, { opacity: [0, 1] }, { duration: 0.25 });
+    await wait(200);
+    if (run !== token) return;
+    // `SettledCoin`: a beat, then the halves meet and the coin turns green.
+    settled.dataset.done = "";
+    track(settleCoin.close());
+  }
+
+  const plays = [playLog, playSplit, playSimplify, playSettle];
+
+  const captions = [...story.querySelectorAll<HTMLElement>("[data-caption]")];
+
+  function activate(index: number) {
+    if (index === current) return;
+    current = index;
+    captions.forEach((caption, i) => {
+      const on = i === index;
+      if (on === caption.hasAttribute("data-on")) return;
+      caption.toggleAttribute("data-on", on);
+      if (on) animate(caption, { opacity: [0, 1], y: [8, 0] }, { ...springs.snappy, opacity: { duration: 0.25 } });
+      else animate(caption, { opacity: 0 }, { duration: 0.12 });
+    });
+    token += 1;
+    stopAll();
+    show(index);
+    plays[index](token);
+  }
+
+  // A step is current while its text crosses the middle band of the viewport. The
+  // callback returns a (no-op) leave handler: without one, `inView` stops watching the
+  // element after its first entry, and scrolling back would never replay the step.
+  story.querySelectorAll<HTMLElement>("[data-step]").forEach((step) => {
+    inView(
+      step,
+      () => {
+        activate(Number(step.dataset.step));
+        return () => {};
+      },
+      { margin: "-45% 0px -45% 0px" },
+    );
+  });
+
+  // Leaving the story entirely resets it, so coming back plays the current step again.
+  inView(story, () => () => {
+    current = -1;
+  });
+
+  resetLog();
+  resetSplit();
+</script>
+
+<style>
+  .story {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: clamp(2rem, 6vw, 6rem);
+    padding-block: clamp(3rem, 8vw, 7rem);
+  }
+
+  .step {
+    min-height: 85svh;
+    display: flex;
+    align-items: center;
+  }
+
+  .step-text {
+    max-width: 30rem;
+  }
+
+  .step:first-child {
+    min-height: 70svh;
+    align-items: flex-start;
+    padding-top: 12svh;
+  }
+
+  /* Long enough that the phone stays pinned while the coin comes together. */
+  .step:last-child {
+    min-height: 110svh;
+  }
+
+  h2 {
+    font-size: var(--step-3);
+    letter-spacing: -0.03em;
+  }
+
+  .step p {
+    margin-top: 1rem;
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--text-muted);
+  }
+
+  .stage {
+    position: sticky;
+    top: calc(50svh - 23rem);
+    height: 46rem;
+    display: grid;
+    place-items: center;
+  }
+
+  /* The phone, at roughly an iPhone's points so the drawn UI keeps app proportions. */
+  .phone {
+    --pad: 1rem;
+    /* The drawn app is laid out in iPhone 17 points (402 × 874) and scaled to this. */
+    --k: 0.79;
+    position: relative;
+    width: calc(402px * var(--k) + 1.25rem);
+    height: calc(874px * var(--k) + 1.25rem);
+    border-radius: 3.25rem;
+    background: var(--ground);
+    border: 0.625rem solid #1f1f23;
+    box-shadow:
+      0 0 0 1px #3f3f46,
+      0 2.5rem 5rem -1.5rem rgb(0 0 0 / 0.8),
+      0 0 8rem -2rem rgb(242 84 45 / 0.12);
+    overflow: hidden;
+    font-size: 0.9375rem;
+    line-height: 1.3;
+    user-select: none;
+  }
+
+  .island {
+    position: absolute;
+    top: 0.625rem;
+    left: 50%;
+    width: 6.5rem;
+    height: 1.875rem;
+    translate: -50% 0;
+    border-radius: 999px;
+    background: #000;
+    z-index: 5;
+  }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    padding: 3.5rem var(--pad) var(--pad);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .screen[data-active] {
+    pointer-events: auto;
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    height: 2.75rem;
+  }
+
+  .bar-title {
+    font-weight: 650;
+    font-size: 1.0625rem;
+  }
+
+  /* The first screen's resting state, before its step has played. */
+  .screen[data-screen="0"] {
+    opacity: 1;
+  }
+
+  /* Graph and settle screens */
+  .avatar {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--tint);
+    font-weight: 700;
+    font-size: 0.875rem;
+  }
+
+  .avatar.large {
+    width: 4rem;
+    height: 4rem;
+    font-size: 1.5rem;
+  }
+
+  /* The app's own screens, in points: sizes below are SwiftUI's (body 17, headline 17
+     semibold, subheadline 15, caption 12, title2 22, largeTitle 34). */
+  .pt {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 402px;
+    height: 874px;
+    padding-top: 62px;
+    transform: scale(var(--k));
+    transform-origin: 0 0;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--font);
+    font-size: 17px;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  .pt h3,
+  .pt h4 {
+    margin: 0;
+  }
+
+  .nav {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 44px;
+    margin: 2px 16px 0;
+  }
+
+  .nav-trailing {
+    display: flex;
+    gap: 10px;
+  }
+
+  .nav-title {
+    position: absolute;
+    left: 50%;
+    translate: -50% 0;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* Liquid Glass, approximated: a dark capsule with a lit rim. */
+  .glass {
+    display: grid;
+    place-items: center;
+    height: 44px;
+    border-radius: 999px;
+    background: rgb(42 42 45 / 0.92);
+    box-shadow:
+      inset 0 0 0 1px rgb(255 255 255 / 0.07),
+      inset 0 1px 0 rgb(255 255 255 / 0.1);
+  }
+
+  .glass.round {
+    width: 44px;
+    font-size: 20px;
+  }
+
+  .glass.capsule {
+    padding: 0 16px;
+  }
+
+  .glass.strong {
+    font-weight: 600;
+  }
+
+  .add {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--coral);
+    color: #fff;
+    font-size: 19px;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25);
+  }
+
+  /* Group screen */
+  .group-head {
+    padding: 10px 20px 0;
+  }
+
+  .large-title {
+    font-size: 34px;
+    line-height: 41px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .faces {
+    display: flex;
+    padding: 10px 0;
+  }
+
+  .faces .avatar {
+    width: 40px;
+    height: 40px;
+    margin-right: -12px;
+    font-size: 16px;
+    box-shadow: 0 0 0 2px var(--card);
+  }
+
+  .overall {
+    color: var(--text-muted);
+  }
+
+  .actions {
+    display: flex;
+    gap: 12px;
+    padding: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .action {
+    flex: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .action.primary {
+    background: var(--text);
+    color: var(--ground);
+  }
+
+  /* Segmented control */
+  .seg {
+    position: relative;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    height: 32px;
+    padding: 2px;
+    border-radius: 999px;
+    background: rgb(118 118 128 / 0.24);
+  }
+
+  .seg-thumb {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 0;
+    border-radius: 999px;
+    background: #636366;
+    box-shadow: 0 3px 8px rgb(0 0 0 / 0.12);
+  }
+
+  .seg-item {
+    position: relative;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .seg-item[data-on] {
+    font-weight: 600;
+  }
+
+  .section-picker {
+    margin: 0 20px 16px;
+  }
+
+  /* Timeline */
+  .timeline {
+    min-height: 100%;
+    border-radius: 28px 28px 0 0;
+    background: var(--card);
+  }
+
+  .day {
+    padding: 18px 20px 8px;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .inserted {
+    overflow: hidden;
+    height: 0;
+    opacity: 0;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .glyph {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 19px;
+  }
+
+  .food {
+    background: #9a3412;
+  }
+
+  .transport {
+    background: #7f1d1d;
+  }
+
+  .home {
+    background: #704700;
+  }
+
+  .what {
+    flex: 1;
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .what strong {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .what span {
+    font-size: 15px;
+    color: var(--text-muted);
+  }
+
+  .share {
+    display: grid;
+    justify-items: end;
+    gap: 4px;
+    color: var(--negative);
+    text-align: right;
+  }
+
+  .share span {
+    font-size: 12px;
+  }
+
+  .share strong {
+    font-weight: 600;
+  }
+
+  /* The expense sheet */
+  .dim {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 0.5);
+    opacity: 0;
+  }
+
+  .sheet {
+    position: absolute;
+    top: 62px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 38px 38px 0 0;
+    background: var(--ground);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+    overflow: hidden;
+    transform: translateY(100%);
+  }
+
+  .pages {
+    display: flex;
+    width: 200%;
+    height: 100%;
+  }
+
+  .page {
+    display: flex;
+    flex-direction: column;
+    width: 50%;
+    min-width: 0;
+    height: 100%;
+    padding: 16px 20px 34px;
+  }
+
+  .page .nav {
+    margin: 0 -4px;
+  }
+
+  .amount {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    font: 600 76px/1 ui-rounded, "SF Pro Rounded", -apple-system, var(--font);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .digits {
+    display: inline-flex;
+  }
+
+  .digits :global(span) {
+    display: inline-block;
+  }
+
+  .primary-button {
+    flex: none;
+    display: grid;
+    place-items: center;
+    height: 52px;
+    border-radius: 999px;
+    background: #5b2318;
+    color: #fff;
+    font-weight: 700;
+    transition: background-color 0.25s ease-out;
+  }
+
+  .primary-button.ready {
+    background: var(--coral);
+  }
+
+  .keys {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    margin-top: 18px;
+  }
+
+  .keys span {
+    display: grid;
+    place-items: center;
+    height: 70px;
+    font-size: 30px;
+  }
+
+  .keys span:last-child {
+    font-size: 26px;
+  }
+
+  .form {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 12px;
+    padding-top: 24px;
+  }
+
+  .field {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-height: 46px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    background: rgb(250 250 250 / 0.07);
+    white-space: nowrap;
+  }
+
+  .field > .icon {
+    flex: none;
+    color: var(--text-muted);
+    font-size: 20px;
+  }
+
+  .placeholder {
+    color: rgb(250 250 250 / 0.3);
+  }
+
+  .placeholder[hidden] {
+    display: none;
+  }
+
+  .field > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .field.link > span {
+    flex: 1;
+    font-size: 15px;
+  }
+
+  .field.link > .icon:last-child {
+    font-size: 13px;
+  }
+
+  .chips {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .chip-row {
+    flex: 1;
+    display: flex;
+    gap: 8px;
+    min-width: 0;
+    overflow: hidden;
+    mask-image: linear-gradient(90deg, #000 85%, transparent);
+  }
+
+  .chip {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: rgb(250 250 250 / 0.08);
+    color: rgb(250 250 250 / 0.72);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .chip .icon {
+    font-size: 14px;
+  }
+
+  .chip[data-on] {
+    background: var(--text);
+    color: var(--ground);
+  }
+
+  .tick {
+    display: none;
+  }
+
+  .chip[data-on] .tick {
+    display: inline-flex;
+  }
+
+  .tick .icon {
+    font-size: 10px;
+  }
+
+  .chip-list {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgb(250 250 250 / 0.08);
+    font-size: 18px;
+  }
+
+  .page .primary-button {
+    margin-top: auto;
+  }
+
+  /* Split: the total, the payer's face, then everyone's share */
+  .split-stack {
+    display: grid;
+    gap: 24px;
+    padding-top: 26px;
+  }
+
+  .total {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+  }
+
+  .total strong {
+    font: 600 44px/1.15 ui-rounded, "SF Pro Rounded", -apple-system, var(--font);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .total span,
+  .section-label,
+  .payer,
+  .subline,
+  .affix,
+  .assigned-text span {
+    color: #98989f;
+  }
+
+  .total span {
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .section-label {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+
+  .payers {
+    display: grid;
+    gap: 10px;
+  }
+
+  .payers .section-label,
+  .section-head {
+    padding: 0 20px;
+  }
+
+  .payer-row {
+    display: flex;
+    gap: 12px;
+    padding: 0 20px;
+  }
+
+  .payer {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    width: 62px;
+    font-size: 12px;
+  }
+
+  .payer[data-on] {
+    color: #fefefe;
+    font-weight: 600;
+  }
+
+  .ring {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+  }
+
+  .payer[data-on] .ring {
+    box-shadow: inset 0 0 0 2px var(--coral);
+  }
+
+  /* `MemberAvatar` with no photo: initials on the muted fill, a third of its size. */
+  .face {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #27272a;
+    color: #a1a1aa;
+    font-size: 12px;
+    font-weight: 600;
+    transition: opacity 0.2s, filter 0.2s;
+  }
+
+  .face.large {
+    width: 48px;
+    height: 48px;
+    font-size: 16px;
+  }
+
+  .split .seg {
+    margin: 0 20px;
+  }
+
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+
+  .select-all {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--coral);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .members {
+    margin: 0 16px;
+    padding: 0;
+    border-radius: 16px;
+    background: rgb(254 254 254 / 0.07);
+    list-style: none;
+    --check-ink: #1c1c1e;
+  }
+
+  .member {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 10px 14px;
+    cursor: pointer;
+  }
+
+  .member + .member::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 62px;
+    right: 0;
+    height: 1px;
+    background: rgb(255 255 255 / 0.09);
+  }
+
+  .who {
+    flex: 1;
+    display: grid;
+    gap: 1px;
+    min-width: 0;
+    white-space: nowrap;
+    transition: color 0.2s;
+  }
+
+  .subline {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portion {
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mark {
+    color: var(--coral);
+    font-size: 22px;
+  }
+
+  .mark :global(.icon) {
+    display: block;
+  }
+
+  .mark :global(.icon + .icon) {
+    display: none;
+    color: rgb(152 152 159 / 0.5);
+  }
+
+  /* Someone left out of an equal split: greyed, with an empty circle and no share. */
+  .member[data-out] .face {
+    filter: grayscale(1);
+    opacity: 0.4;
+  }
+
+  .member[data-out] .who {
+    color: #98989f;
+  }
+
+  .member[data-out] .portion,
+  .member[data-out] .mark :global(.icon:first-child) {
+    display: none;
+  }
+
+  .member[data-out] .mark :global(.icon + .icon) {
+    display: block;
+  }
+
+  /* The pill a typed share goes in. */
+  .entry {
+    display: inline-flex;
+    gap: 2px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    background: rgb(254 254 254 / 0.08);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .digits-field {
+    width: 44px;
+    text-align: right;
+  }
+
+  .digits-field.wide {
+    width: 72px;
+  }
+
+  /* What a typed split has handed out, pinned above the home indicator. */
+  .assigned {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 34px;
+    display: grid;
+    gap: 8px;
+    padding: 12px 20px 8px;
+    background: var(--ground);
+  }
+
+  .track {
+    height: 6px;
+    border-radius: 3px;
+    background: rgb(254 254 254 / 0.08);
+    overflow: hidden;
+  }
+
+  .fill {
+    display: block;
+    height: 100%;
+    border-radius: 3px;
+    background: var(--positive);
+    transform-origin: 0 50%;
+  }
+
+  .assigned-text {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .assigned-text strong {
+    color: var(--positive);
+    font-weight: 600;
+  }
+
+  [data-mode="equally"] .split [data-for]:not([data-for~="equally"]),
+  [data-mode="amounts"] .split [data-for]:not([data-for~="amounts"]),
+  [data-mode="percentages"] .split [data-for]:not([data-for~="percentages"]) {
+    display: none;
+  }
+
+  /* Simplify */
+  .count {
+    position: relative;
+    height: 1.5rem;
+    margin: 0.5rem 0 1rem;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .count span {
+    position: absolute;
+    inset: 0;
+  }
+
+  .count [data-count-after] {
+    opacity: 0;
+    color: var(--positive);
+  }
+
+  .board {
+    width: 100%;
+    overflow: visible;
+  }
+
+  .edge path {
+    fill: none;
+    stroke: var(--negative);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 1 1;
+  }
+
+  .edge rect {
+    fill: var(--card);
+    stroke: var(--line);
+  }
+
+  .edge text {
+    fill: var(--text);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .pill {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .owed {
+    margin-top: 1.25rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .owed li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding-block: 0.625rem;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.875rem;
+  }
+
+  .node text {
+    fill: #fff;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  /* Settle */
+  .settle-card,
+  .settled {
+    position: absolute;
+    top: 50%;
+    left: var(--pad);
+    right: var(--pad);
+    translate: 0 -50%;
+    display: grid;
+    justify-items: center;
+    gap: 1rem;
+    padding: 2rem 1.25rem;
+    border-radius: 1.75rem;
+    background: var(--card);
+    text-align: center;
+  }
+
+  .settle-card p {
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .pay {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 3.25rem;
+    border-radius: 999px;
+    background: var(--coral);
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .settled {
+    background: none;
+    opacity: 0;
+  }
+
+  .settled p {
+    font-size: 1.25rem;
+    font-weight: 650;
+  }
+
+  .settled[data-done] {
+    --coin: var(--positive);
+  }
+
+  .caption {
+    display: none;
+  }
+
+  @media (max-width: 52rem) {
+    .story {
+      grid-template-columns: 1fr;
+      padding-block: 2rem;
+    }
+
+    /* The phone and the current step's caption stay pinned for the whole story; the step
+       articles underneath become invisible scroll triggers. */
+    .stage {
+      grid-area: 1 / 1;
+      top: 0;
+      height: 100svh;
+      align-self: start;
+      align-content: center;
+      gap: 1.25rem;
+      z-index: 1;
+    }
+
+    .phone {
+      zoom: 0.74;
+    }
+
+    /* Positioned, so it paints above the phone's drop shadow. */
+    .caption {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      width: 100%;
+      min-height: 9.5rem;
+    }
+
+    .caption > div {
+      grid-area: 1 / 1;
+      opacity: 0;
+    }
+
+    .caption h2 {
+      font-size: var(--step-2);
+    }
+
+    .caption p {
+      margin-top: 0.5rem;
+      color: var(--text-muted);
+    }
+
+    .steps {
+      grid-area: 1 / 1;
+    }
+
+    .step,
+    .step:first-child,
+    .step:last-child {
+      min-height: 90svh;
+      padding-top: 0;
+    }
+
+    .step-text {
+      opacity: 0;
+    }
+  }
+
+  @media (max-width: 52rem) and (max-height: 760px) {
+    .phone {
+      zoom: 0.62;
+    }
+  }
+</style>

@@ -1,0 +1,80 @@
+---
+import Lockup from "../assets/lockup.svg";
+import LanguageMenu from "./LanguageMenu.astro";
+import { pathFor, t, type Locale, type Page } from "../i18n";
+import { operator } from "../config";
+
+interface Props {
+  locale: Locale;
+  page: Page;
+}
+
+const { locale, page } = Astro.props;
+const copy = t(locale);
+---
+
+<footer class="wrap">
+  <div class="top">
+    <a href={pathFor(locale)} aria-label={copy.nav.home} class="home">
+      <Lockup height="32" width="76" aria-hidden="true" />
+    </a>
+    <nav aria-label="Legal">
+      <a href={pathFor(locale, "privacy")} aria-current={page === "privacy" ? "page" : undefined}>
+        {copy.nav.privacy}
+      </a>
+      <a href={pathFor(locale, "terms")} aria-current={page === "terms" ? "page" : undefined}>
+        {copy.nav.terms}
+      </a>
+      <a href={pathFor(locale, "support")} aria-current={page === "support" ? "page" : undefined}>
+        {copy.nav.support}
+      </a>
+    </nav>
+  </div>
+  <div class="bottom">
+    <p>© {new Date().getFullYear()} {operator.name}. {copy.footer.madeBy}</p>
+    <LanguageMenu locale={locale} page={page} />
+  </div>
+</footer>
+
+<style>
+  footer {
+    padding-block: 3rem 2.5rem;
+    border-top: 1px solid var(--line);
+    font-size: var(--step--1);
+    color: var(--text-muted);
+  }
+
+  .top,
+  .bottom {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .bottom {
+    margin-top: 2rem;
+  }
+
+  .home {
+    line-height: 0;
+  }
+
+  nav {
+    display: flex;
+    gap: 1.75rem;
+  }
+
+  nav a {
+    text-decoration: none;
+    color: var(--text);
+    font-size: var(--step-0);
+    font-weight: 500;
+  }
+
+  nav a:hover,
+  nav a[aria-current] {
+    color: var(--coral);
+  }
+</style>

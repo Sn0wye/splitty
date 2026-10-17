@@ -1,0 +1,49 @@
+---
+/**
+ * The Splitty symbol as two movable halves, drawn about the centre so `Coin` in
+ * `scripts/motion.ts` can slide them along the cut. On this dark ground it always uses the
+ * reversed cut (radius 67, gap 18): light shapes on dark read heavier.
+ */
+interface Props {
+  /** 0 is one whole coin, 1 is the mark. */
+  separation?: number;
+  size?: number | string;
+  class?: string;
+  id?: string;
+}
+
+const { separation = 1, size = 256, class: className, id } = Astro.props;
+const halfGap = 9;
+const dx = halfGap * separation;
+const dy = 40 * separation;
+---
+
+<svg
+  viewBox="0 0 256 256"
+  width={size}
+  height={size}
+  class:list={["coin", className]}
+  id={id}
+  data-separation={separation}
+  data-half-gap={halfGap}
+  aria-hidden="true"
+>
+  <g data-half="a" transform={`translate(${-dx} ${-dy})`}>
+    <path d="M128 61A67 67 0 0 0 128 195Z"></path>
+  </g>
+  <g data-half="b" transform={`translate(${dx} ${dy})`}>
+    <path d="M128 61A67 67 0 0 1 128 195Z"></path>
+  </g>
+</svg>
+
+<style>
+  .coin {
+    display: block;
+    fill: var(--coin, var(--coral));
+    overflow: visible;
+  }
+
+  .coin path {
+    transition: fill 0.4s ease-out;
+  }
+</style>

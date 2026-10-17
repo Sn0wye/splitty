@@ -1,0 +1,35 @@
+---
+import Lockup from "../assets/lockup.svg";
+import LanguageMenu from "./LanguageMenu.astro";
+import { pathFor, t, type Locale, type Page } from "../i18n";
+
+interface Props {
+  locale: Locale;
+  page: Page;
+}
+
+const { locale, page } = Astro.props;
+---
+
+<header class="wrap">
+  <a href={pathFor(locale)} class="home" aria-label={t(locale).nav.home}>
+    <Lockup height="40" width="95" aria-hidden="true" />
+  </a>
+  <LanguageMenu locale={locale} page={page} />
+</header>
+
+<style>
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: 1.25rem;
+    position: relative;
+    z-index: 10;
+  }
+
+  .home {
+    display: block;
+    line-height: 0;
+  }
+</style>

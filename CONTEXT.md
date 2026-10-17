@@ -3,13 +3,27 @@
 Shared-expense tracker: groups of people log expenses, split them, and settle up.
 Same problem space as Splitwise.
 
-Two deliverables in one repo:
+Three deliverables in one repo:
 
 | Path | What |
 |---|---|
 | `Splitty-API/` | .NET 9 REST API, PostgreSQL, layered solution |
 | `Splitty/` | SwiftUI iOS client |
+| `web/` | Astro landing page, privacy policy, terms and support, in the app's four languages |
 | `docker-compose.yml` | Postgres + API, both on the `postgres_network` bridge |
+
+## Website
+
+`web/` is a static Astro site, built with Bun (`bun run dev`, `bun run build`, `bun run check`).
+English sits at the root and the other app languages under `/pt-br`, `/es` and `/fr`; that
+mapping is a contract with `Website` in the iOS client, which links Settings and the login
+screen to `/privacy`, `/terms` and `/support` in the app's current language. Copy lives in
+`web/src/i18n/`, and the phone the landing page draws reuses the iOS catalog's wording. The
+legal texts are Markdown in `web/src/legal/<locale>/`, with `{{tokens}}` filled from
+`web/src/config.ts` (operator, contact addresses, minimum age, retention periods). Motion
+uses the `motion` library with the app's own SwiftUI spring values converted
+(`web/src/scripts/motion.ts`). What App Store Connect's privacy questions should say is in
+`docs/app-store-privacy.md`.
 
 ## Backend layout
 

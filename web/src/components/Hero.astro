@@ -1,0 +1,161 @@
+---
+import Coin from "./Coin.astro";
+import StoreButton from "./StoreButton.astro";
+import { t, type Locale } from "../i18n";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const copy = t(locale).hero;
+---
+
+<section class="hero wrap" data-hero>
+  <div class="text">
+    <h1 data-reveal>{copy.title}</h1>
+    <p class="lede" data-reveal>{copy.lede}</p>
+    <div class="cta" data-reveal>
+      <StoreButton label={copy.store} />
+      <p class="platform">{copy.platform}</p>
+    </div>
+  </div>
+  <button class="mark" type="button" data-hero-coin tabindex="-1" aria-hidden="true">
+    <Coin separation={0} size="100%" />
+  </button>
+</section>
+
+<script>
+  import { animate, scroll, stagger } from "motion";
+  import { Coin, springs, wait } from "../scripts/motion";
+
+  const hero = document.querySelector<HTMLElement>("[data-hero]")!;
+  const button = hero.querySelector<HTMLButtonElement>("[data-hero-coin]")!;
+  const coin = new Coin(button.querySelector("svg")!);
+  const reveals = hero.querySelectorAll("[data-reveal]");
+
+  // How far the halves have drifted on scroll, added on top of the cut.
+  let drift = 0;
+  let base = 0;
+  const render = () => coin.render(base + drift);
+
+  async function intro() {
+    // The splash, at page scale: a whole coin grows in, then the cut lands.
+    animate(button, { scale: [0.86, 1], opacity: [0, 1] }, { ...springs.grow, opacity: { duration: 0.2 } });
+    await wait(180);
+    animate(0, 1, {
+      ...springs.cut,
+      onUpdate: (value) => {
+        base = value;
+        render();
+      },
+    });
+    await wait(220);
+    animate(reveals, { y: [16, 0] }, { ...springs.snappy, delay: stagger(0.07) });
+    animate(reveals, { opacity: [0, 1] }, { duration: 0.35, delay: stagger(0.07) });
+  }
+
+  // Leaving the hero pulls the halves further apart: the bill is being split.
+  scroll(
+    (progress: number) => {
+      drift = progress * 0.9;
+      render();
+    },
+    { target: hero, offset: ["start start", "end start"] },
+  );
+
+  // The loader move on demand: halves meet, then part.
+  let busy = false;
+  button.addEventListener("click", async () => {
+    if (busy) return;
+    busy = true;
+    await animate(base, 0, {
+      ...springs.join,
+      onUpdate: (value) => {
+        base = value;
+        render();
+      },
+    });
+    await animate(0, 1, {
+      ...springs.part,
+      onUpdate: (value) => {
+        base = value;
+        render();
+      },
+    });
+    busy = false;
+  });
+
+  intro();
+</script>
+
+<style>
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(2rem, 6vw, 6rem);
+    min-height: min(52rem, calc(100svh - 5rem));
+    padding-block: clamp(2rem, 6vw, 5rem);
+  }
+
+  h1 {
+    font-size: var(--step-4);
+    font-weight: 750;
+    letter-spacing: -0.035em;
+    line-height: 0.98;
+    max-width: 11ch;
+  }
+
+  .lede {
+    margin-top: 1.75rem;
+    max-width: 34rem;
+    font-size: var(--step-1);
+    line-height: 1.5;
+    color: var(--text-muted);
+  }
+
+  .cta {
+    margin-top: 2.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem 1.5rem;
+  }
+
+  .platform {
+    font-size: var(--step--1);
+    color: var(--text-muted);
+  }
+
+  .mark {
+    all: unset;
+    display: block;
+    width: 100%;
+    max-width: 30rem;
+    justify-self: center;
+    aspect-ratio: 1;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Hidden until the intro runs; without scripts everything shows as drawn. */
+  :global(html.js) .mark,
+  :global(html.js) [data-reveal] {
+    opacity: 0;
+  }
+
+  @media (max-width: 52rem) {
+    .hero {
+      grid-template-columns: 1fr;
+      min-height: 0;
+      padding-top: 1rem;
+    }
+
+    .mark {
+      grid-row: 1;
+      max-width: 13rem;
+      justify-self: start;
+    }
+  }
+</style>

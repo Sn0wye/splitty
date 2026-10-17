@@ -119,6 +119,17 @@ struct LoginView: View {
                     }
                     .padding(.horizontal, 20)
 
+                    // Signing in creates the account, so the terms and the policy sit right
+                    // under the buttons that do it. Links take the caption colour, underlined:
+                    // coral and blue both vanish on these grounds.
+                    Text(legalNotice)
+                        .font(.caption)
+                        .foregroundStyle(groundCaption)
+                        .tint(groundCaption)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                        .padding(.top, 4)
+
                     #if DEBUG
                     DevSignInPicker(isLoading: $isLoading, errorMessage: $errorMessage)
                         .padding(.horizontal, 20)
@@ -138,6 +149,20 @@ struct LoginView: View {
         .fullScreenCover(isPresented: $showingOnboardingReview) {
             OnboardingReviewView()
         }
+    }
+
+    private var legalNotice: AttributedString {
+        let markdown = L10n.Login.legalNotice(
+            terms: Website.url(.terms).absoluteString,
+            privacy: Website.url(.privacy).absoluteString
+        )
+        guard var notice = try? AttributedString(markdown: markdown) else {
+            return AttributedString(markdown)
+        }
+        for run in notice.runs where run.link != nil {
+            notice[run.range].underlineStyle = .single
+        }
+        return notice
     }
 
     @MainActor
