@@ -134,6 +134,8 @@ struct SettingsView: View {
                     Text(L10n.Settings.preferences)
                 }
 
+                aboutSection
+
                 closeAccountSection
 
                 #if DEBUG
@@ -199,6 +201,42 @@ struct SettingsView: View {
         .frame(maxWidth: 760)
         .frame(maxWidth: .infinity)
         .background(Color("background"))
+    }
+
+    // MARK: - About
+
+    /// The website's pages, in the app's language. App Review requires the privacy policy to
+    /// be reachable from inside the app.
+    private var aboutSection: some View {
+        Section {
+            websiteRow(L10n.Settings.support, systemImage: "questionmark.circle", page: .support)
+            websiteRow(L10n.Settings.privacyPolicy, systemImage: "hand.raised", page: .privacy)
+            websiteRow(L10n.Settings.termsOfUse, systemImage: "doc.text", page: .terms)
+        } header: {
+            Text(L10n.Settings.about)
+        }
+    }
+
+    private func websiteRow(_ title: String, systemImage: String, page: Website.Page) -> some View {
+        Link(destination: Website.url(page, in: languageManager.language)) {
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .foregroundStyle(Color("muted-foreground"))
+                    .frame(width: 24)
+
+                Text(title)
+                    .foregroundStyle(Color("foreground"))
+
+                Spacer()
+
+                // Leaves the app, unlike the rows around it that push a screen.
+                Image(systemName: "arrow.up.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color("muted-foreground"))
+                    .accessibilityHidden(true)
+            }
+            .frame(minHeight: 44)
+        }
     }
 
     // MARK: - Close account

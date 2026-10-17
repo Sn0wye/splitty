@@ -1,0 +1,67 @@
+---
+import { t, type Locale } from "../i18n";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const copy = t(locale).more;
+---
+
+<section class="more wrap">
+  <h2>{copy.title}</h2>
+  <dl>
+    {
+      copy.items.map((item) => (
+        <div>
+          <dt>
+            <svg viewBox="0 0 256 256" width="18" height="18" aria-hidden="true">
+              <path d="M115 20A68 68 0 0 0 115 156ZM141 100A68 68 0 0 1 141 236Z" />
+            </svg>
+            {item.title}
+          </dt>
+          <dd>{item.body}</dd>
+        </div>
+      ))
+    }
+  </dl>
+</section>
+
+<style>
+  .more {
+    padding-block: clamp(4rem, 10vw, 8rem);
+  }
+
+  h2 {
+    font-size: var(--step-3);
+    letter-spacing: -0.03em;
+  }
+
+  dl {
+    margin-top: clamp(2rem, 5vw, 3.5rem);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    gap: 2.5rem clamp(2rem, 5vw, 4rem);
+  }
+
+  dt {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: var(--step-1);
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+
+  dt svg {
+    flex: none;
+    fill: var(--coral);
+  }
+
+  dd {
+    margin-top: 0.5rem;
+    max-width: 34ch;
+    color: var(--text-muted);
+  }
+</style>

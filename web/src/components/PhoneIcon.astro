@@ -1,0 +1,60 @@
+---
+/**
+ * Line drawings standing in for the SF Symbols the app uses, sized by the surrounding font
+ * (1em) and drawn in its colour.
+ */
+interface Props {
+  name: keyof typeof icons;
+}
+
+const icons = {
+  // chevron.left
+  back: '<path d="M15 4.5 7.5 12l7.5 7.5" stroke-width="2.4"/>',
+  // chevron.right
+  chevron: '<path d="m9 5 7 7-7 7" stroke-width="2.2"/>',
+  // plus
+  plus: '<path d="M12 4.5v15M4.5 12h15" stroke-width="2.6"/>',
+  // gearshape
+  gear: '<path d="M12 2.8 13.6 5l2.6-.6.8 2.6 2.6.8-.6 2.6L21.2 12 19 13.6l.6 2.6-2.6.8-.8 2.6-2.6-.6L12 21.2 10.4 19l-2.6.6-.8-2.6-2.6-.8.6-2.6L2.8 12 5 10.4l-.6-2.6L7 7l.8-2.6 2.6.6Z"/><circle cx="12" cy="12" r="3.4"/>',
+  // fork.knife
+  food: '<path d="M7 3v7.5M5 3v5.2a2 2 0 0 0 4 0V3M7 10.5V21M17 21V3c-2.2 1-3.6 3.6-3.6 7.2v3.3H17"/>',
+  // car.fill
+  car: '<path d="M4.5 16v-4l1.9-5a2.3 2.3 0 0 1 2.2-1.5h6.8a2.3 2.3 0 0 1 2.2 1.5l1.9 5v4M3.5 12h17v5h-17zM6 17v2M18 17v2"/><circle cx="7.4" cy="14.5" r="1" fill="currentColor"/><circle cx="16.6" cy="14.5" r="1" fill="currentColor"/>',
+  // house
+  house: '<path d="M3.5 11.5 12 4.5l8.5 7M6 9.8V20h12V9.8M10 20v-5.5h4V20"/>',
+  // text.alignleft
+  lines: '<path d="M4 6h16M4 10h10M4 14h16M4 18h10" stroke-width="1.6"/>',
+  // checkmark
+  check: '<path d="m5 12.5 4.5 4.5L19 7" stroke-width="2.8"/>',
+  // checkmark.circle.fill
+  checkFill: '<circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="m7.5 12.3 3 3 6-6.3" stroke="var(--check-ink, #2c2c2e)" stroke-width="2"/>',
+  // circle
+  circle: '<circle cx="12" cy="12" r="9.5" stroke-width="1.5"/>',
+  // cart.fill
+  cart: '<path d="M2.5 4h2.6l2.2 10.5h10.5L20 7.5H6"/><circle cx="9" cy="19" r="1.4" fill="currentColor"/><circle cx="16.5" cy="19" r="1.4" fill="currentColor"/>',
+  // gamecontroller.fill
+  games: '<path d="M7.5 7h9a4.5 4.5 0 0 1 4.4 3.6l.9 4.6a2.6 2.6 0 0 1-4.6 2.1L15.6 15H8.4l-1.6 2.3a2.6 2.6 0 0 1-4.6-2.1l.9-4.6A4.5 4.5 0 0 1 7.5 7ZM7.5 9.5v4M5.5 11.5h4"/><circle cx="15.5" cy="11.5" r=".9" fill="currentColor"/><circle cx="17.5" cy="10" r=".9" fill="currentColor"/>',
+  // list.bullet
+  list: '<path d="M9 6h11M9 12h11M9 18h11" stroke-width="2"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor"/>',
+  // person.2
+  people: '<circle cx="8.5" cy="8" r="3.2"/><path d="M2.5 19.5c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5Z"/><circle cx="16.5" cy="8.5" r="2.8"/><path d="M15.5 14.2c3.3-.4 6 1.6 6 5.3h-4.4"/>',
+  // calendar
+  calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17" /><path d="M8 13h.01M12 13h.01M16 13h.01M8 16.5h.01M12 16.5h.01" stroke-width="2.2"/>',
+};
+
+const { name } = Astro.props;
+---
+
+<svg
+  class="icon"
+  viewBox="0 0 24 24"
+  width="1em"
+  height="1em"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.7"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  set:html={icons[name]}
+/>

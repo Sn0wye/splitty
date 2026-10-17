@@ -1,0 +1,10 @@
+---
+import LegalPage from "../../components/LegalPage.astro";
+import { localePaths, type Locale } from "../../i18n";
+
+export const getStaticPaths = localePaths;
+
+const { locale } = Astro.props as { locale: Locale };
+---
+
+<LegalPage locale={locale} doc="terms" />

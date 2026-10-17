@@ -59,6 +59,10 @@ enum L10n {
         static var account: String { text("settings.account", default: "Account") }
         static var appearance: String { text("settings.appearance", default: "Appearance") }
         static var language: String { text("settings.language", default: "Language") }
+        static var about: String { text("settings.about", default: "About") }
+        static var support: String { text("settings.support", default: "Support") }
+        static var privacyPolicy: String { text("settings.privacy_policy", default: "Privacy Policy") }
+        static var termsOfUse: String { text("settings.terms_of_use", default: "Terms of Use") }
         static var logOut: String { text("settings.log_out", default: "Log Out") }
         static var logOutConfirm: String {
             text("settings.log_out_confirm", default: "Are you sure you want to log out?")
@@ -177,6 +181,15 @@ enum L10n {
         static var signInApple: String { text("login.sign_in_apple", default: "Sign in with Apple") }
         static var comingSoon: String { text("login.coming_soon", default: "Coming soon") }
         static var devSignIn: String { text("login.dev_sign_in", default: "Dev sign in") }
+        /// Markdown: the two bracketed phrases become links to the terms and the policy.
+        static func legalNotice(terms: String, privacy: String) -> String {
+            format(
+                "login.legal_notice",
+                default: "By continuing, you agree to the [Terms of Use](%1$@) and acknowledge the [Privacy Policy](%2$@).",
+                terms,
+                privacy
+            )
+        }
         static var setupError: String {
             text("login.setup_error", default: "Sign-in isn't set up correctly on this build.")
         }

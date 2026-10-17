@@ -1,0 +1,135 @@
+---
+import Base from "../../layouts/Base.astro";
+import { localePaths, pathFor, t, type Locale } from "../../i18n";
+import { contact } from "../../config";
+
+export const getStaticPaths = localePaths;
+
+const { locale } = Astro.props as { locale: Locale };
+const copy = t(locale);
+const s = copy.support;
+---
+
+<Base locale={locale} page="support" title={`${s.title} | Splitty`} description={s.lede}>
+  <main class="support wrap">
+    <a class="back" href={pathFor(locale)}>{copy.legal.back}</a>
+    <h1>{s.title}</h1>
+    <p class="lede">{s.lede}</p>
+    <a class="mail" href={`mailto:${contact.support}`}>
+      <span>{s.email}</span>
+      <span class="address">{contact.support}</span>
+    </a>
+
+    <h2>{s.faqTitle}</h2>
+    <div class="faq">
+      {
+        s.faq.map((item) => (
+          <details>
+            <summary>{item.q}</summary>
+            <p>{item.a}</p>
+          </details>
+        ))
+      }
+    </div>
+  </main>
+</Base>
+
+<style>
+  .support {
+    max-width: 46rem;
+    padding-block: 2rem 6rem;
+  }
+
+  .back {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+    text-decoration: none;
+  }
+
+  .back:hover {
+    color: var(--text);
+  }
+
+  h1 {
+    margin-top: 2rem;
+    font-size: var(--step-3);
+    letter-spacing: -0.03em;
+  }
+
+  .lede {
+    margin-top: 1rem;
+    font-size: var(--step-1);
+    color: var(--text-muted);
+  }
+
+  .mail {
+    display: inline-grid;
+    gap: 0.125rem;
+    margin-top: 2rem;
+    padding: 1rem 1.5rem;
+    border-radius: 1.25rem;
+    background: var(--coral);
+    /* Ink on coral is 5.13:1; white would only pass at the large title size. */
+    color: #18181b;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: var(--step-1);
+    transition: transform 0.2s ease-out;
+  }
+
+  .mail:active {
+    transform: scale(0.97);
+    transition-duration: 0.1s;
+  }
+
+  .address {
+    font-size: var(--step--1);
+    font-weight: 500;
+    opacity: 0.9;
+  }
+
+  h2 {
+    margin-top: 4rem;
+    font-size: var(--step-2);
+  }
+
+  .faq {
+    margin-top: 1rem;
+  }
+
+  details {
+    border-bottom: 1px solid var(--line);
+  }
+
+  summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-block: 1.125rem;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  summary::after {
+    content: "+";
+    color: var(--coral);
+    font-size: 1.375rem;
+    line-height: 1;
+    transition: rotate 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+
+  details[open] summary::after {
+    rotate: 45deg;
+  }
+
+  details p {
+    padding-bottom: 1.25rem;
+    color: var(--text-muted);
+    max-width: 60ch;
+  }
+</style>

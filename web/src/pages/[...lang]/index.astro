@@ -1,0 +1,22 @@
+---
+import Base from "../../layouts/Base.astro";
+import Hero from "../../components/Hero.astro";
+import Story from "../../components/Story.astro";
+import More from "../../components/More.astro";
+import Closing from "../../components/Closing.astro";
+import { localePaths, t, type Locale } from "../../i18n";
+
+export const getStaticPaths = localePaths;
+
+const { locale } = Astro.props as { locale: Locale };
+const copy = t(locale);
+---
+
+<Base locale={locale} page="" title={copy.meta.title} description={copy.meta.description}>
+  <main>
+    <Hero locale={locale} />
+    <Story locale={locale} />
+    <More locale={locale} />
+    <Closing locale={locale} />
+  </main>
+</Base>

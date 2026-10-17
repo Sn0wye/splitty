@@ -1,0 +1,138 @@
+---
+import Base from "../layouts/Base.astro";
+import { fill, formatDate, pathFor, t, type Locale } from "../i18n";
+import { contact, legalUpdated, logRetentionDays, minimumAge, operator, refreshTokenDays } from "../config";
+
+interface Props {
+  locale: Locale;
+  doc: "privacy" | "terms";
+}
+
+const { locale, doc } = Astro.props;
+const copy = t(locale);
+
+type MarkdownModule = { compiledContent: () => string | Promise<string> };
+const documents = import.meta.glob<MarkdownModule>("../legal/*/*.md", { eager: true });
+const source = documents[`../legal/${locale}/${doc}.md`];
+if (!source) throw new Error(`Missing legal text: ${locale}/${doc}`);
+
+const mail = (address: string) => `<a href="mailto:${address}">${address}</a>`;
+const countries: Record<Locale, string> = { en: "Brazil", "pt-br": "Brasil", es: "Brasil", fr: "Brésil" };
+const tokens: Record<string, string> = {
+  operator: operator.name,
+  country: countries[locale],
+  privacyEmail: mail(contact.privacy),
+  supportEmail: mail(contact.support),
+  minimumAge: String(minimumAge),
+  logRetentionDays: String(logRetentionDays),
+  refreshTokenDays: String(refreshTokenDays),
+  privacyUrl: pathFor(locale, "privacy"),
+};
+
+// Markdown percent-encodes braces inside link targets, so match both spellings.
+const html = (await source.compiledContent()).replace(
+  /\{\{(\w+)\}\}|%7B%7B(\w+)%7D%7D/g,
+  (match, plain?: string, encoded?: string) => tokens[(plain ?? encoded)!] ?? match,
+);
+if (/\{\{\w+\}\}|%7B%7B/.test(html)) throw new Error(`Unfilled token in ${locale}/${doc}`);
+
+const title = doc === "privacy" ? copy.legal.privacyTitle : copy.legal.termsTitle;
+---
+
+<Base locale={locale} page={doc} title={`${title} | Splitty`} description={title}>
+  <main class="legal wrap">
+    <a class="back" href={pathFor(locale)}>{copy.legal.back}</a>
+    <h1>{title}</h1>
+    <p class="updated">{fill(copy.legal.updated, { date: formatDate(locale, legalUpdated) })}</p>
+    <article set:html={html} />
+  </main>
+</Base>
+
+<style>
+  .legal {
+    max-width: 46rem;
+    padding-block: 2rem 6rem;
+  }
+
+  .back {
+    color: var(--text-muted);
+    font-size: var(--step--1);
+    text-decoration: none;
+  }
+
+  .back:hover {
+    color: var(--text);
+  }
+
+  h1 {
+    margin-top: 2rem;
+    font-size: var(--step-3);
+    letter-spacing: -0.03em;
+  }
+
+  .updated {
+    margin-top: 0.75rem;
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+
+  article {
+    margin-top: 2.5rem;
+    color: #d4d4d8;
+  }
+
+  article :global(h2) {
+    margin: 2.75rem 0 0.75rem;
+    font-size: var(--step-1);
+    color: var(--text);
+  }
+
+  article :global(p),
+  article :global(ul),
+  article :global(table) {
+    margin-bottom: 1rem;
+  }
+
+  article :global(ul) {
+    padding-left: 1.25rem;
+  }
+
+  article :global(li) {
+    margin-bottom: 0.375rem;
+  }
+
+  article :global(li::marker) {
+    color: var(--coral);
+  }
+
+  article :global(strong) {
+    color: var(--text);
+    font-weight: 650;
+  }
+
+  article :global(a) {
+    color: var(--coral);
+    text-underline-offset: 0.2em;
+  }
+
+  article :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--step--1);
+    display: block;
+    overflow-x: auto;
+  }
+
+  article :global(th),
+  article :global(td) {
+    padding: 0.75rem 1rem 0.75rem 0;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--line);
+  }
+
+  article :global(th) {
+    color: var(--text);
+    font-weight: 650;
+  }
+</style>

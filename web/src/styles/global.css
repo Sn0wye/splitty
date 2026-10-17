@@ -1,0 +1,107 @@
+@import "@fontsource-variable/figtree";
+
+/* The app's dark theme, from its asset catalog, plus the brand coral. */
+:root {
+  --ground: #09090b;
+  --card: #18181b;
+  --muted: #27272a;
+  --line: #27272a;
+  --text: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --coral: #f2542d;
+  --positive: #4ade80;
+  --negative: #fb7185;
+
+  --font: "Figtree Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* A 1.25 scale from a 17px body, the iOS body size. */
+  --step--1: 0.875rem;
+  --step-0: 1.0625rem;
+  --step-1: 1.3125rem;
+  --step-2: 1.625rem;
+  --step-3: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
+  --step-4: clamp(2.75rem, 1.6rem + 5vw, 5.5rem);
+
+  --gutter: clamp(1.25rem, 4vw, 3rem);
+  --max: 72rem;
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  font-size: var(--step-0);
+  line-height: 1.55;
+  font-variant-numeric: tabular-nums;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+dl,
+dd {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--coral);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--coral);
+  color: #fff;
+}
+
+.wrap {
+  width: 100%;
+  max-width: var(--max);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

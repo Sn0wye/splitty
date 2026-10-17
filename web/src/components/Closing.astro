@@ -1,0 +1,62 @@
+---
+import Coin from "./Coin.astro";
+import StoreButton from "./StoreButton.astro";
+import { t, type Locale } from "../i18n";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const copy = t(locale);
+---
+
+<section class="closing wrap" data-closing>
+  <Coin separation={1} size={160} id="closing-coin" />
+  <h2>{copy.closing.title}</h2>
+  <p>{copy.closing.body}</p>
+  <StoreButton label={copy.hero.store} />
+</section>
+
+<script>
+  import { inView } from "motion";
+  import { Coin, springs, wait } from "../scripts/motion";
+
+  // The page opens on a coin being cut and ends on it made whole again.
+  const section = document.querySelector<HTMLElement>("[data-closing]")!;
+  const coin = new Coin(section.querySelector<SVGSVGElement>("#closing-coin")!);
+
+  inView(
+    section,
+    () => {
+      (async () => {
+        await wait(250);
+        coin.close();
+      })();
+      return () => coin.to(1, springs.part);
+    },
+    { amount: 0.6 },
+  );
+</script>
+
+<style>
+  .closing {
+    display: grid;
+    justify-items: center;
+    gap: 1.25rem;
+    padding-block: clamp(4rem, 10vw, 8rem) clamp(5rem, 12vw, 9rem);
+    text-align: center;
+  }
+
+  h2 {
+    margin-top: 1.5rem;
+    font-size: var(--step-4);
+    letter-spacing: -0.035em;
+  }
+
+  p {
+    font-size: var(--step-1);
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+  }
+</style>
