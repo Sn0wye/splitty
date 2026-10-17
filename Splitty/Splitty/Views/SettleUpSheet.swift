@@ -12,6 +12,7 @@ struct SettleUpSheet: View {
     @State private var showingAmount: Bool
     @State private var showingDatePicker = false
     @State private var savedCount = 0
+    @State private var settledUp = false
 
     private let startsWithFixedPeer: Bool
     private let shouldLoadDebts: Bool
@@ -20,14 +21,16 @@ struct SettleUpSheet: View {
         session: GroupSession,
         currentUserId: Int,
         preselectedRow: BalanceRow? = nil,
-        settlement: Expense? = nil
+        settlement: Expense? = nil,
+        dataSource: SettleUpDataSource = .live
     ) {
         _session = ObservedObject(wrappedValue: session)
         let model = SettleUpViewModel(
             session: session,
             currentUserId: currentUserId,
             preselectedRow: preselectedRow,
-            settlement: settlement
+            settlement: settlement,
+            dataSource: dataSource
         )
         model.suggestPayment()
         _viewModel = StateObject(wrappedValue: model)
@@ -43,6 +46,12 @@ struct SettleUpSheet: View {
                 .navigationDestination(isPresented: $showingAmount) {
                     amountStep
                 }
+        }
+        .overlay {
+            if settledUp {
+                SettledUpMoment { dismiss() }
+                    .transition(.opacity)
+            }
         }
         .presentationCornerRadius(28)
         .presentationBackground(Color.expenseBackground)
@@ -217,9 +226,20 @@ struct SettleUpSheet: View {
         guard viewModel.canSubmit else { return }
         Task {
             if let result = await viewModel.submit() {
-                savedCount += 1
-                session.record(result, currentUserId: viewModel.currentUserId)
-                dismiss()
+                if result.settlesUp {
+                    // The coin plays the success haptic itself, when its halves meet. The
+                    // write waits for the cover: it marks balances pending, which would
+                    // show Try again under the fade.
+                    withAnimation(.easeOut(duration: 0.25)) {
+                        settledUp = true
+                    } completion: {
+                        session.record(result, currentUserId: viewModel.currentUserId)
+                    }
+                } else {
+                    savedCount += 1
+                    session.record(result, currentUserId: viewModel.currentUserId)
+                    dismiss()
+                }
             }
         }
     }
@@ -238,5 +258,46 @@ struct SettleUpSheet: View {
         }
         .frame(width: 40, height: 40)
         .clipShape(Circle())
+    }
+}
+
+/// The sheet's last state after a payment that brings the payer's balance to zero: the
+/// coin's halves meet and turn green. A tap, or a short hold, dismisses it.
+private struct SettledUpMoment: View {
+    let onFinish: () -> Void
+
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @State private var finished = false
+
+    var body: some View {
+        VStack(spacing: 24) {
+            SettledCoin(size: 150, fromBrand: true)
+            Text(L10n.Balances.allSettled)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Color.expenseForeground)
+                .multilineTextAlignment(.center)
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.expenseBackground)
+        .contentShape(Rectangle())
+        .onTapGesture(perform: finish)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { finish() }
+        .accessibilityIdentifier("settleUp.settled")
+        .task {
+            // VoiceOver needs time to read the line; a double tap dismisses instead.
+            guard !voiceOverEnabled else { return }
+            try? await Task.sleep(for: .seconds(2.4))
+            guard !Task.isCancelled else { return }
+            finish()
+        }
+    }
+
+    private func finish() {
+        guard !finished else { return }
+        finished = true
+        onFinish()
     }
 }
