@@ -117,11 +117,73 @@ struct SettleUpViewModelTests {
         #expect(model.errorMessage == L10n.Settlement.recordFailed)
     }
 
-    private func makeViewModel(_ summary: GroupBalanceSummary) async -> SettleUpViewModel {
-        let model = SettleUpViewModel(session: await makeSession(summary), currentUserId: 1)
+    @Test func payingTheLastDebtSettlesYouUp() async {
+        let model = await makeViewModel(summary([debt(from: 1, to: 2, cents: 1_200), debt(from: 3, to: 2, cents: 700)]),
+                                        dataSource: succeeding)
+        let result = await model.submit()
+        #expect(result?.settlesUp == true)
+    }
+
+    @Test func aPartialPaymentDoesNotSettleYouUp() async {
+        let model = await makeViewModel(summary([debt(from: 1, to: 2, cents: 1_200)]), dataSource: succeeding)
+        model.amount.replaceEntry(cents: 1_000)
+        let result = await model.submit()
+        #expect(result?.settlesUp == false)
+    }
+
+    @Test func clearingOneOfTwoDebtsDoesNotSettleYouUp() async {
+        let session = await makeSession(summary([debt(from: 1, to: 2, cents: 1_200), debt(from: 1, to: 3, cents: 500)]),
+                                        members: members + [GroupMember(id: 30, userId: 3, name: "Cara", email: "cara@example.com", avatarUrl: "")])
+        let model = SettleUpViewModel(session: session, currentUserId: 1, dataSource: succeeding)
+        model.select(peerId: 2)
+        let result = await model.submit()
+        #expect(result?.amountCents == 1_200)
+        #expect(result?.settlesUp == false)
+    }
+
+    @Test func raisingAPaymentToCoverTheRestSettlesYouUp() async {
+        let model = await makeEditModel(remainingCents: 500, paidBy: 1)
+        model.amount.replaceEntry(cents: 1_000)
+        let result = await model.submit()
+        #expect(result?.settlesUp == true)
+    }
+
+    @Test func raisingAPaymentShortOfTheRestDoesNotSettleYouUp() async {
+        let model = await makeEditModel(remainingCents: 500, paidBy: 1)
+        model.amount.replaceEntry(cents: 900)
+        let result = await model.submit()
+        #expect(result != nil)
+        #expect(result?.settlesUp == false)
+    }
+
+    @Test func raisingAPaymentYouReceivedToWhatYouAreOwedSettlesYouUp() async {
+        // Bob paid you $5.00 and still owes $3.00, so recording $8.00 clears it.
+        let model = await makeEditModel(remainingCents: 300, paidBy: 2, debtorIsYou: false)
+        model.amount.replaceEntry(cents: 800)
+        let result = await model.submit()
+        #expect(result?.settlesUp == true)
+    }
+
+    private func makeEditModel(remainingCents: Int, paidBy payer: Int, debtorIsYou: Bool = true) async -> SettleUpViewModel {
+        let remaining = debtorIsYou ? debt(from: 1, to: 2, cents: remainingCents) : debt(from: 2, to: 1, cents: remainingCents)
+        let session = await makeSession(summary([remaining]))
+        let payee = payer == 1 ? 2 : 1
+        let settlement = TestExpense.make(id: 18, paidBy: payer, amount: 5, splitAmounts: [payer: 5, payee: -5],
+                                          type: .payment, date: "2026-03-01T12:00:00Z")
+        return SettleUpViewModel(session: session, currentUserId: 1, settlement: settlement, dataSource: succeeding)
+    }
+
+    private var succeeding: SettleUpDataSource {
+        SettleUpDataSource(create: { _, _, _, _ in }, update: { _, _, _, _ in })
+    }
+
+    private func makeViewModel(_ summary: GroupBalanceSummary,
+                               dataSource: SettleUpDataSource = .live) async -> SettleUpViewModel {
+        let model = SettleUpViewModel(session: await makeSession(summary), currentUserId: 1, dataSource: dataSource)
         model.suggestPayment()
         return model
     }
+
 
     private func makeSession(_ summary: GroupBalanceSummary, members: [GroupMember]? = nil) async -> GroupSession {
         let data = ControlledGroupData()

@@ -172,6 +172,41 @@ enum ReviewSamples {
         }
     )
 
+    /// You owe Ana $165.00 and nothing else, so recording the whole amount settles you up
+    /// and a smaller amount does not.
+    static let settleUpDebt = BalanceRow(
+        from: DebtMember(id: users[0].id, name: users[0].name, avatarUrl: ""),
+        to: DebtMember(id: users[1].id, name: users[1].name, avatarUrl: ""),
+        amountCents: 16_500,
+        involvement: .youPay
+    )
+
+    static let settleUpTrip = Group(id: groupId, name: "Weekend trip", description: nil,
+                                    netBalanceCents: -16_500, createdAt: "2026-01-01", members: members)
+
+    /// The group reads behind the settle-up sheet, answered locally. The debt never clears,
+    /// so every opening owes it again.
+    static let settleUpGroup = GroupDataSource(
+        group: { _ in settleUpTrip },
+        expenses: { _ in [] },
+        summary: { _ in
+            GroupBalanceSummary(
+                simplifiedDebts: [SimplifiedDebt(from: settleUpDebt.from, to: settleUpDebt.to,
+                                                 amountCents: settleUpDebt.amountCents)],
+                balancesPending: false
+            )
+        },
+        requestBalanceRefresh: { _ in },
+        deleteExpense: { _, _, _ in throw ReviewOnly() },
+        deletePayment: { _, _ in throw ReviewOnly() }
+    )
+
+    /// Recording waits like a request would, then succeeds without writing anything.
+    static let settleUp = SettleUpDataSource(
+        create: { _, _, _, _ in try await Task.sleep(for: .milliseconds(600)) },
+        update: { _, _, _, _ in try await Task.sleep(for: .milliseconds(600)) }
+    )
+
     struct ReviewOnly: LocalizedError {
         var errorDescription: String? { "Preview only. Nothing was saved." }
     }
@@ -417,6 +452,26 @@ struct ReviewPlansView: View {
 
 /// Presents a sheet over a plain screen, the way the app presents it, and offers it
 /// again once dismissed so the dismissal and a fresh opening can both be reviewed.
+/// The real settle-up sheet on `ReviewSamples.settleUpDebt`: recording the whole amount
+/// plays the settled-up moment, a smaller one dismisses as usual.
+struct ReviewSettleUpSheet: View {
+    @StateObject private var session = GroupSession(
+        groupId: ReviewSamples.groupId,
+        seed: ReviewSamples.settleUpTrip,
+        dataSource: ReviewSamples.settleUpGroup
+    )
+
+    var body: some View {
+        SettleUpSheet(
+            session: session,
+            currentUserId: ReviewSamples.currentUserId,
+            preselectedRow: ReviewSamples.settleUpDebt,
+            dataSource: ReviewSamples.settleUp
+        )
+        .task { await session.appear().value }
+    }
+}
+
 struct ReviewSheetHost<Sheet: View>: View {
     let title: String
     let onDone: () -> Void

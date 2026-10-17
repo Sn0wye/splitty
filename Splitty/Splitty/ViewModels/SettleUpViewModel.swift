@@ -10,6 +10,8 @@ struct SettleUpResult {
     let amountCents: Int
     let date: Date
     let settlementId: Int?
+    /// True when this payment brings the payer's net balance in the group to zero.
+    var settlesUp = false
 }
 
 struct SettleUpDataSource {
@@ -50,6 +52,8 @@ final class SettleUpViewModel: ObservableObject {
     let currentUserId: Int
 
     private let settlementId: Int?
+    /// The edited payment as it stands: its amount, and whether the current user paid it.
+    private let original: (cents: Int, youPaid: Bool)?
     private let dataSource: SettleUpDataSource
 
     init(
@@ -62,6 +66,7 @@ final class SettleUpViewModel: ObservableObject {
         self.session = session
         self.currentUserId = currentUserId
         settlementId = settlement?.id
+        original = settlement.map { (Money.cents(from: $0.amount), $0.paidBy == currentUserId) }
         self.dataSource = dataSource
 
         if let settlement {
@@ -114,6 +119,23 @@ final class SettleUpViewModel: ObservableObject {
               cents > 0
         else { return nil }
         return L10n.Settlement.payAll(Money.formatted(cents: cents))
+    }
+
+    /// The current user's net balance across the simplified debts: positive when owed.
+    private var netCents: Int {
+        debts.reduce(0) { net, debt in
+            if debt.to.id == currentUserId { return net + debt.amountCents }
+            if debt.from.id == currentUserId { return net - debt.amountCents }
+            return net
+        }
+    }
+
+    /// How this submission moves the current user's net balance. An edit only moves it by
+    /// the difference, in the payer's favour.
+    private var netChange: Int {
+        guard let original else { return amountCents }
+        let delta = amountCents - original.cents
+        return original.youPaid ? delta : -delta
     }
 
     func debtCents(for peerId: Int) -> Int? {
@@ -170,6 +192,9 @@ final class SettleUpViewModel: ObservableObject {
 
     func submit() async -> SettleUpResult? {
         guard canSubmit, let peer = selectedPeer else { return nil }
+        // Read before the write: the session's summary is stale once it reports the payment.
+        let net = netCents
+        let settlesUp = net != 0 && net + netChange == 0
 
         isSubmitting = true
         errorMessage = nil
@@ -181,7 +206,8 @@ final class SettleUpViewModel: ObservableObject {
             } else {
                 try await dataSource.create(groupId, peer.userId, amountCents, date)
             }
-            return SettleUpResult(peer: peer, amountCents: amountCents, date: date, settlementId: settlementId)
+            return SettleUpResult(peer: peer, amountCents: amountCents, date: date,
+                                  settlementId: settlementId, settlesUp: settlesUp)
         } catch {
             recordSubmissionFailure(error)
             return nil

@@ -42,6 +42,7 @@ Screen names are the raw values of `ReviewScreen` in
 | `chartsEmpty` | Charts for a group with no expenses. |
 | `plans` | The Plans screen's Installments section on sample data: one with an end, one with none, a long name. Loads after a short delay; pull to refresh reloads. |
 | `plansEmpty` | Plans for a group with no active recurring expense. |
+| `settledUp` | The real Settle up sheet on a $165.00 debt to Ana. Recording it all plays the settled-up moment; a smaller amount dismisses as usual. Nothing is written. |
 | `avatarCrop` | The real avatar crop screen on a generated landscape photo with a grid: pan, flick and pinch past the bounds. |
 | `appearance` | The real Appearance setting. Picking a theme changes and stores the app's theme. |
 

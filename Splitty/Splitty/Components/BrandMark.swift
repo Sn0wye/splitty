@@ -93,29 +93,103 @@ struct SplittyLoader: View {
 }
 
 /// Everyone is square: the halves come back together into one coin.
+///
+/// The halves arrive on a lively spring but stop dead where they meet instead of sliding
+/// past each other. The impact goes into the whole coin as one springy wobble, with the
+/// success haptic at contact. `fromBrand` starts the halves coral and lets them turn green
+/// as they close, for the full-screen moment; inline the coin is green throughout.
 struct SettledCoin: View {
     var size: CGFloat = 28
+    var fromBrand = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var separation: CGFloat = 1
+    @State private var closing = false
+    @State private var wobble: Double = 0
+    @State private var contact = false
 
     var body: some View {
         SplittySymbol(separation: separation)
-            .foregroundStyle(Color("positive"))
+            .foregroundStyle(Color(fromBrand && !closing ? "brand" : "positive"))
+            .modifier(SettledCoinWobble(elapsed: wobble))
             .frame(width: size, height: size)
             .accessibilityHidden(true)
-            .sensoryFeedback(.success, trigger: separation == 0)
+            .sensoryFeedback(.success, trigger: contact)
             .task {
-                guard separation != 0 else { return }
+                guard !contact else { return }
                 if reduceMotion {
+                    closing = true
                     separation = 0
+                    contact = true
                     return
                 }
                 try? await Task.sleep(for: .milliseconds(200))
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+                guard !Task.isCancelled else { return }
+                withAnimation(.easeOut(duration: 0.4)) { closing = true }
+                withAnimation(Animation(SettledCoinSeat()), completionCriteria: .removed) {
                     separation = 0
+                } completion: {
+                    contact = true
+                    withAnimation(.linear(duration: SettledCoinMotion.wobbleDuration)) {
+                        wobble = SettledCoinMotion.wobbleDuration
+                    }
                 }
             }
+    }
+}
+
+/// The settled coin's curves, the ones the landing page's `Coin.close` and `wobble` borrow.
+enum SettledCoinMotion {
+    /// Halves meeting. Livelier than the loader's join, because they stop at contact
+    /// instead of letting the overshoot carry them through.
+    static let close = Spring(response: closeResponse, dampingRatio: closeDamping)
+    private static let closeResponse = 0.5
+    private static let closeDamping = 0.55
+    /// The whole coin taking the impact: kicked with a velocity, scale 1 to 1.
+    static let wobble = Spring(response: 0.42, dampingRatio: 0.42)
+    static let wobbleVelocity = 1.2
+    static let wobbleDuration: TimeInterval = 1
+
+    /// When the halves first meet: an underdamped step response first reaches its target
+    /// at (π − acos ζ) / ω_d.
+    static let contactTime: TimeInterval = {
+        let naturalFrequency = 2 * Double.pi / closeResponse
+        let dampedFrequency = naturalFrequency * (1 - closeDamping * closeDamping).squareRoot()
+        return (Double.pi - acos(closeDamping)) / dampedFrequency
+    }()
+
+    /// The fraction of the way the halves have travelled, or nil once they have met.
+    static func closeProgress(at time: TimeInterval) -> Double? {
+        guard time < contactTime else { return nil }
+        return min(close.value(target: 1.0, time: time), 1)
+    }
+
+    /// The coin's scale `time` seconds after contact.
+    static func wobbleScale(at time: TimeInterval) -> Double {
+        guard time < wobbleDuration else { return 1 }
+        return 1 + wobble.value(fromValue: 0.0, toValue: 0.0, initialVelocity: wobbleVelocity, time: time)
+    }
+}
+
+/// `SettledCoinMotion.close`, ending the first time it reaches its target.
+private struct SettledCoinSeat: CustomAnimation {
+    func animate<V: VectorArithmetic>(value: V, time: TimeInterval, context: inout AnimationContext<V>) -> V? {
+        SettledCoinMotion.closeProgress(at: time).map { value.scaled(by: $0) }
+    }
+}
+
+/// Scales by the wobble at `elapsed` seconds after contact. A spring from scale 1 to 1
+/// has nothing to animate, so time is what animates and the curve is read from it.
+private struct SettledCoinWobble: ViewModifier, Animatable {
+    var elapsed: Double
+
+    var animatableData: Double {
+        get { elapsed }
+        set { elapsed = newValue }
+    }
+
+    func body(content: Content) -> some View {
+        content.scaleEffect(SettledCoinMotion.wobbleScale(at: elapsed))
     }
 }
 
