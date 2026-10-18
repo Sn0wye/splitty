@@ -81,7 +81,7 @@ struct RecurringPlanRow: View {
                 Circle()
                     .fill(plan.category.tint)
                     .frame(width: 40, height: 40)
-                Image(systemName: plan.category.glyph(in: currency))
+                CategoryGlyph(category: plan.category)
                     .font(.system(size: 18))
                     .foregroundColor(.white)
             }

@@ -633,7 +633,7 @@ struct ExpenseRow: View {
                 .fill(categoryColor)
                 .frame(width: 40, height: 40)
             
-            Image(systemName: categoryIconName)
+            CategoryGlyph(category: expense.category)
                 .font(.system(size: 18))
                 .foregroundColor(.white)
         }
@@ -652,10 +652,6 @@ struct ExpenseRow: View {
         expense.category.tint
     }
     
-    private var categoryIconName: String {
-        expense.category.glyph(in: currency)
-    }
-
     private var isUserPaid: Bool { expense.paidBy == currentUserId }
 
     private var involvement: ExpenseInvolvement { expense.involvement(of: currentUserId) }

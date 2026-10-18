@@ -173,7 +173,7 @@ struct ExpenseDetailsStep: View {
                             viewModel.category = viewModel.category == category ? .general : category
                         } label: {
                             HStack(spacing: 6) {
-                                Image(systemName: category.glyph(in: currency))
+                                CategoryGlyph(category: category)
                                 Text(category.name)
                                 if viewModel.category == category {
                                     Image(systemName: "checkmark")

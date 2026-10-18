@@ -87,11 +87,11 @@ enum ExpenseCategory: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    /// `currency` draws the coin on `general`, so an uncategorized expense in a BRL group
-    /// does not wear a dollar sign.
-    func glyph(in currency: Currency) -> String {
+    /// The SF Symbol for the category, or nil for `general`, whose coin follows the group's
+    /// currency. Draw it with `CategoryGlyph`.
+    var glyph: String? {
         switch self {
-        case .general: currency.coinGlyph
+        case .general: nil
         case .games: "gamecontroller.fill"
         case .movies: "film.fill"
         case .music: "music.note"
