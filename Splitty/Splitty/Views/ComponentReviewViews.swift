@@ -454,8 +454,11 @@ struct ReviewPlansView: View {
 /// Presents a sheet over a plain screen, the way the app presents it, and offers it
 /// again once dismissed so the dismissal and a fresh opening can both be reviewed.
 /// The real settle-up sheet on `ReviewSamples.settleUpDebt`: recording the whole amount
-/// plays the settled-up moment, a smaller one dismisses as usual.
+/// plays the settled-up moment, a smaller one dismisses as usual. Without a balance row
+/// it opens on the person step, the way the group's Settle up button does.
 struct ReviewSettleUpSheet: View {
+    var startsFromBalanceRow = true
+
     @StateObject private var session = GroupSession(
         groupId: ReviewSamples.groupId,
         seed: ReviewSamples.settleUpTrip,
@@ -466,7 +469,7 @@ struct ReviewSettleUpSheet: View {
         SettleUpSheet(
             session: session,
             currentUserId: ReviewSamples.currentUserId,
-            preselectedRow: ReviewSamples.settleUpDebt,
+            preselectedRow: startsFromBalanceRow ? ReviewSamples.settleUpDebt : nil,
             dataSource: ReviewSamples.settleUp
         )
         .task { await session.appear().value }
