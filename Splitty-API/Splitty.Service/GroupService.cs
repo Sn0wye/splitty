@@ -13,12 +13,15 @@ public class GroupService(
     IGroupLedger groupLedger
 ) : IGroupService
 {
-    public async Task<GroupDTO> CreateAsync(int userId, string name, string? description)
+    public async Task<GroupDTO> CreateAsync(int userId, string name, string? description, Currency currency)
     {
+        EnsureListed(currency);
+
         var group = new Group
         {
             Name = name,
             Description = description,
+            Currency = currency,
             CreatedBy = userId,
         };
 
@@ -45,8 +48,10 @@ public class GroupService(
         return await readModel.GetGroupAsync(groupId, userId);
     }
 
-    public async Task<GroupDTO> UpdateAsync(int groupId, int userId, string? name, string? description)
+    public async Task<GroupDTO> UpdateAsync(int groupId, int userId, string? name, string? description, Currency? currency)
     {
+        if (currency is { } listed) EnsureListed(listed);
+
         if (!await IsMemberAsync(groupId, userId))
         {
             if (!await readModel.GroupExistsAsync(groupId))
@@ -60,7 +65,8 @@ public class GroupService(
         await groupRepository.RenameAsync(
             groupId,
             string.IsNullOrEmpty(name) ? null : name,
-            string.IsNullOrEmpty(description) ? null : description);
+            string.IsNullOrEmpty(description) ? null : description,
+            currency);
 
         return await readModel.GetGroupAsync(groupId, userId)
             ?? throw new KeyNotFoundException("Group not found");
@@ -107,4 +113,13 @@ public class GroupService(
 
     public Task<bool> IsMemberAsync(int groupId, int userId) =>
         readModel.IsMemberAsync(groupId, userId);
+
+    /// The enum converter also binds bare integers, so a number outside the list reaches here.
+    private static void EnsureListed(Currency currency)
+    {
+        if (!Enum.IsDefined(currency))
+        {
+            throw new ArgumentException("Unsupported currency.");
+        }
+    }
 }

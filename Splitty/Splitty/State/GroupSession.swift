@@ -183,6 +183,7 @@ final class GroupSession: ObservableObject {
     }
 
     var members: [GroupMember] { group?.members ?? [] }
+    var currency: Currency { group?.currency ?? .usd }
 
     /// Charts only has something to chart once an expense exists, and asks for one until
     /// then: settlements count in neither group spend nor share.

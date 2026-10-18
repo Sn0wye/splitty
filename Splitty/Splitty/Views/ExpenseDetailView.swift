@@ -8,6 +8,7 @@ import SwiftUI
 /// A read-only view of one expense: the total, who paid, and every split. Editing reopens
 /// the same sheet that created it.
 struct ExpenseDetailView: View {
+    @Environment(\.currency) private var currency
     let expense: Expense
     let members: [GroupMember]
     let currentUserId: Int
@@ -66,6 +67,7 @@ struct ExpenseDetailView: View {
         .sheet(isPresented: $showingEditSheet) {
             ExpenseSheet(
                 groupId: expense.groupId,
+                currency: currency,
                 members: members,
                 currentUserId: currentUserId,
                 expense: expense,
@@ -114,7 +116,7 @@ struct ExpenseDetailView: View {
                 .foregroundStyle(Color("foreground"))
                 .multilineTextAlignment(.center)
 
-            Text(Money.formatted(amount: expense.amount))
+            Text(Money.formatted(amount: expense.amount, currency: currency))
                 .font(.system(size: 44, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(Color("foreground"))
@@ -155,7 +157,7 @@ struct ExpenseDetailView: View {
             Spacer(minLength: 12)
 
             if let amount {
-                Text(Money.formatted(amount: amount))
+                Text(Money.formatted(amount: amount, currency: currency))
                     .font(.title3.weight(.bold))
                     .monospacedDigit()
                     .foregroundStyle(tint)
@@ -174,7 +176,7 @@ struct ExpenseDetailView: View {
                 .font(.body.weight(expense.paidBy == currentUserId ? .semibold : .regular))
                 .foregroundStyle(payerDisplay.isRemoved ? Color("muted-foreground") : Color("foreground"))
             Spacer(minLength: 12)
-            Text(Money.formatted(amount: expense.amount))
+            Text(Money.formatted(amount: expense.amount, currency: currency))
                 .font(.body.weight(.semibold))
                 .monospacedDigit()
                 .foregroundStyle(Color("foreground"))
@@ -216,7 +218,7 @@ struct ExpenseDetailView: View {
             Spacer(minLength: 12)
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text(Money.formatted(amount: split.amount))
+                Text(Money.formatted(amount: split.amount, currency: currency))
                     .font(.body.weight(.semibold))
                     .monospacedDigit()
                     .foregroundStyle(Color("foreground"))

@@ -12,6 +12,7 @@ import SwiftUI
 /// a `navigationDestination` — the pushed screen is a separate focus scope, and a binding
 /// handed across that boundary silently does nothing.
 struct ExpenseDetailsStep: View {
+    @Environment(\.currency) private var currency
     @ObservedObject var viewModel: ExpenseFormViewModel
     /// Called once Save is allowed, with the answer to the scope prompt when one was asked.
     let onSave: (ExpenseScope?) -> Void
@@ -72,7 +73,7 @@ struct ExpenseDetailsStep: View {
                 .padding(.bottom, 12)
                 .background(Color.expenseBackground)
         }
-        .navigationTitle(Money.formatted(cents: viewModel.totalCents))
+        .navigationTitle(Money.formatted(cents: viewModel.totalCents, currency: currency))
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.expenseBackground, for: .navigationBar)
         // The field is the whole point of arriving here, so it is already waiting. Asked for

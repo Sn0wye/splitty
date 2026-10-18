@@ -13,6 +13,12 @@ public class Group
     
     public string? Description { get; set; }
 
+    /// <summary>
+    /// The currency of every amount in the group. Changing it relabels those amounts and
+    /// converts nothing (ADR 0007).
+    /// </summary>
+    public Currency Currency { get; set; } = Currency.USD;
+
     public int CreatedBy { get; set; }
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

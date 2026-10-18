@@ -76,7 +76,7 @@ public sealed class GroupResponseContractTests(ApiFactory factory)
 
     private static void AssertGroupRead(JsonElement group, SignedInUser user, int id, string name, string description, decimal net)
     {
-        AssertKeys(group, "id", "name", "description", "createdAt", "netBalance", "members");
+        AssertKeys(group, "id", "name", "description", "currency", "createdAt", "netBalance", "members");
         AssertGroupIdentity(group, id, name, description);
         Assert.Equal(net, group.GetProperty("netBalance").GetDecimal());
         var member = Assert.Single(group.GetProperty("members").EnumerateArray());

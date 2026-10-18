@@ -118,7 +118,7 @@ final class SettleUpViewModel: ObservableObject {
               let cents = debtCents(for: selectedPeerId),
               cents > 0
         else { return nil }
-        return L10n.Settlement.payAll(Money.formatted(cents: cents))
+        return L10n.Settlement.payAll(Money.formatted(cents: cents, currency: session.currency))
     }
 
     /// The current user's net balance across the simplified debts: positive when owed.
@@ -221,7 +221,7 @@ final class SettleUpViewModel: ObservableObject {
            debtCents > 0,
            debtCents < amountCents
         {
-            errorMessage = L10n.Settlement.onlyOwe(peer.name, Money.formatted(cents: debtCents))
+            errorMessage = L10n.Settlement.onlyOwe(peer.name, Money.formatted(cents: debtCents, currency: session.currency))
         } else {
             errorMessage = L10n.Settlement.recordFailed
         }

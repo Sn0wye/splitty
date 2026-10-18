@@ -1,3 +1,5 @@
+using Splitty.Domain.Entities;
+
 namespace Splitty.DTO.Internal;
 
 public class GroupDTO
@@ -7,6 +9,8 @@ public class GroupDTO
     public required string Name { get; set; }
     
     public string? Description { get; set; }
+
+    public Currency Currency { get; set; }
     
     public Decimal NetBalance { get; set; }
 

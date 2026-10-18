@@ -49,7 +49,7 @@ struct GroupCard: View {
                         .font(.system(size: 12))
                         
                         if netBalanceCents != 0 {
-                            Text(Money.formatted(cents: abs(netBalanceCents)))
+                            Text(Money.formatted(cents: abs(netBalanceCents), currency: group.currency))
                                 .font(.system(size: 18))
                                 .fontWeight(.bold)
                                 .foregroundColor(Color(positiveBalance ? "positive" : "negative"))

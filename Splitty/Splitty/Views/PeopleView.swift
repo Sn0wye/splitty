@@ -133,7 +133,7 @@ struct PeopleView: View {
                         HStack {
                             Text(group.groupName)
                             Spacer()
-                            Text(Money.formatted(cents: group.amountCents))
+                            Text(Money.formatted(cents: group.amountCents, currency: .usd))
                                 .foregroundStyle(Color("muted-foreground"))
                             Image(systemName: "chevron.right")
                                 .font(.caption.weight(.semibold))
@@ -171,10 +171,10 @@ struct PeopleView: View {
 
     private func peerStatement(_ peer: Peer) -> String {
         if peer.netAmountCents < 0 {
-            return L10n.People.youOwe(Money.formatted(cents: peer.magnitudeCents))
+            return L10n.People.youOwe(Money.formatted(cents: peer.magnitudeCents, currency: .usd))
         }
         if peer.netAmountCents > 0 {
-            return L10n.People.owesYou(Money.formatted(cents: peer.magnitudeCents))
+            return L10n.People.owesYou(Money.formatted(cents: peer.magnitudeCents, currency: .usd))
         }
         return L10n.People.settledUp
     }

@@ -29,6 +29,7 @@ struct ExpenseSheet: View {
 
     init(
         groupId: Int,
+        currency: Currency,
         members: [GroupMember],
         currentUserId: Int,
         expense: Expense? = nil,
@@ -38,6 +39,7 @@ struct ExpenseSheet: View {
     ) {
         _viewModel = StateObject(wrappedValue: ExpenseFormViewModel(
             groupId: groupId,
+            currency: currency,
             members: members,
             currentUserId: currentUserId,
             expense: expense,
@@ -55,6 +57,7 @@ struct ExpenseSheet: View {
                     ExpenseDetailsStep(viewModel: viewModel, onSave: save(scope:))
                 }
         }
+        .environment(\.currency, viewModel.currency)
         .presentationCornerRadius(28)
         .presentationBackground(Color.expenseBackground)
         .sensoryFeedback(.success, trigger: savedCount)

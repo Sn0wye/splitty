@@ -55,6 +55,7 @@ struct ContentView: View {
                     } else {
                         ExpenseSheet(
                             groupId: group.id,
+                            currency: group.currency,
                             members: group.members,
                             currentUserId: currentUserId
                         ) { write in
@@ -121,6 +122,7 @@ private struct SessionExpenseSheet: View {
     var body: some View {
         ExpenseSheet(
             groupId: group.id,
+            currency: session.currency,
             members: group.members,
             currentUserId: currentUserId,
             timelineExpenses: session.expenses,

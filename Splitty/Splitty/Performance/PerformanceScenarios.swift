@@ -25,6 +25,8 @@ enum PerformanceScenarios {
             id: index,
             name: "Group \(index)",
             description: nil,
+            // A few groups in other currencies, so the groups header shows one line each.
+            currency: index.isMultiple(of: 10) ? .brl : index % 10 == 5 ? .eur : .usd,
             netBalanceCents: index.isMultiple(of: 2) ? 1_250 : -980,
             createdAt: "2026-01-01T12:00:00Z",
             members: index == 1 ? splitMembers : [

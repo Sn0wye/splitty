@@ -129,10 +129,11 @@ struct OnboardingReviewView: View {
                     Color("background").ignoresSafeArea()
                 }
             }
-        case .expenseForm:
+        case .expenseForm, .expenseFormReais:
             ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
                 ExpenseSheet(
                     groupId: ReviewSamples.groupId,
+                    currency: screen == .expenseFormReais ? .brl : .usd,
                     members: ReviewSamples.members,
                     currentUserId: ReviewSamples.currentUserId,
                     timelineExpenses: ReviewSamples.timeline(),
@@ -141,6 +142,9 @@ struct OnboardingReviewView: View {
             }
         case .timeline:
             ReviewTimelineView { selectedScreen = nil }
+        case .timelineEuros:
+            ReviewTimelineView { selectedScreen = nil }
+                .environment(\.currency, .eur)
         case .plans, .plansEmpty:
             ReviewPlansView(plans: screen == .plans ? ReviewSamples.plans : []) { selectedScreen = nil }
         case .settledUp:
@@ -213,7 +217,9 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
     case peopleEmpty
     case balanceHint
     case expenseForm
+    case expenseFormReais
     case timeline
+    case timelineEuros
     case charts
     case chartsFailed
     case chartsEmpty
@@ -237,7 +243,9 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .peopleEmpty: "No people"
         case .balanceHint: "First balance"
         case .expenseForm: "Expense form"
+        case .expenseFormReais: "Expense form, reais"
         case .timeline: "Timeline"
+        case .timelineEuros: "Timeline, euros"
         case .charts: "Charts"
         case .chartsFailed: "Charts, first load fails"
         case .chartsEmpty: "Charts, no expenses"
@@ -261,7 +269,9 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .peopleEmpty: "person.2"
         case .balanceHint: "arrow.left.arrow.right"
         case .expenseForm: "number"
+        case .expenseFormReais: "brazilianrealsign"
         case .timeline: "list.bullet.rectangle"
+        case .timelineEuros: "eurosign"
         case .charts: "chart.pie"
         case .chartsFailed: "exclamationmark.triangle"
         case .chartsEmpty: "chart.pie.fill"

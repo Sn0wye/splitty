@@ -144,16 +144,22 @@ final class APIClient: Sendable {
         return try await request(endpoint: "/group/\(id)")
     }
     
-    func createGroup(name: String, description: String?) async throws -> GroupMutationResponse {
-        var body: [String: Any] = ["name": name]
+    func createGroup(name: String, description: String?, currency: Currency) async throws -> GroupMutationResponse {
+        var body: [String: Any] = ["name": name, "currency": currency.code]
         if let description = description { body["description"] = description }
         return try await request(endpoint: "/group", method: .POST, body: body)
     }
     
-    func updateGroup(id: Int, name: String?, description: String?) async throws -> GroupMutationResponse {
+    func updateGroup(
+        id: Int,
+        name: String?,
+        description: String?,
+        currency: Currency?
+    ) async throws -> GroupMutationResponse {
         var body: [String: Any] = [:]
         if let name = name { body["name"] = name }
         if let description = description { body["description"] = description }
+        if let currency { body["currency"] = currency.code }
         return try await request(endpoint: "/group/\(id)", method: .PUT, body: body)
     }
     

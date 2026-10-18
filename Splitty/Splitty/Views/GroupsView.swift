@@ -164,9 +164,16 @@ struct GroupsView: View {
                 .fontWeight(.bold)
                 .foregroundColor(Color("foreground"))
 
-            if let overallBalanceCents = viewModel.overallBalanceCents {
-                Text(BalanceCopy.overall(cents: overallBalanceCents))
-                    .foregroundColor(Color("muted-foreground"))
+            if let balances = viewModel.overallBalances {
+                if balances.isEmpty {
+                    Text(L10n.Balances.allSettled)
+                        .foregroundColor(Color("muted-foreground"))
+                } else {
+                    ForEach(balances, id: \.currency) { balance in
+                        Text(BalanceCopy.overall(cents: balance.cents, currency: balance.currency))
+                            .foregroundColor(Color(balance.cents > 0 ? "positive" : "negative"))
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

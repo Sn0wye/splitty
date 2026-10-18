@@ -330,6 +330,26 @@ enum L10n {
             text("group_settings.not_member", default: "You are not a member of this group.")
         }
         static var gone: String { text("group_settings.gone", default: "This group no longer exists.") }
+        static var currency: String { text("group_settings.currency", default: "Currency") }
+        /// "Brazilian Real (R$)".
+        static func currencyOption(_ name: String, _ symbol: String) -> String {
+            format("group_settings.currency_option", default: "%1$@ (%2$@)", name, symbol)
+        }
+        static var currencyFooter: String {
+            text("group_settings.currency_footer", default: "Every amount in the group is in this currency.")
+        }
+        static func changeCurrencyTitle(_ code: String) -> String {
+            format("group_settings.change_currency_title", default: "Change currency to %@?", code)
+        }
+        static var changeCurrencyMessage: String {
+            text(
+                "group_settings.change_currency_message",
+                default: "Amounts stay the same and only the symbol changes. Nothing is converted."
+            )
+        }
+        static var changeCurrencyConfirm: String {
+            text("group_settings.change_currency_confirm", default: "Change currency")
+        }
     }
 
     enum Leave {
