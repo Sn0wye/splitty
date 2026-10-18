@@ -29,6 +29,7 @@ public class GroupReadModel(ApplicationDbContext context, IAvatarResolver avatar
                 Id = g.Id,
                 Name = g.Name,
                 Description = g.Description,
+                Currency = g.Currency,
                 CreatedAt = g.CreatedAt,
                 NetBalance = g.Balances.Where(b => b.UserId == userId).Sum(b => (decimal?)b.Amount) ?? 0m
             }).ToListAsync();

@@ -3,6 +3,7 @@ import SwiftUI
 struct ExpenseCategoryPickerView: View {
     @Binding var selection: ExpenseCategory
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.currency) private var currency
     @State private var searchText = ""
 
     var body: some View {
@@ -61,7 +62,7 @@ struct ExpenseCategoryPickerView: View {
             dismiss()
         } label: {
             HStack(spacing: 12) {
-                Image(systemName: category.glyph)
+                Image(systemName: category.glyph(in: currency))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 32, height: 32)

@@ -29,6 +29,7 @@ struct ExpenseKeypad: View {
     let onKey: (KeypadKey) -> Void
     let onClear: () -> Void
 
+    @Environment(\.currency) private var currency
     @State private var clearCount = 0
     @State private var suppressNextBackspace = false
 
@@ -45,7 +46,8 @@ struct ExpenseKeypad: View {
             }
 
             HStack(spacing: 0) {
-                key(title: ".") { onKey(.decimalPoint) }
+                // Shows the currency's separator. The amount field still stores a `.`.
+                key(title: currency.decimalSeparator, identifier: ".") { onKey(.decimalPoint) }
                 key(title: "0") { onKey(.digit(0)) }
                 backspaceKey
             }
@@ -56,13 +58,14 @@ struct ExpenseKeypad: View {
 
     private func key(
         title: String,
+        identifier: String? = nil,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Text(title)
         }
         .buttonStyle(KeypadKeyStyle())
-        .accessibilityIdentifier("keypad.key.\(title)")
+        .accessibilityIdentifier("keypad.key.\(identifier ?? title)")
     }
 
     private var backspaceKey: some View {

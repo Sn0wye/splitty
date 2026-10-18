@@ -11,6 +11,7 @@ import SwiftUI
 /// moves that selector is a second control for one action — picking the payer inside an
 /// equal split is the same two taps a preset saved.
 struct SplitConfigurationView: View {
+    @Environment(\.currency) private var currency
     @ObservedObject var viewModel: ExpenseFormViewModel
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focusedField: Field?
@@ -70,7 +71,7 @@ struct SplitConfigurationView: View {
     /// The shares below are only meaningful next to the money they divide.
     private var totalHeader: some View {
         VStack(spacing: 4) {
-            Text(Money.formatted(cents: viewModel.totalCents))
+            Text(Money.formatted(cents: viewModel.totalCents, currency: currency))
                 .font(.system(size: 44, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(Color.expenseForeground)
@@ -92,7 +93,7 @@ struct SplitConfigurationView: View {
         let people = L10n.Split.people(shares.count)
         guard viewModel.selectedMode == .equal, let share = shares.first,
               shares.allSatisfy({ $0 == share }) else { return people }
-        return "\(L10n.Split.each(Money.formatted(cents: share))) · \(people)"
+        return "\(L10n.Split.each(Money.formatted(cents: share, currency: currency))) · \(people)"
     }
 
     // MARK: - Payer
@@ -259,7 +260,7 @@ struct SplitConfigurationView: View {
         } label: {
             memberRow(member) {
                 if isParticipant {
-                    Text(Money.formatted(cents: viewModel.perParticipantAmounts[member.userId] ?? 0))
+                    Text(Money.formatted(cents: viewModel.perParticipantAmounts[member.userId] ?? 0, currency: currency))
                         .fontWeight(.medium)
                         .foregroundStyle(Color.expenseForeground)
                         .monospacedDigit()
@@ -297,7 +298,7 @@ struct SplitConfigurationView: View {
         // money it stands for.
         let cents = viewModel.perParticipantAmounts[member.userId] ?? 0
 
-        return memberRow(member, caption: cents > 0 ? Money.formatted(cents: cents) : nil) {
+        return memberRow(member, caption: cents > 0 ? Money.formatted(cents: cents, currency: currency) : nil) {
             entryField(.percentage(member.userId), suffix: "%", width: 44) {
                 TextField("0", text: Binding(
                     get: { viewModel.percentageText[member.userId] ?? "" },
@@ -395,7 +396,7 @@ struct SplitConfigurationView: View {
             let assigned = total - configuration.unassignedCents(totalCents: total)
             return (
                 total > 0 ? Double(assigned) / Double(total) : 0,
-                L10n.Split.assignedOf(Money.formatted(cents: assigned), Money.formatted(cents: total))
+                L10n.Split.assignedOf(Money.formatted(cents: assigned, currency: currency), Money.formatted(cents: total, currency: currency))
             )
         case .percentage:
             let assigned = 100 - configuration.unassignedPercent

@@ -72,6 +72,7 @@ private struct InstallmentsSection: View {
 
 /// A recurring expense: what it is, how often, and how far along.
 struct RecurringPlanRow: View {
+    @Environment(\.currency) private var currency
     let plan: RecurringPlan
 
     var body: some View {
@@ -80,7 +81,7 @@ struct RecurringPlanRow: View {
                 Circle()
                     .fill(plan.category.tint)
                     .frame(width: 40, height: 40)
-                Image(systemName: plan.category.glyph)
+                Image(systemName: plan.category.glyph(in: currency))
                     .font(.system(size: 18))
                     .foregroundColor(.white)
             }
@@ -100,7 +101,7 @@ struct RecurringPlanRow: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text(Money.formatted(amount: plan.amount))
+                Text(Money.formatted(amount: plan.amount, currency: currency))
                     .font(.headline)
                     .fontWeight(.semibold)
                     .foregroundColor(Color("card-foreground"))

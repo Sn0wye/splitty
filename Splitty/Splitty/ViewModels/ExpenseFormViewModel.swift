@@ -43,6 +43,7 @@ class ExpenseFormViewModel: ObservableObject {
     @Published private(set) var hasAttemptedSave = false
 
     let groupId: Int
+    let currency: Currency
     let members: [GroupMember]
     let currentUserId: Int
     @Published private(set) var timelineExpenses: [Expense]
@@ -74,6 +75,7 @@ class ExpenseFormViewModel: ObservableObject {
 
     init(
         groupId: Int,
+        currency: Currency = .usd,
         members: [GroupMember],
         currentUserId: Int,
         expense: Expense? = nil,
@@ -82,6 +84,7 @@ class ExpenseFormViewModel: ObservableObject {
         timeZone: @escaping () -> TimeZone = { .current }
     ) {
         self.groupId = groupId
+        self.currency = currency
         self.members = members
         self.currentUserId = currentUserId
         self.timelineExpenses = timelineExpenses
@@ -287,8 +290,8 @@ class ExpenseFormViewModel: ObservableObject {
             return L10n.Expense.selectSplit
         case .unassigned(let cents):
             return cents > 0
-                ? L10n.Expense.leftToAssign(Money.formatted(cents: cents))
-                : L10n.Expense.overTotal(Money.formatted(cents: -cents))
+                ? L10n.Expense.leftToAssign(Money.formatted(cents: cents, currency: currency))
+                : L10n.Expense.overTotal(Money.formatted(cents: -cents, currency: currency))
         case .unassignedPercent(let percent):
             return percent > 0
                 ? L10n.Expense.percentLeft(Percent.string(percent))

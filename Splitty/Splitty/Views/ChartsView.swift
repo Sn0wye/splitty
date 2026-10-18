@@ -194,6 +194,7 @@ struct ChartsView: View {
 // MARK: - By category
 
 private struct HeadingDonut: View {
+    @Environment(\.currency) private var currency
     @ObservedObject var viewModel: ChartsViewModel
     let motion: Animation?
 
@@ -221,7 +222,7 @@ private struct HeadingDonut: View {
             .foregroundStyle(slice.heading.tint)
             .opacity(viewModel.selectedHeading == nil || viewModel.selectedHeading == slice.heading ? 1 : 0.35)
             .accessibilityLabel(slice.heading.title)
-            .accessibilityValue(ChartsCopy.amountAndPercent(cents: slice.cents, fraction: slice.fraction, locale: locale))
+            .accessibilityValue(ChartsCopy.amountAndPercent(cents: slice.cents, fraction: slice.fraction, locale: locale, currency: currency))
         }
         .chartAngleSelection(value: $angleSelection)
         // Taps only, each one selecting afresh, so tapping the selected slice again clears
@@ -234,7 +235,7 @@ private struct HeadingDonut: View {
         }
         .chartBackground { _ in
             VStack(spacing: 2) {
-                Text(Money.formatted(cents: viewModel.totalCents))
+                Text(Money.formatted(cents: viewModel.totalCents, currency: currency))
                     .font(.title3.weight(.bold))
                     .monospacedDigit()
                     .contentTransition(.numericText())
@@ -269,6 +270,7 @@ private struct HeadingDonut: View {
 }
 
 private struct HeadingLegend: View {
+    @Environment(\.currency) private var currency
     @ObservedObject var viewModel: ChartsViewModel
     let motion: Animation?
 
@@ -287,7 +289,7 @@ private struct HeadingLegend: View {
                     .buttonStyle(.plain)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel(heading.title)
-                    .accessibilityValue(ChartsCopy.amountAndPercent(cents: row.cents, fraction: row.fraction, locale: locale))
+                    .accessibilityValue(ChartsCopy.amountAndPercent(cents: row.cents, fraction: row.fraction, locale: locale, currency: currency))
                     .accessibilityHint(L10n.Charts.filterHint)
                     .accessibilityAddTraits(viewModel.selectedHeading == heading ? .isSelected : [])
 
@@ -296,7 +298,7 @@ private struct HeadingLegend: View {
                         .transition(.opacity)
                         .accessibilityElement(children: .ignore)
                         .accessibilityLabel(category.name)
-                        .accessibilityValue(ChartsCopy.amountAndPercent(cents: row.cents, fraction: row.fraction, locale: locale))
+                        .accessibilityValue(ChartsCopy.amountAndPercent(cents: row.cents, fraction: row.fraction, locale: locale, currency: currency))
                 }
             }
         }
@@ -324,7 +326,7 @@ private struct HeadingLegend: View {
 
     private func categoryRow(_ row: ChartsLegendRow, category: ExpenseCategory) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: category.glyph)
+            Image(systemName: category.glyph(in: currency))
                 .font(.caption)
                 .foregroundStyle(category.tint)
                 .frame(width: 18)
@@ -343,7 +345,7 @@ private struct HeadingLegend: View {
                 .contentTransition(.numericText())
                 .animation(motion, value: row.fraction)
                 .foregroundStyle(Color("muted-foreground"))
-            Text(Money.formatted(cents: row.cents))
+            Text(Money.formatted(cents: row.cents, currency: currency))
                 .contentTransition(.numericText())
                 .animation(motion, value: row.cents)
                 .foregroundStyle(Color("card-foreground"))
@@ -382,6 +384,7 @@ private struct SelectionChip: View {
 // MARK: - Biggest expenses
 
 private struct BiggestExpenses: View {
+    @Environment(\.currency) private var currency
     let rows: [ChartsTopExpense]
     let motion: Animation?
     let onOpen: (Int) -> Void
@@ -396,7 +399,7 @@ private struct BiggestExpenses: View {
                             .foregroundStyle(Color("muted-foreground"))
                             .frame(width: 16)
                             .accessibilityHidden(true)
-                        Image(systemName: row.category.glyph)
+                        Image(systemName: row.category.glyph(in: currency))
                             .foregroundStyle(row.category.tint)
                             .frame(width: 32, height: 32)
                             .background(row.category.tint.opacity(0.15), in: Circle())
@@ -411,7 +414,7 @@ private struct BiggestExpenses: View {
                             }
                         }
                         Spacer(minLength: 8)
-                        Text(Money.formatted(cents: row.cents))
+                        Text(Money.formatted(cents: row.cents, currency: currency))
                             .monospacedDigit()
                             .contentTransition(.numericText())
                             .foregroundStyle(Color("card-foreground"))
@@ -514,9 +517,9 @@ private struct NothingInRange: View {
 
 private enum ChartsCopy {
     /// `$120.00, 40%` for VoiceOver.
-    static func amountAndPercent(cents: Int, fraction: Double, locale: Locale) -> String {
+    static func amountAndPercent(cents: Int, fraction: Double, locale: Locale, currency: Currency) -> String {
         let percent = fraction.formatted(.percent.precision(.fractionLength(0)).locale(locale))
-        return L10n.Charts.amountAndPercent(Money.formatted(cents: cents), percent)
+        return L10n.Charts.amountAndPercent(Money.formatted(cents: cents, currency: currency), percent)
     }
 }
 

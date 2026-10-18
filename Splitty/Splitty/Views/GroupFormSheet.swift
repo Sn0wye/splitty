@@ -9,6 +9,7 @@ struct GroupFormSheet: View {
     @StateObject private var viewModel: GroupFormViewModel
     @Environment(\.dismiss) private var dismiss
     @FocusState private var nameFocused: Bool
+    @State private var confirmingCurrencyChange = false
     private let isReview: Bool
     
     private let onSaved: (Int) -> Void
@@ -17,7 +18,8 @@ struct GroupFormSheet: View {
         _viewModel = StateObject(wrappedValue: GroupFormViewModel(
             existingGroupId: group?.id,
             name: group?.name ?? "",
-            description: group?.description ?? ""
+            description: group?.description ?? "",
+            currency: group?.currency ?? .usd
         ))
         self.onSaved = onSaved
         self.isReview = isReview
@@ -38,6 +40,21 @@ struct GroupFormSheet: View {
                         TextField(L10n.GroupSettings.descriptionOptional, text: $viewModel.description, axis: .vertical)
                             .lineLimit(1...3)
                     }
+                }
+
+                Section {
+                    HStack(spacing: 14) {
+                        fieldIcon("banknote")
+                        Picker(L10n.GroupSettings.currency, selection: $viewModel.currency) {
+                            ForEach(Currency.allCases) { currency in
+                                Text(L10n.GroupSettings.currencyOption(currency.localizedName, currency.symbol))
+                                    .tag(currency)
+                            }
+                        }
+                        .accessibilityIdentifier("groupForm.currency")
+                    }
+                } footer: {
+                    Text(L10n.GroupSettings.currencyFooter)
                 }
                 
                 if let errorMessage = viewModel.errorMessage {
@@ -61,11 +78,10 @@ struct GroupFormSheet: View {
                         ProgressView()
                     } else {
                         Button {
-                            Task {
-                                if let groupId = await viewModel.save() {
-                                    onSaved(groupId)
-                                    dismiss()
-                                }
+                            if viewModel.changesCurrency {
+                                confirmingCurrencyChange = true
+                            } else {
+                                save()
                             }
                         } label: {
                             Text(viewModel.isEditing ? L10n.Common.save : L10n.Common.create)
@@ -75,6 +91,24 @@ struct GroupFormSheet: View {
                 }
             }
             .onAppear { nameFocused = !isReview }
+            .alert(
+                L10n.GroupSettings.changeCurrencyTitle(viewModel.currency.code),
+                isPresented: $confirmingCurrencyChange
+            ) {
+                Button(L10n.GroupSettings.changeCurrencyConfirm, action: save)
+                Button(role: .cancel) {} label: { Text(L10n.Common.cancel) }
+            } message: {
+                Text(L10n.GroupSettings.changeCurrencyMessage)
+            }
+        }
+    }
+
+    private func save() {
+        Task {
+            if let groupId = await viewModel.save() {
+                onSaved(groupId)
+                dismiss()
+            }
         }
     }
 

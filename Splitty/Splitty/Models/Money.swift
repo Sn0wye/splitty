@@ -43,10 +43,12 @@ enum Money {
         cents(from: Decimal(value))
     }
 
-    /// Reads what someone typed into an amount field. Always `en_US_POSIX`: the pad and the
-    /// keyboard both produce a `.` regardless of locale.
+    /// Reads what someone typed into an amount field. The pad always types a `.`, but the
+    /// system decimal pad types the device region's separator, which is a `,` in Brazil or
+    /// France. Neither field offers a grouping separator, so a `,` can only be the decimal.
     static func cents(fromTypedText text: String) -> Int? {
-        guard let value = Decimal(string: text, locale: Locale(identifier: "en_US_POSIX")) else {
+        let normalized = text.replacingOccurrences(of: ",", with: ".")
+        guard let value = Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX")) else {
             return nil
         }
         return cents(from: value)
@@ -78,14 +80,28 @@ enum Money {
             : "\(sign)\(whole).\(String(format: "%02d", fraction))"
     }
 
-    /// `$42.50` — for anything being read rather than typed. Currency is a hardcoded `$`.
-    static func formatted(cents: Int) -> String {
+    /// `$1,234.50`, `R$ 1.234,50`, `1.234,50 €`: for anything being read rather than typed.
+    /// Each currency writes its own symbol and separators, whatever the app language.
+    static func formatted(cents: Int, currency: Currency) -> String {
         let sign = cents < 0 ? "-" : ""
         let magnitude = abs(cents)
-        return "\(sign)$\(magnitude / 100).\(String(format: "%02d", magnitude % 100))"
+        let whole = grouped(magnitude / 100, separator: currency.groupingSeparator)
+        let fraction = String(format: "%02d", magnitude % 100)
+        return sign + currency.decorate("\(whole)\(currency.decimalSeparator)\(fraction)")
     }
 
-    static func formatted(amount: Double) -> String {
-        formatted(cents: cents(from: amount))
+    static func formatted(amount: Double, currency: Currency) -> String {
+        formatted(cents: cents(from: amount), currency: currency)
+    }
+
+    /// `1234567` as `1,234,567`, in threes from the right.
+    private static func grouped(_ value: Int, separator: String) -> String {
+        let digits = String(value)
+        var result = ""
+        for (index, digit) in digits.enumerated() {
+            if index > 0, (digits.count - index) % 3 == 0 { result += separator }
+            result.append(digit)
+        }
+        return result
     }
 }

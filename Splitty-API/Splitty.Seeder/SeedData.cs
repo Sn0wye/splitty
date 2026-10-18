@@ -55,6 +55,7 @@ internal static class SeedData
             Description: "Flights, hotel and everything after",
             CreatedBy: John,
             Members: [John, Jane, Bob, Alice, Charlie, Eva],
+            Currency: Currency.EUR,
             Entries:
             [
                 Equal("Hotel", 1240.00m, John, Hotel, 47, John, Jane, Bob, Alice, Charlie, Eva),
@@ -122,6 +123,7 @@ internal static class SeedData
             Description: "Weekly board games and takeaway",
             CreatedBy: Bob,
             Members: [John, Jane, Bob, Alice],
+            Currency: Currency.GBP,
             Entries:
             [
                 Equal("Pizza", 68.00m, Bob, DiningOut, 5, John, Jane, Bob, Alice),
@@ -144,6 +146,7 @@ internal static class SeedData
             Description: "Chalet, lift passes and too much raclette",
             CreatedBy: Charlie,
             Members: [John, Bob, Charlie, Eva, Mia],
+            Currency: Currency.EUR,
             Entries:
             [
                 Equal("Travel insurance", 145.00m, John, Insurance, 205, John, Bob, Charlie, Eva, Mia),
@@ -211,6 +214,7 @@ internal static class SeedData
             Description: "Lunches, coffee and the odd team outing",
             CreatedBy: Mia,
             Members: [John, Alice, Mia, Leo],
+            Currency: Currency.BRL,
             Entries:
             [
                 Equal("Concert tickets", 236.00m, John, Music, -21, John, Alice, Mia, Leo),
@@ -236,6 +240,7 @@ internal static class SeedData
             Description: "Mortgage and upkeep for the shared cabin",
             CreatedBy: John,
             Members: [John, Charlie, Leo],
+            Currency: Currency.CAD,
             Entries:
             [
                 ..Months(6).Select(month =>
@@ -264,6 +269,7 @@ internal static class SeedData
             Description: "Carpool, clubs and everything the school asks for",
             CreatedBy: Eva,
             Members: [John, Eva, Mia],
+            Currency: Currency.BRL,
             Entries:
             [
                 Equal("Bake sale supplies", 18.60m, Eva, General, 5, John, Eva, Mia),
@@ -379,7 +385,8 @@ internal sealed record SeedGroup(
     string Description,
     string CreatedBy,
     IReadOnlyList<string> Members,
-    IReadOnlyList<SeedEntry> Entries);
+    IReadOnlyList<SeedEntry> Entries,
+    Currency Currency = Currency.USD);
 
 internal sealed record SeedSplit(string Email, decimal Amount, decimal? Percentage = null);
 

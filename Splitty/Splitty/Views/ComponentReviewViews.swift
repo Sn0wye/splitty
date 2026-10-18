@@ -307,6 +307,7 @@ enum ReviewSamples {
 /// stacks them so the last row's clearance above the add button is the real one.
 /// Deleting removes the row from this screen only; Reset brings every row back.
 struct ReviewTimelineView: View {
+    @Environment(\.currency) private var currency
     let onDone: () -> Void
 
     @State private var expenses = ReviewSamples.timeline()
@@ -397,7 +398,7 @@ struct ReviewTimelineView: View {
     private var deletionTitle: String {
         guard let expense = pendingDeletion else { return L10n.Group.deleteQuestion }
         return expense.type == .payment
-            ? L10n.Group.deletePayment(Money.formatted(amount: expense.amount))
+            ? L10n.Group.deletePayment(Money.formatted(amount: expense.amount, currency: currency))
             : L10n.Group.deleteExpense(expense.description)
     }
 

@@ -72,7 +72,7 @@ public sealed class GroupProjectionTests(ApiFactory factory)
         var list = await client.ReadJsonAsync(await client.Http.GetAsync("/group"));
         foreach (var group in new[] { created, renamed, single, Assert.Single(list.EnumerateArray()) })
         {
-            GroupResponseContractTests.AssertKeys(group, "id", "name", "description", "createdAt", "netBalance", "members");
+            GroupResponseContractTests.AssertKeys(group, "id", "name", "description", "currency", "createdAt", "netBalance", "members");
             AssertPublicResponse(group);
             Assert.Equal(0m, group.GetProperty("netBalance").GetDecimal());
             Assert.Equal(JsonValueKind.Null, group.GetProperty("description").ValueKind);

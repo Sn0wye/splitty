@@ -45,6 +45,7 @@ struct GroupView: View {
         NavigationStack {
             groupScreen
         }
+        .environment(\.currency, session.currency)
     }
 
     private var groupScreen: some View {
@@ -385,7 +386,7 @@ struct GroupView: View {
     private var deletionTitle: String {
         guard let expense = pendingDeletion else { return L10n.Group.deleteQuestion }
         return expense.type == .payment
-            ? L10n.Group.deletePayment(Money.formatted(amount: expense.amount))
+            ? L10n.Group.deletePayment(Money.formatted(amount: expense.amount, currency: session.currency))
             : L10n.Group.deleteExpense(expense.description)
     }
 
@@ -423,7 +424,7 @@ struct GroupView: View {
     private var balanceText: some View {
         if let balanceCents = session.group?.netBalanceCents {
             HStack(spacing: 6) {
-                Text(BalanceCopy.overall(cents: balanceCents))
+                Text(BalanceCopy.overall(cents: balanceCents, currency: session.currency))
                 // A recomputation is outstanding, so this number predates the last write.
                 // Greyed with a spinner rather than presented as final.
                 .foregroundColor(Color("muted-foreground"))
@@ -588,6 +589,7 @@ struct RepeatBadge: View {
 }
 
 struct ExpenseRow: View {
+    @Environment(\.currency) private var currency
     let expense: Expense
     let currentUserId: Int
     
@@ -651,7 +653,7 @@ struct ExpenseRow: View {
     }
     
     private var categoryIconName: String {
-        expense.category.glyph
+        expense.category.glyph(in: currency)
     }
 
     private var isUserPaid: Bool { expense.paidBy == currentUserId }
@@ -690,8 +692,8 @@ struct ExpenseRow: View {
                 Text(isUserPaid ? L10n.Group.youPaidPeer(peerDisplay?.name ?? L10n.Common.someone) : L10n.Group.payerPaidPayee(paidByDisplay.name, payeeLabel))
             } else {
                 Text(isUserPaid
-                     ? L10n.Group.youPaidAmount(Money.formatted(amount: expense.amount))
-                     : L10n.Group.payerPaidAmount(paidByDisplay.name, Money.formatted(amount: expense.amount)))
+                     ? L10n.Group.youPaidAmount(Money.formatted(amount: expense.amount, currency: currency))
+                     : L10n.Group.payerPaidAmount(paidByDisplay.name, Money.formatted(amount: expense.amount, currency: currency)))
             }
         }
         .font(.subheadline)
@@ -733,18 +735,18 @@ struct ExpenseRow: View {
         if expense.type == .payment {
             // A payment between two other members still shows its amount: the row reads
             // as group history, so it is dimmed rather than dropped.
-            Text(Money.formatted(amount: expense.amount))
+            Text(Money.formatted(amount: expense.amount, currency: currency))
                 .font(.headline)
                 .fontWeight(.semibold)
                 .foregroundColor(Color(involvement == .notInvolved ? "muted-foreground" : "card-foreground"))
         } else if case .lent(let amount) = involvement {
             // What the payer lent is the total less their own share.
-            Text(Money.formatted(amount: amount))
+            Text(Money.formatted(amount: amount, currency: currency))
                 .font(.headline)
                 .fontWeight(.semibold)
                 .foregroundColor(Color("positive"))
         } else if case .borrowed(let amount) = involvement {
-            Text(Money.formatted(amount: amount))
+            Text(Money.formatted(amount: amount, currency: currency))
                 .font(.headline)
                 .fontWeight(.semibold)
                 .foregroundColor(Color("negative"))
