@@ -326,7 +326,7 @@ private struct HeadingLegend: View {
 
     private func categoryRow(_ row: ChartsLegendRow, category: ExpenseCategory) -> some View {
         HStack(spacing: 10) {
-            CategoryGlyph(category: category)
+            Image(systemName: category.glyph)
                 .font(.caption)
                 .foregroundStyle(category.tint)
                 .frame(width: 18)
@@ -399,7 +399,7 @@ private struct BiggestExpenses: View {
                             .foregroundStyle(Color("muted-foreground"))
                             .frame(width: 16)
                             .accessibilityHidden(true)
-                        CategoryGlyph(category: row.category)
+                        Image(systemName: row.category.glyph)
                             .foregroundStyle(row.category.tint)
                             .frame(width: 32, height: 32)
                             .background(row.category.tint.opacity(0.15), in: Circle())

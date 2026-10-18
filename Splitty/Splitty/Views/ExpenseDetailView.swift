@@ -103,7 +103,7 @@ struct ExpenseDetailView: View {
     /// What it was, how much, and when — read top to bottom before anything else.
     private var hero: some View {
         VStack(spacing: 8) {
-            CategoryGlyph(category: expense.category)
+            Image(systemName: expense.category.glyph)
                 .font(.system(size: 24, weight: .medium))
                 .foregroundStyle(.white)
                 .frame(width: 56, height: 56)

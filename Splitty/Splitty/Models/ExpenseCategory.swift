@@ -87,11 +87,9 @@ enum ExpenseCategory: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    /// The SF Symbol for the category, or nil for `general`, whose coin follows the group's
-    /// currency. Draw it with `CategoryGlyph`.
-    var glyph: String? {
+    var glyph: String {
         switch self {
-        case .general: nil
+        case .general: "dollarsign.circle.fill"
         case .games: "gamecontroller.fill"
         case .movies: "film.fill"
         case .music: "music.note"

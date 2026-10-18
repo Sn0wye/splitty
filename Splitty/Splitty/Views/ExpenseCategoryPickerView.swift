@@ -61,7 +61,7 @@ struct ExpenseCategoryPickerView: View {
             dismiss()
         } label: {
             HStack(spacing: 12) {
-                CategoryGlyph(category: category)
+                Image(systemName: category.glyph)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(width: 32, height: 32)

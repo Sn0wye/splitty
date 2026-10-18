@@ -65,18 +65,6 @@ enum Currency: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// The SF Symbol coin for this currency's sign, or nil when SF Symbols has none that matches
-    /// how the currency is written: its only franc coin is `₣`, and the Swiss write `CHF`.
-    var coinGlyph: String? {
-        switch self {
-        case .usd, .cad, .aud, .mxn: "dollarsign.circle.fill"
-        case .gbp: "sterlingsign.circle.fill"
-        case .brl: "brazilianrealsign.circle.fill"
-        case .eur: "eurosign.circle.fill"
-        case .chf: nil
-        }
-    }
-
     /// `number` with the symbol on the side and at the spacing this currency writes it.
     func decorate(_ number: String) -> String {
         let space = symbolIsSpaced ? " " : ""
