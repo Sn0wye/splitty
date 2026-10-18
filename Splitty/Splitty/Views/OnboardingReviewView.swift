@@ -45,6 +45,7 @@ struct OnboardingReviewView: View {
                     row(.chartsEmpty)
                     row(.plans)
                     row(.plansEmpty)
+                    row(.settleUp)
                     row(.settledUp)
                     row(.avatarCrop)
                     row(.appearance)
@@ -147,6 +148,10 @@ struct OnboardingReviewView: View {
                 .environment(\.currency, .eur)
         case .plans, .plansEmpty:
             ReviewPlansView(plans: screen == .plans ? ReviewSamples.plans : []) { selectedScreen = nil }
+        case .settleUp:
+            ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
+                ReviewSettleUpSheet(startsFromBalanceRow: false)
+            }
         case .settledUp:
             ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
                 ReviewSettleUpSheet()
@@ -225,6 +230,7 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
     case chartsEmpty
     case plans
     case plansEmpty
+    case settleUp
     case settledUp
     case avatarCrop
     case appearance
@@ -251,6 +257,7 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .chartsEmpty: "Charts, no expenses"
         case .plans: "Plans"
         case .plansEmpty: "Plans, no installments"
+        case .settleUp: "Settle up"
         case .settledUp: "Settled up"
         case .avatarCrop: "Avatar crop"
         case .appearance: "Appearance"
@@ -277,6 +284,7 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .chartsEmpty: "chart.pie.fill"
         case .plans: "repeat"
         case .plansEmpty: "repeat.circle"
+        case .settleUp: "person.crop.circle"
         case .settledUp: "checkmark.circle"
         case .avatarCrop: "crop"
         case .appearance: "circle.lefthalf.filled"
