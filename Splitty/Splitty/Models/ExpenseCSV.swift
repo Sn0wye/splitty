@@ -46,14 +46,17 @@ struct ExpenseCSV: Transferable {
             .joined(separator: "\r\n")
     }
 
-    // Exported as a file URL, not as CSV content: CSV conforms to plain text, so AirDrop
-    // sends CSV content as a text snippet and a Mac saves it as `.txt`.
+    // Exported as a file, not as CSV content: CSV conforms to plain text, so AirDrop
+    // sends CSV content as a text snippet and a Mac saves it as `.txt`. A file
+    // representation also writes only when a destination asks for it; a proxy to a URL
+    // ran on every change to the screen holding the link, building the whole sheet each time.
     static var transferRepresentation: some TransferRepresentation {
-        ProxyRepresentation { csv in
+        FileRepresentation(exportedContentType: .commaSeparatedText) { csv in
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(csv.fileName).csv")
             try csv.text.write(to: url, atomically: true, encoding: .utf8)
-            return url
+            return SentTransferredFile(url)
         }
+        .suggestedFileName { $0.fileName }
     }
 
     /// Always a `.` decimal separator, so the column stays numeric whatever the locale.

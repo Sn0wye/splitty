@@ -185,6 +185,45 @@ struct GroupSessionTests {
         #expect(reopened.expenses.map(\.id) == [3])
     }
 
+    @Test func cachedExpensesRenderBeforeRefresh() async {
+        let data = ControlledGroupData()
+        let first = TestExpense.make(id: 1, paidBy: 1, amount: 10, splitAmounts: [1: 10])
+        let second = TestExpense.make(id: 2, paidBy: 1, amount: 20, splitAmounts: [1: 20])
+        data.expensesForCall = { call in call == 3 ? [first, second] : [first] }
+        let store = GroupSessionStore(dataSource: { data.source() })
+
+        let session = store.open(1)
+        let initial = session.appear()
+        await data.waitForExpenseCall(1)
+        data.release(call: 1)
+        await initial.value
+
+        var publishes = 0
+        let counter = session.$expenses.dropFirst().sink { _ in publishes += 1 }
+        defer { counter.cancel() }
+
+        // Reopened with rows in hand: they are on screen before the read answers.
+        let reopened = store.open(1)
+        let unchanged = reopened.appear()
+        await data.waitForExpenseCall(2)
+        #expect(reopened.hasLoadedExpenses)
+        #expect(!reopened.isLoading)
+        #expect(reopened.expenses.map(\.id) == [1])
+
+        // The same rows back from the server leave the list alone.
+        data.release(call: 2)
+        await unchanged.value
+        #expect(publishes == 0)
+
+        let changed = reopened.appear()
+        await data.waitForExpenseCall(3)
+        #expect(reopened.expenses.map(\.id) == [1])
+        data.release(call: 3)
+        await changed.value
+        #expect(publishes == 1)
+        #expect(Set(reopened.expenses.map(\.id)) == [1, 2])
+    }
+
     @Test func signOutAndLeaveDiscardTheCurrentGroup() {
         let appState = AppState(groupSessions: GroupSessionStore(defaults: isolatedDefaults(), dataSource: {
             ControlledGroupData().source()

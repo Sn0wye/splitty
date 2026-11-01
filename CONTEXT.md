@@ -646,7 +646,8 @@ SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
   Keychain credentials cannot. The profile route is `GET /profile`.
 - **Group sessions** — a single observable session owns each group's snapshot and commands.
   Up to eight recently opened sessions live above the tab switch; reopening one shows cached
-  data while a fresh read runs. The store is the only owner of the current group and persists
+  data while a fresh read runs. A read that returns the rows already shown publishes
+  nothing; one that differs updates the changed rows in place under one `.snappy` animation. The store is the only owner of the current group and persists
   it per signed-in user. Leaving or losing access removes that session; sign-out clears all
   sessions. Money writes and deletes route to any cached session, including one that isn't
   current. With no session, the next open reads fresh. Group cards use a session's live net
