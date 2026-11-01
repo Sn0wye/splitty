@@ -84,3 +84,14 @@ and #104 is the example.
 - Check the recurring trouble spots when the change is near them: keyboard
   overlap, the tab bar covering the last row, sheet detents and sizing,
   empty states, swipe to delete.
+- Attach the evidence to the pull request with `gh`, which uploads the files
+  to GitHub and rewrites the references in the body:
+
+  ```sh
+  gh pr create --body-file body.md --attach './before.png#Before' --attach ./after.mp4
+  gh pr edit <n> --attach './rested-dark.png#Rested row, dark'
+  ```
+
+  Write `![alt](./file.png)` in the body for a file passed with `--attach`.
+  Do not push images to a `pr-assets/*` branch or a gist: those outlive the
+  review and break when cleaned up.
