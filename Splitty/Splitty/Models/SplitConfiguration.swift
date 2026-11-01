@@ -116,6 +116,35 @@ struct SplitConfiguration: Equatable {
         return amounts
     }
 
+    /// Equal shares of 100%, in hundredths of a percent so they add up to exactly 100: a
+    /// three-way split is `33.34`, `33.33`, `33.33`. The leftover hundredths go to the
+    /// first participants by **ascending user id**, as the equal split's cents do.
+    static func equalPercentages(among userIds: some Collection<Int>) -> [Int: Decimal] {
+        equalAmounts(totalCents: 10_000, among: userIds).mapValues { Decimal($0) / 100 }
+    }
+
+    /// Each amount as a share of `totalCents`, in hundredths of a percent. Shares are
+    /// floored and the leftover hundredths handed out by ascending user id, so amounts
+    /// that reach the total come out at exactly 100%; amounts that fall short stay short.
+    static func percentages(fromAmounts amounts: [Int: Int], totalCents: Int) -> [Int: Decimal] {
+        let participants = amounts.filter { $0.value > 0 }.sorted { $0.key < $1.key }
+        guard !participants.isEmpty, totalCents > 0 else { return [:] }
+
+        var hundredths = Dictionary(uniqueKeysWithValues: participants.map { userId, cents in
+            (userId, cents * 10_000 / totalCents)
+        })
+
+        let assigned = participants.reduce(0) { $0 + $1.value }
+        let target = (assigned * 10_000 + totalCents / 2) / totalCents
+        var leftover = target - hundredths.values.reduce(0, +)
+        for (userId, _) in participants where leftover > 0 {
+            hundredths[userId, default: 0] += 1
+            leftover -= 1
+        }
+
+        return hundredths.filter { $0.value > 0 }.mapValues { Decimal($0) / 100 }
+    }
+
     private static func flooredCents(totalCents: Int, percentage: Decimal) -> Int {
         var floored = Decimal()
         var exact = Decimal(totalCents) * percentage / 100

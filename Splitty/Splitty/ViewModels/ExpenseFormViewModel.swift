@@ -320,19 +320,48 @@ class ExpenseFormViewModel: ObservableObject {
 
     // MARK: - Split configuration
 
-    /// Switching modes swaps in that mode's draft. Nothing is derived from the mode being
-    /// left: a percentage split is not seeded from the equal division it replaces, because
-    /// the whole reason to switch is that the equal division is wrong.
+    /// Switching modes carries the split over rather than starting blank: the usual reason
+    /// to switch is to adjust one share, not to retype all of them. The new mode is seeded
+    /// from the per-person amounts as they stand — equal shares become typed amounts or
+    /// percentages, amounts and percentages convert against the total — so the split
+    /// still adds up the moment it is switched. Equal keeps who is in and drops the typed
+    /// numbers.
     func selectMode(_ mode: ExpenseSplitMode) {
+        guard mode != selectedMode else { return }
         PerformanceSignpost.around(.splitEdit) {
             switch mode {
             case .equal:
+                // A typed mode with nobody in it — opened before there was a total, or
+                // cleared out — has no one to carry back, so the last checkbox set stays.
+                let participants = currentParticipants
+                if !participants.isEmpty { equalParticipants = participants }
                 configuration.mode = .equal(participants: equalParticipants)
             case .custom:
+                customAmounts = configuration.amounts(totalCents: totalCents).filter { $0.value > 0 }
+                customText = customAmounts.mapValues { Money.plainString(cents: $0) }
                 configuration.mode = .custom(amounts: customAmounts)
             case .percentage:
+                if case .equal(let participants) = configuration.mode {
+                    percentages = SplitConfiguration.equalPercentages(among: participants)
+                } else {
+                    percentages = SplitConfiguration.percentages(
+                        fromAmounts: configuration.amounts(totalCents: totalCents),
+                        totalCents: totalCents
+                    )
+                }
+                percentageText = percentages.mapValues(Percent.string)
                 configuration.mode = .percentage(percentages: percentages)
             }
+        }
+    }
+
+    /// Who has a share in the mode being left: the ticked members, or anyone with a typed
+    /// value above zero.
+    private var currentParticipants: Set<Int> {
+        switch configuration.mode {
+        case .equal(let participants): return participants
+        case .custom(let amounts): return Set(amounts.filter { $0.value > 0 }.keys)
+        case .percentage(let percentages): return Set(percentages.filter { $0.value > 0 }.keys)
         }
     }
 

@@ -298,7 +298,7 @@ struct SplitConfigurationView: View {
         let cents = viewModel.perParticipantAmounts[member.userId] ?? 0
 
         return memberRow(member, caption: cents > 0 ? Money.formatted(cents: cents) : nil) {
-            entryField(.percentage(member.userId), suffix: "%", width: 44) {
+            entryField(.percentage(member.userId), suffix: "%", width: 58) {
                 TextField("0", text: Binding(
                     get: { viewModel.percentageText[member.userId] ?? "" },
                     set: { viewModel.setPercentageText($0, for: member.userId) }

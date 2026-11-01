@@ -140,6 +140,50 @@ struct SplitConfigurationTests {
         #expect(SplitConfiguration(inferredFrom: expense).mode == .equal(participants: [2]))
     }
 
+    // MARK: - Converting between modes
+
+    @Test func dividesOneHundredPercentEqually() {
+        #expect(SplitConfiguration.equalPercentages(among: [4, 2, 3, 1]) == [1: 25, 2: 25, 3: 25, 4: 25])
+    }
+
+    // Hundredths left over go to the lowest user ids, exactly as the equal split's cents.
+    @Test func givesLeftoverHundredthsToTheLowestUserIds() {
+        let three = SplitConfiguration.equalPercentages(among: [3, 1, 2])
+        #expect(three == [1: Decimal(string: "33.34")!, 2: Decimal(string: "33.33")!, 3: Decimal(string: "33.33")!])
+
+        let seven = SplitConfiguration.equalPercentages(among: 1...7)
+        #expect(seven.values.reduce(Decimal(0), +) == 100)
+        #expect(seven[4] == Decimal(string: "14.29"))
+        #expect(seven[5] == Decimal(string: "14.28"))
+    }
+
+    @Test func convertsAmountsToPercentagesOfTheTotal() {
+        let percentages = SplitConfiguration.percentages(fromAmounts: [1: 7000, 2: 3000], totalCents: 10000)
+        #expect(percentages == [1: 70, 2: 30])
+    }
+
+    @Test func convertsAmountsThatReachTheTotalToExactlyOneHundredPercent() {
+        let percentages = SplitConfiguration.percentages(fromAmounts: [1: 1, 2: 1, 3: 1], totalCents: 3)
+        #expect(percentages == [1: Decimal(string: "33.34")!, 2: Decimal(string: "33.33")!, 3: Decimal(string: "33.33")!])
+    }
+
+    // A short custom split stays short as percentages: the gap is still the user's to close.
+    @Test func keepsAShortfallWhenConvertingAmounts() {
+        let percentages = SplitConfiguration.percentages(fromAmounts: [1: 500, 2: 0], totalCents: 1000)
+        #expect(percentages == [1: 50])
+    }
+
+    @Test func convertsNothingWithoutATotal() {
+        #expect(SplitConfiguration.percentages(fromAmounts: [1: 500], totalCents: 0) == [:])
+    }
+
+    // Equal amounts converted to percentages divide back into the same cents.
+    @Test func roundTripsAnUnevenEqualSplit() {
+        let amounts = SplitConfiguration.equalAmounts(totalCents: 1000, among: [1, 2, 3])
+        let percentages = SplitConfiguration.percentages(fromAmounts: amounts, totalCents: 1000)
+        #expect(SplitConfiguration.percentageAmounts(totalCents: 1000, percentages: percentages) == amounts)
+    }
+
     // MARK: - Percentage division
 
     @Test func dividesByPercentage() {

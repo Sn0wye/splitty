@@ -674,11 +674,17 @@ mode this build does not recognise, which decodes as `nil` rather than throwing.
 
 The split screen is a payer row, a mode selector and the member list — **there are no
 presets**: with the mode on screen, a preset row that only moves that selector is a second
-control for one action. Each mode keeps its own draft (checkbox set, typed amounts, typed
-percentages) on `ExpenseFormViewModel` for as long as the *sheet* is open, since the split
-screen itself is popped and pushed constantly while composing. A blank amount or percentage
-field means "not participating"; the percentage fields use the system `.decimalPad`, not the
-calculator pad, which exists for totals summed off a receipt.
+control for one action. The draft (checkbox set, typed amounts, typed percentages) lives on
+`ExpenseFormViewModel` for as long as the *sheet* is open, since the split screen itself is
+popped and pushed constantly while composing. **Switching modes seeds the new mode from the
+current split** rather than starting blank: equal shares become typed amounts (remainder
+cents as the equal split hands them out) or percentages (hundredths of a percent, leftover
+to the lowest user ids the same way), amounts and percentages convert against the total, and
+switching to equal keeps who is in and drops the typed numbers (a typed mode with nobody in
+it leaves the last checkbox set as it was). A complete split therefore still adds up the
+moment it is switched. A blank amount or percentage field means "not participating"; the
+percentage fields use the system `.decimalPad`, not the calculator pad, which exists for
+totals summed off a receipt.
 
 The amount field is a real `UITextField` whose `inputView` is the SwiftUI calculator pad
 (`AmountInputField`), not a `.decimalPad` with an accessory bar: a real responder is what

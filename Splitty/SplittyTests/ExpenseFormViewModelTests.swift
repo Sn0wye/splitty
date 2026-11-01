@@ -181,46 +181,131 @@ struct ExpenseFormViewModelTests {
 
     // MARK: - Modes and drafts
 
-    // Each mode keeps its own draft for as long as the sheet is open — the split screen is
-    // popped and pushed constantly while composing, so the drafts cannot live there.
-    @Test func keepsEachModesDraftAcrossASwitch() {
+    // Switching carries the split over: the reason to switch is usually to adjust one
+    // share, and retyping every other one to get there is the cost this removes.
+    @Test func prefillsAmountsFromTheEqualSplit() {
         let viewModel = newExpense()
-        viewModel.amount.type(digit: 9)
+        viewModel.amount.type(digit: 1)
+        viewModel.amount.type(digit: 0)
 
         viewModel.selectMode(.custom)
-        viewModel.setCustomText("4", for: 1)
-        viewModel.setCustomText("5", for: 2)
 
-        viewModel.selectMode(.percentage)
-        viewModel.setPercentageText("70", for: 1)
-        viewModel.setPercentageText("30", for: 3)
-        #expect(viewModel.configuration.mode == .percentage(percentages: [1: 70, 3: 30]))
-
-        viewModel.selectMode(.equal)
-        #expect(viewModel.configuration.mode == .equal(participants: [1, 2, 3]))
-
-        viewModel.selectMode(.custom)
-        #expect(viewModel.configuration.mode == .custom(amounts: [1: 400, 2: 500]))
-        #expect(viewModel.customText[1] == "4")
-
-        viewModel.selectMode(.percentage)
-        #expect(viewModel.configuration.mode == .percentage(percentages: [1: 70, 3: 30]))
-        #expect(viewModel.percentageText[3] == "30")
+        // $10.00 three ways: the remainder cent lands where the equal split puts it.
+        #expect(viewModel.configuration.mode == .custom(amounts: [1: 334, 2: 333, 3: 333]))
+        #expect(viewModel.customText == [1: "3.34", 2: "3.33", 3: "3.33"])
+        #expect(viewModel.configuration.unassignedCents(totalCents: viewModel.totalCents) == 0)
+        #expect(viewModel.blockingMessage == nil)
     }
 
-    // A new expense starts both typed modes empty: a blank field is what says "not
-    // participating", and seeding it from the equal division would say the opposite.
-    @Test func startsTheTypedModesEmpty() {
+    @Test func prefillsPercentagesFromTheEqualSplit() {
+        let viewModel = newExpense()
+        viewModel.amount.type(digit: 1)
+        viewModel.amount.type(digit: 0)
+
+        viewModel.selectMode(.percentage)
+
+        #expect(viewModel.configuration.mode == .percentage(percentages: [
+            1: Decimal(string: "33.34")!, 2: Decimal(string: "33.33")!, 3: Decimal(string: "33.33")!
+        ]))
+        #expect(viewModel.percentageText == [1: "33.34", 2: "33.33", 3: "33.33"])
+        #expect(viewModel.configuration.unassignedPercent == 0)
+        #expect(viewModel.blockingMessage == nil)
+        #expect(viewModel.perParticipantAmounts.values.reduce(0, +) == 1000)
+    }
+
+    @Test func convertsTypedAmountsToPercentages() {
+        let viewModel = newExpense()
+        viewModel.amount.type(digit: 1)
+        viewModel.amount.type(digit: 0)
+        viewModel.selectMode(.custom)
+        viewModel.setCustomText("5", for: 1)
+        viewModel.setCustomText("3", for: 2)
+        viewModel.setCustomText("2", for: 3)
+
+        viewModel.selectMode(.percentage)
+
+        #expect(viewModel.configuration.mode == .percentage(percentages: [1: 50, 2: 30, 3: 20]))
+        #expect(viewModel.percentageText == [1: "50", 2: "30", 3: "20"])
+    }
+
+    @Test func convertsTypedPercentagesToAmounts() {
+        let viewModel = newExpense()
+        viewModel.amount.type(digit: 1)
+        viewModel.amount.type(digit: 0)
+        viewModel.selectMode(.percentage)
+        viewModel.setPercentageText("70", for: 1)
+        viewModel.setPercentageText("30", for: 2)
+        viewModel.setPercentageText("", for: 3)
+
+        viewModel.selectMode(.custom)
+
+        #expect(viewModel.configuration.mode == .custom(amounts: [1: 700, 2: 300]))
+        #expect(viewModel.customText == [1: "7", 2: "3"])
+        #expect(viewModel.blockingMessage == nil)
+    }
+
+    // Going back to equal keeps who is in and forgets the numbers; leaving it again seeds
+    // from the equal division, not from the numbers it forgot.
+    @Test func switchingToEqualKeepsTheParticipantsAndDropsTheValues() {
+        let viewModel = newExpense()
+        viewModel.amount.type(digit: 1)
+        viewModel.amount.type(digit: 0)
+        viewModel.selectMode(.custom)
+        viewModel.setCustomText("7", for: 1)
+        viewModel.setCustomText("", for: 2)
+
+        viewModel.selectMode(.equal)
+        #expect(viewModel.configuration.mode == .equal(participants: [1, 3]))
+
+        viewModel.selectMode(.custom)
+        #expect(viewModel.configuration.mode == .custom(amounts: [1: 500, 3: 500]))
+    }
+
+    @Test func keepsAnEditToAPrefilledValue() {
+        let viewModel = newExpense()
+        viewModel.amount.type(digit: 1)
+        viewModel.amount.type(digit: 0)
+        viewModel.selectMode(.custom)
+
+        viewModel.setCustomText("4", for: 2)
+        viewModel.selectMode(.custom) // the selector re-sending the same mode
+
+        #expect(viewModel.customText == [1: "3.34", 2: "4", 3: "3.33"])
+        #expect(viewModel.configuration.mode == .custom(amounts: [1: 334, 2: 400, 3: 333]))
+        #expect(viewModel.blockingMessage == "$0.67 over the total")
+    }
+
+    @Test func allNoneAndTheCheckboxesStillWorkAfterARoundTrip() {
         let viewModel = newExpense()
         viewModel.amount.type(digit: 9)
+        viewModel.selectMode(.custom)
+        viewModel.selectMode(.percentage)
+        viewModel.selectMode(.equal)
+
+        #expect(viewModel.includesEveryParticipant)
+        viewModel.toggleParticipant(2)
+        #expect(viewModel.configuration.mode == .equal(participants: [1, 3]))
+        viewModel.setEveryParticipant(included: false)
+        #expect(viewModel.configuration.mode == .equal(participants: []))
+        viewModel.setEveryParticipant(included: true)
+        #expect(viewModel.configuration.mode == .equal(participants: [1, 2, 3]))
+    }
+
+    // With no total yet there are no amounts to carry over, so the fields start blank and
+    // going back finds the checkboxes as they were; percentages need no total.
+    @Test func prefillsNoAmountsBeforeThereIsATotal() {
+        let viewModel = newExpense()
+        viewModel.toggleParticipant(2)
 
         viewModel.selectMode(.custom)
         #expect(viewModel.configuration.mode == .custom(amounts: [:]))
-        #expect(viewModel.blockingMessage == "$9.00 left to assign")
+
+        viewModel.selectMode(.equal)
+        #expect(viewModel.configuration.mode == .equal(participants: [1, 3]))
 
         viewModel.selectMode(.percentage)
-        #expect(viewModel.configuration.mode == .percentage(percentages: [:]))
-        #expect(viewModel.blockingMessage == "Select who this is split between")
+        #expect(viewModel.configuration.mode == .percentage(percentages: [1: 50, 3: 50]))
+        #expect(viewModel.configuration.unassignedPercent == 0)
     }
 
     // Clearing a field removes the row rather than zeroing it: zero is a share the API
@@ -231,6 +316,7 @@ struct ExpenseFormViewModelTests {
         viewModel.selectMode(.custom)
         viewModel.setCustomText("9", for: 1)
         viewModel.setCustomText("", for: 2)
+        viewModel.setCustomText("", for: 3)
         #expect(viewModel.configuration.mode == .custom(amounts: [1: 900]))
         #expect(viewModel.canSave == false) // description still empty
         #expect(viewModel.blockingMessage == nil)
@@ -241,6 +327,8 @@ struct ExpenseFormViewModelTests {
         viewModel.amount.type(digit: 9)
         viewModel.selectMode(.percentage)
         viewModel.setPercentageText("80", for: 1)
+        viewModel.setPercentageText("", for: 2)
+        viewModel.setPercentageText("", for: 3)
         #expect(viewModel.blockingMessage == "20% left to assign")
         #expect(viewModel.splitSummary == "Paid by you, 20% left to assign")
     }
@@ -251,6 +339,7 @@ struct ExpenseFormViewModelTests {
         viewModel.selectMode(.percentage)
         viewModel.setPercentageText("99.6", for: 1)
         viewModel.setPercentageText("0.4", for: 2)
+        viewModel.setPercentageText("", for: 3)
         #expect(viewModel.blockingMessage == "Bob's share rounds down to nothing")
     }
 
