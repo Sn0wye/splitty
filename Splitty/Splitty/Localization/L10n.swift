@@ -277,7 +277,6 @@ enum L10n {
         static var settleUp: String { text("group.settle_up", default: "Settle up") }
         static var charts: String { text("group.charts", default: "Charts") }
         static var balances: String { text("group.balances", default: "Balances") }
-        static var export: String { text("group.export", default: "Export") }
         static func youPaidPeer(_ name: String) -> String {
             format("group.you_paid_peer", default: "You paid %@", name)
         }
@@ -314,6 +313,9 @@ enum L10n {
         static var members: String { text("group_settings.members", default: "Members") }
         static var invitePeople: String { text("group_settings.invite_people", default: "Invite people") }
         static var leaveGroup: String { text("group_settings.leave_group", default: "Leave group") }
+        static var exportExpenses: String {
+            text("group_settings.export_expenses", default: "Export expenses (CSV)")
+        }
         static var noDescription: String { text("group_settings.no_description", default: "No description") }
         static var removeMember: String {
             text("group_settings.remove_member", default: "Remove from group")

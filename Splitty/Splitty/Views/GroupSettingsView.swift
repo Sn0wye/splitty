@@ -7,6 +7,7 @@ import SwiftUI
 
 struct GroupSettingsView: View {
     let group: GroupDetail
+    let expenses: [Expense]
     let currentUserId: Int
     let onGroupSaved: () -> Void
     let onGroupUnavailable: (String) -> Void
@@ -22,12 +23,14 @@ struct GroupSettingsView: View {
 
     init(
         group: GroupDetail,
+        expenses: [Expense],
         currentUserId: Int,
         onGroupSaved: @escaping () -> Void,
         onGroupUnavailable: @escaping (String) -> Void,
         onGroupExited: @escaping (String?) -> Void
     ) {
         self.group = group
+        self.expenses = expenses
         self.currentUserId = currentUserId
         self.onGroupSaved = onGroupSaved
         self.onGroupUnavailable = onGroupUnavailable
@@ -54,6 +57,10 @@ struct GroupSettingsView: View {
                 }
             } header: {
                 Text(L10n.GroupSettings.members)
+            }
+
+            Section {
+                exportRow
             }
 
             Section {
@@ -124,6 +131,20 @@ struct GroupSettingsView: View {
             .buttonStyle(.borderless)
         }
         .padding(.vertical, 4)
+    }
+
+    private var exportRow: some View {
+        let csv = ExpenseCSV(groupName: group.name, expenses: expenses)
+        return ShareLink(item: csv, preview: SharePreview("\(csv.fileName).csv")) {
+            // Plain title like Invite people, so it doesn't read as kin to Leave group below.
+            Label {
+                Text(L10n.GroupSettings.exportExpenses)
+                    .foregroundStyle(expenses.isEmpty ? Color("muted-foreground") : Color("foreground"))
+            } icon: {
+                Image(systemName: "square.and.arrow.up")
+            }
+        }
+        .disabled(expenses.isEmpty)
     }
 
     private var groupDescription: String {
@@ -291,6 +312,7 @@ private extension GroupSettingsView {
                     GroupMember(id: 2, userId: 2, name: "Bo", email: "bo@example.com", avatarUrl: "")
                 ]
             ),
+            expenses: [],
             currentUserId: 1,
             onGroupSaved: {},
             onGroupUnavailable: { _ in },
