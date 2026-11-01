@@ -169,7 +169,6 @@ enum L10n {
 
     enum Tabs {
         static var groups: String { text("tabs.groups", default: "Groups") }
-        static var group: String { text("tabs.group", default: "Group") }
         static var people: String { text("tabs.people", default: "People") }
         static var settings: String { text("tabs.settings", default: "Settings") }
         static var addExpense: String { text("tabs.add_expense", default: "Add expense") }
@@ -259,17 +258,12 @@ enum L10n {
             text("groups.more_currencies_hint", default: "Shows your balance in each other currency")
         }
         static var choose: String { text("groups.choose", default: "Choose a group") }
-        static var noneSelected: String { text("groups.none_selected", default: "No group selected") }
-        static var pickFromTab: String {
-            text("groups.pick_from_tab", default: "Pick a group from the Groups tab.")
-        }
         static var couldNotStartExpense: String {
             text("groups.could_not_start_expense", default: "Could not start an expense")
         }
     }
 
     enum Group {
-        static var backToGroups: String { text("group.back_to_groups", default: "Back to groups") }
         static var settings: String { text("group.settings", default: "Group settings") }
         static var settingsHint: String { text("group.settings_hint", default: "Opens group settings") }
         static var deleteQuestion: String { text("group.delete_question", default: "Delete?") }

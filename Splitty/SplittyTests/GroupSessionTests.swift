@@ -240,6 +240,48 @@ struct GroupSessionTests {
         #expect(appState.currentGroupId == nil)
     }
 
+    @Test func appHasThreeTabsAndOpeningAGroupPushesItOnGroups() {
+        #expect(AppTab.allCases == [.groups, .people, .settings])
+        let appState = AppState(groupSessions: GroupSessionStore(defaults: isolatedDefaults(), dataSource: {
+            ControlledGroupData().source()
+        }))
+        appState.setSignedInUser(700_124)
+        appState.selectedTab = .people
+        appState.openGroup(1, seed: group(id: 1))
+        #expect(appState.selectedTab == .groups)
+        #expect(appState.groupsPath == [1])
+
+        appState.openGroup(2, seed: group(id: 2))
+        #expect(appState.groupsPath == [2])
+        #expect(appState.currentGroupId == 2)
+    }
+
+    @Test func leavingAGroupPopsToTheListAndKeepsItsNotice() {
+        let appState = AppState(groupSessions: GroupSessionStore(defaults: isolatedDefaults(), dataSource: {
+            ControlledGroupData().source()
+        }))
+        appState.setSignedInUser(700_125)
+        appState.openGroup(1, seed: group(id: 1))
+        appState.exitGroup(1, message: "You left")
+        #expect(appState.groupsPath.isEmpty)
+        #expect(appState.selectedTab == .groups)
+        #expect(appState.groupNotice == "You left")
+        #expect(appState.exitedGroupId == 1)
+
+        appState.openGroup(2, seed: group(id: 2))
+        #expect(appState.groupNotice == nil)
+        appState.selectedTab = .people
+        appState.leaveUnavailableGroup(message: "Gone")
+        #expect(appState.groupsPath.isEmpty)
+        #expect(appState.selectedTab == .groups)
+        #expect(appState.groupNotice == "Gone")
+        #expect(appState.groupSessions.session(for: 2) == nil)
+
+        appState.openGroup(3, seed: group(id: 3))
+        appState.setSignedInUser(nil)
+        #expect(appState.groupsPath.isEmpty)
+    }
+
     @Test func addExpenseUsesLoadedSessionWithoutAListReadAndFallsBackWithoutOne() async throws {
         let appState = AppState(groupSessions: GroupSessionStore(defaults: isolatedDefaults(), dataSource: {
             ControlledGroupData().source()

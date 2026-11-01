@@ -8,14 +8,12 @@ import SwiftUI
 
 enum AppTab: Int, CaseIterable {
     case groups
-    case group
     case people
     case settings
 
     var title: String {
         switch self {
         case .groups: L10n.Tabs.groups
-        case .group: L10n.Tabs.group
         case .people: L10n.Tabs.people
         case .settings: L10n.Tabs.settings
         }
@@ -24,7 +22,6 @@ enum AppTab: Int, CaseIterable {
     var icon: String {
         switch self {
         case .groups: return "square.grid.2x2"
-        case .group: return "person.2"
         case .people: return "arrow.left.arrow.right"
         case .settings: return "gearshape"
         }
@@ -64,11 +61,14 @@ enum AddExpenseDestination: Equatable {
     }
 }
 
-/// Shared navigation state: which tab is showing and which group the
-/// "Group" tab is currently pointing at.
+/// Shared navigation state: which tab is showing and which group is pushed on the
+/// Groups tab's stack.
 @MainActor
 final class AppState: ObservableObject {
     @Published var selectedTab: AppTab = .groups
+    /// The Groups tab's navigation path, as group ids. Holds at most one group: opening
+    /// another replaces it, and leaving pops back to the list.
+    @Published var groupsPath: [Int] = []
     @Published var groupNotice: String?
     @Published private(set) var exitedGroupId: Int?
     let groupSessions: GroupSessionStore
@@ -87,27 +87,34 @@ final class AppState: ObservableObject {
     func setSignedInUser(_ userId: Int?) {
         guard signedInUserId != userId else { return }
         groupSessions.setSignedInUser(userId)
-        selectedTab = .groups
+        showGroupList()
     }
 
     func openGroup(_ id: Int, seed: Group? = nil) {
         groupNotice = nil
         exitedGroupId = nil
         groupSessions.open(id, seed: seed)
-        selectedTab = .group
+        selectedTab = .groups
+        groupsPath = [id]
+    }
+
+    /// The Groups tab with its list on top, whatever was pushed there.
+    func showGroupList() {
+        groupsPath = []
+        selectedTab = .groups
     }
 
     func leaveUnavailableGroup(message: String) {
         groupNotice = message
         if let currentGroupId { groupSessions.remove(currentGroupId) }
-        selectedTab = .groups
+        showGroupList()
     }
 
     func exitGroup(_ id: Int, message: String? = nil) {
         groupNotice = message
         exitedGroupId = id
         groupSessions.remove(id)
-        selectedTab = .groups
+        showGroupList()
     }
 
     func resolveAddExpenseDestination(

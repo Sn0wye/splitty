@@ -313,12 +313,12 @@ struct ReviewTimelineView: View {
     @State private var expenses = ReviewSamples.timeline()
     @State private var pendingDeletion: Expense?
     @State private var openSwipeRow: Int?
-    @State private var selectedTab: AppTab = .group
+    @State private var selectedTab: AppTab = .groups
     @State private var showingAddInfo = false
 
     var body: some View {
         AppTabView(selection: $selectedTab) { tab in
-            if tab == .group {
+            if tab == .groups {
                 timeline
             } else {
                 Color("background").ignoresSafeArea()
@@ -507,10 +507,10 @@ struct ReviewSheetHost<Sheet: View>: View {
     }
 }
 
-/// The real Groups and Group tabs over a session store whose reads take a moment. The
-/// first open has nothing cached and shows the timeline loader under the seeded header;
-/// going back and opening the group again shows the cached rows at once while the same
-/// read runs behind them.
+/// The real Groups tab, pushing the real group screen, over a session store whose reads
+/// take a moment. The first open has nothing cached and shows the timeline loader under
+/// the seeded header; going back and opening the group again shows the cached rows at
+/// once while the same read runs behind them.
 struct ReviewGroupOpenView: View {
     let onDone: () -> Void
 
@@ -525,7 +525,7 @@ struct ReviewGroupOpenView: View {
         AppTabView(selection: $appState.selectedTab) { tab in
             switch tab {
             case .groups:
-                NavigationStack {
+                NavigationStack(path: $appState.groupsPath) {
                     ScrollView {
                         GroupCard(group: ReviewSamples.trip) {
                             appState.openGroup(ReviewSamples.groupId, seed: ReviewSamples.trip)
@@ -539,12 +539,11 @@ struct ReviewGroupOpenView: View {
                             Button(L10n.Common.done, action: onDone)
                         }
                     }
-                }
-            case .group:
-                if let session = appState.groupSessions.current {
-                    GroupView(session: session).id(session.groupId)
-                } else {
-                    Color("background").ignoresSafeArea()
+                    .navigationDestination(for: Int.self) { groupId in
+                        if let session = appState.groupSessions.session(for: groupId) {
+                            GroupView(session: session).id(groupId)
+                        }
+                    }
                 }
             default:
                 Color("background").ignoresSafeArea()
