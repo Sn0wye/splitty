@@ -106,6 +106,7 @@ struct GroupView: View {
             if let group = session.group, let currentUserId {
                 GroupSettingsView(
                     group: group,
+                    expenses: session.expenses,
                     currentUserId: currentUserId,
                     onGroupSaved: {
                         session.beginRefresh()
@@ -442,8 +443,8 @@ struct GroupView: View {
     }
     
     private var actionButtonsSection: some View {
-        // The row runs off the edge once the titles are long enough — translated
-        // ones already do — so it scrolls. Content margins rather than padding,
+        // The row runs off the edge once the titles are long enough — at larger
+        // text sizes they are — so it scrolls. Content margins rather than padding,
         // so the inset doesn't clip the first and last pill mid-scroll.
         ScrollView(.horizontal) {
             LazyHStack(spacing: 12) {
@@ -463,13 +464,6 @@ struct GroupView: View {
                     showingChartsSheet = true
                 }
                 .disabled(session.group == nil || currentUserId == nil)
-
-                let csv = ExpenseCSV(groupName: session.group?.name ?? "", expenses: session.expenses)
-                ShareLink(item: csv, preview: SharePreview("\(csv.fileName).csv")) {
-                    ActionButtonLabel(title: L10n.Group.export, color: Color("muted"), textColor: Color("foreground"))
-                }
-                .buttonStyle(.pressable(scale: 0.94))
-                .disabled(session.expenses.isEmpty)
             }
         }
         .scrollIndicators(.hidden)
