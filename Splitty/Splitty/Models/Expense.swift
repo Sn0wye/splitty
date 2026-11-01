@@ -66,7 +66,7 @@ enum ExpenseScope: String {
 }
 
 // MARK: - Expense Model
-struct Expense: Codable, Identifiable {
+struct Expense: Codable, Identifiable, Equatable {
     let id: Int
     let groupId: Int
     let paidBy: Int
@@ -152,7 +152,7 @@ extension Expense {
 }
 
 // MARK: - Expense Split Model
-struct ExpenseSplit: Codable, Identifiable {
+struct ExpenseSplit: Codable, Identifiable, Equatable {
     let id: Int
     let expenseId: Int
     let userId: Int

@@ -39,6 +39,7 @@ Screen names are the raw values of `ReviewScreen` in
 | `expenseFormReais` | The same expense sheet in a BRL group: `R$` ahead of the amount and a `,` decimal key. |
 | `timeline` | Real timeline rows on sample data: every row shape (an installment badge among them), date headers, swipe to delete, the last row's clearance above the tab bar. Reset restores deleted rows. |
 | `timelineEuros` | The timeline in a EUR group: amounts written `42,50 €`. |
+| `groupOpen` | The real Groups and Group tabs over reads that take 1.2s. The first open shows the timeline loader under the seeded header; Back and opening it again shows the cached rows at once while the same read runs. |
 | `charts` | The real Charts sheet; each range lands on different numbers after a short delay. |
 | `chartsFailed` | The first load fails; Try again succeeds. |
 | `chartsEmpty` | Charts for a group with no expenses. |

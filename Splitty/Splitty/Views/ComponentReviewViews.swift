@@ -506,3 +506,82 @@ struct ReviewSheetHost<Sheet: View>: View {
         .task { isPresented = true }
     }
 }
+
+/// The real Groups and Group tabs over a session store whose reads take a moment. The
+/// first open has nothing cached and shows the timeline loader under the seeded header;
+/// going back and opening the group again shows the cached rows at once while the same
+/// read runs behind them.
+struct ReviewGroupOpenView: View {
+    let onDone: () -> Void
+
+    @StateObject private var appState = AppState(
+        groupSessions: GroupSessionStore(dataSource: { ReviewSamples.slowGroup })
+    )
+    /// Set only when the gallery opened without a signed-in user, so the rows can say
+    /// "you"; a gallery opened from Settings keeps the account's own user.
+    @State private var borrowedCurrentUser = false
+
+    var body: some View {
+        AppTabView(selection: $appState.selectedTab) { tab in
+            switch tab {
+            case .groups:
+                NavigationStack {
+                    ScrollView {
+                        GroupCard(group: ReviewSamples.trip) {
+                            appState.openGroup(ReviewSamples.groupId, seed: ReviewSamples.trip)
+                        }
+                        .padding(20)
+                    }
+                    .background(Color("background").ignoresSafeArea())
+                    .navigationTitle(Text(L10n.Tabs.groups))
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(L10n.Common.done, action: onDone)
+                        }
+                    }
+                }
+            case .group:
+                if let session = appState.groupSessions.current {
+                    GroupView(session: session).id(session.groupId)
+                } else {
+                    Color("background").ignoresSafeArea()
+                }
+            default:
+                Color("background").ignoresSafeArea()
+            }
+        }
+        .environmentObject(appState)
+        .onAppear {
+            guard AuthenticationManager.shared.currentUser == nil else { return }
+            AuthenticationManager.shared.currentUser = ReviewSamples.users[0]
+            borrowedCurrentUser = true
+        }
+        .onDisappear {
+            if borrowedCurrentUser { AuthenticationManager.shared.currentUser = nil }
+        }
+    }
+}
+
+extension ReviewSamples {
+    static let trip = Group(id: groupId, name: "Weekend trip", description: nil,
+                            netBalanceCents: 4_250, createdAt: "2026-01-01", members: members)
+
+    /// Every read answers after the same delay, with the same rows each time.
+    static let slowGroup = GroupDataSource(
+        group: { _ in
+            try await Task.sleep(for: .milliseconds(1_200))
+            return trip
+        },
+        expenses: { _ in
+            try await Task.sleep(for: .milliseconds(1_200))
+            return timeline()
+        },
+        summary: { _ in
+            try await Task.sleep(for: .milliseconds(1_200))
+            return GroupBalanceSummary(simplifiedDebts: [], balancesPending: false)
+        },
+        requestBalanceRefresh: { _ in },
+        deleteExpense: { _, _, _ in throw ReviewOnly() },
+        deletePayment: { _, _ in throw ReviewOnly() }
+    )
+}
