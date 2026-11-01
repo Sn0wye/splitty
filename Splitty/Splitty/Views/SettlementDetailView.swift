@@ -7,6 +7,7 @@ import SwiftUI
 
 /// Shows one payment and opens the shared amount screen when it is edited.
 struct SettlementDetailView: View {
+    @Environment(\.currency) private var currency
     let settlement: Expense
     let currentUserId: Int
     @ObservedObject var session: GroupSession
@@ -25,7 +26,7 @@ struct SettlementDetailView: View {
                         MemberAvatar(display: payerDisplay, size: 40)
                         MemberAvatar(display: payeeDisplay, size: 40)
                     }
-                    Text(Money.formatted(amount: settlement.amount))
+                    Text(Money.formatted(amount: settlement.amount, currency: currency))
                         .font(.largeTitle.weight(.bold))
                         .monospacedDigit()
                     paymentDescription
@@ -82,7 +83,7 @@ struct SettlementDetailView: View {
             )
         }
         .alert(
-            L10n.Settlement.deleteTitle(Money.formatted(amount: settlement.amount), payerName, payeeName),
+            L10n.Settlement.deleteTitle(Money.formatted(amount: settlement.amount, currency: currency), payerName, payeeName),
             isPresented: $showingDeleteConfirmation
         ) {
             Button(role: .destructive) { delete() } label: { Text(L10n.Common.delete) }

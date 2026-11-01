@@ -14,8 +14,8 @@ struct BalanceRow: Identifiable, Equatable {
 
     var id: String { "\(from.id)-\(to.id)" }
 
-    var statement: String {
-        let amount = Money.formatted(cents: amountCents)
+    func statement(in currency: Currency) -> String {
+        let amount = Money.formatted(cents: amountCents, currency: currency)
         return switch involvement {
         case .youPay:
             L10n.Balances.youOwePeer(to.name, amount)

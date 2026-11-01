@@ -40,11 +40,13 @@ struct OnboardingReviewView: View {
                 Section {
                     row(.expenseForm)
                     row(.timeline)
+                    row(.groupOpen)
                     row(.charts)
                     row(.chartsFailed)
                     row(.chartsEmpty)
                     row(.plans)
                     row(.plansEmpty)
+                    row(.settleUp)
                     row(.settledUp)
                     row(.chooseGroup)
                     row(.avatarCrop)
@@ -130,10 +132,11 @@ struct OnboardingReviewView: View {
                     Color("background").ignoresSafeArea()
                 }
             }
-        case .expenseForm:
+        case .expenseForm, .expenseFormReais:
             ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
                 ExpenseSheet(
                     groupId: ReviewSamples.groupId,
+                    currency: screen == .expenseFormReais ? .brl : .usd,
                     members: ReviewSamples.members,
                     currentUserId: ReviewSamples.currentUserId,
                     timelineExpenses: ReviewSamples.timeline(),
@@ -142,8 +145,17 @@ struct OnboardingReviewView: View {
             }
         case .timeline:
             ReviewTimelineView { selectedScreen = nil }
+        case .timelineEuros:
+            ReviewTimelineView { selectedScreen = nil }
+                .environment(\.currency, .eur)
+        case .groupOpen:
+            ReviewGroupOpenView { selectedScreen = nil }
         case .plans, .plansEmpty:
             ReviewPlansView(plans: screen == .plans ? ReviewSamples.plans : []) { selectedScreen = nil }
+        case .settleUp:
+            ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
+                ReviewSettleUpSheet(startsFromBalanceRow: false)
+            }
         case .settledUp:
             ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
                 ReviewSettleUpSheet()
@@ -220,12 +232,16 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
     case peopleEmpty
     case balanceHint
     case expenseForm
+    case expenseFormReais
     case timeline
+    case timelineEuros
+    case groupOpen
     case charts
     case chartsFailed
     case chartsEmpty
     case plans
     case plansEmpty
+    case settleUp
     case settledUp
     case chooseGroup
     case avatarCrop
@@ -245,12 +261,16 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .peopleEmpty: "No people"
         case .balanceHint: "First balance"
         case .expenseForm: "Expense form"
+        case .expenseFormReais: "Expense form, reais"
         case .timeline: "Timeline"
+        case .timelineEuros: "Timeline, euros"
+        case .groupOpen: "Opening a group"
         case .charts: "Charts"
         case .chartsFailed: "Charts, first load fails"
         case .chartsEmpty: "Charts, no expenses"
         case .plans: "Plans"
         case .plansEmpty: "Plans, no installments"
+        case .settleUp: "Settle up"
         case .settledUp: "Settled up"
         case .chooseGroup: "Choose a group"
         case .avatarCrop: "Avatar crop"
@@ -270,12 +290,16 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .peopleEmpty: "person.2"
         case .balanceHint: "arrow.left.arrow.right"
         case .expenseForm: "number"
+        case .expenseFormReais: "brazilianrealsign"
         case .timeline: "list.bullet.rectangle"
+        case .timelineEuros: "eurosign"
+        case .groupOpen: "arrow.right.square"
         case .charts: "chart.pie"
         case .chartsFailed: "exclamationmark.triangle"
         case .chartsEmpty: "chart.pie.fill"
         case .plans: "repeat"
         case .plansEmpty: "repeat.circle"
+        case .settleUp: "person.crop.circle"
         case .settledUp: "checkmark.circle"
         case .chooseGroup: "rectangle.stack"
         case .avatarCrop: "crop"
@@ -290,11 +314,11 @@ private struct OnboardingGroupReviewView: View {
 
     @State private var showingInvite = false
     @State private var showingAddInfo = false
-    @State private var selectedTab: AppTab = .group
+    @State private var selectedTab: AppTab = .groups
 
     var body: some View {
         AppTabView(selection: $selectedTab) { tab in
-            if tab == .group {
+            if tab == .groups {
                 groupScreen
             } else {
                 Color("background").ignoresSafeArea()

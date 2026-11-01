@@ -10,7 +10,9 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var authManager = AuthenticationManager.shared
-    @StateObject private var peopleViewModel = PeopleViewModel()
+    @StateObject private var peopleViewModel = PeopleViewModel(
+        loadPeople: PerformanceScenarioLaunch.isEnabled ? { PerformanceScenarios.people } : GroupService.shared.getPeople
+    )
     @State private var addDestination: AddExpenseDestination?
     @State private var pendingExpenseGroup: Group?
     @State private var isResolvingAdd = false
@@ -21,13 +23,11 @@ struct ContentView: View {
             switch tab {
             case .groups:
                 // From the list there is no group in view, so "+" always asks which one.
-                GroupsView(onAddExpense: {
-                    Task { await beginAddingExpense(askingForGroup: true) }
-                })
-            case .group:
-                CurrentGroupView {
-                    Task { await beginAddingExpense() }
-                }
+                // A pushed group's "+" adds to that group.
+                GroupsView(
+                    onAddExpense: { Task { await beginAddingExpense(askingForGroup: true) } },
+                    onAddGroupExpense: { Task { await beginAddingExpense() } }
+                )
             case .people:
                 PeopleView(viewModel: peopleViewModel)
             case .settings:
@@ -55,6 +55,7 @@ struct ContentView: View {
                     } else {
                         ExpenseSheet(
                             groupId: group.id,
+                            currency: group.currency,
                             members: group.members,
                             currentUserId: currentUserId
                         ) { write in
@@ -125,6 +126,7 @@ private struct SessionExpenseSheet: View {
     var body: some View {
         ExpenseSheet(
             groupId: group.id,
+            currency: session.currency,
             members: group.members,
             currentUserId: currentUserId,
             timelineExpenses: session.expenses,
@@ -139,32 +141,6 @@ extension AddExpenseDestination: Identifiable {
         case .createGroup: "create-group"
         case .expense(let group): "expense-\(group.id)"
         case .chooseGroup: "choose-group"
-        }
-    }
-}
-
-/// The "Group" tab: renders whichever group was last opened.
-private struct CurrentGroupView: View {
-    @EnvironmentObject private var appState: AppState
-    let onAddExpense: () -> Void
-
-    var body: some View {
-        if let session = appState.groupSessions.current {
-            GroupView(session: session, onAddExpense: onAddExpense)
-                .id(session.groupId)
-        } else {
-            VStack(spacing: 8) {
-                BrandBadge(symbol: "person.2")
-                    .padding(.bottom, 6)
-                Text(L10n.Groups.noneSelected)
-                    .font(.headline)
-                Text(L10n.Groups.pickFromTab)
-                    .font(.subheadline)
-                    .foregroundColor(Color("muted-foreground"))
-            }
-            .foregroundColor(Color("foreground"))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color("background"))
         }
     }
 }

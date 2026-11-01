@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import Splitty
 
@@ -51,6 +52,18 @@ struct GroupRecencyTests {
         let destination = AddExpenseDestination.resolve(groups: groups, currentGroupId: nil)
 
         #expect(destination == .chooseGroup([groups[1], groups[0]]))
+    }
+
+    @Test func lastActivityDecodesAndAnOlderServerLeavesItNil() throws {
+        let withActivity = #"{"id":1,"name":"A","description":null,"currency":"BRL","netBalance":0,"createdAt":"2026-01-01T12:00:00Z","members":[],"lastActivityAt":"2026-05-01T12:00:00Z"}"#
+        let without = #"{"id":2,"name":"B","description":null,"currency":"BRL","netBalance":0,"createdAt":"2026-01-01T12:00:00Z","members":[]}"#
+
+        let decoded = try JSONDecoder().decode(Group.self, from: Data(withActivity.utf8))
+        let older = try JSONDecoder().decode(Group.self, from: Data(without.utf8))
+
+        #expect(decoded.lastActivityAt == "2026-05-01T12:00:00Z")
+        #expect(decoded.currency == .brl)
+        #expect(older.lastActivityAt == nil)
     }
 
     private func ids(_ groups: [Group]) -> [Int] { groups.map(\.id) }

@@ -25,6 +25,8 @@ enum PerformanceScenarios {
             id: index,
             name: "Group \(index)",
             description: nil,
+            // A few groups in other currencies, so the groups header shows one line each.
+            currency: index.isMultiple(of: 10) ? .brl : index % 10 == 5 ? .eur : .usd,
             netBalanceCents: index.isMultiple(of: 2) ? 1_250 : -980,
             createdAt: "2026-01-01T12:00:00Z",
             members: index == 1 ? splitMembers : [
@@ -91,6 +93,23 @@ enum PerformanceScenarios {
             ]
         )
     }
+
+    /// People sharing the first few groups, so a person's row can open one.
+    static let people = PeopleResponse(
+        peers: (2...6).map { index in
+            Peer(
+                userId: index,
+                name: "Member \(index)",
+                avatarURL: largeAvatarURLs[(index - 1) % largeAvatarURLs.count],
+                netAmountCents: index.isMultiple(of: 2) ? 1_250 : -980,
+                groups: [
+                    PeerGroup(groupId: 1, groupName: "Group 1", amountCents: index.isMultiple(of: 2) ? 1_250 : -980),
+                    PeerGroup(groupId: index, groupName: "Group \(index)", amountCents: 0),
+                ]
+            )
+        },
+        balancesPending: false
+    )
 
     static func user(_ id: Int) -> User {
         User(

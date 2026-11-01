@@ -11,6 +11,8 @@ struct GroupsView: View {
     /// Shows the toolbar's add button. Declared first so a trailing closure still
     /// lands on `onReviewDone`.
     var onAddExpense: (() -> Void)?
+    /// The add button on a group pushed from the list: that group is the one in view.
+    var onAddGroupExpense: () -> Void = {}
     var isReview = false
     var onReviewDone: (() -> Void)?
 
@@ -20,12 +22,13 @@ struct GroupsView: View {
     @State private var showingCreateSheet = false
     @State private var showingJoinSheet = false
     @State private var isTitleCollapsed = false
+    @State private var showsOtherCurrencies = false
 
     /// Roughly the height of the in-list title, as on a group's screen.
     private let titleCollapseOffset: CGFloat = 52
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $appState.groupsPath) {
             ScrollView(.vertical) {
                 VStack(spacing: 10) {
                     header
@@ -84,6 +87,9 @@ struct GroupsView: View {
                 withAnimation(.easeInOut(duration: 0.2)) { isTitleCollapsed = collapsed }
             }
             .background(Color("background").ignoresSafeArea())
+            // Drawn by the principal item below; set so the pushed group's back button
+            // and its long-press menu say where they go.
+            .navigationTitle(Text(L10n.Groups.title))
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color("background"), for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -123,6 +129,13 @@ struct GroupsView: View {
                     }
                 }
             }
+            .navigationDestination(for: Int.self) { groupId in
+                PushedGroupView(
+                    session: appState.groupSessions.session(for: groupId),
+                    onAddExpense: onAddGroupExpense
+                )
+                .id(groupId)
+            }
             .task {
                 if !isReview { await viewModel.loadGroups() }
             }
@@ -132,9 +145,14 @@ struct GroupsView: View {
             .onChange(of: appState.exitedGroupId) { _, _ in
                 removeExitedGroup()
             }
-            .onChange(of: appState.selectedTab) { _, newTab in
+            .onChange(of: appState.groupsPath.isEmpty) { _, isEmpty in
                 // Coming back from a group picks up any edit made in there.
-                if newTab == .groups && !isReview {
+                if isEmpty && !isReview {
+                    Task { await viewModel.loadGroups() }
+                }
+            }
+            .onChange(of: appState.selectedTab) { _, newTab in
+                if newTab == .groups && appState.groupsPath.isEmpty && !isReview {
                     Task { await viewModel.loadGroups() }
                 }
             }
@@ -164,15 +182,61 @@ struct GroupsView: View {
                 .fontWeight(.bold)
                 .foregroundColor(Color("foreground"))
 
-            if let overallBalanceCents = viewModel.overallBalanceCents {
-                Text(BalanceCopy.overall(cents: overallBalanceCents))
-                    .foregroundColor(Color("muted-foreground"))
+            if let balances = viewModel.overallBalances {
+                if balances.isEmpty {
+                    Text(L10n.Balances.allSettled)
+                        .foregroundColor(Color("muted-foreground"))
+                } else if let summary = viewModel.overallSummary {
+                    overallLine(summary.primary)
+
+                    // Nets in other currencies are never added into the primary one (ADR 0007).
+                    // One line per currency read as a wall of red and green, so the rest fold
+                    // behind a count until asked for.
+                    if !summary.others.isEmpty {
+                        otherCurrenciesToggle(count: summary.others.count)
+
+                        if showsOtherCurrencies {
+                            ForEach(summary.others, id: \.currency) { balance in
+                                Text(BalanceCopy.overall(cents: balance.cents, currency: balance.currency))
+                                    .font(.subheadline)
+                                    .foregroundColor(Color("muted-foreground"))
+                            }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
         .padding(.top, 10)
         .padding(.bottom, 10)
+    }
+
+    private func overallLine(_ balance: CurrencyBalance) -> some View {
+        Text(BalanceCopy.overall(cents: balance.cents, currency: balance.currency))
+            .foregroundColor(Color(balance.cents > 0 ? "positive" : "negative"))
+    }
+
+    private func otherCurrenciesToggle(count: Int) -> some View {
+        Button {
+            withAnimation(.snappy(duration: 0.25)) { showsOtherCurrencies.toggle() }
+        } label: {
+            HStack(spacing: 4) {
+                Text(L10n.Groups.moreCurrencies(count))
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.semibold))
+                    .rotationEffect(.degrees(showsOtherCurrencies ? 180 : 0))
+            }
+            .font(.subheadline)
+            .foregroundStyle(Color("muted-foreground"))
+            .padding(.vertical, 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(L10n.Groups.moreCurrenciesHint)
+        .accessibilityAddTraits(showsOtherCurrencies ? [.isSelected] : [])
+        .accessibilityIdentifier("groups.moreCurrencies")
     }
 
     /// Where a new group comes from, at the end of the list rather than as a second "+"
@@ -193,6 +257,26 @@ struct GroupsView: View {
         viewModel.removeGroup(id: exitedGroupId)
     }
 
+}
+
+/// A group pushed from the list. Holds on to its session, so a group that is left or
+/// lost keeps its content while it slides away rather than blanking mid-pop.
+private struct PushedGroupView: View {
+    @State private var session: GroupSession?
+    let onAddExpense: () -> Void
+
+    init(session: GroupSession?, onAddExpense: @escaping () -> Void) {
+        _session = State(initialValue: session)
+        self.onAddExpense = onAddExpense
+    }
+
+    var body: some View {
+        if let session {
+            GroupView(session: session, onAddExpense: onAddExpense)
+        } else {
+            Color("background").ignoresSafeArea()
+        }
+    }
 }
 
 /// An empty card: dashed where a group card is filled, with the face row's circle

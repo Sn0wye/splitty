@@ -20,12 +20,18 @@ class GroupService {
         return try await APIClient.shared.getGroup(id: id)
     }
     
-    func createGroup(name: String, description: String?) async throws -> GroupMutationResponse {
-        return try await APIClient.shared.createGroup(name: name, description: description)
+    func createGroup(name: String, description: String?, currency: Currency) async throws -> GroupMutationResponse {
+        return try await APIClient.shared.createGroup(name: name, description: description, currency: currency)
     }
     
-    func updateGroup(id: Int, name: String?, description: String?) async throws -> GroupMutationResponse {
-        return try await APIClient.shared.updateGroup(id: id, name: name, description: description)
+    func updateGroup(
+        id: Int,
+        name: String?,
+        description: String?,
+        currency: Currency?
+    ) async throws -> GroupMutationResponse {
+        return try await APIClient.shared.updateGroup(
+            id: id, name: name, description: description, currency: currency)
     }
     
     /// Balances plus the pending flag. Recomputation is asynchronous, so right after a

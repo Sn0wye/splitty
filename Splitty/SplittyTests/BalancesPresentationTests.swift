@@ -101,6 +101,19 @@ struct BalanceDecodingTests {
         let payload = #"{"id":7,"name":"Trip","description":null,"netBalance":12.34,"createdAt":"2026-01-01","members":[]}"#
         let group = try JSONDecoder().decode(Group.self, from: Data(payload.utf8))
         #expect(group.netBalanceCents == 1_234)
+        #expect(group.currency == .usd)
+    }
+
+    @Test func decodesTheGroupCurrency() throws {
+        let payload = #"{"id":7,"name":"Viagem","description":null,"currency":"BRL","netBalance":0,"createdAt":"2026-01-01","members":[]}"#
+        let group = try JSONDecoder().decode(Group.self, from: Data(payload.utf8))
+        #expect(group.currency == .brl)
+    }
+
+    @Test func readsACurrencyThisBuildDoesNotKnowAsDollars() throws {
+        let payload = #"{"id":7,"name":"Trip","description":null,"currency":"JPY","netBalance":0,"createdAt":"2026-01-01","members":[]}"#
+        let group = try JSONDecoder().decode(Group.self, from: Data(payload.utf8))
+        #expect(group.currency == .usd)
     }
 }
 
@@ -109,15 +122,75 @@ struct GroupsOverallBalanceTests {
     @Test func sumsLoadedGroupNets() {
         let viewModel = GroupsViewModel()
         viewModel.groups = [group(id: 1, cents: 1_234), group(id: 2, cents: -234)]
-        #expect(viewModel.overallBalanceCents == 1_000)
+        #expect(viewModel.overallBalances == [CurrencyBalance(currency: .usd, cents: 1_000)])
+    }
+
+    @Test func netsEachCurrencySeparatelyInListOrder() {
+        let viewModel = GroupsViewModel()
+        viewModel.groups = [
+            group(id: 1, cents: -500, currency: .brl),
+            group(id: 2, cents: 4_000),
+            group(id: 3, cents: -7_000, currency: .brl),
+        ]
+        #expect(viewModel.overallBalances == [
+            CurrencyBalance(currency: .brl, cents: -7_500),
+            CurrencyBalance(currency: .usd, cents: 4_000),
+        ])
+    }
+
+    @Test func leavesOutACurrencyThatNetsToZero() {
+        let viewModel = GroupsViewModel()
+        viewModel.groups = [
+            group(id: 1, cents: 500, currency: .eur),
+            group(id: 2, cents: -500, currency: .eur),
+            group(id: 3, cents: 0),
+        ]
+        #expect(viewModel.overallBalances == [])
     }
 
     @Test func hasNoOverallFigureWithoutGroups() {
-        #expect(GroupsViewModel().overallBalanceCents == nil)
+        #expect(GroupsViewModel().overallBalances == nil)
+        #expect(GroupsViewModel().overallSummary == nil)
     }
 
-    private func group(id: Int, cents: Int) -> Group {
-        Group(id: id, name: "Group \(id)", description: nil, netBalanceCents: cents, createdAt: "2026-01-01", members: [])
+    @Test func leadsWithTheCurrencyMostGroupsAreIn() {
+        let viewModel = GroupsViewModel()
+        viewModel.groups = [
+            group(id: 1, cents: -500, currency: .brl),
+            group(id: 2, cents: 4_000),
+            group(id: 3, cents: 0),
+            group(id: 4, cents: 0),
+        ]
+        #expect(viewModel.overallSummary == OverallSummary(
+            primary: CurrencyBalance(currency: .usd, cents: 4_000),
+            others: [CurrencyBalance(currency: .brl, cents: -500)]
+        ))
+    }
+
+    @Test func breaksATieByListOrder() {
+        let viewModel = GroupsViewModel()
+        viewModel.groups = [
+            group(id: 1, cents: 300, currency: .eur),
+            group(id: 2, cents: -200, currency: .brl),
+            group(id: 3, cents: 100),
+        ]
+        #expect(viewModel.overallSummary?.primary == CurrencyBalance(currency: .eur, cents: 300))
+        #expect(viewModel.overallSummary?.others == [
+            CurrencyBalance(currency: .brl, cents: -200),
+            CurrencyBalance(currency: .usd, cents: 100),
+        ])
+    }
+
+    @Test func hasNoSummaryWhenEverythingIsSettled() {
+        let viewModel = GroupsViewModel()
+        viewModel.groups = [group(id: 1, cents: 0), group(id: 2, cents: 0, currency: .eur)]
+        #expect(viewModel.overallBalances == [])
+        #expect(viewModel.overallSummary == nil)
+    }
+
+    private func group(id: Int, cents: Int, currency: Currency = .usd) -> Group {
+        Group(id: id, name: "Group \(id)", description: nil, currency: currency, netBalanceCents: cents,
+              createdAt: "2026-01-01", members: [])
     }
 }
 

@@ -74,7 +74,7 @@ final class SettleUpViewModel: ObservableObject {
             date = settlement.effectiveDate ?? Date()
             selectedPeerId = settlement.peer?.id
         } else if let preselectedRow {
-            amount = AmountExpression(cents: preselectedRow.amountCents)
+            amount = AmountExpression()
             date = Date()
             selectedPeerId = preselectedRow.to.id
         } else {
@@ -118,7 +118,7 @@ final class SettleUpViewModel: ObservableObject {
               let cents = debtCents(for: selectedPeerId),
               cents > 0
         else { return nil }
-        return L10n.Settlement.payAll(Money.formatted(cents: cents))
+        return L10n.Settlement.payAll(Money.formatted(cents: cents, currency: session.currency))
     }
 
     /// The current user's net balance across the simplified debts: positive when owed.
@@ -148,11 +148,8 @@ final class SettleUpViewModel: ObservableObject {
               members.contains(where: { $0.userId == peerId })
         else { return }
         selectedPeerId = peerId
-        if let cents = debtCents(for: peerId), cents > 0 {
-            amount.replaceEntry(cents: cents)
-        } else {
-            amount.clear()
-        }
+        // A new payment starts empty; Pay all fills in the debt.
+        amount.clear()
         errorMessage = nil
     }
 
@@ -168,26 +165,20 @@ final class SettleUpViewModel: ObservableObject {
     }
 
     /// Only the peer choice and amount entry belong to this screen; debts stay in the session.
+    /// Suggests a peer, never an amount: the entry stays the user's until Pay all.
     func suggestPayment() {
         guard !isEditing else { return }
         if let selectedPeerId {
-            guard payablePeerIds.contains(selectedPeerId) else {
+            if !payablePeerIds.contains(selectedPeerId) {
                 self.selectedPeerId = nil
                 amount.clear()
-                return
-            }
-            if let cents = debtCents(for: selectedPeerId) {
-                amount.replaceEntry(cents: cents)
             }
             return
         }
 
-        guard let suggestion = debts.first(where: { $0.from.id == currentUserId }) else {
-            return
+        if let suggestion = debts.first(where: { $0.from.id == currentUserId }) {
+            selectedPeerId = suggestion.to.id
         }
-
-        selectedPeerId = suggestion.to.id
-        amount.replaceEntry(cents: suggestion.amountCents)
     }
 
     func submit() async -> SettleUpResult? {
@@ -221,7 +212,7 @@ final class SettleUpViewModel: ObservableObject {
            debtCents > 0,
            debtCents < amountCents
         {
-            errorMessage = L10n.Settlement.onlyOwe(peer.name, Money.formatted(cents: debtCents))
+            errorMessage = L10n.Settlement.onlyOwe(peer.name, Money.formatted(cents: debtCents, currency: session.currency))
         } else {
             errorMessage = L10n.Settlement.recordFailed
         }

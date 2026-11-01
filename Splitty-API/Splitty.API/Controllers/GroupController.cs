@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Splitty.Domain.Entities;
 using Splitty.DTO.Internal;
 using Splitty.DTO.Request;
 using Splitty.DTO.Response;
@@ -35,7 +36,8 @@ public class GroupController(
 
         if (userId is null) return Unauthorized();
 
-        var createdGroup = await groupService.CreateAsync(int.Parse(userId), request.Name, request.Description);
+        var createdGroup = await groupService.CreateAsync(
+            int.Parse(userId), request.Name, request.Description, request.Currency ?? Currency.USD);
 
         return Ok(createdGroup);
     }
@@ -69,7 +71,7 @@ public class GroupController(
     [HttpPut("{groupId}")]
     public async Task<ActionResult<GroupDTO>> UpdateGroup(int groupId, [FromBody] UpdateGroupRequest request)
     {
-        if (request.Name is null && request.Description is null)
+        if (request.Name is null && request.Description is null && request.Currency is null)
         {
             return BadRequest("At least one of the fields must be provided");
         }
@@ -78,7 +80,8 @@ public class GroupController(
 
         if (userId is null) return Unauthorized();
 
-        var group = await groupService.UpdateAsync(groupId, int.Parse(userId), request.Name, request.Description);
+        var group = await groupService.UpdateAsync(
+            groupId, int.Parse(userId), request.Name, request.Description, request.Currency);
 
         return Ok(group);
     }

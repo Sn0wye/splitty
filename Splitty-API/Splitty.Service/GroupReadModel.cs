@@ -29,6 +29,7 @@ public class GroupReadModel(ApplicationDbContext context, IAvatarResolver avatar
                 Id = g.Id,
                 Name = g.Name,
                 Description = g.Description,
+                Currency = g.Currency,
                 CreatedAt = g.CreatedAt,
                 LastActivityAt = context.Expense.Where(e => e.GroupId == g.Id)
                     .Max(e => (DateTime?)(e.Date ?? e.CreatedAt)),

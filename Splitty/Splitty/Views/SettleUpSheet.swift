@@ -6,6 +6,7 @@
 import SwiftUI
 
 struct SettleUpSheet: View {
+    @Environment(\.currency) private var currency
     @ObservedObject private var session: GroupSession
     @StateObject private var viewModel: SettleUpViewModel
     @Environment(\.dismiss) private var dismiss
@@ -85,7 +86,7 @@ struct SettleUpSheet: View {
                     Spacer()
 
                     if let debt = viewModel.debtCents(for: peer.userId), debt > 0 {
-                        Text(Money.formatted(cents: debt))
+                        Text(Money.formatted(cents: debt, currency: currency))
                             .font(.body.weight(.semibold))
                             .monospacedDigit()
                             .foregroundStyle(.red)

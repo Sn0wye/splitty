@@ -6,6 +6,7 @@
 import SwiftUI
 
 struct BalancesView: View {
+    @Environment(\.currency) private var currency
     @ObservedObject var session: GroupSession
     let currentUserId: Int
 
@@ -58,7 +59,7 @@ struct BalancesView: View {
                 .foregroundStyle(Color("muted-foreground"))
 
             HStack(spacing: 10) {
-                Text(Money.formatted(cents: abs(session.group?.netBalanceCents ?? 0)))
+                Text(Money.formatted(cents: abs(session.group?.netBalanceCents ?? 0), currency: currency))
                     .font(.largeTitle.weight(.bold))
                     .monospacedDigit()
                     .foregroundStyle(Color("foreground"))
@@ -143,6 +144,7 @@ struct BalancesView: View {
 }
 
 private struct SimplifiedDebtRow: View {
+    @Environment(\.currency) private var currency
     let row: BalanceRow
     let numbersArePending: Bool
 
@@ -159,7 +161,7 @@ private struct SimplifiedDebtRow: View {
             debtMemberAvatars
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(row.statement)
+                Text(row.statement(in: currency))
                     .font(.body.weight(.semibold))
                     .foregroundStyle(Color("card-foreground"))
             }
@@ -167,7 +169,7 @@ private struct SimplifiedDebtRow: View {
             Spacer(minLength: 12)
 
             VStack(alignment: .trailing, spacing: 3) {
-                Text(Money.formatted(cents: row.amountCents))
+                Text(Money.formatted(cents: row.amountCents, currency: currency))
                     .font(.body.weight(.semibold))
                     .monospacedDigit()
                     .foregroundStyle(directionColor)
@@ -192,7 +194,7 @@ private struct SimplifiedDebtRow: View {
         )
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(row.statement)
+        .accessibilityLabel(row.statement(in: currency))
         .accessibilityValue(numbersArePending ? L10n.Common.updating : "")
     }
 
@@ -219,11 +221,11 @@ private struct SimplifiedDebtRow: View {
 }
 
 enum BalanceCopy {
-    static func overall(cents: Int) -> String {
+    static func overall(cents: Int, currency: Currency) -> String {
         if cents > 0 {
-            L10n.Balances.owedOverallAmount(Money.formatted(cents: cents))
+            L10n.Balances.owedOverallAmount(Money.formatted(cents: cents, currency: currency))
         } else if cents < 0 {
-            L10n.Balances.oweOverallAmount(Money.formatted(cents: abs(cents)))
+            L10n.Balances.oweOverallAmount(Money.formatted(cents: abs(cents), currency: currency))
         } else {
             L10n.Balances.allSettled
         }

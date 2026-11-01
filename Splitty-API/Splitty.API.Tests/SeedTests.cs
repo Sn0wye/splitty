@@ -26,6 +26,18 @@ public sealed class SeedTests(ApiFactory factory)
         Assert.Contains(groups, group => group.Members.Count > 3);
     }
 
+    /// Groups in several currencies, so the groups header shows one line per currency and
+    /// each group screen formats in its own (ADR 0007).
+    [Fact]
+    public async Task The_first_seeded_user_has_groups_in_several_currencies()
+    {
+        await SeedAsync();
+
+        var groups = await GroupsOfAsync(DatabaseSeeder.PrimaryUserEmail);
+
+        Assert.True(groups.Select(group => group.Currency).Distinct().Count() >= 3);
+    }
+
     [Fact]
     public async Task A_seeded_group_has_exactly_two_members()
     {

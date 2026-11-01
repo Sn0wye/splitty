@@ -185,6 +185,45 @@ struct GroupSessionTests {
         #expect(reopened.expenses.map(\.id) == [3])
     }
 
+    @Test func cachedExpensesRenderBeforeRefresh() async {
+        let data = ControlledGroupData()
+        let first = TestExpense.make(id: 1, paidBy: 1, amount: 10, splitAmounts: [1: 10])
+        let second = TestExpense.make(id: 2, paidBy: 1, amount: 20, splitAmounts: [1: 20])
+        data.expensesForCall = { call in call == 3 ? [first, second] : [first] }
+        let store = GroupSessionStore(dataSource: { data.source() })
+
+        let session = store.open(1)
+        let initial = session.appear()
+        await data.waitForExpenseCall(1)
+        data.release(call: 1)
+        await initial.value
+
+        var publishes = 0
+        let counter = session.$expenses.dropFirst().sink { _ in publishes += 1 }
+        defer { counter.cancel() }
+
+        // Reopened with rows in hand: they are on screen before the read answers.
+        let reopened = store.open(1)
+        let unchanged = reopened.appear()
+        await data.waitForExpenseCall(2)
+        #expect(reopened.hasLoadedExpenses)
+        #expect(!reopened.isLoading)
+        #expect(reopened.expenses.map(\.id) == [1])
+
+        // The same rows back from the server leave the list alone.
+        data.release(call: 2)
+        await unchanged.value
+        #expect(publishes == 0)
+
+        let changed = reopened.appear()
+        await data.waitForExpenseCall(3)
+        #expect(reopened.expenses.map(\.id) == [1])
+        data.release(call: 3)
+        await changed.value
+        #expect(publishes == 1)
+        #expect(Set(reopened.expenses.map(\.id)) == [1, 2])
+    }
+
     @Test func signOutAndLeaveDiscardTheCurrentGroup() {
         let appState = AppState(groupSessions: GroupSessionStore(defaults: isolatedDefaults(), dataSource: {
             ControlledGroupData().source()
@@ -199,6 +238,48 @@ struct GroupSessionTests {
         appState.setSignedInUser(nil)
         #expect(appState.groupSessions.current == nil)
         #expect(appState.currentGroupId == nil)
+    }
+
+    @Test func appHasThreeTabsAndOpeningAGroupPushesItOnGroups() {
+        #expect(AppTab.allCases == [.groups, .people, .settings])
+        let appState = AppState(groupSessions: GroupSessionStore(defaults: isolatedDefaults(), dataSource: {
+            ControlledGroupData().source()
+        }))
+        appState.setSignedInUser(700_124)
+        appState.selectedTab = .people
+        appState.openGroup(1, seed: group(id: 1))
+        #expect(appState.selectedTab == .groups)
+        #expect(appState.groupsPath == [1])
+
+        appState.openGroup(2, seed: group(id: 2))
+        #expect(appState.groupsPath == [2])
+        #expect(appState.currentGroupId == 2)
+    }
+
+    @Test func leavingAGroupPopsToTheListAndKeepsItsNotice() {
+        let appState = AppState(groupSessions: GroupSessionStore(defaults: isolatedDefaults(), dataSource: {
+            ControlledGroupData().source()
+        }))
+        appState.setSignedInUser(700_125)
+        appState.openGroup(1, seed: group(id: 1))
+        appState.exitGroup(1, message: "You left")
+        #expect(appState.groupsPath.isEmpty)
+        #expect(appState.selectedTab == .groups)
+        #expect(appState.groupNotice == "You left")
+        #expect(appState.exitedGroupId == 1)
+
+        appState.openGroup(2, seed: group(id: 2))
+        #expect(appState.groupNotice == nil)
+        appState.selectedTab = .people
+        appState.leaveUnavailableGroup(message: "Gone")
+        #expect(appState.groupsPath.isEmpty)
+        #expect(appState.selectedTab == .groups)
+        #expect(appState.groupNotice == "Gone")
+        #expect(appState.groupSessions.session(for: 2) == nil)
+
+        appState.openGroup(3, seed: group(id: 3))
+        appState.setSignedInUser(nil)
+        #expect(appState.groupsPath.isEmpty)
     }
 
     @Test func addExpenseUsesLoadedSessionWithoutAListReadAndFallsBackWithoutOne() async throws {

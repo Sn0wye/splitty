@@ -15,13 +15,14 @@ public class GroupRepository(ApplicationDbContext context): IGroupRepository
 
     // Written in the database, so a rename never saves back the pending columns or the
     // balances it would have read alongside them. A null field keeps its stored value.
-    public async Task RenameAsync(int groupId, string? name, string? description)
+    public async Task RenameAsync(int groupId, string? name, string? description, Currency? currency)
     {
         await context.Group
             .Where(g => g.Id == groupId)
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(g => g.Name, g => name ?? g.Name)
-                .SetProperty(g => g.Description, g => description ?? g.Description));
+                .SetProperty(g => g.Description, g => description ?? g.Description)
+                .SetProperty(g => g.Currency, g => currency.HasValue ? currency.Value : g.Currency));
     }
 
     public async Task DeleteAsync(int groupId)

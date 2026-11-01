@@ -86,6 +86,14 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(g => g.BalancesPending).IsRequired().HasDefaultValue(false);
             entity.Property(g => g.BalancesPendingGeneration).IsRequired().HasDefaultValue(0);
 
+            // Text for the same reason as Expense.Category. The default backfills the groups
+            // that predate the column, which displayed dollars. See
+            // docs/adr/0007-a-group-has-one-currency.md.
+            entity.Property(g => g.Currency)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasDefaultValue(Domain.Entities.Currency.USD);
+
             entity.HasOne(g => g.CreatedByUser)
                 .WithMany()
                 .HasForeignKey(g => g.CreatedBy)

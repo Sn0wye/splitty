@@ -49,6 +49,7 @@ public sealed class DatabaseSeeder(ApplicationDbContext context, IGroupLedger gr
             {
                 Name = seededGroup.Name,
                 Description = seededGroup.Description,
+                Currency = seededGroup.Currency,
                 CreatedBy = users[seededGroup.CreatedBy].Id,
                 Members = seededGroup.Members
                     .Select(email => new GroupMembership { UserId = users[email].Id })

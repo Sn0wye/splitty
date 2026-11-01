@@ -36,12 +36,16 @@ Screen names are the raw values of `ReviewScreen` in
 | `welcome`, `setup`, `create`, `join`, `invite` | First-run flow |
 | `groupsEmpty`, `groupEmpty`, `peopleEmpty`, `balanceHint` | Empty states |
 | `expenseForm` | The real expense sheet: amount digits, keypad, details step with the keyboard, split screens. Saving fails on purpose. |
+| `expenseFormReais` | The same expense sheet in a BRL group: `R$` ahead of the amount and a `,` decimal key. |
 | `timeline` | Real timeline rows on sample data: every row shape (an installment badge among them), date headers, swipe to delete, the last row's clearance above the tab bar. Reset restores deleted rows. |
+| `timelineEuros` | The timeline in a EUR group: amounts written `42,50 €`. |
+| `groupOpen` | The real Groups tab pushing the real group screen, over reads that take 1.2s. The first open shows the timeline loader under the seeded header; Back and opening it again shows the cached rows at once while the same read runs. |
 | `charts` | The real Charts sheet; each range lands on different numbers after a short delay. |
 | `chartsFailed` | The first load fails; Try again succeeds. |
 | `chartsEmpty` | Charts for a group with no expenses. |
 | `plans` | The Plans screen's Installments section on sample data: one with an end, one with none, a long name. Loads after a short delay; pull to refresh reloads. |
 | `plansEmpty` | Plans for a group with no active recurring expense. |
+| `settleUp` | The same sheet opened from the group's Settle up button: the person step first, then the amount. |
 | `settledUp` | The real Settle up sheet on a $165.00 debt to Ana. Recording it all plays the settled-up moment; a smaller amount dismisses as usual. Nothing is written. |
 | `chooseGroup` | The real "Choose a group" sheet on three groups: owed, owing, and settled with no expenses. Rows arrive most recently active first; picking one does nothing here. |
 | `avatarCrop` | The real avatar crop screen on a generated landscape photo with a grid: pan, flick and pinch past the bounds. |
@@ -82,3 +86,14 @@ and #104 is the example.
 - Check the recurring trouble spots when the change is near them: keyboard
   overlap, the tab bar covering the last row, sheet detents and sizing,
   empty states, swipe to delete.
+- Attach the evidence to the pull request with `gh`, which uploads the files
+  to GitHub and rewrites the references in the body:
+
+  ```sh
+  gh pr create --body-file body.md --attach './before.png#Before' --attach ./after.mp4
+  gh pr edit <n> --attach './rested-dark.png#Rested row, dark'
+  ```
+
+  Write `![alt](./file.png)` in the body for a file passed with `--attach`.
+  Do not push images to a `pr-assets/*` branch or a gist: those outlive the
+  review and break when cleaned up.

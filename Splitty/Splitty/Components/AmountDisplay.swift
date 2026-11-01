@@ -12,24 +12,29 @@ import SwiftUI
 /// with a stable identity, which is what lets SwiftUI move the digits that stayed and
 /// transition only the one that changed.
 struct AmountDisplay: View {
+    /// What the amount field holds, always with a `.` for the decimal point.
     let text: String
-    /// Currency is a static glyph — there is no currency field and no conversion.
-    var currencySymbol: String = "$"
     var size: CGFloat = 76
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.currency) private var currency
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 0) {
+            // The same size as the digits: the symbol is part of the number the way it is
+            // written, not a superscript hung off it. On whichever side the currency puts it.
+            if !currency.symbolFollowsAmount {
+                symbol.padding(.trailing, size * 0.12)
+            }
+
             ForEach(glyphs, id: \.id) { glyph in
                 Text(glyph.character)
                     .transition(glyphTransition)
             }
 
-            // Trailing, and the same size as the digits: the symbol is part of the number
-            // the way it is written, not a superscript hung off the front of it.
-            Text(currencySymbol)
-                .padding(.leading, size * 0.12)
+            if currency.symbolFollowsAmount {
+                symbol.padding(.leading, size * 0.12)
+            }
         }
         .font(.system(size: size, weight: .semibold, design: .rounded))
         .monospacedDigit()
@@ -40,6 +45,10 @@ struct AmountDisplay: View {
             reduceMotion ? .easeOut(duration: 0.15) : .spring(response: 0.34, dampingFraction: 0.72),
             value: text
         )
+    }
+
+    private var symbol: some View {
+        Text(currency.symbol)
     }
 
     /// Reduce Motion keeps the digit changing visibly, as a fade, without the travel.
@@ -55,7 +64,7 @@ struct AmountDisplay: View {
     /// Identity is position **and** character: appending leaves the earlier glyphs alone,
     /// while replacing one retires the old glyph and introduces the new one in its place.
     private var glyphs: [Glyph] {
-        text.enumerated().map { index, character in
+        text.replacingOccurrences(of: ".", with: currency.decimalSeparator).enumerated().map { index, character in
             Glyph(id: "\(index)-\(character)", character: String(character))
         }
     }

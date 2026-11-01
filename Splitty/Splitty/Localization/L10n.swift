@@ -169,7 +169,6 @@ enum L10n {
 
     enum Tabs {
         static var groups: String { text("tabs.groups", default: "Groups") }
-        static var group: String { text("tabs.group", default: "Group") }
         static var people: String { text("tabs.people", default: "People") }
         static var settings: String { text("tabs.settings", default: "Settings") }
         static var addExpense: String { text("tabs.add_expense", default: "Add expense") }
@@ -251,11 +250,18 @@ enum L10n {
         static var joinWithCode: String { text("groups.join_with_code", default: "Join with code") }
         static var youAreOwed: String { text("groups.you_are_owed", default: "You are owed") }
         static var youOwe: String { text("groups.you_owe", default: "You owe") }
+        /// The header's fold for the currencies that are not the primary one.
+        static func moreCurrencies(_ count: Int) -> String {
+            text("groups.more_currencies", default: "+\(count) currencies")
+        }
+        static var moreCurrenciesHint: String {
+            text("groups.more_currencies_hint", default: "Shows your balance in each other currency")
+        }
         static var choose: String { text("groups.choose", default: "Choose a group") }
         static var recent: String { text("groups.recent", default: "Recent") }
-        static var noneSelected: String { text("groups.none_selected", default: "No group selected") }
-        static var pickFromTab: String {
-            text("groups.pick_from_tab", default: "Pick a group from the Groups tab.")
+        /// "3 members · BRL" under a group's name in "Choose a group".
+        static func chooseRowDetail(_ members: String, _ currencyCode: String) -> String {
+            format("groups.choose_row_detail", default: "%1$@ · %2$@", members, currencyCode)
         }
         static var couldNotStartExpense: String {
             text("groups.could_not_start_expense", default: "Could not start an expense")
@@ -263,7 +269,6 @@ enum L10n {
     }
 
     enum Group {
-        static var backToGroups: String { text("group.back_to_groups", default: "Back to groups") }
         static var settings: String { text("group.settings", default: "Group settings") }
         static var settingsHint: String { text("group.settings_hint", default: "Opens group settings") }
         static var deleteQuestion: String { text("group.delete_question", default: "Delete?") }
@@ -278,7 +283,6 @@ enum L10n {
         static var settleUp: String { text("group.settle_up", default: "Settle up") }
         static var charts: String { text("group.charts", default: "Charts") }
         static var balances: String { text("group.balances", default: "Balances") }
-        static var export: String { text("group.export", default: "Export") }
         static func youPaidPeer(_ name: String) -> String {
             format("group.you_paid_peer", default: "You paid %@", name)
         }
@@ -315,6 +319,9 @@ enum L10n {
         static var members: String { text("group_settings.members", default: "Members") }
         static var invitePeople: String { text("group_settings.invite_people", default: "Invite people") }
         static var leaveGroup: String { text("group_settings.leave_group", default: "Leave group") }
+        static var exportExpenses: String {
+            text("group_settings.export_expenses", default: "Export expenses (CSV)")
+        }
         static var noDescription: String { text("group_settings.no_description", default: "No description") }
         static var removeMember: String {
             text("group_settings.remove_member", default: "Remove from group")
@@ -331,6 +338,26 @@ enum L10n {
             text("group_settings.not_member", default: "You are not a member of this group.")
         }
         static var gone: String { text("group_settings.gone", default: "This group no longer exists.") }
+        static var currency: String { text("group_settings.currency", default: "Currency") }
+        /// "Brazilian Real (R$)".
+        static func currencyOption(_ name: String, _ symbol: String) -> String {
+            format("group_settings.currency_option", default: "%1$@ (%2$@)", name, symbol)
+        }
+        static var currencyFooter: String {
+            text("group_settings.currency_footer", default: "Every amount in the group is in this currency.")
+        }
+        static func changeCurrencyTitle(_ code: String) -> String {
+            format("group_settings.change_currency_title", default: "Change currency to %@?", code)
+        }
+        static var changeCurrencyMessage: String {
+            text(
+                "group_settings.change_currency_message",
+                default: "Amounts stay the same and only the symbol changes. Nothing is converted."
+            )
+        }
+        static var changeCurrencyConfirm: String {
+            text("group_settings.change_currency_confirm", default: "Change currency")
+        }
     }
 
     enum Leave {
@@ -839,6 +866,5 @@ enum L10n {
     enum Keypad {
         static var delete: String { text("keypad.delete", default: "delete") }
         static var clearAmount: String { text("keypad.clear_amount", default: "Clear amount") }
-        static var done: String { text("keypad.done", default: "done") }
     }
 }

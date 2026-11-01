@@ -22,6 +22,8 @@ struct GroupView: View {
     @State private var addExpenseAfterCharts = false
     @State private var showingInviteSheet = false
     @State private var pendingDeletion: Expense?
+    /// The timeline row resting open on its delete button, if any. One at a time.
+    @State private var openSwipeRow: Int?
     @State private var selectedExpenseId: Int?
     @State private var selectedExpense: Expense?
     @State private var backgroundedAt: Date?
@@ -37,14 +39,15 @@ struct GroupView: View {
     init(session: GroupSession, onAddExpense: @escaping () -> Void = {}) {
         self.session = session
         self.onAddExpense = onAddExpense
-        // The view is rebuilt per group (`.id(groupId)` in ContentView), so the group is fixed.
+        // The view is rebuilt per group (`.id(groupId)` on the Groups stack), so the group is fixed.
         _plans = StateObject(wrappedValue: PlansViewModel(groupId: session.groupId))
     }
 
+    /// Pushed onto the Groups tab's stack, so the system back button and edge swipe
+    /// return to the list.
     var body: some View {
-        NavigationStack {
-            groupScreen
-        }
+        groupScreen
+            .environment(\.currency, session.currency)
     }
 
     private var groupScreen: some View {
@@ -65,17 +68,6 @@ struct GroupView: View {
         .toolbarBackground(Color("background"), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    appState.selectedTab = .groups
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(Color("foreground"))
-                }
-                .accessibilityLabel(L10n.Group.backToGroups)
-            }
-
             ToolbarItem(placement: .principal) {
                 Text(session.group?.name ?? "")
                     .font(.headline)
@@ -105,6 +97,7 @@ struct GroupView: View {
             if let group = session.group, let currentUserId {
                 GroupSettingsView(
                     group: group,
+                    expenses: session.expenses,
                     currentUserId: currentUserId,
                     onGroupSaved: {
                         session.beginRefresh()
@@ -236,6 +229,7 @@ struct GroupView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color("background"))
+        .closesOpenSwipeRow($openSwipeRow)
         .accessibilityIdentifier("group.timeline")
         .performanceScrollSignpost(.timelineScroll)
         .refreshable {
@@ -341,7 +335,7 @@ struct GroupView: View {
                 .opacity(0.6)
                 .accessibilityValue(L10n.Common.updating)
         } else {
-            SwipeToDeleteRow {
+            SwipeToDeleteRow(id: expense.id, openRow: $openSwipeRow) {
                 selectedExpense = expense
                 selectedExpenseId = expense.id
             } onDelete: {
@@ -385,7 +379,7 @@ struct GroupView: View {
     private var deletionTitle: String {
         guard let expense = pendingDeletion else { return L10n.Group.deleteQuestion }
         return expense.type == .payment
-            ? L10n.Group.deletePayment(Money.formatted(amount: expense.amount))
+            ? L10n.Group.deletePayment(Money.formatted(amount: expense.amount, currency: session.currency))
             : L10n.Group.deleteExpense(expense.description)
     }
 
@@ -423,7 +417,7 @@ struct GroupView: View {
     private var balanceText: some View {
         if let balanceCents = session.group?.netBalanceCents {
             HStack(spacing: 6) {
-                Text(BalanceCopy.overall(cents: balanceCents))
+                Text(BalanceCopy.overall(cents: balanceCents, currency: session.currency))
                 // A recomputation is outstanding, so this number predates the last write.
                 // Greyed with a spinner rather than presented as final.
                 .foregroundColor(Color("muted-foreground"))
@@ -441,8 +435,8 @@ struct GroupView: View {
     }
     
     private var actionButtonsSection: some View {
-        // The row runs off the edge once the titles are long enough — translated
-        // ones already do — so it scrolls. Content margins rather than padding,
+        // The row runs off the edge once the titles are long enough — at larger
+        // text sizes they are — so it scrolls. Content margins rather than padding,
         // so the inset doesn't clip the first and last pill mid-scroll.
         ScrollView(.horizontal) {
             LazyHStack(spacing: 12) {
@@ -462,13 +456,6 @@ struct GroupView: View {
                     showingChartsSheet = true
                 }
                 .disabled(session.group == nil || currentUserId == nil)
-
-                let csv = ExpenseCSV(groupName: session.group?.name ?? "", expenses: session.expenses)
-                ShareLink(item: csv, preview: SharePreview("\(csv.fileName).csv")) {
-                    ActionButtonLabel(title: L10n.Group.export, color: Color("muted"), textColor: Color("foreground"))
-                }
-                .buttonStyle(.pressable(scale: 0.94))
-                .disabled(session.expenses.isEmpty)
             }
         }
         .scrollIndicators(.hidden)
@@ -588,6 +575,7 @@ struct RepeatBadge: View {
 }
 
 struct ExpenseRow: View {
+    @Environment(\.currency) private var currency
     let expense: Expense
     let currentUserId: Int
     
@@ -690,8 +678,8 @@ struct ExpenseRow: View {
                 Text(isUserPaid ? L10n.Group.youPaidPeer(peerDisplay?.name ?? L10n.Common.someone) : L10n.Group.payerPaidPayee(paidByDisplay.name, payeeLabel))
             } else {
                 Text(isUserPaid
-                     ? L10n.Group.youPaidAmount(Money.formatted(amount: expense.amount))
-                     : L10n.Group.payerPaidAmount(paidByDisplay.name, Money.formatted(amount: expense.amount)))
+                     ? L10n.Group.youPaidAmount(Money.formatted(amount: expense.amount, currency: currency))
+                     : L10n.Group.payerPaidAmount(paidByDisplay.name, Money.formatted(amount: expense.amount, currency: currency)))
             }
         }
         .font(.subheadline)
@@ -733,18 +721,18 @@ struct ExpenseRow: View {
         if expense.type == .payment {
             // A payment between two other members still shows its amount: the row reads
             // as group history, so it is dimmed rather than dropped.
-            Text(Money.formatted(amount: expense.amount))
+            Text(Money.formatted(amount: expense.amount, currency: currency))
                 .font(.headline)
                 .fontWeight(.semibold)
                 .foregroundColor(Color(involvement == .notInvolved ? "muted-foreground" : "card-foreground"))
         } else if case .lent(let amount) = involvement {
             // What the payer lent is the total less their own share.
-            Text(Money.formatted(amount: amount))
+            Text(Money.formatted(amount: amount, currency: currency))
                 .font(.headline)
                 .fontWeight(.semibold)
                 .foregroundColor(Color("positive"))
         } else if case .borrowed(let amount) = involvement {
-            Text(Money.formatted(amount: amount))
+            Text(Money.formatted(amount: amount, currency: currency))
                 .font(.headline)
                 .fontWeight(.semibold)
                 .foregroundColor(Color("negative"))
@@ -753,6 +741,8 @@ struct ExpenseRow: View {
 }
 
 #Preview {
-    GroupView(session: GroupSessionStore().open(1))
-        .environmentObject(AppState())
+    NavigationStack {
+        GroupView(session: GroupSessionStore().open(1))
+    }
+    .environmentObject(AppState())
 }

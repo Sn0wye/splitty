@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 enum GroupMoneyWrite {
     case expenseCreated(Expense)
@@ -119,6 +120,9 @@ final class GroupSession: ObservableObject {
         self.groupId = groupId
         self.group = seed
         self.dataSource = dataSource
+        // The scenario's rows are local, so they are already in hand when the session is
+        // made: the first frame shows them instead of a loader waiting for `.task`.
+        if PerformanceScenarioLaunch.isEnabled { publishPerformanceScenario() }
     }
 
     /// A failed read cannot replace balances already on screen, the same rule the timeline
@@ -183,6 +187,7 @@ final class GroupSession: ObservableObject {
     }
 
     var members: [GroupMember] { group?.members ?? [] }
+    var currency: Currency { group?.currency ?? .usd }
 
     /// Charts only has something to chart once an expense exists, and asks for one until
     /// then: settlements count in neither group spend nor share.
@@ -309,12 +314,7 @@ final class GroupSession: ObservableObject {
         let generation = loadGeneration
 
         if PerformanceScenarioLaunch.isEnabled {
-            group = PerformanceScenarios.groups.first { $0.id == groupId }
-                ?? PerformanceScenarios.groups[0]
-            expenses = PerformanceScenarios.timeline
-            groupedExpenses = Expense.groupExpensesByDate(expenses)
-            hasLoadedExpenses = true
-            errorMessage = ""
+            publishPerformanceScenario()
             return nil
         }
         async let groupResult = dataSource.group(groupId)
@@ -366,7 +366,7 @@ final class GroupSession: ObservableObject {
 
         if let loadedExpenses {
             publishExpenses(loadedExpenses)
-            hasLoadedExpenses = true
+            if !hasLoadedExpenses { hasLoadedExpenses = true }
         }
 
         let displayedNetCents = group?.netBalanceCents
@@ -423,12 +423,32 @@ final class GroupSession: ObservableObject {
                 visibleExpenses.append(pending)
             }
         }
-        expenses = visibleExpenses
-        groupedExpenses = Expense.groupExpensesByDate(visibleExpenses)
+        if !hasLoadedExpenses {
+            expenses = visibleExpenses
+            groupedExpenses = Expense.groupExpensesByDate(visibleExpenses)
+        } else if visibleExpenses != expenses {
+            // Rows already on screen stay put: the fresh read changes only those that
+            // differ, and new rows slide in rather than the list redrawing.
+            let grouped = Expense.groupExpensesByDate(visibleExpenses)
+            withAnimation(.snappy) {
+                expenses = visibleExpenses
+                groupedExpenses = grouped
+            }
+        }
         let serverIds = Set(loadedExpenses.map(\.id))
         let confirmedAbsent = successfulDeletionIds.filter { !serverIds.contains($0) }
         hiddenDeletionIds.subtract(confirmedAbsent)
         successfulDeletionIds.subtract(confirmedAbsent)
+    }
+
+    private func publishPerformanceScenario() {
+        if group == nil {
+            group = PerformanceScenarios.groups.first { $0.id == groupId }
+                ?? PerformanceScenarios.groups[0]
+        }
+        publishExpenses(PerformanceScenarios.timeline)
+        if !hasLoadedExpenses { hasLoadedExpenses = true }
+        if !errorMessage.isEmpty { errorMessage = "" }
     }
 
     private func summary(force: Bool) async throws -> GroupBalanceSummary {

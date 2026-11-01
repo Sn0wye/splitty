@@ -21,16 +21,17 @@ enum ReviewSamples {
     /// Three groups for "Choose a group", given oldest activity first so the sheet's
     /// order is the rule's doing: one owed, one owing, one settled with no expenses yet.
     static let groups: [Group] = [
-        group(1, "Flatmates", cents: 4_215, members: 4, activity: "2026-09-02T19:30:00Z"),
-        group(2, "Lisbon weekend", cents: -1_850, members: 3, activity: "2026-10-29T12:00:00Z"),
-        group(3, "Book club", cents: 0, members: 6, activity: nil),
+        group(1, "Flatmates", .brl, cents: 4_215, members: 4, activity: "2026-09-02T19:30:00Z"),
+        group(2, "Lisbon weekend", .eur, cents: -1_850, members: 3, activity: "2026-10-29T12:00:00Z"),
+        group(3, "Book club", .usd, cents: 0, members: 6, activity: nil),
     ]
 
-    private static func group(_ id: Int, _ name: String, cents: Int, members: Int, activity: String?) -> Group {
+    private static func group(_ id: Int, _ name: String, _ currency: Currency, cents: Int, members: Int, activity: String?) -> Group {
         Group(
             id: id,
             name: name,
             description: nil,
+            currency: currency,
             netBalanceCents: cents,
             createdAt: "2026-0\(id)-01T12:00:00Z",
             members: (1...members).map { index in
@@ -335,16 +336,18 @@ enum ReviewSamples {
 /// stacks them so the last row's clearance above the add button is the real one.
 /// Deleting removes the row from this screen only; Reset brings every row back.
 struct ReviewTimelineView: View {
+    @Environment(\.currency) private var currency
     let onDone: () -> Void
 
     @State private var expenses = ReviewSamples.timeline()
     @State private var pendingDeletion: Expense?
-    @State private var selectedTab: AppTab = .group
+    @State private var openSwipeRow: Int?
+    @State private var selectedTab: AppTab = .groups
     @State private var showingAddInfo = false
 
     var body: some View {
         AppTabView(selection: $selectedTab) { tab in
-            if tab == .group {
+            if tab == .groups {
                 timeline
             } else {
                 Color("background").ignoresSafeArea()
@@ -385,7 +388,7 @@ struct ReviewTimelineView: View {
                     ForEach(Expense.groupExpensesByDate(expenses)) { day in
                         TimelineDateHeader(title: day.dateString)
                         ForEach(day.expenses) { expense in
-                            SwipeToDeleteRow {
+                            SwipeToDeleteRow(id: expense.id, openRow: $openSwipeRow) {
                             } onDelete: {
                                 pendingDeletion = expense
                             } content: {
@@ -406,6 +409,7 @@ struct ReviewTimelineView: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Color("background"))
+            .closesOpenSwipeRow($openSwipeRow)
             .navigationTitle("Timeline")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -425,7 +429,7 @@ struct ReviewTimelineView: View {
     private var deletionTitle: String {
         guard let expense = pendingDeletion else { return L10n.Group.deleteQuestion }
         return expense.type == .payment
-            ? L10n.Group.deletePayment(Money.formatted(amount: expense.amount))
+            ? L10n.Group.deletePayment(Money.formatted(amount: expense.amount, currency: currency))
             : L10n.Group.deleteExpense(expense.description)
     }
 
@@ -481,8 +485,11 @@ struct ReviewPlansView: View {
 /// Presents a sheet over a plain screen, the way the app presents it, and offers it
 /// again once dismissed so the dismissal and a fresh opening can both be reviewed.
 /// The real settle-up sheet on `ReviewSamples.settleUpDebt`: recording the whole amount
-/// plays the settled-up moment, a smaller one dismisses as usual.
+/// plays the settled-up moment, a smaller one dismisses as usual. Without a balance row
+/// it opens on the person step, the way the group's Settle up button does.
 struct ReviewSettleUpSheet: View {
+    var startsFromBalanceRow = true
+
     @StateObject private var session = GroupSession(
         groupId: ReviewSamples.groupId,
         seed: ReviewSamples.settleUpTrip,
@@ -493,7 +500,7 @@ struct ReviewSettleUpSheet: View {
         SettleUpSheet(
             session: session,
             currentUserId: ReviewSamples.currentUserId,
-            preselectedRow: ReviewSamples.settleUpDebt,
+            preselectedRow: startsFromBalanceRow ? ReviewSamples.settleUpDebt : nil,
             dataSource: ReviewSamples.settleUp
         )
         .task { await session.appear().value }
@@ -527,4 +534,82 @@ struct ReviewSheetHost<Sheet: View>: View {
         .sheet(isPresented: $isPresented, content: sheet)
         .task { isPresented = true }
     }
+}
+
+/// The real Groups tab, pushing the real group screen, over a session store whose reads
+/// take a moment. The first open has nothing cached and shows the timeline loader under
+/// the seeded header; going back and opening the group again shows the cached rows at
+/// once while the same read runs behind them.
+struct ReviewGroupOpenView: View {
+    let onDone: () -> Void
+
+    @StateObject private var appState = AppState(
+        groupSessions: GroupSessionStore(dataSource: { ReviewSamples.slowGroup })
+    )
+    /// Set only when the gallery opened without a signed-in user, so the rows can say
+    /// "you"; a gallery opened from Settings keeps the account's own user.
+    @State private var borrowedCurrentUser = false
+
+    var body: some View {
+        AppTabView(selection: $appState.selectedTab) { tab in
+            switch tab {
+            case .groups:
+                NavigationStack(path: $appState.groupsPath) {
+                    ScrollView {
+                        GroupCard(group: ReviewSamples.trip) {
+                            appState.openGroup(ReviewSamples.groupId, seed: ReviewSamples.trip)
+                        }
+                        .padding(20)
+                    }
+                    .background(Color("background").ignoresSafeArea())
+                    .navigationTitle(Text(L10n.Tabs.groups))
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(L10n.Common.done, action: onDone)
+                        }
+                    }
+                    .navigationDestination(for: Int.self) { groupId in
+                        if let session = appState.groupSessions.session(for: groupId) {
+                            GroupView(session: session).id(groupId)
+                        }
+                    }
+                }
+            default:
+                Color("background").ignoresSafeArea()
+            }
+        }
+        .environmentObject(appState)
+        .onAppear {
+            guard AuthenticationManager.shared.currentUser == nil else { return }
+            AuthenticationManager.shared.currentUser = ReviewSamples.users[0]
+            borrowedCurrentUser = true
+        }
+        .onDisappear {
+            if borrowedCurrentUser { AuthenticationManager.shared.currentUser = nil }
+        }
+    }
+}
+
+extension ReviewSamples {
+    static let trip = Group(id: groupId, name: "Weekend trip", description: nil,
+                            netBalanceCents: 4_250, createdAt: "2026-01-01", members: members)
+
+    /// Every read answers after the same delay, with the same rows each time.
+    static let slowGroup = GroupDataSource(
+        group: { _ in
+            try await Task.sleep(for: .milliseconds(1_200))
+            return trip
+        },
+        expenses: { _ in
+            try await Task.sleep(for: .milliseconds(1_200))
+            return timeline()
+        },
+        summary: { _ in
+            try await Task.sleep(for: .milliseconds(1_200))
+            return GroupBalanceSummary(simplifiedDebts: [], balancesPending: false)
+        },
+        requestBalanceRefresh: { _ in },
+        deleteExpense: { _, _, _ in throw ReviewOnly() },
+        deletePayment: { _, _ in throw ReviewOnly() }
+    )
 }

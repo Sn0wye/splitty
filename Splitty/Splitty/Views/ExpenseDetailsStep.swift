@@ -12,6 +12,7 @@ import SwiftUI
 /// a `navigationDestination` — the pushed screen is a separate focus scope, and a binding
 /// handed across that boundary silently does nothing.
 struct ExpenseDetailsStep: View {
+    @Environment(\.currency) private var currency
     @ObservedObject var viewModel: ExpenseFormViewModel
     /// Called once Save is allowed, with the answer to the scope prompt when one was asked.
     let onSave: (ExpenseScope?) -> Void
@@ -33,10 +34,13 @@ struct ExpenseDetailsStep: View {
                 }
                 categoryRow
                 splitRow
+                // Rare now that the split screen holds an invalid split, but a total edited
+                // afterwards can still unbalance typed amounts.
                 if let message = viewModel.blockingMessage {
                     Text(message)
                         .font(.subheadline)
                         .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 dateRow
@@ -72,16 +76,16 @@ struct ExpenseDetailsStep: View {
                 .padding(.bottom, 12)
                 .background(Color.expenseBackground)
         }
-        .navigationTitle(Money.formatted(cents: viewModel.totalCents))
+        .navigationTitle(Money.formatted(cents: viewModel.totalCents, currency: currency))
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(Color.expenseBackground, for: .navigationBar)
-        // The field is the whole point of arriving here, so it is already waiting. Asked for
-        // after the push rather than during it: a focus request made while the transition is
-        // still running is one SwiftUI drops.
-        .task {
-            try? await Task.sleep(for: .milliseconds(400))
-            descriptionFocused = true
-        }
+        // The field is the whole point of arriving here, so the keyboard comes up with the
+        // screen. SwiftUI holds a focus request made during the push until the transition
+        // ends, which lands the keyboard a beat after the screen; asking UIKit directly lets
+        // it ride in alongside the push. The focus state is still set, so SwiftUI agrees
+        // about what has focus, and it remains the fallback if the field is not found.
+        .background(KeyboardArrivesWithScreen())
+        .onAppear { descriptionFocused = true }
         .sheet(isPresented: $showingDatePicker) {
             ExpenseDatePicker(
                 date: $viewModel.date,
@@ -285,5 +289,47 @@ struct ExpenseDetailsStep: View {
         if calendar.isDateInToday(viewModel.date) { return L10n.Common.today }
         if calendar.isDateInYesterday(viewModel.date) { return L10n.Common.yesterday }
         return viewModel.date.formatted(.dateTime.day().month(.abbreviated).year().inAppLanguage())
+    }
+}
+
+/// Makes the first text field on the screen it sits in first responder as that screen
+/// enters the window, so the keyboard animates in with the navigation push rather than
+/// after it.
+private struct KeyboardArrivesWithScreen: UIViewRepresentable {
+    func makeUIView(context: Context) -> AnchorView { AnchorView() }
+    func updateUIView(_ uiView: AnchorView, context: Context) {}
+
+    final class AnchorView: UIView {
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            guard window != nil else { return }
+            focusField(attemptsLeft: 10)
+        }
+
+        /// The field is built in the same pass as this view, so it can be a run loop behind.
+        private func focusField(attemptsLeft: Int) {
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.window != nil else { return }
+                if let field = self.screenView.flatMap(Self.firstTextField(in:)) {
+                    field.becomeFirstResponder()
+                } else if attemptsLeft > 0 {
+                    self.focusField(attemptsLeft: attemptsLeft - 1)
+                }
+            }
+        }
+
+        /// The view of the nearest view controller: the pushed screen, not the whole sheet.
+        private var screenView: UIView? {
+            sequence(first: self as UIResponder, next: \.next)
+                .lazy
+                .compactMap { $0 as? UIViewController }
+                .first?
+                .view
+        }
+
+        private static func firstTextField(in view: UIView) -> UITextField? {
+            if let field = view as? UITextField { return field }
+            return view.subviews.lazy.compactMap(firstTextField(in:)).first
+        }
     }
 }

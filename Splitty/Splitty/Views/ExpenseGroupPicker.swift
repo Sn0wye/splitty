@@ -115,7 +115,7 @@ private struct ExpenseGroupRow: View {
                     .font(.headline)
                     .foregroundStyle(Color("card-foreground"))
                     .lineLimit(1)
-                Text(L10n.Invite.members(group.members.count))
+                Text(L10n.Groups.chooseRowDetail(L10n.Invite.members(group.members.count), group.currency.code))
                     .font(.subheadline)
                     .foregroundStyle(Color("muted-foreground"))
                     .lineLimit(1)
@@ -142,7 +142,7 @@ private struct ExpenseGroupRow: View {
                 Text(cents > 0 ? L10n.Groups.youAreOwed : L10n.Groups.youOwe)
                     .font(.caption)
                     .foregroundStyle(Color("muted-foreground"))
-                Text(Money.formatted(cents: abs(cents)))
+                Text(Money.formatted(cents: abs(cents), currency: group.currency))
                     .font(.headline.monospacedDigit())
                     .foregroundStyle(Color(cents > 0 ? "positive" : "negative"))
             }

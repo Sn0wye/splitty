@@ -11,18 +11,31 @@ import SwiftUI
 class GroupFormViewModel: ObservableObject {
     @Published var name: String
     @Published var description: String
+    @Published var currency: Currency
     @Published var errorMessage: String?
     @Published var isSaving = false
     
     private let existingGroupId: Int?
+    private let savedCurrency: Currency
     
-    init(existingGroupId: Int? = nil, name: String = "", description: String = "") {
+    init(
+        existingGroupId: Int? = nil,
+        name: String = "",
+        description: String = "",
+        currency: Currency = .usd
+    ) {
         self.existingGroupId = existingGroupId
         self.name = name
         self.description = description
+        self.currency = currency
+        self.savedCurrency = currency
     }
     
     var isEditing: Bool { existingGroupId != nil }
+
+    /// Changing an existing group's currency relabels every amount in it, so the sheet asks
+    /// first. A new group has no amounts to relabel.
+    var changesCurrency: Bool { isEditing && currency != savedCurrency }
     
     var title: String { isEditing ? L10n.GroupSettings.editGroup : L10n.Groups.newGroup }
     
@@ -46,13 +59,15 @@ class GroupFormViewModel: ObservableObject {
                 let group = try await GroupService.shared.updateGroup(
                     id: groupId,
                     name: trimmedName,
-                    description: trimmedDescription
+                    description: trimmedDescription,
+                    currency: changesCurrency ? currency : nil
                 )
                 return group.id
             } else {
                 let group = try await GroupService.shared.createGroup(
                     name: trimmedName,
-                    description: trimmedDescription.isEmpty ? nil : trimmedDescription
+                    description: trimmedDescription.isEmpty ? nil : trimmedDescription,
+                    currency: currency
                 )
                 return group.id
             }
