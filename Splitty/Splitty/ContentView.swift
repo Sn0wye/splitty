@@ -14,7 +14,6 @@ struct ContentView: View {
         loadPeople: PerformanceScenarioLaunch.isEnabled ? { PerformanceScenarios.people } : GroupService.shared.getPeople
     )
     @State private var addDestination: AddExpenseDestination?
-    @State private var pendingExpenseGroup: Group?
     @State private var isResolvingAdd = false
     @State private var addErrorMessage: String?
 
@@ -22,12 +21,8 @@ struct ContentView: View {
         AppTabView(selection: $appState.selectedTab) { tab in
             switch tab {
             case .groups:
-                // From the list there is no group in view, so "+" always asks which one.
-                // A pushed group's "+" adds to that group.
-                GroupsView(
-                    onAddExpense: { Task { await beginAddingExpense(askingForGroup: true) } },
-                    onAddGroupExpense: { Task { await beginAddingExpense() } }
-                )
+                // "+" lives on a pushed group's screen and adds to that group.
+                GroupsView(onAddGroupExpense: { Task { await beginAddingExpense() } })
             case .people:
                 PeopleView(viewModel: peopleViewModel)
             case .settings:
@@ -36,7 +31,7 @@ struct ContentView: View {
         }
         .background(Color("background").ignoresSafeArea())
         .environmentObject(appState)
-        .sheet(item: $addDestination, onDismiss: continueAfterGroupChoice) { destination in
+        .sheet(item: $addDestination) { destination in
             switch destination {
             case .createGroup:
                 GroupFormSheet { groupId in
@@ -63,11 +58,6 @@ struct ContentView: View {
                         }
                     }
                 }
-            case .chooseGroup(let groups):
-                ExpenseGroupPicker(groups: groups) { group in
-                    pendingExpenseGroup = group
-                    addDestination = nil
-                }
             }
         }
         .alert(
@@ -83,7 +73,7 @@ struct ContentView: View {
         }
     }
 
-    private func beginAddingExpense(askingForGroup: Bool = false) async {
+    private func beginAddingExpense() async {
         guard authManager.currentUser != nil, !isResolvingAdd else { return }
         isResolvingAdd = true
         defer { isResolvingAdd = false }
@@ -96,20 +86,16 @@ struct ContentView: View {
             }
         }
         do {
-            addDestination = askingForGroup
-                ? .resolve(groups: try await fetchGroups(), currentGroupId: nil)
-                : try await appState.resolveAddExpenseDestination(fetchGroups: fetchGroups)
+            if let destination = try await appState.resolveAddExpenseDestination(fetchGroups: fetchGroups) {
+                addDestination = destination
+            } else {
+                addErrorMessage = L10n.Errors.groupUnavailable
+            }
         } catch where error.isCancellation {
             return
         } catch {
             addErrorMessage = error.displayMessage
         }
-    }
-
-    private func continueAfterGroupChoice() {
-        guard let group = pendingExpenseGroup else { return }
-        pendingExpenseGroup = nil
-        addDestination = .expense(group)
     }
 }
 
@@ -136,42 +122,6 @@ extension AddExpenseDestination: Identifiable {
         switch self {
         case .createGroup: "create-group"
         case .expense(let group): "expense-\(group.id)"
-        case .chooseGroup: "choose-group"
-        }
-    }
-}
-
-private struct ExpenseGroupPicker: View {
-    let groups: [Group]
-    let onSelect: (Group) -> Void
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List(groups) { group in
-                Button {
-                    onSelect(group)
-                } label: {
-                    HStack {
-                        Text(group.name)
-                            .foregroundStyle(Color("foreground"))
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Color("muted-foreground"))
-                    }
-                    .contentShape(Rectangle())
-                }
-            }
-            .scrollContentBackground(.hidden)
-            .background(Color("background"))
-            .navigationTitle(Text(L10n.Groups.choose))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Text(L10n.Common.cancel) }
-                }
-            }
         }
     }
 }

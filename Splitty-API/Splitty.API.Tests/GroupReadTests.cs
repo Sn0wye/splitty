@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Splitty.DTO.Internal;
 using Splitty.DTO.Response;
 
@@ -30,6 +31,27 @@ public sealed class GroupReadTests
         Assert.NotNull(group);
         Assert.Equal(groupId, group!.Id);
         Assert.Equal("Cabin", group.Name);
+    }
+
+    [Fact]
+    public async Task Last_activity_is_the_newest_date_or_created_at_and_null_without_rows()
+    {
+        var group = await GroupFixture.CreateAsync(_factory);
+        var empty = await group.Owner.ReadJsonAsync(await group.Owner.GetGroupAsync(group.Id));
+        Assert.Equal(JsonValueKind.Null, empty.GetProperty("lastActivityAt").ValueKind);
+
+        // A later-dated row wins over a newer write dated in the past.
+        var april = new DateTime(2026, 4, 2, 12, 0, 0, DateTimeKind.Utc);
+        await group.CreateExpenseAsync(amount: 20m, share: 10m, date: april);
+        await group.CreateExpenseAsync(amount: 20m, share: 10m, date: april.AddMonths(-1));
+        var list = await group.Owner.ReadJsonAsync(await group.Owner.Http.GetAsync("/group"));
+        var read = Assert.Single(list.EnumerateArray());
+        Assert.Equal(april, read.GetProperty("lastActivityAt").GetDateTime());
+
+        // An undated row reads as its CreatedAt, which is now and so newer than April.
+        await group.CreateExpenseAsync(amount: 20m, share: 10m);
+        read = await group.Owner.ReadJsonAsync(await group.Owner.GetGroupAsync(group.Id));
+        Assert.True(read.GetProperty("lastActivityAt").GetDateTime() > april);
     }
 
     [Fact]

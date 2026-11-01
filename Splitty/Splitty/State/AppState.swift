@@ -31,9 +31,11 @@ enum AppTab: Int, CaseIterable {
 enum AddExpenseDestination: Equatable {
     case createGroup
     case expense(Group)
-    case chooseGroup([Group])
 
-    static func resolve(groups: [Group], currentGroupId: Int?) -> AddExpenseDestination {
+    /// Nil when there are several groups and none is the one in view, such as a pushed
+    /// group that has since gone: "+" only lives on a group's screen, so there is nothing
+    /// to ask the user to pick from.
+    static func resolve(groups: [Group], currentGroupId: Int?) -> AddExpenseDestination? {
         if let currentGroup = groups.first(where: { $0.id == currentGroupId }) {
             return .expense(currentGroup)
         }
@@ -43,7 +45,7 @@ enum AddExpenseDestination: Equatable {
         case 1:
             return .expense(groups[0])
         default:
-            return .chooseGroup(groups)
+            return nil
         }
     }
 
@@ -53,8 +55,6 @@ enum AddExpenseDestination: Equatable {
             true
         case (.expense(let lhsGroup), .expense(let rhsGroup)):
             lhsGroup.id == rhsGroup.id
-        case (.chooseGroup(let lhsGroups), .chooseGroup(let rhsGroups)):
-            lhsGroups.map(\.id) == rhsGroups.map(\.id)
         default:
             false
         }
@@ -119,7 +119,7 @@ final class AppState: ObservableObject {
 
     func resolveAddExpenseDestination(
         fetchGroups: () async throws -> [Group]
-    ) async throws -> AddExpenseDestination {
+    ) async throws -> AddExpenseDestination? {
         if let current = groupSessions.current,
            let group = current.group {
             return .resolve(groups: [group], currentGroupId: currentGroupId)

@@ -257,7 +257,6 @@ enum L10n {
         static var moreCurrenciesHint: String {
             text("groups.more_currencies_hint", default: "Shows your balance in each other currency")
         }
-        static var choose: String { text("groups.choose", default: "Choose a group") }
         static var couldNotStartExpense: String {
             text("groups.could_not_start_expense", default: "Could not start an expense")
         }

@@ -108,7 +108,7 @@ struct OnboardingReviewView: View {
         case .groupsEmpty:
             AppTabView(selection: $previewTab) { tab in
                 if tab == .groups {
-                    GroupsView(onAddExpense: {}, isReview: true) { selectedScreen = nil }
+                    GroupsView(isReview: true, onReviewDone: { selectedScreen = nil })
                         .environmentObject(AppState())
                 } else {
                     Color("background").ignoresSafeArea()

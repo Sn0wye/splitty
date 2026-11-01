@@ -69,16 +69,18 @@ class GroupsViewModel: ObservableObject {
         groups.removeAll { $0.id == id }
     }
     
-    func loadGroups() async {
+    /// Most recently active first (`Group.recentFirst`). `recentlyOpened` is the session
+    /// store's groups opened this launch, newest first.
+    func loadGroups(recentlyOpened: [Int] = []) async {
         if PerformanceScenarioLaunch.isEnabled {
-            groups = PerformanceScenarios.groups
+            groups = Group.recentFirst(PerformanceScenarios.groups, recentlyOpened: recentlyOpened)
             return
         }
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
         do {
-            groups = try await GroupService.shared.getGroups()
+            groups = Group.recentFirst(try await GroupService.shared.getGroups(), recentlyOpened: recentlyOpened)
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -31,6 +31,8 @@ public class GroupReadModel(ApplicationDbContext context, IAvatarResolver avatar
                 Description = g.Description,
                 Currency = g.Currency,
                 CreatedAt = g.CreatedAt,
+                LastActivityAt = context.Expense.Where(e => e.GroupId == g.Id)
+                    .Max(e => (DateTime?)(e.Date ?? e.CreatedAt)),
                 NetBalance = g.Balances.Where(b => b.UserId == userId).Sum(b => (decimal?)b.Amount) ?? 0m
             }).ToListAsync();
 

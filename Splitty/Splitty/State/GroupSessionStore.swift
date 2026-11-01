@@ -37,6 +37,9 @@ final class GroupSessionStore: ObservableObject {
 
     func session(for groupId: Int) -> GroupSession? { sessions[groupId] }
 
+    /// Groups opened this launch, newest first. Only the cached sessions are remembered.
+    var recentlyOpenedGroupIds: [Int] { recentGroupIds.reversed() }
+
     func liveBalance(for groupId: Int) -> GroupLiveBalance? {
         guard let session = sessions[groupId], let cents = session.netBalanceCents else { return nil }
         return GroupLiveBalance(netBalanceCents: cents, balancesPending: session.balancesPending)
