@@ -838,6 +838,5 @@ enum L10n {
     enum Keypad {
         static var delete: String { text("keypad.delete", default: "delete") }
         static var clearAmount: String { text("keypad.clear_amount", default: "Clear amount") }
-        static var done: String { text("keypad.done", default: "done") }
     }
 }

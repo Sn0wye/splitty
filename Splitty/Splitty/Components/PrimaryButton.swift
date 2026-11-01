@@ -36,7 +36,9 @@ struct PrimaryButton: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 52)
+            // 52pt until the text needs more: at accessibility sizes the title outgrows it.
+            .padding(.vertical, 8)
+            .frame(minHeight: 52)
             .foregroundStyle(.white)
             .background(
                 Color("brand").opacity(isEnabled ? 1 : 0.35),
