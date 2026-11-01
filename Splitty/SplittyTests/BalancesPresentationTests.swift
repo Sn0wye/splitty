@@ -150,6 +150,42 @@ struct GroupsOverallBalanceTests {
 
     @Test func hasNoOverallFigureWithoutGroups() {
         #expect(GroupsViewModel().overallBalances == nil)
+        #expect(GroupsViewModel().overallSummary == nil)
+    }
+
+    @Test func leadsWithTheCurrencyMostGroupsAreIn() {
+        let viewModel = GroupsViewModel()
+        viewModel.groups = [
+            group(id: 1, cents: -500, currency: .brl),
+            group(id: 2, cents: 4_000),
+            group(id: 3, cents: 0),
+            group(id: 4, cents: 0),
+        ]
+        #expect(viewModel.overallSummary == OverallSummary(
+            primary: CurrencyBalance(currency: .usd, cents: 4_000),
+            others: [CurrencyBalance(currency: .brl, cents: -500)]
+        ))
+    }
+
+    @Test func breaksATieByListOrder() {
+        let viewModel = GroupsViewModel()
+        viewModel.groups = [
+            group(id: 1, cents: 300, currency: .eur),
+            group(id: 2, cents: -200, currency: .brl),
+            group(id: 3, cents: 100),
+        ]
+        #expect(viewModel.overallSummary?.primary == CurrencyBalance(currency: .eur, cents: 300))
+        #expect(viewModel.overallSummary?.others == [
+            CurrencyBalance(currency: .brl, cents: -200),
+            CurrencyBalance(currency: .usd, cents: 100),
+        ])
+    }
+
+    @Test func hasNoSummaryWhenEverythingIsSettled() {
+        let viewModel = GroupsViewModel()
+        viewModel.groups = [group(id: 1, cents: 0), group(id: 2, cents: 0, currency: .eur)]
+        #expect(viewModel.overallBalances == [])
+        #expect(viewModel.overallSummary == nil)
     }
 
     private func group(id: Int, cents: Int, currency: Currency = .usd) -> Group {

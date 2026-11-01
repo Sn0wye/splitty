@@ -251,6 +251,13 @@ enum L10n {
         static var joinWithCode: String { text("groups.join_with_code", default: "Join with code") }
         static var youAreOwed: String { text("groups.you_are_owed", default: "You are owed") }
         static var youOwe: String { text("groups.you_owe", default: "You owe") }
+        /// The header's fold for the currencies that are not the primary one.
+        static func moreCurrencies(_ count: Int) -> String {
+            text("groups.more_currencies", default: "+\(count) currencies")
+        }
+        static var moreCurrenciesHint: String {
+            text("groups.more_currencies_hint", default: "Shows your balance in each other currency")
+        }
         static var choose: String { text("groups.choose", default: "Choose a group") }
         static var noneSelected: String { text("groups.none_selected", default: "No group selected") }
         static var pickFromTab: String {
