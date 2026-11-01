@@ -33,10 +33,13 @@ struct ExpenseDetailsStep: View {
                 }
                 categoryRow
                 splitRow
+                // Rare now that the split screen holds an invalid split, but a total edited
+                // afterwards can still unbalance typed amounts.
                 if let message = viewModel.blockingMessage {
                     Text(message)
                         .font(.subheadline)
                         .foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 dateRow

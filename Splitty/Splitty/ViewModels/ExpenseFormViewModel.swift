@@ -300,6 +300,12 @@ class ExpenseFormViewModel: ObservableObject {
         }
     }
 
+    /// The split screen lets go only of a split that could be saved. A total of zero is the
+    /// amount's problem, not the split's, so it does not hold the screen.
+    var canLeaveSplit: Bool {
+        blockingMessage == nil
+    }
+
     func isParticipant(_ userId: Int) -> Bool {
         switch configuration.mode {
         case .equal(let participants): return participants.contains(userId)

@@ -13,7 +13,13 @@ import SwiftUI
 struct SplitConfigurationView: View {
     @ObservedObject var viewModel: ExpenseFormViewModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var focusedField: Field?
+    /// Counts refused attempts to leave: each one drives a shake and an error haptic.
+    @State private var refusals = 0
+    /// The card is red while it shakes; the caption naming the problem stays red longer.
+    @State private var flagsCard = false
+    @State private var flagsMessage = false
 
     private enum Field: Hashable {
         case amount(Int)
@@ -56,14 +62,52 @@ struct SplitConfigurationView: View {
         .toolbarBackground(Color.expenseBackground, for: .navigationBar)
         .navigationTitle(Text(L10n.Split.title))
         .navigationBarTitleDisplayMode(.inline)
+        // A split that could not be saved does not leave this screen: the problem would
+        // otherwise surface on the details step, away from the fields that fix it.
+        //
+        // SwiftUI has no hook to veto a pop, so the system back button is swapped for a
+        // look-alike only while the split is invalid. Hiding it also turns off the edge
+        // swipe, which is the trade-off: a valid split keeps the real button and the swipe,
+        // an invalid one has neither, and only a tap on the chevron explains why.
+        .navigationBarBackButtonHidden(!viewModel.canLeaveSplit)
         .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                // Save is what an unfinished split blocks; leaving this screen is not. The
-                // mode in effect is whichever is selected on the way out.
-                Button { dismiss() } label: { Text(L10n.Common.done) }
+            if !viewModel.canLeaveSplit {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: leave) {
+                        Image(systemName: "chevron.backward")
+                            .fontWeight(.semibold)
+                    }
+                    .accessibilityLabel(Text(L10n.Common.back))
+                    .accessibilityIdentifier("split.back")
+                }
             }
         }
+        // The VoiceOver scrub would otherwise pop past the check, or do nothing at all.
+        .accessibilityAction(.escape, leave)
+        .sensoryFeedback(.error, trigger: refusals)
     }
+
+    /// Pops a split that could be saved; otherwise points at what is wrong with it.
+    private func leave() {
+        guard !viewModel.canLeaveSplit else {
+            dismiss()
+            return
+        }
+        withAnimation(.easeInOut(duration: Self.shakeDuration)) { refusals += 1 }
+        flagsCard = true
+        flagsMessage = true
+        let refusal = refusals
+        Task {
+            try? await Task.sleep(for: .seconds(Self.shakeDuration))
+            guard refusal == refusals else { return }
+            withAnimation(.easeOut(duration: 0.25)) { flagsCard = false }
+            try? await Task.sleep(for: .seconds(0.8))
+            guard refusal == refusals else { return }
+            withAnimation(.easeOut(duration: 0.3)) { flagsMessage = false }
+        }
+    }
+
+    private static let shakeDuration = 0.4
 
     // MARK: - Total
 
@@ -199,13 +243,24 @@ struct SplitConfigurationView: View {
                 }
             }
             .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 16))
+            // Reduce Motion keeps the outline and drops the shake and the fill.
+            .background(
+                Color.red.opacity(flagsCard && !reduceMotion ? 0.12 : 0),
+                in: RoundedRectangle(cornerRadius: 16)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 16)
+                    .strokeBorder(Color.red, lineWidth: 1.5)
+                    .opacity(flagsCard ? 1 : 0)
+            }
+            .modifier(Shake(refusals: reduceMotion ? 0 : CGFloat(refusals)))
             .padding(.horizontal, 16)
 
             // A typed split reports in the bar along the bottom.
             if viewModel.selectedMode == .equal, let message = viewModel.blockingMessage {
                 Text(message)
                     .font(.footnote)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(flagsMessage ? .red : .orange)
                     .padding(.horizontal, 20)
             }
         }
@@ -370,7 +425,7 @@ struct SplitConfigurationView: View {
                 Spacer(minLength: 12)
                 Text(message ?? (complete ? L10n.Split.allAssigned : ""))
                     .fontWeight(.semibold)
-                    .foregroundStyle(complete ? Color("positive") : .orange)
+                    .foregroundStyle(complete ? Color("positive") : flagsMessage ? .red : .orange)
                     .multilineTextAlignment(.trailing)
             }
             .font(.footnote)
@@ -421,5 +476,20 @@ struct SplitConfigurationView: View {
     private func youFirst(_ members: [GroupMember]) -> [GroupMember] {
         members.filter { $0.userId == viewModel.currentUserId }
             + members.filter { $0.userId != viewModel.currentUserId }
+    }
+}
+
+/// Three side-to-side swings of 8pt that end where they started. Driven by a count, so
+/// each refusal animates from one whole number to the next.
+private struct Shake: GeometryEffect {
+    var refusals: CGFloat
+
+    var animatableData: CGFloat {
+        get { refusals }
+        set { refusals = newValue }
+    }
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        ProjectionTransform(CGAffineTransform(translationX: 8 * sin(refusals * 3 * 2 * .pi), y: 0))
     }
 }

@@ -223,6 +223,29 @@ struct ExpenseFormViewModelTests {
         #expect(viewModel.blockingMessage == "Select who this is split between")
     }
 
+    // The split screen holds an invalid split, whatever the description says; an empty
+    // total is the amount step's problem and lets it go.
+    @Test func leavingTheSplitScreenNeedsAValidSplit() {
+        let viewModel = newExpense()
+        #expect(viewModel.canLeaveSplit)
+
+        viewModel.amount.type(digit: 9)
+        #expect(viewModel.canLeaveSplit)
+
+        viewModel.setEveryParticipant(included: false)
+        #expect(viewModel.canLeaveSplit == false)
+
+        viewModel.selectMode(.custom)
+        #expect(viewModel.canLeaveSplit == false)
+        viewModel.setCustomText("9", for: 1)
+        #expect(viewModel.canLeaveSplit)
+
+        viewModel.selectMode(.percentage)
+        #expect(viewModel.canLeaveSplit == false)
+        viewModel.setPercentageText("100", for: 2)
+        #expect(viewModel.canLeaveSplit)
+    }
+
     // Clearing a field removes the row rather than zeroing it: zero is a share the API
     // refuses, blank is someone left out.
     @Test func clearingAFieldDropsThatParticipant() {
