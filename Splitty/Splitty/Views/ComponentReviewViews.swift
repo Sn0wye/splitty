@@ -312,6 +312,7 @@ struct ReviewTimelineView: View {
 
     @State private var expenses = ReviewSamples.timeline()
     @State private var pendingDeletion: Expense?
+    @State private var openSwipeRow: Int?
     @State private var selectedTab: AppTab = .group
     @State private var showingAddInfo = false
 
@@ -358,7 +359,7 @@ struct ReviewTimelineView: View {
                     ForEach(Expense.groupExpensesByDate(expenses)) { day in
                         TimelineDateHeader(title: day.dateString)
                         ForEach(day.expenses) { expense in
-                            SwipeToDeleteRow {
+                            SwipeToDeleteRow(id: expense.id, openRow: $openSwipeRow) {
                             } onDelete: {
                                 pendingDeletion = expense
                             } content: {
@@ -379,6 +380,7 @@ struct ReviewTimelineView: View {
                 .frame(maxWidth: .infinity)
             }
             .background(Color("background"))
+            .closesOpenSwipeRow($openSwipeRow)
             .navigationTitle("Timeline")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
