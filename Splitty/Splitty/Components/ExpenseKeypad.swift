@@ -67,7 +67,9 @@ struct ExpenseKeypad: View {
 
     private var backspaceKey: some View {
         Button { backspace() } label: {
-            Image(systemName: "chevron.left")
+            // Not `chevron.left`: the details screen right after this one puts that glyph in
+            // its nav bar as "back". `delete.left` is what Calculator and Phone use.
+            Image(systemName: "delete.left")
         }
         .buttonStyle(KeypadKeyStyle())
         .simultaneousGesture(
@@ -76,7 +78,7 @@ struct ExpenseKeypad: View {
         )
         .accessibilityLabel(L10n.Keypad.delete)
         .accessibilityAction(named: L10n.Keypad.clearAmount, clear)
-        .accessibilityIdentifier("keypad.key.chevron.left")
+        .accessibilityIdentifier("keypad.key.backspace")
     }
 
     private func backspace() {
