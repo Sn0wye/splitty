@@ -124,47 +124,6 @@ private struct KeypadKeyStyle: ButtonStyle {
     }
 }
 
-/// The sheet's primary action, in Splitty Coral. Glass where the system has it, so it picks
-/// up the material and the press behaviour of every other prominent control on the OS; a
-/// flat coral disc before that. The arrow is a glyph, not text, so white on coral clears
-/// the 3:1 the brand asks of icons.
-struct ForwardButton: View {
-    let isEnabled: Bool
-    var diameter: CGFloat = 44
-    let action: () -> Void
-
-    var body: some View {
-        if #available(iOS 26.0, *) {
-            // The material, not the button style: `.glassProminent` morphs and rescales the
-            // capsule under the finger, which on a 44pt disc reads as the button wobbling.
-            Button(action: action) {
-                glyph
-                    .frame(width: diameter, height: diameter)
-                    .glassEffect(
-                        .regular.tint(Color("brand").opacity(isEnabled ? 1 : 0.3)),
-                        in: .circle
-                    )
-            }
-            .buttonStyle(.plain)
-            .disabled(!isEnabled)
-        } else {
-            Button(action: action) {
-                glyph
-                    .frame(width: diameter, height: diameter)
-                    .background(Color("brand").opacity(isEnabled ? 1 : 0.3), in: Circle())
-            }
-            .buttonStyle(.plain)
-            .disabled(!isEnabled)
-        }
-    }
-
-    private var glyph: some View {
-        Image(systemName: "arrow.right")
-            .font(.system(size: diameter * 0.38, weight: .semibold))
-            .foregroundStyle(.white)
-    }
-}
-
 /// The date, presented rather than parked in an accessory bar: a bar above the keyboard
 /// came with a border the sheet does not otherwise have and sat flush against the keys.
 /// Full size and from the bottom, it is the same gesture as everything else here.
@@ -181,74 +140,129 @@ struct ExpenseDatePicker: View {
     var lastExpenseDate: Date? = nil
     var repeatEndMessage: String? = nil
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// What the sheet holds above the button, and the button with its padding: together,
+    /// the height that shows everything without scrolling.
+    @State private var contentHeight: CGFloat?
+    @State private var buttonHeight: CGFloat = 0
 
     var body: some View {
-        VStack(spacing: 16) {
-            datePicker
-                .labelsHidden()
-                .datePickerStyle(.graphical)
-                .tint(Color.accentColor)
-                .accessibilityIdentifier("expense.datePicker")
+        ScrollView {
+            VStack(spacing: 16) {
+                datePicker
+                    .labelsHidden()
+                    .datePickerStyle(.graphical)
+                    .tint(Color.accentColor)
+                    .accessibilityIdentifier("expense.datePicker")
 
-            if let repeatFrequency {
-                HStack(spacing: 14) {
-                    Image(systemName: "repeat")
-                        .font(.system(size: 16))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 24)
-                        .accessibilityHidden(true)
-
-                    Text(L10n.Repeat.title)
-                        .font(.subheadline)
-                        .foregroundStyle(Color.expenseForeground)
-
-                    Spacer(minLength: 8)
-
-                    Picker(selection: repeatFrequency) {
-                        ForEach(ExpenseRepeat.allCases) { frequency in
-                            Text(frequency.name).tag(frequency)
-                        }
-                    } label: {
-                        Text(L10n.Repeat.title)
-                    }
-                    .pickerStyle(.menu)
-                    // A menu picker wraps its label to fit; "Doesn't repeat" reads as one value.
-                    .fixedSize()
-                    .tint(Color.expenseForeground)
-                    .accessibilityIdentifier("expense.repeat")
+                if let repeatFrequency {
+                    repeatsRow(repeatFrequency)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 6)
-                .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
-            }
 
-            if let repeatEnd, showsEnd {
-                RepeatEndControl(
-                    end: repeatEnd,
-                    startDate: date,
-                    lastExpenseDate: lastExpenseDate,
-                    message: repeatEndMessage
-                )
+                if let repeatEnd, showsEnd {
+                    RepeatEndControl(
+                        end: repeatEnd,
+                        startDate: date,
+                        lastExpenseDate: lastExpenseDate,
+                        message: repeatEndMessage
+                    )
+                }
             }
-
-            ForwardButton(isEnabled: true, diameter: 44) { dismiss() }
-                .accessibilityLabel(L10n.Keypad.done)
+            .padding([.horizontal, .top], 20)
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
+                if contentHeight == nil {
+                    contentHeight = height
+                } else {
+                    withAnimation(.snappy) { contentHeight = height }
+                }
+            }
         }
-        .padding(20)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .scrollBounceBehavior(.basedOnSize)
+        // Pinned rather than scrolled: the sheet grows and shrinks from the top, so the
+        // button stays where the thumb left it when Repeats or Ends comes and goes, and at
+        // the largest text sizes the calendar scrolls behind it instead of pushing it off.
+        .safeAreaInset(edge: .bottom) {
+            PrimaryButton(title: L10n.Common.done) { dismiss() }
+                .accessibilityIdentifier("expense.datePicker.done")
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 12)
+                .background(Color.expenseBackground)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { buttonHeight = $0 }
+        }
         .background(Color.expenseBackground)
-        .presentationDetents([.height(detentHeight)])
+        // A `.height` detent sits above the home indicator, and one taller than the screen
+        // stops at the largest detent; past that the scroll view takes over.
+        .presentationDetents(contentHeight.map { [.height($0 + buttonHeight)] } ?? [.medium])
         .presentationCornerRadius(28)
         .presentationBackground(Color.expenseBackground)
     }
 
     private var showsEnd: Bool { (repeatFrequency?.wrappedValue ?? .never) != .never }
 
-    /// Grows by a row for Repeats, and by the Ends card once it repeats. The card is one
-    /// height whatever it ends on, so switching between them never moves the button.
-    private var detentHeight: CGFloat {
-        guard repeatFrequency != nil else { return 460 }
-        return showsEnd && repeatEnd != nil ? 660 : 520
+    /// Label and value side by side, until the text is large enough that the value alone
+    /// fills the row; then the value goes underneath rather than off the edge.
+    private func repeatsRow(_ frequency: Binding<ExpenseRepeat>) -> some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
+            : AnyLayout(HStackLayout(spacing: 14))
+
+        return layout {
+            HStack(spacing: 14) {
+                Image(systemName: "repeat")
+                    .font(.system(size: 16))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24)
+                    .accessibilityHidden(true)
+
+                Text(L10n.Repeat.title)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.expenseForeground)
+            }
+
+            if dynamicTypeSize.isAccessibilitySize {
+                // The menu picker's own label cannot grow taller than a line, so a wrapped
+                // "Doesn't repeat" is clipped; the same choices behind a label that wraps.
+                Menu {
+                    frequencyPicker(frequency)
+                } label: {
+                    HStack(spacing: 8) {
+                        Text(frequency.wrappedValue.name)
+                            .multilineTextAlignment(.leading)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .imageScale(.small)
+                    }
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(L10n.Repeat.title)
+                    .accessibilityValue(frequency.wrappedValue.name)
+                }
+                .foregroundStyle(Color.expenseForeground)
+                .accessibilityIdentifier("expense.repeat")
+            } else {
+                Spacer(minLength: 8)
+
+                frequencyPicker(frequency)
+                    .pickerStyle(.menu)
+                    // A menu picker wraps its label to fit; "Doesn't repeat" reads as one value.
+                    .fixedSize()
+                    .tint(Color.expenseForeground)
+                    .accessibilityIdentifier("expense.repeat")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(Color.expenseForeground.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
+    }
+
+    private func frequencyPicker(_ frequency: Binding<ExpenseRepeat>) -> some View {
+        Picker(selection: frequency) {
+            ForEach(ExpenseRepeat.allCases) { frequency in
+                Text(frequency.name).tag(frequency)
+            }
+        } label: {
+            Text(L10n.Repeat.title)
+        }
     }
 
     @ViewBuilder
