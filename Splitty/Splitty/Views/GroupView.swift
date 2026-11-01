@@ -22,6 +22,8 @@ struct GroupView: View {
     @State private var addExpenseAfterCharts = false
     @State private var showingInviteSheet = false
     @State private var pendingDeletion: Expense?
+    /// The timeline row resting open on its delete button, if any. One at a time.
+    @State private var openSwipeRow: Int?
     @State private var selectedExpenseId: Int?
     @State private var selectedExpense: Expense?
     @State private var backgroundedAt: Date?
@@ -236,6 +238,7 @@ struct GroupView: View {
             .frame(maxWidth: .infinity)
         }
         .background(Color("background"))
+        .closesOpenSwipeRow($openSwipeRow)
         .accessibilityIdentifier("group.timeline")
         .performanceScrollSignpost(.timelineScroll)
         .refreshable {
@@ -341,7 +344,7 @@ struct GroupView: View {
                 .opacity(0.6)
                 .accessibilityValue(L10n.Common.updating)
         } else {
-            SwipeToDeleteRow {
+            SwipeToDeleteRow(id: expense.id, openRow: $openSwipeRow) {
                 selectedExpense = expense
                 selectedExpenseId = expense.id
             } onDelete: {
