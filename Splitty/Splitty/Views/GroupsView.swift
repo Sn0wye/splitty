@@ -20,6 +20,7 @@ struct GroupsView: View {
     @State private var showingCreateSheet = false
     @State private var showingJoinSheet = false
     @State private var isTitleCollapsed = false
+    @State private var showsOtherCurrencies = false
 
     /// Roughly the height of the in-list title, as on a group's screen.
     private let titleCollapseOffset: CGFloat = 52
@@ -168,10 +169,23 @@ struct GroupsView: View {
                 if balances.isEmpty {
                     Text(L10n.Balances.allSettled)
                         .foregroundColor(Color("muted-foreground"))
-                } else {
-                    ForEach(balances, id: \.currency) { balance in
-                        Text(BalanceCopy.overall(cents: balance.cents, currency: balance.currency))
-                            .foregroundColor(Color(balance.cents > 0 ? "positive" : "negative"))
+                } else if let summary = viewModel.overallSummary {
+                    overallLine(summary.primary)
+
+                    // Nets in other currencies are never added into the primary one (ADR 0007).
+                    // One line per currency read as a wall of red and green, so the rest fold
+                    // behind a count until asked for.
+                    if !summary.others.isEmpty {
+                        otherCurrenciesToggle(count: summary.others.count)
+
+                        if showsOtherCurrencies {
+                            ForEach(summary.others, id: \.currency) { balance in
+                                Text(BalanceCopy.overall(cents: balance.cents, currency: balance.currency))
+                                    .font(.subheadline)
+                                    .foregroundColor(Color("muted-foreground"))
+                            }
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                        }
                     }
                 }
             }
@@ -180,6 +194,32 @@ struct GroupsView: View {
         .padding(.horizontal, 20)
         .padding(.top, 10)
         .padding(.bottom, 10)
+    }
+
+    private func overallLine(_ balance: CurrencyBalance) -> some View {
+        Text(BalanceCopy.overall(cents: balance.cents, currency: balance.currency))
+            .foregroundColor(Color(balance.cents > 0 ? "positive" : "negative"))
+    }
+
+    private func otherCurrenciesToggle(count: Int) -> some View {
+        Button {
+            withAnimation(.snappy(duration: 0.25)) { showsOtherCurrencies.toggle() }
+        } label: {
+            HStack(spacing: 4) {
+                Text(L10n.Groups.moreCurrencies(count))
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.semibold))
+                    .rotationEffect(.degrees(showsOtherCurrencies ? 180 : 0))
+            }
+            .font(.subheadline)
+            .foregroundStyle(Color("muted-foreground"))
+            .padding(.vertical, 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(L10n.Groups.moreCurrenciesHint)
+        .accessibilityAddTraits(showsOtherCurrencies ? [.isSelected] : [])
+        .accessibilityIdentifier("groups.moreCurrencies")
     }
 
     /// Where a new group comes from, at the end of the list rather than as a second "+"
