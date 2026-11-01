@@ -257,12 +257,6 @@ enum L10n {
         static var moreCurrenciesHint: String {
             text("groups.more_currencies_hint", default: "Shows your balance in each other currency")
         }
-        static var choose: String { text("groups.choose", default: "Choose a group") }
-        static var recent: String { text("groups.recent", default: "Recent") }
-        /// "3 members · BRL" under a group's name in "Choose a group".
-        static func chooseRowDetail(_ members: String, _ currencyCode: String) -> String {
-            format("groups.choose_row_detail", default: "%1$@ · %2$@", members, currencyCode)
-        }
         static var couldNotStartExpense: String {
             text("groups.could_not_start_expense", default: "Could not start an expense")
         }

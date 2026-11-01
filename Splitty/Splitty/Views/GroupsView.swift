@@ -8,9 +8,6 @@
 import SwiftUI
 
 struct GroupsView: View {
-    /// Shows the toolbar's add button. Declared first so a trailing closure still
-    /// lands on `onReviewDone`.
-    var onAddExpense: (() -> Void)?
     /// The add button on a group pushed from the list: that group is the one in view.
     var onAddGroupExpense: () -> Void = {}
     var isReview = false
@@ -49,7 +46,7 @@ struct GroupsView: View {
                                 .foregroundStyle(Color("muted-foreground"))
                                 .multilineTextAlignment(.center)
                             Button(L10n.Common.tryAgain) {
-                                Task { await viewModel.loadGroups() }
+                                Task { await reloadGroups() }
                             }
                             .buttonStyle(.bordered)
                         }
@@ -76,7 +73,7 @@ struct GroupsView: View {
             .accessibilityIdentifier("groups.scroll")
             .performanceScrollSignpost(.groupsScroll)
             .refreshable {
-                if !isReview { await viewModel.loadGroups() }
+                if !isReview { await reloadGroups() }
             }
             // Same as a group's screen: the title scrolls with the list, and the bar picks
             // it up as it leaves.
@@ -121,13 +118,6 @@ struct GroupsView: View {
                         .hidingSharedBackground()
                     }
                 }
-
-                if let onAddExpense {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        AddExpenseButton(action: onAddExpense)
-                            .accessibilityIdentifier("groups.addExpense")
-                    }
-                }
             }
             .navigationDestination(for: Int.self) { groupId in
                 PushedGroupView(
@@ -137,7 +127,7 @@ struct GroupsView: View {
                 .id(groupId)
             }
             .task {
-                if !isReview { await viewModel.loadGroups() }
+                if !isReview { await reloadGroups() }
             }
             .onAppear {
                 removeExitedGroup()
@@ -148,18 +138,18 @@ struct GroupsView: View {
             .onChange(of: appState.groupsPath.isEmpty) { _, isEmpty in
                 // Coming back from a group picks up any edit made in there.
                 if isEmpty && !isReview {
-                    Task { await viewModel.loadGroups() }
+                    Task { await reloadGroups() }
                 }
             }
             .onChange(of: appState.selectedTab) { _, newTab in
                 if newTab == .groups && appState.groupsPath.isEmpty && !isReview {
-                    Task { await viewModel.loadGroups() }
+                    Task { await reloadGroups() }
                 }
             }
             .sheet(isPresented: $showingCreateSheet) {
                 GroupFormSheet(isReview: isReview) { groupId in
                     Task {
-                        await viewModel.loadGroups()
+                        await reloadGroups()
                         appState.openGroup(groupId)
                     }
                 }
@@ -167,12 +157,16 @@ struct GroupsView: View {
             .sheet(isPresented: $showingJoinSheet) {
                 JoinGroupSheet(isReview: isReview) { group in
                     Task {
-                        await viewModel.loadGroups()
+                        await reloadGroups()
                         appState.openGroup(group.id, seed: group)
                     }
                 }
             }
         }
+    }
+
+    private func reloadGroups() async {
+        await viewModel.loadGroups(recentlyOpened: appState.groupSessions.recentlyOpenedGroupIds)
     }
 
     private var header: some View {

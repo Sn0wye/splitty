@@ -19,16 +19,16 @@ struct AddExpenseDestinationTests {
         #expect(AddExpenseDestination.resolve(groups: [first, open], currentGroupId: open.id) == .expense(open))
     }
 
-    @Test func severalGroupsWithoutAnOpenGroupRequireAChoice() {
+    @Test func severalGroupsWithoutAnOpenGroupHaveNoDestination() {
         let groups = [makeGroup(id: 7), makeGroup(id: 9)]
 
-        #expect(AddExpenseDestination.resolve(groups: groups, currentGroupId: nil) == .chooseGroup(groups))
+        #expect(AddExpenseDestination.resolve(groups: groups, currentGroupId: nil) == nil)
     }
 
     @Test func aStoredGroupThatIsNoLongerAvailableDoesNotOpen() {
         let groups = [makeGroup(id: 7), makeGroup(id: 9)]
 
-        #expect(AddExpenseDestination.resolve(groups: groups, currentGroupId: 100) == .chooseGroup(groups))
+        #expect(AddExpenseDestination.resolve(groups: groups, currentGroupId: 100) == nil)
     }
 
     private func makeGroup(id: Int) -> Group {

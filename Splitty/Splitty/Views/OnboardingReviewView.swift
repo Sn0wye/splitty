@@ -48,7 +48,6 @@ struct OnboardingReviewView: View {
                     row(.plansEmpty)
                     row(.settleUp)
                     row(.settledUp)
-                    row(.chooseGroup)
                     row(.avatarCrop)
                     row(.appearance)
                 } header: {
@@ -109,7 +108,7 @@ struct OnboardingReviewView: View {
         case .groupsEmpty:
             AppTabView(selection: $previewTab) { tab in
                 if tab == .groups {
-                    GroupsView(onAddExpense: {}, isReview: true) { selectedScreen = nil }
+                    GroupsView(isReview: true, onReviewDone: { selectedScreen = nil })
                         .environmentObject(AppState())
                 } else {
                     Color("background").ignoresSafeArea()
@@ -159,12 +158,6 @@ struct OnboardingReviewView: View {
         case .settledUp:
             ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
                 ReviewSettleUpSheet()
-            }
-        case .chooseGroup:
-            ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
-                ExpenseGroupPicker(
-                    groups: Group.recentFirst(ReviewSamples.groups, recentlyOpened: [])
-                ) { _ in }
             }
         case .avatarCrop:
             AvatarCropView(
@@ -243,7 +236,6 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
     case plansEmpty
     case settleUp
     case settledUp
-    case chooseGroup
     case avatarCrop
     case appearance
 
@@ -272,7 +264,6 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .plansEmpty: "Plans, no installments"
         case .settleUp: "Settle up"
         case .settledUp: "Settled up"
-        case .chooseGroup: "Choose a group"
         case .avatarCrop: "Avatar crop"
         case .appearance: "Appearance"
         }
@@ -301,7 +292,6 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .plansEmpty: "repeat.circle"
         case .settleUp: "person.crop.circle"
         case .settledUp: "checkmark.circle"
-        case .chooseGroup: "rectangle.stack"
         case .avatarCrop: "crop"
         case .appearance: "circle.lefthalf.filled"
         }

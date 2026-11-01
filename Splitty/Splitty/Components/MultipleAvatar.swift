@@ -10,32 +10,26 @@ struct AvatarStack: Equatable {
     let urls: [URL]
     let overflow: Int
 
-    static func from(_ urls: [URL], total: Int? = nil, maxFaces: Int = maxVisibleFaces) -> AvatarStack {
+    static func from(_ urls: [URL], total: Int? = nil) -> AvatarStack {
         let people = total ?? urls.count
-        if people <= maxFaces {
+        if people <= maxVisibleFaces {
             return AvatarStack(urls: Array(urls.prefix(people)), overflow: 0)
         }
 
-        let visible = Array(urls.prefix(maxFaces - 1))
+        let visible = Array(urls.prefix(maxVisibleFaces - 1))
         return AvatarStack(urls: visible, overflow: people - visible.count)
     }
-
-    /// Faces plus the count badge, if any.
-    var circles: Int { urls.count + (overflow > 0 ? 1 : 0) }
 }
 
 struct MultipleAvatar: View {
     let urls: [URL]
     var total: Int? = nil
-    /// A list row is denser than a card: smaller faces, fewer of them.
-    var faceSize: CGFloat = 40
-    var maxFaces = AvatarStack.maxVisibleFaces
 
-    private var stack: AvatarStack { .from(urls, total: total, maxFaces: maxFaces) }
+    private var stack: AvatarStack { .from(urls, total: total) }
 
     var body: some View {
         let people = total ?? urls.count
-        HStack(spacing: -faceSize * 0.3) {
+        HStack(spacing: -12) {
             ForEach(Array(stack.urls.enumerated()), id: \.offset) { _, url in
                 face(url)
             }
@@ -57,11 +51,11 @@ struct MultipleAvatar: View {
                 .fill(Color("muted"))
                 .overlay {
                     Image(systemName: "person.fill")
-                        .font(.system(size: faceSize * 0.4, weight: .medium))
+                        .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(Color("muted-foreground"))
                 }
         }
-        .frame(width: faceSize, height: faceSize)
+        .frame(width: 40, height: 40)
         .clipShape(Circle())
         .overlay {
             Circle().stroke(Color("card"), lineWidth: 2)
@@ -70,9 +64,9 @@ struct MultipleAvatar: View {
 
     private func overflowBadge(_ count: Int) -> some View {
         Text("+\(count)")
-            .font(.system(size: faceSize * 0.3, weight: .semibold))
+            .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(Color("muted-foreground"))
-            .frame(width: faceSize, height: faceSize)
+            .frame(width: 40, height: 40)
             .background(Color("muted"), in: Circle())
             .overlay {
                 Circle().stroke(Color("card"), lineWidth: 2)

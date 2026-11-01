@@ -43,17 +43,6 @@ struct GroupRecencyTests {
         #expect(ids(Group.recentFirst(groups, recentlyOpened: [])) == [9, 7, 8])
     }
 
-    @Test func theChoiceSheetListsGroupsRecentFirst() {
-        let groups = [
-            makeGroup(id: 1, activity: "2026-03-01T12:00:00Z"),
-            makeGroup(id: 2, activity: "2026-05-01T12:00:00Z"),
-        ]
-
-        let destination = AddExpenseDestination.resolve(groups: groups, currentGroupId: nil)
-
-        #expect(destination == .chooseGroup([groups[1], groups[0]]))
-    }
-
     @Test func lastActivityDecodesAndAnOlderServerLeavesItNil() throws {
         let withActivity = #"{"id":1,"name":"A","description":null,"currency":"BRL","netBalance":0,"createdAt":"2026-01-01T12:00:00Z","members":[],"lastActivityAt":"2026-05-01T12:00:00Z"}"#
         let without = #"{"id":2,"name":"B","description":null,"currency":"BRL","netBalance":0,"createdAt":"2026-01-01T12:00:00Z","members":[]}"#
