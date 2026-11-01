@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 /// A row that reveals a delete action when dragged left.
 ///
@@ -93,37 +94,31 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
         .transition(removal)
         .accessibilityIdentifier("timeline.row")
         .sensoryFeedback(.impact(flexibility: .rigid), trigger: commitCount)
-        // Simultaneous, not exclusive: a plain `.gesture` loses the drag to the scroll view's
-        // pan recogniser, which is why the row stopped swiping at all. Both see the drag,
-        // and the horizontal-dominance check below is what keeps a scroll a scroll.
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 18)
-                .onChanged { value in
-                    // Direction is decided once, on the first move past the threshold, and
-                    // then held for the rest of the drag. Re-deciding every frame let a
-                    // curving finger hand the row back to the list mid-swipe.
-                    if dragOrigin == nil {
-                        guard abs(value.translation.width) > abs(value.translation.height) else {
-                            return
-                        }
-                        isSwiping = true
-                        dragOrigin = dragOffset
-                        // Taking this row closes whichever other row is open.
-                        openRow = id
-                    }
-                    // No animation here on purpose: while the finger is down the row is
-                    // glued to it, and the only motion is the one the hand is making.
-                    dragOffset = (dragOrigin ?? 0) + value.translation.width
+        // A UIKit pan rather than a `DragGesture`: the row's drag has to be able to decline
+        // a touch. A `DragGesture` claimed every horizontal drag, so the navigation stack's
+        // swipe back from the screen edge never started over a row. This one begins on a
+        // leftward drag, or a rightward one that closes this row, and runs alongside the
+        // scroll view's pan.
+        .gesture(RowSwipeGesture(
+            isOpen: dragOffset < 0,
+            onBegan: {
+                isSwiping = true
+                dragOrigin = dragOffset
+                // Taking this row closes whichever other row is open.
+                openRow = id
+            },
+            // No animation here on purpose: while the finger is down the row is glued to
+            // it, and the only motion is the one the hand is making.
+            onChanged: { dragOffset = (dragOrigin ?? 0) + $0 },
+            onEnded: { predictedTranslation in
+                settle(predictedTranslation: predictedTranslation)
+                // Cleared late: the tap lands on the same release as the drag's end.
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(150))
+                    isSwiping = false
                 }
-                .onEnded { value in
-                    settle(value)
-                    // Cleared late: the tap lands on the same release as the drag's end.
-                    Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(150))
-                        isSwiping = false
-                    }
-                }
-        )
+            }
+        ))
         // Another row taken, a tap elsewhere, or a scroll: home without bounce, since
         // nothing was thrown. A row under the finger is left to its own release.
         .onChange(of: openRow) { _, newValue in
@@ -146,7 +141,7 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
     }
 
     /// Three outcomes, decided on where the release is *going*, not on where the finger
-    /// happened to stop: `predictedEndTranslation` carries the release velocity, so a
+    /// happened to stop: the predicted translation carries the release velocity, so a
     /// fast flick projects past the full-swipe line even when the finger travelled a
     /// little, and needs no velocity check of its own. Judging on final position alone
     /// meant a short fast swipe did nothing at all.
@@ -154,11 +149,11 @@ struct SwipeToDeleteRow<ID: Hashable, Content: View>: View {
     /// - Past `fullSwipeWidth`: asks the question and goes home.
     /// - Past `openThreshold`: rests open with the button under the finger's reach.
     /// - Otherwise home, as if nothing happened.
-    private func settle(_ value: DragGesture.Value) {
+    private func settle(predictedTranslation: CGFloat) {
         guard let origin = dragOrigin else { return }
         dragOrigin = nil
 
-        let projected = origin + value.predictedEndTranslation.width
+        let projected = origin + predictedTranslation
         let release = PerformanceSignpost.begin(.swipeRelease)
 
         let committed = projected < -fullSwipeWidth
@@ -230,6 +225,74 @@ extension View {
             if phase == .interacting, openRow.wrappedValue != nil {
                 openRow.wrappedValue = nil
             }
+        }
+    }
+}
+
+/// The row's drag. Begins only when the finger moves more sideways than vertically, and
+/// leftward unless the row is open, so a scroll stays a scroll and a rightward drag over a
+/// closed row goes to the navigation stack's swipe back. The direction is decided once, as
+/// the pan begins, and held for the rest of the drag: re-deciding every frame let a
+/// curving finger hand the row back to the list mid-swipe.
+private struct RowSwipeGesture: UIGestureRecognizerRepresentable {
+    /// Rested open, so a rightward drag closes it.
+    let isOpen: Bool
+    let onBegan: () -> Void
+    let onChanged: (_ translation: CGFloat) -> Void
+    /// The release, with the translation the flick would carry it to.
+    let onEnded: (_ predictedTranslation: CGFloat) -> Void
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.delegate = context.coordinator
+        return pan
+    }
+
+    func updateUIGestureRecognizer(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        context.coordinator.isOpen = isOpen
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        let translation = recognizer.translation(in: recognizer.view).x
+        switch recognizer.state {
+        case .began:
+            onBegan()
+            onChanged(translation)
+        case .changed:
+            onChanged(translation)
+        case .ended, .cancelled:
+            onEnded(translation + Self.projection(of: recognizer.velocity(in: recognizer.view).x))
+        default:
+            break
+        }
+    }
+
+    /// How far a flick at this velocity travels as it decelerates, at the scroll view's
+    /// normal rate: what a `DragGesture` adds for its predicted end translation.
+    private static func projection(of velocity: CGFloat) -> CGFloat {
+        let rate = UIScrollView.DecelerationRate.normal.rawValue
+        return velocity / 1000 * rate / (1 - rate)
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var isOpen = false
+
+        func gestureRecognizerShouldBegin(_ recognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = recognizer as? UIPanGestureRecognizer else { return false }
+            let velocity = pan.velocity(in: pan.view)
+            guard abs(velocity.x) > abs(velocity.y) else { return false }
+            return velocity.x < 0 || isOpen
+        }
+
+        /// Alongside the scroll view's pan, as the `DragGesture` was: excluding it lost the
+        /// drag to the scroll view and the row stopped swiping at all.
+        func gestureRecognizer(
+            _ recognizer: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer
+        ) -> Bool {
+            other is UIPanGestureRecognizer && other.view is UIScrollView
         }
     }
 }

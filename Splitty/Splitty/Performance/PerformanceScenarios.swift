@@ -87,6 +87,23 @@ enum PerformanceScenarios {
         )
     }
 
+    /// People sharing the first few groups, so a person's row can open one.
+    static let people = PeopleResponse(
+        peers: (2...6).map { index in
+            Peer(
+                userId: index,
+                name: "Member \(index)",
+                avatarURL: largeAvatarURLs[(index - 1) % largeAvatarURLs.count],
+                netAmountCents: index.isMultiple(of: 2) ? 1_250 : -980,
+                groups: [
+                    PeerGroup(groupId: 1, groupName: "Group 1", amountCents: index.isMultiple(of: 2) ? 1_250 : -980),
+                    PeerGroup(groupId: index, groupName: "Group \(index)", amountCents: 0),
+                ]
+            )
+        },
+        balancesPending: false
+    )
+
     static func user(_ id: Int) -> User {
         User(
             id: id,

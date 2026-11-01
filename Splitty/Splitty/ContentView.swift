@@ -10,7 +10,9 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var authManager = AuthenticationManager.shared
-    @StateObject private var peopleViewModel = PeopleViewModel()
+    @StateObject private var peopleViewModel = PeopleViewModel(
+        loadPeople: PerformanceScenarioLaunch.isEnabled ? { PerformanceScenarios.people } : GroupService.shared.getPeople
+    )
     @State private var addDestination: AddExpenseDestination?
     @State private var pendingExpenseGroup: Group?
     @State private var isResolvingAdd = false
