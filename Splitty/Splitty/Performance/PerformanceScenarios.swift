@@ -42,7 +42,14 @@ enum PerformanceScenarios {
                     email: "ben@example.com",
                     avatarUrl: avatar
                 ),
-            ]
+            ],
+            // Scattered, so the add sheet's recency order is visibly not the id order.
+            // Every fifth group has no expenses and falls back to its creation date.
+            lastActivityAt: index.isMultiple(of: 5) ? nil : String(
+                format: "2026-%02d-%02dT12:00:00Z",
+                (index * 7) % 12 + 1,
+                (index * 11) % 28 + 1
+            )
         )
     }
 

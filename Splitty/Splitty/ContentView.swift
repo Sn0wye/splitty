@@ -96,7 +96,11 @@ struct ContentView: View {
         }
         do {
             addDestination = askingForGroup
-                ? .resolve(groups: try await fetchGroups(), currentGroupId: nil)
+                ? .resolve(
+                    groups: try await fetchGroups(),
+                    currentGroupId: nil,
+                    recentlyOpened: appState.groupSessions.recentlyOpenedGroupIds
+                )
                 : try await appState.resolveAddExpenseDestination(fetchGroups: fetchGroups)
         } catch where error.isCancellation {
             return
@@ -135,41 +139,6 @@ extension AddExpenseDestination: Identifiable {
         case .createGroup: "create-group"
         case .expense(let group): "expense-\(group.id)"
         case .chooseGroup: "choose-group"
-        }
-    }
-}
-
-private struct ExpenseGroupPicker: View {
-    let groups: [Group]
-    let onSelect: (Group) -> Void
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List(groups) { group in
-                Button {
-                    onSelect(group)
-                } label: {
-                    HStack {
-                        Text(group.name)
-                            .foregroundStyle(Color("foreground"))
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Color("muted-foreground"))
-                    }
-                    .contentShape(Rectangle())
-                }
-            }
-            .scrollContentBackground(.hidden)
-            .background(Color("background"))
-            .navigationTitle(Text(L10n.Groups.choose))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Text(L10n.Common.cancel) }
-                }
-            }
         }
     }
 }

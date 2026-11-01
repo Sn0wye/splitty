@@ -101,6 +101,10 @@ Rows predating the column have no `Date`, so every reader that orders or groups 
 `Date ?? CreatedAt`, newest first. Expense and settlement creation both accept a date. On an
 update, an omitted or null date leaves the stored date unchanged.
 
+**Group last activity** is `lastActivityAt` on every group read: the newest row's
+`Date ?? CreatedAt`, settlements included, and null for a group with no rows. The "Choose a
+group" sheet orders by it, then by the groups opened this launch, then by `CreatedAt`.
+
 **Settlements are mutated through `/group/{groupId}/settlements/{expenseId}`**, never through
 the expense routes, even though a settlement is an `Expense` row. The expense `PUT`/`DELETE`
 refuse `Payment` rows rather than branching on `Type`. The settlement edit rebuilds both

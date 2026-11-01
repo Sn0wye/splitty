@@ -36,7 +36,11 @@ enum AddExpenseDestination: Equatable {
     case expense(Group)
     case chooseGroup([Group])
 
-    static func resolve(groups: [Group], currentGroupId: Int?) -> AddExpenseDestination {
+    static func resolve(
+        groups: [Group],
+        currentGroupId: Int?,
+        recentlyOpened: [Int] = []
+    ) -> AddExpenseDestination {
         if let currentGroup = groups.first(where: { $0.id == currentGroupId }) {
             return .expense(currentGroup)
         }
@@ -46,7 +50,7 @@ enum AddExpenseDestination: Equatable {
         case 1:
             return .expense(groups[0])
         default:
-            return .chooseGroup(groups)
+            return .chooseGroup(Group.recentFirst(groups, recentlyOpened: recentlyOpened))
         }
     }
 
@@ -117,6 +121,10 @@ final class AppState: ObservableObject {
            let group = current.group {
             return .resolve(groups: [group], currentGroupId: currentGroupId)
         }
-        return .resolve(groups: try await fetchGroups(), currentGroupId: currentGroupId)
+        return .resolve(
+            groups: try await fetchGroups(),
+            currentGroupId: currentGroupId,
+            recentlyOpened: groupSessions.recentlyOpenedGroupIds
+        )
     }
 }

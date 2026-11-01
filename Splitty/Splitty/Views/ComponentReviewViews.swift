@@ -18,6 +18,34 @@ enum ReviewSamples {
         GroupMember(id: $0.id, userId: $0.id, name: $0.name, email: $0.email, avatarUrl: "")
     }
 
+    /// Three groups for "Choose a group", given oldest activity first so the sheet's
+    /// order is the rule's doing: one owed, one owing, one settled with no expenses yet.
+    static let groups: [Group] = [
+        group(1, "Flatmates", cents: 4_215, members: 4, activity: "2026-09-02T19:30:00Z"),
+        group(2, "Lisbon weekend", cents: -1_850, members: 3, activity: "2026-10-29T12:00:00Z"),
+        group(3, "Book club", cents: 0, members: 6, activity: nil),
+    ]
+
+    private static func group(_ id: Int, _ name: String, cents: Int, members: Int, activity: String?) -> Group {
+        Group(
+            id: id,
+            name: name,
+            description: nil,
+            netBalanceCents: cents,
+            createdAt: "2026-0\(id)-01T12:00:00Z",
+            members: (1...members).map { index in
+                GroupMember(
+                    id: id * 10 + index,
+                    userId: index,
+                    name: "Member \(index)",
+                    email: "member\(index)@example.com",
+                    avatarUrl: "https://api.dicebear.com/11.x/lorelei/png?seed=\(id * 10 + index)"
+                )
+            },
+            lastActivityAt: activity
+        )
+    }
+
     /// A landscape photo stand-in with a grid, so panning, zooming and the bounds show.
     static let avatarPhoto: UIImage = {
         let size = CGSize(width: 1_600, height: 1_000)

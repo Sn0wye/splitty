@@ -252,6 +252,7 @@ enum L10n {
         static var youAreOwed: String { text("groups.you_are_owed", default: "You are owed") }
         static var youOwe: String { text("groups.you_owe", default: "You owe") }
         static var choose: String { text("groups.choose", default: "Choose a group") }
+        static var recent: String { text("groups.recent", default: "Recent") }
         static var noneSelected: String { text("groups.none_selected", default: "No group selected") }
         static var pickFromTab: String {
             text("groups.pick_from_tab", default: "Pick a group from the Groups tab.")
