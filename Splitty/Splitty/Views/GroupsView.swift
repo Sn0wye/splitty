@@ -11,6 +11,8 @@ struct GroupsView: View {
     /// Shows the toolbar's add button. Declared first so a trailing closure still
     /// lands on `onReviewDone`.
     var onAddExpense: (() -> Void)?
+    /// The add button on a group pushed from the list: that group is the one in view.
+    var onAddGroupExpense: () -> Void = {}
     var isReview = false
     var onReviewDone: (() -> Void)?
 
@@ -26,7 +28,7 @@ struct GroupsView: View {
     private let titleCollapseOffset: CGFloat = 52
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $appState.groupsPath) {
             ScrollView(.vertical) {
                 VStack(spacing: 10) {
                     header
@@ -85,6 +87,9 @@ struct GroupsView: View {
                 withAnimation(.easeInOut(duration: 0.2)) { isTitleCollapsed = collapsed }
             }
             .background(Color("background").ignoresSafeArea())
+            // Drawn by the principal item below; set so the pushed group's back button
+            // and its long-press menu say where they go.
+            .navigationTitle(Text(L10n.Groups.title))
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(Color("background"), for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
@@ -124,6 +129,13 @@ struct GroupsView: View {
                     }
                 }
             }
+            .navigationDestination(for: Int.self) { groupId in
+                PushedGroupView(
+                    session: appState.groupSessions.session(for: groupId),
+                    onAddExpense: onAddGroupExpense
+                )
+                .id(groupId)
+            }
             .task {
                 if !isReview { await viewModel.loadGroups() }
             }
@@ -133,9 +145,14 @@ struct GroupsView: View {
             .onChange(of: appState.exitedGroupId) { _, _ in
                 removeExitedGroup()
             }
-            .onChange(of: appState.selectedTab) { _, newTab in
+            .onChange(of: appState.groupsPath.isEmpty) { _, isEmpty in
                 // Coming back from a group picks up any edit made in there.
-                if newTab == .groups && !isReview {
+                if isEmpty && !isReview {
+                    Task { await viewModel.loadGroups() }
+                }
+            }
+            .onChange(of: appState.selectedTab) { _, newTab in
+                if newTab == .groups && appState.groupsPath.isEmpty && !isReview {
                     Task { await viewModel.loadGroups() }
                 }
             }
@@ -240,6 +257,26 @@ struct GroupsView: View {
         viewModel.removeGroup(id: exitedGroupId)
     }
 
+}
+
+/// A group pushed from the list. Holds on to its session, so a group that is left or
+/// lost keeps its content while it slides away rather than blanking mid-pop.
+private struct PushedGroupView: View {
+    @State private var session: GroupSession?
+    let onAddExpense: () -> Void
+
+    init(session: GroupSession?, onAddExpense: @escaping () -> Void) {
+        _session = State(initialValue: session)
+        self.onAddExpense = onAddExpense
+    }
+
+    var body: some View {
+        if let session {
+            GroupView(session: session, onAddExpense: onAddExpense)
+        } else {
+            Color("background").ignoresSafeArea()
+        }
+    }
 }
 
 /// An empty card: dashed where a group card is filled, with the face row's circle

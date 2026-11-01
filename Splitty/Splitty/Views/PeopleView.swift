@@ -104,7 +104,7 @@ struct PeopleView: View {
                 if let onShowGroups {
                     onShowGroups()
                 } else {
-                    appState.selectedTab = .groups
+                    appState.showGroupList()
                 }
             }
         }

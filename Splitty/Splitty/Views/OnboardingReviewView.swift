@@ -304,11 +304,11 @@ private struct OnboardingGroupReviewView: View {
 
     @State private var showingInvite = false
     @State private var showingAddInfo = false
-    @State private var selectedTab: AppTab = .group
+    @State private var selectedTab: AppTab = .groups
 
     var body: some View {
         AppTabView(selection: $selectedTab) { tab in
-            if tab == .group {
+            if tab == .groups {
                 groupScreen
             } else {
                 Color("background").ignoresSafeArea()

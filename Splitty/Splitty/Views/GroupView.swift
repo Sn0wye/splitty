@@ -39,15 +39,15 @@ struct GroupView: View {
     init(session: GroupSession, onAddExpense: @escaping () -> Void = {}) {
         self.session = session
         self.onAddExpense = onAddExpense
-        // The view is rebuilt per group (`.id(groupId)` in ContentView), so the group is fixed.
+        // The view is rebuilt per group (`.id(groupId)` on the Groups stack), so the group is fixed.
         _plans = StateObject(wrappedValue: PlansViewModel(groupId: session.groupId))
     }
 
+    /// Pushed onto the Groups tab's stack, so the system back button and edge swipe
+    /// return to the list.
     var body: some View {
-        NavigationStack {
-            groupScreen
-        }
-        .environment(\.currency, session.currency)
+        groupScreen
+            .environment(\.currency, session.currency)
     }
 
     private var groupScreen: some View {
@@ -68,17 +68,6 @@ struct GroupView: View {
         .toolbarBackground(Color("background"), for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                Button {
-                    appState.selectedTab = .groups
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(Color("foreground"))
-                }
-                .accessibilityLabel(L10n.Group.backToGroups)
-            }
-
             ToolbarItem(placement: .principal) {
                 Text(session.group?.name ?? "")
                     .font(.headline)
@@ -752,6 +741,8 @@ struct ExpenseRow: View {
 }
 
 #Preview {
-    GroupView(session: GroupSessionStore().open(1))
-        .environmentObject(AppState())
+    NavigationStack {
+        GroupView(session: GroupSessionStore().open(1))
+    }
+    .environmentObject(AppState())
 }
