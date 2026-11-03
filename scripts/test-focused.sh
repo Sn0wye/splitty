@@ -9,13 +9,16 @@
 # scheme. Naming a SplittyUITests identifier switches to the Splitty scheme; UI tests
 # still need the user's approval first (see AGENTS.md).
 #
-# SPLITTY_DESTINATION overrides the simulator. The result bundle and full build log are
-# kept in a temporary directory whose path is printed at the end.
+# The destination is SPLITTY_DESTINATION when set, else the session's own simulator
+# whose UDID is in .splitty-sim at the repository root (see docs/agents/ui-review.md),
+# else the shared "iPhone 17" simulator. Running reinstalls the app on that simulator.
+# The result bundle and full build log are kept in a temporary directory whose path is
+# printed at the end.
 
 set -euo pipefail
 
 usage() {
-    sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//' >&2
+    sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//' >&2
 }
 
 if [[ $# -eq 0 ]]; then
@@ -39,12 +42,21 @@ for id in "$@"; do
     only+=("-only-testing:$id")
 done
 
-destination="${SPLITTY_DESTINATION:-platform=iOS Simulator,name=iPhone 17}"
+if [[ -n "${SPLITTY_DESTINATION:-}" ]]; then
+    destination="$SPLITTY_DESTINATION"
+    source_of_destination="SPLITTY_DESTINATION"
+elif [[ -s .splitty-sim ]] && sim_udid="$(tr -d '[:space:]' <.splitty-sim)" && [[ -n "$sim_udid" ]]; then
+    destination="id=$sim_udid"
+    source_of_destination=".splitty-sim"
+else
+    destination="platform=iOS Simulator,name=iPhone 17"
+    source_of_destination="default"
+fi
 work="$(mktemp -d "${TMPDIR:-/tmp}/splitty-focused.XXXXXX")"
 bundle="$work/Focused.xcresult"
 log="$work/xcodebuild.log"
 
-echo "Running ${#only[@]} identifier(s) with $scheme on '$destination'"
+echo "Running ${#only[@]} identifier(s) with $scheme on '$destination' (from $source_of_destination)"
 
 status=0
 xcodebuild test \

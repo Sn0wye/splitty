@@ -15,3 +15,6 @@ xcuserdata/
 
 # Per-developer Xcode overrides, e.g. the Mac a device reaches the local API on
 Splitty/Config/Local.xcconfig
+
+# Per-session review simulator UDID, read by scripts/test-focused.sh
+.splitty-sim
