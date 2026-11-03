@@ -25,7 +25,7 @@ Single-context: root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
 
 ### UI review
 
-For changes to what users see or touch, use your own simulator, the `-SplittyReview` gallery states, and motion recordings. See `docs/agents/ui-review.md`.
+For changes to what users see or touch, use your own simulator driven through `device_open`'s agent-device, the `-SplittyReview` gallery states, and motion recordings. See `docs/agents/ui-review.md`.
 
 ### Xcode metadata
 
