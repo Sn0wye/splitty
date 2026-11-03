@@ -7,25 +7,43 @@ touches. It is a judgement rule, not a test requirement: no UI suite is implied.
 
 Give each verification session its own simulator. A device another session is
 driving changes under you, and its taps and state end up in your evidence.
+Keep the host to two driven simulators: when `xcrun simctl list devices booted`
+already shows two, wait for one to shut down before booting yours.
+
+From the worktree root:
 
 ```sh
 udid=$(xcrun simctl create "Splitty review <thread or branch>" "iPhone 17" com.apple.CoreSimulator.SimRuntime.iOS-27-0)
+printf '%s\n' "$udid" > .splitty-sim
 xcrun simctl boot "$udid"
 xcodebuild build -project Splitty/Splitty.xcodeproj -scheme Splitty \
     -destination "id=$udid" -derivedDataPath /tmp/splitty-review-dd
 xcrun simctl install "$udid" /tmp/splitty-review-dd/Build/Products/Debug-iphonesimulator/Splitty.app
 ```
 
-Delete it when the session is done: `xcrun simctl delete "$udid"`.
+`.splitty-sim` (git-ignored) makes `scripts/test-focused.sh` test on this
+simulator. A test run reinstalls the app there, so reinstall the build under
+review and retake screenshots after one.
+
+Then call `device_list`, and `device_open` with `hostId` `local` and the UDID as
+`deviceId`. It returns an `agent-device` command bound to this simulator; `$AD`
+below stands for that command. Every launch, tap, text entry, screenshot and
+recording goes through `$AD`. `simctl` keeps create, boot, install, shutdown,
+delete, builds and logs. When `$AD` says it is out of date, call `device_open`
+again.
+
+While the session waits on something long, such as a build or a PR review,
+shut the simulator down with `xcrun simctl shutdown "$udid"`; the next
+`$AD open` boots it again. At the end: `xcrun simctl delete "$udid" && rm .splitty-sim`.
 
 ## Reach the state
 
 Debug builds open the review gallery straight from a launch argument, without
-signing in or a backend:
+signing in or a backend. Pass each argument with its own `--launch-args`:
 
 ```sh
-xcrun simctl launch "$udid" com.snowye.splitty -SplittyReview            # the gallery list
-xcrun simctl launch "$udid" com.snowye.splitty -SplittyReview timeline   # one screen
+$AD open com.snowye.splitty --relaunch --launch-args -SplittyReview                         # the gallery list
+$AD open com.snowye.splitty --relaunch --launch-args -SplittyReview --launch-args timeline  # one screen
 ```
 
 Screen names are the raw values of `ReviewScreen` in
@@ -58,6 +76,53 @@ When a change touches a state the gallery cannot reach, add it there. Use the
 component's existing data-source seam (`GroupDataSource`, `ChartsDataSource`,
 `ExpenseFormDataSource`) rather than a copy of the component.
 
+The gallery is not the real app: `isReview` turns off autofocus and fetches in
+`JoinGroupSheet`, `GroupsView`, `PeopleView` and `GroupFormSheet`, so confirm a
+focus or loading finding in the real app.
+
+## Drive and capture
+
+```sh
+$AD snapshot -i                              # accessibility tree with @e refs
+$AD press 'id="expense.repeat"' --settle     # or a ref: $AD press @e12 --settle
+$AD fill @e5 "Dinner" --settle               # replaces the field's text
+$AD gesture pan 380 650 -200 0 500           # drag: x y dx dy durationMs; a partial swipe
+$AD swipe 380 650 40 650                     # quick fling from x1 y1 to x2 y2
+$AD settings appearance dark                 # light, dark, toggle
+$AD settings text-size accessibility-large   # then relaunch the app
+$AD screenshot /tmp/review-after.png --pixel-density 3
+```
+
+Target controls by accessibility identifier (`id="..."`); find them with
+`grep -rn accessibilityIdentifier Splitty/Splitty`, and add one to a control you
+need that has none. Refs like `@e12` expire once the screen changes: take a
+fresh `snapshot -i` before using one. `$AD screenshot` saves 1x points unless
+given `--pixel-density`; `device_screenshot` shows you the screen.
+`$AD help <command>` lists flags not shown here.
+
+### Reduce Motion
+
+agent-device has no Reduce Motion setting; flip it in the Settings app:
+
+```sh
+$AD open com.apple.Preferences --relaunch
+$AD press 'label="Accessibility"' --settle
+$AD press 'label="Motion"' --settle
+$AD snapshot -i     # press the [switch] "Reduce Motion" until a snapshot shows it [checked]
+$AD open com.snowye.splitty --relaunch --launch-args -SplittyReview --launch-args <screen>
+```
+
+In one session pressing the switch's ref left it unchecked and pressing its
+coordinates checked it. The effect on Splitty is unverified for this route:
+check it on a Splitty animation that reads `accessibilityReduceMotion`, since
+the system navigation push still slides with Reduce Motion on (iOS 26.5).
+Writing the default directly, plus a relaunch, is also unverified: one session
+saw the Reduce Motion path after it, another saw no change.
+
+```sh
+xcrun simctl spawn "$udid" defaults write com.apple.Accessibility ReduceMotionEnabled -bool true
+```
+
 ## Record motion
 
 For a changed animation, transition or gesture, record a short clip covering
@@ -65,11 +130,15 @@ the change and its return path: open and dismiss, swipe and snap back, switch a
 range and switch back.
 
 ```sh
-xcrun simctl io "$udid" recordVideo --codec=h264 --force /tmp/review.mov &
-recorder=$!
+$AD record start /tmp/review-after.mp4 --scope device
 # drive the interaction
-kill -INT "$recorder"
+$AD record stop
+$AD record contact-sheet /tmp/review-after.mp4 --out /tmp/review-after-sheet.png
 ```
+
+The contact sheet is one PNG of the sampled frames where the screen changed,
+each labelled with its time. A flash between two samples is not in it; watch
+the clip for those.
 
 A screenshot cannot show a regression in motion. The odometer revert of #103
 and #104 is the example.
