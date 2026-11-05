@@ -52,11 +52,13 @@ public class RefreshTokenRepository(ApplicationDbContext context) : IRefreshToke
         return true;
     }
 
+    /// Also forgets the push device the sign-in registered: a signed-out phone gets no pushes.
     public async Task RevokeFamilyAsync(Guid familyId)
     {
         await context.RefreshToken
             .Where(t => t.FamilyId == familyId && t.RevokedAt == null)
             .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.RevokedAt, DateTime.UtcNow));
+        await context.PushDevice.Where(d => d.FamilyId == familyId).ExecuteDeleteAsync();
     }
 
     public async Task RevokeAllForUserAsync(int userId)
@@ -64,5 +66,6 @@ public class RefreshTokenRepository(ApplicationDbContext context) : IRefreshToke
         await context.RefreshToken
             .Where(t => t.UserId == userId && t.RevokedAt == null)
             .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.RevokedAt, DateTime.UtcNow));
+        await context.PushDevice.Where(d => d.UserId == userId).ExecuteDeleteAsync();
     }
 }

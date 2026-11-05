@@ -35,6 +35,12 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     /// The storage stand-in the host is wired to, so a test can seed and inspect it.
     public FakeAvatarStorage AvatarStorage => Services.GetRequiredService<FakeAvatarStorage>();
 
+    /// The APNs stand-in, so a test can read what a device was sent.
+    public FakePushSender PushSender => Services.GetRequiredService<FakePushSender>();
+
+    /// Every notice a write decided on, recorded as it is queued.
+    public CapturingNotifier Notifier => Services.GetRequiredService<CapturingNotifier>();
+
     /// The clock the host reads, so a test can move it past due days.
     public TestClock Clock => Services.GetRequiredService<TestClock>();
 
@@ -57,12 +63,16 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             });
         });
 
-        // Nothing in the test suite reaches Google or Cloudflare.
+        // Nothing in the test suite reaches Google, Cloudflare or Apple.
         builder.ConfigureTestServices(services =>
         {
             services.AddScoped<IGoogleTokenExchanger, FakeGoogleTokenExchanger>();
             services.AddSingleton<FakeAvatarStorage>();
             services.AddSingleton<IAvatarStorage>(sp => sp.GetRequiredService<FakeAvatarStorage>());
+            services.AddSingleton<FakePushSender>();
+            services.AddSingleton<IPushSender>(sp => sp.GetRequiredService<FakePushSender>());
+            services.AddSingleton<CapturingNotifier>();
+            services.AddSingleton<INotifier>(sp => sp.GetRequiredService<CapturingNotifier>());
             services.AddSingleton<TestClock>();
             services.AddSingleton<TimeProvider>(sp => sp.GetRequiredService<TestClock>());
         });

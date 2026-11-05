@@ -16,13 +16,13 @@ public class RefreshTokenService(
 {
     private const int TokenBytes = 32;
 
-    public async Task<string> IssueAsync(User user)
+    public async Task<TokenPair> IssueAsync(User user)
     {
         var (raw, token) = Create(user.Id, Guid.NewGuid());
 
         await refreshTokenRepository.CreateAsync(token);
 
-        return raw;
+        return new TokenPair(tokenIssuer.Issue(user, token.FamilyId), raw);
     }
 
     public async Task<TokenPair?> RotateAsync(string rawToken)
@@ -47,7 +47,7 @@ public class RefreshTokenService(
 
             if (await refreshTokenRepository.TryRotateAsync(current.Id, replacement))
             {
-                return new TokenPair(tokenIssuer.Issue(current.User), raw);
+                return new TokenPair(tokenIssuer.Issue(current.User, current.FamilyId), raw);
             }
 
             // Lost the race to a concurrent refresh with the same token. The client sends

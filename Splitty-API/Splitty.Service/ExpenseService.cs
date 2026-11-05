@@ -17,6 +17,7 @@ public class ExpenseService(
     IRecurringExpenseService recurringExpenseService,
     IGroupLedger groupLedger,
     IGroupReadModel readModel,
+    INotifier notifier,
     TimeProvider timeProvider
     ): IExpenseService
 {
@@ -73,7 +74,8 @@ public class ExpenseService(
 
         await expenseRepository.CreateAsync(expense);
         await groupLedger.RequestRecomputationAsync(expense.GroupId);
-        
+        notifier.Notify(Notices.ExpenseAdded(ExpenseShape.Of(expense), expense.GroupId, userId));
+
         return await readModel.GetExpenseAsync(expense.GroupId, expense.Id, userId);
     }
 
@@ -94,6 +96,8 @@ public class ExpenseService(
                 "This is a settlement. Delete it through /group/{groupId}/settlements/{expenseId}.");
         }
 
+        var deleted = ExpenseShape.Of(expense);
+
         if (scope == ExpenseScope.Following)
         {
             var recurringExpenseId = RecurringExpenseIdOrThrow(expense);
@@ -110,6 +114,8 @@ public class ExpenseService(
         }
 
         await groupLedger.RequestRecomputationAsync(groupId);
+        // One notice for the expense the member deleted, however many followed it.
+        notifier.Notify(Notices.ExpenseDeleted(deleted, groupId, userId));
     }
     
     public async Task<ExpenseResponse> UpdateAsync(UpdateExpenseDTO dto, int userId)
@@ -174,6 +180,9 @@ public class ExpenseService(
         }
 
         EnsureNotPaymentCategory(dto.Category);
+
+        // Read before the edit, so each person can be told how their part of it moved.
+        var before = ExpenseShape.Of(expense);
 
         // Read before the edit moves it: "following" means after where the expense was.
         var originalDate = DateOf(expense);
@@ -246,6 +255,9 @@ public class ExpenseService(
             await expenseRepository.UpdateAsync(expense);
             await groupLedger.RequestRecomputationAsync(expense.GroupId);
         }
+
+        // Only the edited expense: the ones after it in a "following" edit change the same way.
+        notifier.Notify(Notices.ExpenseChanged(before, ExpenseShape.Of(expense), expense.GroupId, userId));
 
         return await readModel.GetExpenseAsync(expense.GroupId, expense.Id, userId);
     }

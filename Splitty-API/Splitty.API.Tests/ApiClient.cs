@@ -169,6 +169,18 @@ public sealed class ApiClient
     public Task<HttpResponseMessage> RemoveMemberAsync(int groupId, int userId) =>
         _http.DeleteAsync($"/group/{groupId}/members/{userId}");
 
+    public Task<HttpResponseMessage> RegisterPushDeviceAsync(string token, string language = "en", string environment = "sandbox") =>
+        _http.PutAsJsonAsync("/profile/push-device", new { token, environment, language });
+
+    public Task<HttpResponseMessage> GetNotificationSettingsAsync() =>
+        _http.GetAsync("/profile/notifications");
+
+    public Task<HttpResponseMessage> UpdateNotificationSettingsAsync(bool enabled, params string[] muted) =>
+        _http.PutAsJsonAsync("/profile/notifications", new { enabled, muted });
+
+    public Task<HttpResponseMessage> SendReminderAsync(int groupId, int userId) =>
+        _http.PostAsJsonAsync($"/group/{groupId}/reminders", new { userId });
+
     public Task<HttpResponseMessage> GetPeopleAsync() =>
         _http.GetAsync("/people");
 

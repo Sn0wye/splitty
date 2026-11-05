@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Splitty.DTO.Request;
 using Splitty.DTO.Response;
+using Splitty.Service;
 using Splitty.Service.Interfaces;
 
 namespace Splitty.API.Controllers;
@@ -14,7 +15,10 @@ namespace Splitty.API.Controllers;
 [ApiController]
 [Route("profile")]
 [Authorize]
-public class ProfileController(IProfileService profileService) : ControllerBase
+public class ProfileController(
+    IProfileService profileService,
+    INotificationService notificationService
+) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<ProfileResponse>> GetOwnProfile()
@@ -81,6 +85,53 @@ public class ProfileController(IProfileService profileService) : ControllerBase
         await profileService.DeleteAsync(int.Parse(userId), cancellationToken);
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Registers this device for push notifications, against the sign-in the access token
+    /// came from. Sent again whenever the token or the app language changes. Signing out
+    /// forgets the device.
+    /// </summary>
+    [HttpPut("push-device")]
+    public async Task<ActionResult> RegisterPushDevice([FromBody] RegisterPushDeviceRequest request)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        // A token from before the claim existed: the 401 makes the app refresh and retry
+        // with one that has it.
+        if (userId is null || !Guid.TryParse(User.FindFirstValue(JwtTokenIssuer.FamilyClaim), out var familyId))
+        {
+            return Unauthorized();
+        }
+
+        await notificationService.RegisterDeviceAsync(int.Parse(userId), familyId, request);
+
+        return NoContent();
+    }
+
+    [HttpGet("notifications")]
+    public async Task<ActionResult<NotificationSettingsResponse>> GetNotificationSettings()
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        return Ok(await notificationService.GetSettingsAsync(int.Parse(userId)));
+    }
+
+    [HttpPut("notifications")]
+    public async Task<ActionResult<NotificationSettingsResponse>> UpdateNotificationSettings(
+        [FromBody] NotificationSettingsRequest request)
+    {
+        if (!ModelState.IsValid) return BadRequest(ModelState);
+
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        return Ok(await notificationService.UpdateSettingsAsync(int.Parse(userId), request));
     }
 
     /// <summary>

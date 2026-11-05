@@ -15,6 +15,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Domain.Entities.Invite> Invite { get; set; }
     public DbSet<Domain.Entities.OAuthAccount> OAuthAccount { get; set; }
     public DbSet<Domain.Entities.RefreshToken> RefreshToken { get; set; }
+    public DbSet<Domain.Entities.PushDevice> PushDevice { get; set; }
 
     public DbSet<Domain.Entities.SimplifiedDebt> SimplifiedDebt { get; set; }
 
@@ -29,6 +30,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             // free for a new sign-up. A deactivated user keeps theirs, so linking finds them.
             entity.HasIndex(u => u.Email).IsUnique().HasFilter("\"DeletedAt\" IS NULL");
             entity.Property(u => u.TokenVersion).IsRequired().HasDefaultValue(0);
+            entity.Property(u => u.NotificationsEnabled).IsRequired().HasDefaultValue(true);
+            // A text array of member names, for the same reason Expense.Category is text.
+            entity.PrimitiveCollection(u => u.MutedNotifications)
+                .IsRequired()
+                .ElementType(e => e.HasConversion<string>());
             entity.Property(u => u.AvatarUrl).HasMaxLength(255);
             entity.Property(u => u.CreatedAt).IsRequired();
             entity.Property(u => u.UpdatedAt).IsRequired();
@@ -74,6 +80,25 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
                 .WithMany()
                 .HasForeignKey(t => t.ReplacedById)
                 .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        modelBuilder.Entity<Domain.Entities.PushDevice>(entity =>
+        {
+            entity.HasKey(d => d.Id);
+            entity.Property(d => d.Token).IsRequired().HasMaxLength(200);
+            entity.Property(d => d.Environment).IsRequired().HasConversion<string>();
+            entity.Property(d => d.Language).IsRequired().HasMaxLength(10);
+            entity.Property(d => d.UpdatedAt).IsRequired();
+
+            // The upsert's conflict target, and what moves a device to the user who signed in last.
+            entity.HasIndex(d => d.Token).IsUnique();
+            entity.HasIndex(d => d.FamilyId);
+            entity.HasIndex(d => d.UserId);
+
+            entity.HasOne<Domain.Entities.User>()
+                .WithMany()
+                .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Domain.Entities.Group>(entity =>

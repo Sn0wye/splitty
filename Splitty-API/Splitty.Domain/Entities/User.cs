@@ -38,6 +38,13 @@ public class User
     /// does not bring back the sessions deactivating ended.
     public int TokenVersion { get; set; }
 
+    /// The in-app switch for every push notification. Off sends nothing and keeps
+    /// <see cref="MutedNotifications"/> as it was, so switching back on restores the choices.
+    public bool NotificationsEnabled { get; set; } = true;
+
+    /// The kinds of push notification the user switched off. Empty means every kind is on.
+    public List<NotificationKind> MutedNotifications { get; set; } = [];
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

@@ -14,7 +14,11 @@ public class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssuer
     /// reads as version 0.
     public const string TokenVersionClaim = "token_version";
 
-    public string Issue(User user)
+    /// The refresh token family, which is one sign-in on one device. A push device is
+    /// registered against it. A token without it predates the claim.
+    public const string FamilyClaim = "fid";
+
+    public string Issue(User user, Guid familyId)
     {
         var jwt = options.Value;
 
@@ -28,6 +32,7 @@ public class JwtTokenIssuer(IOptions<JwtOptions> options) : IJwtTokenIssuer
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(JwtRegisteredClaimNames.Sub, user.Email),
             new Claim(TokenVersionClaim, user.TokenVersion.ToString()),
+            new Claim(FamilyClaim, familyId.ToString()),
         };
 
         var token = new JwtSecurityToken(

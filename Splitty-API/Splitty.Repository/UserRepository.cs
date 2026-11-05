@@ -86,6 +86,7 @@ public class UserRepository(ApplicationDbContext context): IUserRepository
         await context.OAuthAccount.Where(a => a.UserId == id).ExecuteDeleteAsync();
         // The row survives as a tombstone, so the cascade never fires.
         await context.RefreshToken.Where(t => t.UserId == id).ExecuteDeleteAsync();
+        await context.PushDevice.Where(d => d.UserId == id).ExecuteDeleteAsync();
 
         // Before memberships go: catch-up copies splits without checking membership, so a
         // recurring expense left behind would keep billing the tombstone.

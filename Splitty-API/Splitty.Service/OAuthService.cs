@@ -8,7 +8,6 @@ public class OAuthService(
     IGoogleTokenExchanger tokenExchanger,
     IUserRepository userRepository,
     IOAuthAccountRepository oauthAccountRepository,
-    IJwtTokenIssuer tokenIssuer,
     IRefreshTokenService refreshTokenService
 ) : IOAuthService
 {
@@ -20,7 +19,9 @@ public class OAuthService(
 
         var user = await ResolveUserAsync(identity);
 
-        return (user, tokenIssuer.Issue(user), await refreshTokenService.IssueAsync(user));
+        var pair = await refreshTokenService.IssueAsync(user);
+
+        return (user, pair.Token, pair.RefreshToken);
     }
 
     private async Task<User> ResolveUserAsync(GoogleIdentity identity)

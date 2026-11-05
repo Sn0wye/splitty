@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.Channels;
 using System.Threading.RateLimiting;
 using Splitty.API;
 using Splitty.API.Controllers;
@@ -74,11 +75,14 @@ var googleOptions = builder.Services.AddOptions<GoogleOptions>()
     .BindConfiguration(GoogleOptions.SectionName);
 var r2Options = builder.Services.AddOptions<R2Options>()
     .BindConfiguration(R2Options.SectionName);
+var apnsOptions = builder.Services.AddOptions<ApnsOptions>()
+    .BindConfiguration(ApnsOptions.SectionName);
 
 if (!builder.Environment.IsDevelopment())
 {
     googleOptions.ValidateDataAnnotations().ValidateOnStart();
     r2Options.ValidateDataAnnotations().ValidateOnStart();
+    apnsOptions.ValidateDataAnnotations().ValidateOnStart();
 }
 
 // Resolved per context rather than read here, for the same reason as the options above.
@@ -213,6 +217,7 @@ builder.Services.AddScoped<IInviteRepository, InviteRepository>();
 builder.Services.AddScoped<IOAuthAccountRepository, OAuthAccountRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IRecurringExpenseRepository, RecurringExpenseRepository>();
+builder.Services.AddScoped<IPushDeviceRepository, PushDeviceRepository>();
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -227,6 +232,7 @@ builder.Services.AddScoped<IPeopleService, PeopleService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IGroupStatsService, GroupStatsService>();
 builder.Services.AddScoped<IRecurringExpenseService, RecurringExpenseService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Utils
 // Read by recurring expense catch-up and nothing older; the test host replaces it.
@@ -238,11 +244,23 @@ builder.Services.AddSingleton(services => new Lazy<IAmazonS3>(() =>
     R2AvatarStorage.CreateClient(services.GetRequiredService<IOptions<R2Options>>().Value)));
 builder.Services.AddScoped<IAvatarStorage, R2AvatarStorage>();
 builder.Services.AddScoped<IAvatarResolver, AvatarResolver>();
+builder.Services.AddSingleton<IPushSender, ApnsPushSender>();
+builder.Services.AddHttpClient(nameof(ApnsPushSender));
 
 // Background
 builder.Services.AddGroupLedger();
 builder.Services.AddSingleton<TransactionProcessedSignal>();
 builder.Services.AddHostedService<TransactionBackgroundService>();
+
+// Push notifications: writes queue notices, one worker sends them. Unbounded and in memory,
+// like the ledger's queue, but with nothing to recover on start: a lost notice stays lost.
+var notices = Channel.CreateUnbounded<Notice>(new UnboundedChannelOptions { SingleReader = true });
+builder.Services.AddSingleton(notices.Reader);
+builder.Services.AddSingleton(notices.Writer);
+builder.Services.AddSingleton<INotifier, Notifier>();
+builder.Services.AddSingleton<ReminderCooldown>();
+builder.Services.AddScoped<PushDispatcher>();
+builder.Services.AddHostedService<PushBackgroundService>();
 
 var app = builder.Build();
 
