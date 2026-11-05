@@ -1,6 +1,7 @@
 using Splitty.Domain.Entities;
 using Splitty.DTO.Internal;
 using Splitty.DTO.Response;
+using Splitty.Repository;
 using Splitty.Repository.Interfaces;
 using Splitty.Service.Interfaces;
 
@@ -22,6 +23,13 @@ public class ExpenseService(
 {
     public async Task<ExpenseResponse> CreateAsync(CreateExpenseDTO dto, int userId)
     {
+        // A resent create answers with what its first send made, before anything that may
+        // have changed since (a member leaving, the currency) can refuse it.
+        if (await ClientWrites.ExistingAsync(readModel, dto.GroupId, dto.ClientId, ExpenseType.Expense) is { } existing)
+        {
+            return await readModel.GetExpenseAsync(dto.GroupId, existing, userId);
+        }
+
         // Percentages are meaningless off a percentage expense, so they are dropped rather
         // than refused: a client that sends both a mode and leftover percentages is
         // describing an equal split, and the stored rows should say only that.
@@ -47,9 +55,11 @@ public class ExpenseService(
         await EnsureMemberAsync(dto.GroupId, userId);
         await EnsureMemberAsync(dto.GroupId, dto.PaidBy);
         await EnsureMembersAsync(dto.GroupId, splits.Select(s => s.UserId));
+        await ClientWrites.EnsureCurrencyAsync(readModel, dto.GroupId, dto.Currency);
 
         var expense = new Expense
         {
+            ClientId = dto.ClientId,
             Amount = dto.Amount,
             Description = dto.Description,
             GroupId = dto.GroupId,
@@ -71,7 +81,13 @@ public class ExpenseService(
             expense.RecurringExpense = StartRecurring(expense, f, dto.TimeZone, dto.EndsOn);
         }
 
-        await expenseRepository.CreateAsync(expense);
+        if (!await expenseRepository.CreateOnceAsync(expense))
+        {
+            // A resend of the same create got there first; its row is the answer.
+            var first = await ClientWrites.ExistingAsync(readModel, dto.GroupId, dto.ClientId, ExpenseType.Expense);
+            return await readModel.GetExpenseAsync(dto.GroupId, first!.Value, userId);
+        }
+
         await groupLedger.RequestRecomputationAsync(expense.GroupId);
         
         return await readModel.GetExpenseAsync(expense.GroupId, expense.Id, userId);
@@ -173,7 +189,20 @@ public class ExpenseService(
                 "This is a settlement. Edit it through /group/{groupId}/settlements/{expenseId}.");
         }
 
+        // Already applied: the client is resending an edit whose answer it never received.
+        if (dto.OpId is { } opId && expense.LastOpId == opId)
+        {
+            return await readModel.GetExpenseAsync(expense.GroupId, expense.Id, userId);
+        }
+
+        if (dto.BaseVersion is { } baseVersion && baseVersion != expense.Version)
+        {
+            throw RefusalException.VersionConflict(
+                await readModel.GetExpenseAsync(expense.GroupId, expense.Id, userId));
+        }
+
         EnsureNotPaymentCategory(dto.Category);
+        await ClientWrites.EnsureCurrencyAsync(readModel, expense.GroupId, dto.Currency);
 
         // Read before the edit moves it: "following" means after where the expense was.
         var originalDate = DateOf(expense);
@@ -216,6 +245,8 @@ public class ExpenseService(
         expense.PaidBy = dto.PaidBy ?? expense.PaidBy;
         expense.Date = ExpenseDate.Normalize(dto.Date) ?? expense.Date;
         expense.UpdatedAt = DateTime.UtcNow;
+        expense.Version++;
+        expense.LastOpId = dto.OpId;
 
         // Sent splits replace the stored rows outright: the old rows are orphaned and deleted,
         // the new ones inserted. A row is never re-pointed, so an edit cannot reach another
@@ -237,14 +268,23 @@ public class ExpenseService(
             }
         }
         
-        if (recurringExpenseId is { } id)
+        try
         {
-            await UpdateFollowingAsync(expense, id, originalDate, dto.Repeat, zone, EndFor(dto));
+            if (recurringExpenseId is { } id)
+            {
+                await UpdateFollowingAsync(expense, id, originalDate, dto.Repeat, zone, EndFor(dto));
+            }
+            else
+            {
+                await expenseRepository.UpdateAsync(expense);
+                await groupLedger.RequestRecomputationAsync(expense.GroupId);
+            }
         }
-        else
+        catch (ConcurrentEditException)
         {
-            await expenseRepository.UpdateAsync(expense);
-            await groupLedger.RequestRecomputationAsync(expense.GroupId);
+            // Another edit saved between this one's read and its save. Nothing was written.
+            throw RefusalException.VersionConflict(
+                await readModel.GetExpenseAsync(expense.GroupId, expense.Id, userId));
         }
 
         return await readModel.GetExpenseAsync(expense.GroupId, expense.Id, userId);
@@ -369,6 +409,7 @@ public class ExpenseService(
             var newDay = RecurringDueDays.DueDay(recurring.StartDate, frequency, place);
             RecurringExpenses.CopyTo(laterExpense, recurring, LocalCalendar.MidnightUtc(newDay, zone));
             laterExpense.UpdatedAt = DateTime.UtcNow;
+            laterExpense.Version++;
         }
 
         return removed;

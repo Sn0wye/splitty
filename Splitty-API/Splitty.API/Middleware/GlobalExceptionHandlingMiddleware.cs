@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Splitty.DTO.Response;
+using Splitty.Service;
 
 namespace Splitty.API.Middleware;
 
@@ -13,6 +14,10 @@ public class GlobalExceptionHandlingMiddleware(
         try
         {
             await next(context);
+        }
+        catch (RefusalException ex)
+        {
+            await WriteAsync(context, ex.StatusCode, ex.Message, ex, ex.Code, ex.Expense, ex.Cap);
         }
         catch (InvalidOperationException ex)
         {
@@ -44,7 +49,14 @@ public class GlobalExceptionHandlingMiddleware(
         }
     }
 
-    private async Task WriteAsync(HttpContext context, int statusCode, string message, Exception ex)
+    private async Task WriteAsync(
+        HttpContext context,
+        int statusCode,
+        string message,
+        Exception ex,
+        ErrorCode? code = null,
+        ExpenseResponse? expense = null,
+        decimal? cap = null)
     {
         context.Response.StatusCode = statusCode;
         context.Response.ContentType = "application/json";
@@ -55,7 +67,10 @@ public class GlobalExceptionHandlingMiddleware(
             Message = message,
             // Stack traces leak internals; development only.
             Details = environment.IsDevelopment() ? ex.StackTrace : null,
-            TraceId = context.TraceIdentifier
+            TraceId = context.TraceIdentifier,
+            Code = code,
+            Expense = expense,
+            Cap = cap
         });
     }
 }

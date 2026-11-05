@@ -62,10 +62,12 @@ internal sealed class GroupLedger(
         decimal excluding = 0m,
         CancellationToken cancellationToken = default)
     {
-        if (await ledgerRepository.IsPendingAsync(groupId, cancellationToken)) return 0m;
-
-        var balances = await ledgerRepository.GetBalancesAsync(groupId, cancellationToken);
-        var nets = LedgerCore.Nets(balances);
+        // Read from the money rows with the replay's own query and math, not from the stored
+        // balances, so a group that is still pending has a real cap instead of zero. Nothing
+        // is written, so the replay keeps its single caller (invariant 4).
+        // See docs/adr/0009-the-settlement-cap-reads-the-rows.md.
+        var positions = await ledgerRepository.GetPositionsAsync(groupId, cancellationToken);
+        var nets = LedgerCore.Nets(LedgerCore.Balances(positions));
 
         return LedgerCore.Cap(nets, payerId, payeeId, excluding);
     }

@@ -15,6 +15,8 @@ public class CreateExpenseDTO
     public Repeat? Repeat { get; set; }
     public string? TimeZone { get; set; }
     public DateOnly? EndsOn { get; set; }
+    public Guid? ClientId { get; set; }
+    public Currency? Currency { get; set; }
 }
 
 public partial class ExpenseSplitDTO

@@ -109,6 +109,8 @@ public class GroupReadModel(ApplicationDbContext context, IAvatarResolver avatar
                 Date = e.Date,
                 CreatedAt = e.CreatedAt,
                 UpdatedAt = e.UpdatedAt,
+                ClientId = e.ClientId,
+                Version = e.Version,
                 RecurringExpenseId = e.RecurringExpenseId,
                 Repeat = e.RecurringExpense == null ? null : e.RecurringExpense.Frequency,
                 EndsOn = e.RecurringExpense == null ? null : e.RecurringExpense.EndsOn,
@@ -241,6 +243,22 @@ public class GroupReadModel(ApplicationDbContext context, IAvatarResolver avatar
     public Task<bool> IsMemberAsync(int groupId, int userId) =>
         context.GroupMembership.AnyAsync(m => m.GroupId == groupId && m.UserId == userId
             && m.User.DeletedAt == null);
+
+    public Task<Currency> GetCurrencyAsync(int groupId) =>
+        context.Group.Where(g => g.Id == groupId).Select(g => g.Currency).SingleAsync();
+
+    /// <summary>
+    /// The row a client already created under <paramref name="clientId"/>, or null. Never
+    /// filtered by type: the caller decides what a clash with the other type means.
+    /// </summary>
+    public async Task<(int Id, ExpenseType Type)?> FindByClientIdAsync(int groupId, Guid clientId)
+    {
+        var row = await context.Expense.AsNoTracking()
+            .Where(e => e.GroupId == groupId && e.ClientId == clientId)
+            .Select(e => new { e.Id, e.Type })
+            .SingleOrDefaultAsync();
+        return row is null ? null : (row.Id, row.Type);
+    }
 
     public async Task<decimal> GetMemberNetAsync(int groupId, int userId) =>
         await context.Balance.Where(b => b.GroupId == groupId && b.UserId == userId)

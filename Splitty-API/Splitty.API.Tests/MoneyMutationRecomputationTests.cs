@@ -102,7 +102,7 @@ public sealed class MoneyMutationRecomputationTests(ApiFactory factory)
 
     /// <summary>
     /// A replay that started before a newer write has not seen it, so finishing must not
-    /// clear the flag: the settlement cap would read positions that predate the write.
+    /// clear the flag: the summary would serve debts that predate the write.
     /// </summary>
     [Fact]
     public async Task A_replay_that_started_before_a_newer_write_leaves_the_group_pending()
@@ -128,17 +128,19 @@ public sealed class MoneyMutationRecomputationTests(ApiFactory factory)
         await gated.WaitForProcessedAsync();
 
         Assert.True((await group.Owner.ReadSummaryAsync(group.Id)).BalancesPending);
-        await ErrorResponseAssertions.AssertErrorAsync(
-            await guest.SettleUpAsync(group.Id, new { withUserId = group.OwnerId, amount = 1m }),
-            HttpStatusCode.BadRequest);
 
-        await gate.WaitForEntryAsync(2);
-        gate.Release(2);
-        await gated.WaitForProcessedAsync();
+        // The stored balances still say 16, but the cap reads the rows, which already count
+        // the second dinner (ADR 0009).
+        (await guest.SettleUpAsync(group.Id, new { withUserId = group.OwnerId, amount = 26m }))
+            .EnsureSuccessStatusCode();
+
+        // The second dinner's request and the settlement's.
+        gate.Release();
+        await gated.WaitForProcessedAsync(2);
 
         var summary = await group.Owner.ReadSummaryAsync(group.Id);
         Assert.False(summary.BalancesPending);
-        Assert.Equal(26m, summary.AmountOwedBy(group.OwnerId, group.GuestId));
+        Assert.Equal(0m, summary.AmountOwedBy(group.OwnerId, group.GuestId));
     }
 
     [Fact]

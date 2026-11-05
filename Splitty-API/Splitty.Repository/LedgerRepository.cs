@@ -51,12 +51,6 @@ internal sealed class LedgerRepository(ApplicationDbContext context) : ILedgerRe
             .Select(pair => new PairwisePosition<int>(pair.Key.PaidBy, pair.Key.UserId, pair.Sum(s => Math.Abs(s.Amount))))
             .ToListAsync(cancellationToken);
 
-    public Task<List<PairwiseBalance<int>>> GetBalancesAsync(int groupId, CancellationToken cancellationToken) =>
-        context.Balance.AsNoTracking()
-            .Where(b => b.GroupId == groupId)
-            .Select(b => new PairwiseBalance<int>(b.UserId, b.PeerId, b.Amount))
-            .ToListAsync(cancellationToken);
-
     public async Task WriteReplayAsync(
         int groupId,
         int generation,

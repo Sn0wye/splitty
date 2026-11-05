@@ -1,5 +1,6 @@
 using Splitty.Domain.Entities;
 using Splitty.DTO.Response;
+using Splitty.Repository;
 using Splitty.Repository.Interfaces;
 using Splitty.Service.Interfaces;
 
@@ -15,7 +16,8 @@ public class BalanceService(
     IUserRepository userRepository,
     IGroupMembershipRepository groupMembershipRepository,
     IAvatarResolver avatarResolver,
-    IGroupLedger groupLedger
+    IGroupLedger groupLedger,
+    IGroupReadModel readModel
 ) : IBalanceService
 {
     public async Task<List<SimplifiedDebtResponse>> GetGroupSimplifiedDebts(int groupId, int userId)
@@ -37,8 +39,22 @@ public class BalanceService(
         }).ToList();
     }
 
-    public async Task SettleUp(int groupId, int userId, int peerId, decimal amount, DateTime? date)
+    public async Task<ExpenseResponse> SettleUp(
+        int groupId,
+        int userId,
+        int peerId,
+        decimal amount,
+        DateTime? date,
+        Guid? clientId = null,
+        Currency? currency = null)
     {
+        // A resent settlement answers with what its first send recorded. Checked before the
+        // cap, which that first send already paid down.
+        if (await ClientWrites.ExistingAsync(readModel, groupId, clientId, ExpenseType.Payment) is { } existing)
+        {
+            return await readModel.GetExpenseAsync(groupId, existing, userId);
+        }
+
         if (userId == peerId)
         {
             throw new ArgumentException("A settlement must be recorded against another member.");
@@ -59,16 +75,15 @@ public class BalanceService(
             throw new KeyNotFoundException("User not found");
         }
 
+        await ClientWrites.EnsureCurrencyAsync(readModel, groupId, currency);
+
         var owed = await groupLedger.SettlementCapAsync(groupId, userId, peerId);
 
-        if (amount > owed)
-        {
-            throw new ArgumentException(
-                $"Settlement amount exceeds the {owed} owed to {payee.Name}.");
-        }
+        if (amount > owed) throw ExceedsCap(owed, payee);
 
         var settleExpense = new Expense
         {
+            ClientId = clientId,
             GroupId = groupId,
             Description = $"Payment to {payee.Name}",
             Amount = amount,
@@ -99,16 +114,37 @@ public class BalanceService(
             settleExpense.Amount,
             settleExpense.Splits.Select(s => new SplitShape(s.Amount, s.Percentage)));
 
-        await expenseRepository.CreateAsync(settleExpense);
+        if (!await expenseRepository.CreateOnceAsync(settleExpense))
+        {
+            var first = await ClientWrites.ExistingAsync(readModel, groupId, clientId, ExpenseType.Payment);
+            return await readModel.GetExpenseAsync(groupId, first!.Value, userId);
+        }
+
         await groupLedger.RequestRecomputationAsync(groupId);
+
+        return await readModel.GetExpenseAsync(groupId, settleExpense.Id, userId);
     }
+
+    private static RefusalException ExceedsCap(decimal owed, User payee) =>
+        new(400, ErrorCode.SettlementExceedsCap, $"Settlement amount exceeds the {owed} owed to {payee.Name}.")
+        {
+            Cap = owed
+        };
 
     /// <summary>
     /// Edits an existing settlement, re-applying the cap of invariant 5 against the debt
     /// the settlement itself does not account for. Splits are rebuilt from the new amount
     /// rather than accepted, the same way <see cref="SettleUp"/> constructs them.
     /// </summary>
-    public async Task UpdateSettlement(int groupId, int expenseId, int userId, decimal amount, DateTime? date)
+    public async Task<ExpenseResponse> UpdateSettlement(
+        int groupId,
+        int expenseId,
+        int userId,
+        decimal amount,
+        DateTime? date,
+        int? baseVersion = null,
+        Guid? opId = null,
+        Currency? currency = null)
     {
         if (amount <= 0)
         {
@@ -118,6 +154,18 @@ public class BalanceService(
         await EnsureMemberAsync(groupId, userId);
 
         var settlement = await FindSettlementAsync(groupId, expenseId);
+
+        if (opId is { } op && settlement.LastOpId == op)
+        {
+            return await readModel.GetExpenseAsync(groupId, expenseId, userId);
+        }
+
+        if (baseVersion is { } version && version != settlement.Version)
+        {
+            throw RefusalException.VersionConflict(await readModel.GetExpenseAsync(groupId, expenseId, userId));
+        }
+
+        await ClientWrites.EnsureCurrencyAsync(readModel, groupId, currency);
 
         var payerId = settlement.PaidBy;
         var peerSplit = settlement.Splits.FirstOrDefault(s => s.UserId != payerId);
@@ -141,11 +189,7 @@ public class BalanceService(
         var owed = await groupLedger.SettlementCapAsync(
             groupId, payerId, peerSplit.UserId, excluding: Math.Abs(peerSplit.Amount));
 
-        if (amount > owed)
-        {
-            throw new ArgumentException(
-                $"Settlement amount exceeds the {owed} owed to {payee.Name}.");
-        }
+        if (amount > owed) throw ExceedsCap(owed, payee);
 
         settlement.Amount = amount;
         // Coerced rather than preserved, so a row written before the column existed, or by an
@@ -153,6 +197,8 @@ public class BalanceService(
         settlement.Category = ExpenseCategory.Payment;
         settlement.Date = ExpenseDate.Normalize(date) ?? settlement.Date;
         settlement.UpdatedAt = DateTime.UtcNow;
+        settlement.Version++;
+        settlement.LastOpId = opId;
 
         foreach (var split in settlement.Splits)
         {
@@ -165,8 +211,18 @@ public class BalanceService(
             settlement.Amount,
             settlement.Splits.Select(s => new SplitShape(s.Amount, s.Percentage)));
 
-        await expenseRepository.UpdateAsync(settlement);
+        try
+        {
+            await expenseRepository.UpdateAsync(settlement);
+        }
+        catch (ConcurrentEditException)
+        {
+            throw RefusalException.VersionConflict(await readModel.GetExpenseAsync(groupId, expenseId, userId));
+        }
+
         await groupLedger.RequestRecomputationAsync(groupId);
+
+        return await readModel.GetExpenseAsync(groupId, expenseId, userId);
     }
 
     public async Task DeleteSettlement(int groupId, int expenseId, int userId)

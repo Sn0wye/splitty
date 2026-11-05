@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
@@ -64,6 +65,30 @@ public class Expense
     /// expense is deleted, which turns what it left behind into plain expenses.
     /// </summary>
     public int? RecurringExpenseId { get; set; }
+
+    /// <summary>
+    /// The id the creating client gave this row before the server saw it, unique within the
+    /// group. A create that carries one already stored answers with that row instead of
+    /// adding a second, so a client may resend a create whose answer it never received.
+    /// Null for rows written without one, and for rows a recurring expense added.
+    /// See docs/adr/0008-offline-writes.md.
+    /// </summary>
+    public Guid? ClientId { get; set; }
+
+    /// <summary>
+    /// Starts at 1 and goes up by one on every edit. An edit that names the version it was
+    /// made against is refused when the row has moved on, so a stale client cannot silently
+    /// overwrite a newer edit. A concurrency token, so two edits racing between read and save
+    /// cannot both win either.
+    /// </summary>
+    [ConcurrencyCheck]
+    public int Version { get; set; } = 1;
+
+    /// <summary>
+    /// The operation id of the last edit applied. An edit resent with the same id after it
+    /// succeeded answers with the row as it is, rather than as a conflict with itself.
+    /// </summary>
+    public Guid? LastOpId { get; set; }
 
     /// <summary>Audit timestamp, server-set, never client-supplied.</summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

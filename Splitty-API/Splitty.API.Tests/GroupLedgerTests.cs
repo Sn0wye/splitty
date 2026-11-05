@@ -55,7 +55,7 @@ public sealed class GroupLedgerTests(ApiFactory factory)
     }
 
     [Fact]
-    public async Task Settlement_is_refused_until_the_last_replay_finishes_and_accepted_right_after()
+    public async Task Settlement_is_accepted_while_a_replay_is_held_and_the_last_replay_counts_it()
     {
         var group = await SettledGroupAsync();
         using var gate = new RecomputeGate(group.Id);
@@ -67,18 +67,18 @@ public sealed class GroupLedgerTests(ApiFactory factory)
         gate.Release(1);
         await gate.WaitForEntryAsync(2);
 
+        // The cap reads the rows (ADR 0009), so pending no longer refuses a settlement.
         Assert.True((await guest.ReadSummaryAsync(group.Id)).BalancesPending);
-        await ErrorResponseAssertions.AssertErrorAsync(
-            await guest.SettleUpAsync(group.Id, new { withUserId = group.OwnerId, amount = 1m }),
-            HttpStatusCode.BadRequest);
-
-        // Releases the settlement's own replay too.
-        gate.Release();
-        await gated.WaitForProcessedAsync(1 + BurstSize);
-
         (await guest.SettleUpAsync(group.Id, new { withUserId = group.OwnerId, amount = 1m }))
             .EnsureSuccessStatusCode();
-        await gated.WaitForProcessedAsync();
+
+        // The held replay, the burst, and the settlement's own request.
+        gate.Release();
+        await gated.WaitForProcessedAsync(1 + BurstSize + 1);
+
+        var summary = await owner.ReadSummaryAsync(group.Id);
+        Assert.False(summary.BalancesPending);
+        Assert.Equal(10m * (2 + BurstSize) - 1m, summary.AmountOwedBy(group.OwnerId, group.GuestId));
     }
 
     [Fact]

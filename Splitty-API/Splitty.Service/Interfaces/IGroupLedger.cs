@@ -25,9 +25,10 @@ public interface IGroupLedger
 
     /// <summary>
     /// The most <paramref name="payerId"/> may settle with <paramref name="payeeId"/> right
-    /// now (invariant 5): zero while the group is pending, otherwise the smaller of the payer's
-    /// net debt and the payee's net credit over stored balances, with an edited payment's own
-    /// contribution passed as <paramref name="excluding"/>.
+    /// now (invariant 5): the smaller of the payer's net debt and the payee's net credit, read
+    /// from the group's money rows rather than its stored balances, so it is current even
+    /// while the group is pending. An edited payment's own contribution is passed as
+    /// <paramref name="excluding"/>.
     /// </summary>
     Task<decimal> SettlementCapAsync(
         int groupId,

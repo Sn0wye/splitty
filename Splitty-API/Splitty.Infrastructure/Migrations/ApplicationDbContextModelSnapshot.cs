@@ -70,6 +70,9 @@ namespace Splitty.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasDefaultValue("General");
 
+                    b.Property<Guid?>("ClientId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -83,6 +86,9 @@ namespace Splitty.Infrastructure.Migrations
 
                     b.Property<int>("GroupId")
                         .HasColumnType("integer");
+
+                    b.Property<Guid?>("LastOpId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("PaidBy")
                         .HasColumnType("integer");
@@ -101,13 +107,21 @@ namespace Splitty.Infrastructure.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.HasKey("Id");
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
-                    b.HasIndex("GroupId");
+                    b.HasKey("Id");
 
                     b.HasIndex("PaidBy");
 
                     b.HasIndex("RecurringExpenseId");
+
+                    b.HasIndex("GroupId", "ClientId")
+                        .IsUnique()
+                        .HasFilter("\"ClientId\" IS NOT NULL");
 
                     b.ToTable("Expense");
                 });

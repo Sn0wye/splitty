@@ -34,7 +34,7 @@ public sealed class SettlementEditTests(ApiFactory factory)
 
         var response = await group.Guest.UpdateSettlementAsync(group.Id, settlementId, new { amount = 4m });
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         await factory.WaitForProcessedAsync();
         Assert.Equal(-6m, (await group.Guest.ReadSummaryAsync(group.Id)).AmountOwedBy(group.GuestId, group.OwnerId));
     }
@@ -50,7 +50,7 @@ public sealed class SettlementEditTests(ApiFactory factory)
 
         var response = await group.Guest.UpdateSettlementAsync(group.Id, settlementId, new { amount = 10m });
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         await factory.WaitForProcessedAsync();
         Assert.Equal(0m, (await group.Guest.ReadSummaryAsync(group.Id)).AmountOwedBy(group.GuestId, group.OwnerId));
     }
@@ -72,7 +72,7 @@ public sealed class SettlementEditTests(ApiFactory factory)
 
         var response = await group.Guest.UpdateSettlementAsync(group.Id, settlementId, new { amount = 10m });
 
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         await factory.WaitForProcessedAsync();
         Assert.Equal(0m, (await group.Guest.ReadSummaryAsync(group.Id)).AmountOwedBy(group.GuestId, group.OwnerId));
     }
