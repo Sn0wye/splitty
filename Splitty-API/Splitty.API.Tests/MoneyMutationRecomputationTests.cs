@@ -287,7 +287,7 @@ public sealed class MoneyMutationRecomputationTests(ApiFactory factory)
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             await scope.ServiceProvider.GetRequiredService<IBalanceService>()
-                .SettleUp(group.Id, group.GuestId, group.OwnerId, 10m, null);
+                .SettleUp(group.Id, group.GuestId, group.GuestId, group.OwnerId, 10m, null);
         }
 
         // The timed wait, so a missing request fails instead of hanging.

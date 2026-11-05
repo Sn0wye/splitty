@@ -8,8 +8,9 @@ public interface IBalanceService
     Task<List<SimplifiedDebtResponse>> GetGroupSimplifiedDebts(int groupId, int userId);
     Task<ExpenseResponse> SettleUp(
         int groupId,
-        int userId,
-        int peerId,
+        int callerId,
+        int payerId,
+        int payeeId,
         decimal amount,
         DateTime? date,
         Guid? clientId = null,

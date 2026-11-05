@@ -6,7 +6,7 @@ namespace Splitty.API.Tests;
 
 /// <summary>
 /// Settling stays unilateral — one member, one request, no confirmation — but bounded by
-/// what the caller actually owes the peer.
+/// what the payer actually owes the payee.
 /// </summary>
 [Collection(nameof(ApiCollection))]
 public sealed class SettlementBoundsTests(ApiFactory factory)

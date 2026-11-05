@@ -14,7 +14,9 @@ with a nonzero balance disappearing breaks invariant 1.
 
 There is no "settle up first" gate. Settling is always caller-as-debtor, and no route records
 that someone paid *you*, so a creditor could never zero their own balance and would be
-unable to delete. Apple also forbids holding deletion hostage.
+unable to delete. Apple also forbids holding deletion hostage. ADR 0010 later let a
+creditor record being paid, which removes the first reason; the second still keeps the gate
+out, and a creditor can now also clear what a deleted debtor left behind.
 
 Unsettled memberships are kept on the tombstone so the group still sums to zero and
 debtors can still pay it. Settled memberships, outside pending groups, are dropped. A
