@@ -10,7 +10,8 @@ public class GroupService(
     IGroupMembershipRepository groupMembershipRepository,
     IGroupReadModel readModel,
     IRecurringExpenseService recurringExpenseService,
-    IGroupLedger groupLedger
+    IGroupLedger groupLedger,
+    INotifier notifier
 ) : IGroupService
 {
     public async Task<GroupDTO> CreateAsync(int userId, string name, string? description, Currency currency)
@@ -106,6 +107,11 @@ public class GroupService(
         if (await groupMembershipRepository.CountByGroupIdAsync(groupId) == 0)
         {
             await groupRepository.DeleteAsync(groupId);
+        }
+
+        if (actorId != targetUserId)
+        {
+            notifier.Notify([new Notice(targetUserId, NoticeMessage.RemovedFromGroup, groupId, actorId)]);
         }
 
         return MembershipRemovalStatus.Success;

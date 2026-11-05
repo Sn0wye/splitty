@@ -44,7 +44,7 @@ API ──> Service ──> Repository ──> Infrastructure (DbContext)
 | `Splitty.Infrastructure` | `ApplicationDbContext`, migrations |
 | `Splitty.Domain` | Entities only, no behavior |
 | `Splitty.DTO` | `Request/`, `Response/`, `Internal/` (including the group ledger's values) |
-| `Splitty.Background` | `TransactionBackgroundService` — drains the group ledger's queue |
+| `Splitty.Background` | `TransactionBackgroundService` — drains the group ledger's queue; `PushBackgroundService` — sends queued notices |
 | `Splitty.Seeder` | `DatabaseSeeder` and `SeedCommand`, run via `dotnet run seed` |
 
 Everything is registered scoped in `Program.cs`, interface-first. The group ledger is the
@@ -248,6 +248,11 @@ has a split in count toward it, and settlements never do. "Mine" on screen means
 paid.
 _Avoid_: portion, cut, my spending, cost
 
+**Notice**:
+One push notification for one user, decided by a write when it succeeds and sent later.
+Each belongs to a **notification kind** the user can switch off.
+_Avoid_: activity, event, alert
+
 **Peer**:
 A member of a group you are also in, seen from your side. Already the domain word — it is
 the `Balance.PeerId` column. The code and API say peer; the screen listing them is called
@@ -330,6 +335,56 @@ active recurring expenses (neither finished nor stopped), soonest due first, eac
 frequency, `nextDueOn`, `endsOn`, and `progress { added, total }`, where `total` is null for
 one with no end. Members only (invariant 3). It does not catch up: only `GET group` does
 (ADR 0006), and the app opens the group before Plans.
+
+## Push notifications
+
+A push notification tells a member what happened to their money. It does not record who did
+it, and there is still no feed, history or restore. See
+`docs/adr/0008-push-notifications-say-what-happened.md`.
+
+```
+PUT  /profile/push-device     { token, environment, language }   register this sign-in's device
+GET  /profile/notifications                                      { enabled, muted: [kind] }
+PUT  /profile/notifications   { enabled, muted: [kind] }          the whole state, not a patch
+POST /group/{groupId}/reminders { userId }                        ask a debtor to pay, once a day
+```
+
+**Who hears.** Never the actor. An expense tells its payer and participants when it is added
+or deleted, and tells them about an edit only when their own money in it moved (added,
+removed, share, or what they paid). A payment tells the payee when recorded, and both sides,
+minus the actor, when edited or deleted. A reminder tells the debtor; an accepted invite tells
+whoever created it; a removal tells the member removed. Expenses a recurring expense adds on
+a group read tell no one; creating the recurring expense is told once. Leaving, renaming and
+changing the currency tell no one.
+
+**Kinds.** `expense_added`, `recurring_expense_added`, `expense_changed`, `expense_deleted`,
+`payment_received`, `payment_changed`, `payment_deleted`, `payment_reminder`,
+`invite_accepted`, `removed_from_group`. Stored by name in `User.MutedNotifications`, so they
+are append-only by name. `User.NotificationsEnabled` is the main switch; switching it off
+keeps the muted kinds.
+
+**Built from the write.** `ExpenseService`, `BalanceService`, `InviteService` and
+`GroupService` hand `Notice`s to `INotifier` after a successful save, built by `Notices` from
+the row written, never from balances. The reminder alone reads a simplified debt and answers
+`409 balances_pending` while the group is pending; it answers `429` within a day of the last
+one for the same creditor, debtor and group.
+
+**Sending.** `INotifier` writes to an unbounded in-memory channel; `PushBackgroundService`
+hands each notice to `PushDispatcher` in a fresh scope. The dispatcher drops it for a
+recipient who is not live, switched it off, or has no signed-in device; renders it with
+`PushCopy` in each device's language (title: the group; body: who, what, the amount that
+matters to the reader, in the group currency's own format); sends it through `IPushSender`;
+and deletes a device APNs reports as unregistered. A failure is logged and the notice is
+dropped; nothing is retried or recovered on start. `ApnsPushSender` is the only component
+that talks to Apple: HTTP/2, an ES256 provider token reused for 40 minutes,
+`apns-collapse-id` per expense so a later notice about it replaces the earlier one, and
+`thread-id` per group.
+
+**Devices.** A `PushDevice` row is one APNs token, unique, bound to the refresh token family
+named by the access token's `fid` claim, plus its environment (`sandbox` or `production`) and
+the app language. A push goes only to a device whose family has a live token. Registering
+moves a token to the caller and drops any other token of the same family. Logout, reuse
+detection, deactivation and account deletion delete the devices of the families they end.
 
 ## Auth
 
@@ -462,7 +517,9 @@ JWT bearer, HMAC-SHA256, issued by `JwtTokenIssuer.Issue`. Expiry is
 default would add a third to the lifetime. Renewal is the refresh token's job (see Auth).
 
 Claims: `NameIdentifier` = user id, `Name` = display name, `Email`, `Sub` = email,
-`token_version` = `User.TokenVersion` (absent on older tokens, read as 0).
+`token_version` = `User.TokenVersion` (absent on older tokens, read as 0), `fid` = the
+refresh token family (absent on older tokens; registering a push device answers 401 without
+it, and the client's refresh brings one).
 
 **A token is accepted only while its user is live.** `OnTokenValidated` loads the user
 named by `NameIdentifier` on every request and fails authentication when the user is
@@ -481,15 +538,17 @@ Controllers are `[Authorize]` at class level; anonymous endpoints must opt out e
 
 ### Secrets
 
-`Jwt__SecretKey`, `Google__ClientId`, `Google__ClientSecret` and the five `R2__*` keys
-(`AccountId`, `AccessKeyId`, `SecretAccessKey`, `BucketName`, `PublicBaseUrl`) come from `Splitty-API/.env`
+`Jwt__SecretKey`, `Google__ClientId`, `Google__ClientSecret`, the five `R2__*` keys
+(`AccountId`, `AccessKeyId`, `SecretAccessKey`, `BucketName`, `PublicBaseUrl`) and the four
+`Apns__*` keys (`TeamId`, `KeyId`, `BundleId`, `PrivateKey`) come from `Splitty-API/.env`
 (gitignored; `.env.example` is the template). ASP.NET maps the double underscore to a
 config section. `appsettings.json` keeps `""` placeholders and is a schema, not a config.
 
-Each section binds to an options class (`JwtOptions`, `GoogleOptions`, `R2Options`) that is
-validated with `ValidateOnStart`, so a bad value fails the boot, not the first request.
-`Jwt:SecretKey` is required in every environment and must be at least 32 characters.
-Google and R2 are required only outside Development. Nothing reads configuration in
+Each section binds to an options class (`JwtOptions`, `GoogleOptions`, `R2Options`,
+`ApnsOptions`) that is validated with `ValidateOnStart`, so a bad value fails the boot, not
+the first request. `Jwt:SecretKey` is required in every environment and must be at least 32
+characters. Google, R2 and APNs are required only outside Development; a local run without
+APNs logs each push it drops. Nothing reads configuration in
 top-level `Program.cs` code: options and the connection string are resolved after the
 host is built, so the test host's in-memory settings are what the app sees.
 
@@ -524,8 +583,8 @@ DELETE /profile              204  irreversible and immediate: the user becomes a
 A user is **live** when `DeactivatedAt` and `DeletedAt` are both null. Both actions end
 every session at once, through the per-request lookup described under Auth.
 
-**Deactivation** sets `DeactivatedAt`, bumps `TokenVersion` and revokes every refresh
-token, nothing else. A
+**Deactivation** sets `DeactivatedAt`, bumps `TokenVersion`, revokes every refresh
+token and deletes every push device, nothing else. A
 deactivated user is a member for every purpose, including as payer or participant on new
 expenses, and other members see them as before. Signing in again with Google, by subject
 or by verified-email link, clears `DeactivatedAt` and lands on the same user. The bumped
@@ -543,7 +602,7 @@ transaction that:
 1. rewrites the user as `Name = "[removed]"`, `Email = ""`, `AvatarUrl = ""`,
    `AvatarKey = null`, `DeletedAt = now`;
 2. deletes every `OAuthAccount` of the user, so the same Google account signs in as a
-   fresh user, and every `RefreshToken`;
+   fresh user, every `RefreshToken` and every `PushDevice`;
 3. deletes every recurring expense the user pays for or appears in the split template of,
    so nothing new is ever billed to the tombstone;
 4. drops each membership whose group is not `BalancesPending` and whose net is exactly

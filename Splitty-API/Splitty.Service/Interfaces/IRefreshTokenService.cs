@@ -10,8 +10,8 @@ public sealed record TokenPair(string Token, string RefreshToken);
 /// service; the database sees their hashes.
 public interface IRefreshTokenService
 {
-    /// Starts a new family for one sign-in and returns its first raw token.
-    Task<string> IssueAsync(User user);
+    /// Starts a new family for one sign-in and returns its first access and refresh token.
+    Task<TokenPair> IssueAsync(User user);
 
     /// Trades a refresh token for a new pair. Null when the token is unknown, expired,
     /// revoked or reused; the caller must answer all four the same way. Presenting a token

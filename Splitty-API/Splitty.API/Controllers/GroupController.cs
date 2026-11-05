@@ -20,7 +20,8 @@ public class GroupController(
     IBalanceService balanceService,
     IInviteService inviteService,
     IGroupStatsService groupStatsService,
-    IGroupLedger groupLedger
+    IGroupLedger groupLedger,
+    INotificationService notificationService
 ) : ControllerBase
 {
     [HttpPost]
@@ -145,6 +146,31 @@ public class GroupController(
         var result = await groupService.RemoveMemberAsync(groupId, int.Parse(userId), memberUserId);
 
         return MapRemoval(result, self: memberUserId == int.Parse(userId));
+    }
+
+    /// <summary>
+    /// Asks a member who owes the caller to pay, with the amount from the simplified debts.
+    /// Once a day per member and group.
+    /// </summary>
+    [HttpPost("{groupId}/reminders")]
+    public async Task<ActionResult> SendReminder(int groupId, [FromBody] SendReminderRequest request)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null) return Unauthorized();
+
+        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
+        return await notificationService.RemindAsync(groupId, int.Parse(userId), request.UserId) switch
+        {
+            ReminderStatus.Sent => NoContent(),
+            ReminderStatus.DebtorNotAMember => NotFound(Error(404, "User is not a member of this group")),
+            ReminderStatus.BalancesPending => Conflict(Error(409,
+                "Balances are being recalculated. Try again in a moment.", ErrorCode.BalancesPending)),
+            ReminderStatus.NothingOwed => BadRequest(Error(400, "This member owes you nothing in this group")),
+            ReminderStatus.TooSoon => StatusCode(429, Error(429, "You already sent this member a reminder today")),
+            _ => StatusCode(500)
+        };
     }
 
     private ActionResult MapRemoval(MembershipRemovalStatus status, bool self) => status switch

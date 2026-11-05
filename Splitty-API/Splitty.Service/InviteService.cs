@@ -8,7 +8,8 @@ namespace Splitty.Service;
 public class InviteService(
     IInviteRepository inviteRepository,
     IGroupReadModel readModel,
-    IGroupMembershipRepository groupMembershipRepository
+    IGroupMembershipRepository groupMembershipRepository,
+    INotifier notifier
 ) : IInviteService
 {
     private const string CodeAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -74,6 +75,11 @@ public class InviteService(
             UserId = userId,
             GroupId = invite.GroupId
         });
+
+        if (outcome == InviteRedemptionOutcome.Success && invite.CreatedBy != userId)
+        {
+            notifier.Notify([new Notice(invite.CreatedBy, NoticeMessage.InviteAccepted, invite.GroupId, userId)]);
+        }
 
         return outcome switch
         {

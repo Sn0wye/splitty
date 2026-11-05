@@ -15,7 +15,8 @@ public class BalanceService(
     IUserRepository userRepository,
     IGroupMembershipRepository groupMembershipRepository,
     IAvatarResolver avatarResolver,
-    IGroupLedger groupLedger
+    IGroupLedger groupLedger,
+    INotifier notifier
 ) : IBalanceService
 {
     public async Task<List<SimplifiedDebtResponse>> GetGroupSimplifiedDebts(int groupId, int userId)
@@ -101,6 +102,7 @@ public class BalanceService(
 
         await expenseRepository.CreateAsync(settleExpense);
         await groupLedger.RequestRecomputationAsync(groupId);
+        notifier.Notify(Notices.PaymentRecorded(settleExpense.Id, groupId, userId, peerId, amount));
     }
 
     /// <summary>
@@ -147,6 +149,8 @@ public class BalanceService(
                 $"Settlement amount exceeds the {owed} owed to {payee.Name}.");
         }
 
+        var before = settlement.Amount;
+
         settlement.Amount = amount;
         // Coerced rather than preserved, so a row written before the column existed, or by an
         // earlier path, ends up saying what it is.
@@ -167,14 +171,25 @@ public class BalanceService(
 
         await expenseRepository.UpdateAsync(settlement);
         await groupLedger.RequestRecomputationAsync(groupId);
+        notifier.Notify(Notices.PaymentChanged(
+            settlement.Id, groupId, userId, payerId, peerSplit.UserId, before, amount));
     }
 
     public async Task DeleteSettlement(int groupId, int expenseId, int userId)
     {
         await EnsureMemberAsync(groupId, userId);
 
-        await expenseRepository.DeleteAsync(await FindSettlementAsync(groupId, expenseId));
+        var settlement = await FindSettlementAsync(groupId, expenseId);
+        var payeeId = settlement.Splits.FirstOrDefault(s => s.UserId != settlement.PaidBy)?.UserId;
+
+        await expenseRepository.DeleteAsync(settlement);
         await groupLedger.RequestRecomputationAsync(groupId);
+
+        if (payeeId is { } payee)
+        {
+            notifier.Notify(Notices.PaymentDeleted(
+                settlement.Id, groupId, userId, settlement.PaidBy, payee, settlement.Amount));
+        }
     }
 
     /// <summary>
