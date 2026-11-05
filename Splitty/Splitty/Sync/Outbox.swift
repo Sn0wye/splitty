@@ -17,7 +17,8 @@ struct OutboxTransport {
         settle: { groupId, draft, clientId in
             try await SettlementService.shared.settleUp(
                 groupId: groupId,
-                withUserId: draft.payeeId,
+                fromUserId: draft.payerId,
+                toUserId: draft.payeeId,
                 amountCents: draft.amountCents,
                 date: draft.date,
                 clientId: clientId,

@@ -130,9 +130,9 @@ struct SettleUpViewModelTests {
     }
 
     @Test func aServerRejectionProducesARetryableError() async {
-        let session = await makeSession(summary([debt(from: 3, to: 2, cents: 700)]))
+        let session = await makeSession(summary([debt(from: 1, to: 2, cents: 1_200)]))
         let model = SettleUpViewModel(session: session, currentUserId: 1,
-            dataSource: SettleUpDataSource(create: { _, _, _, _ in throw APIError.httpError(400, message: nil) },
+            dataSource: SettleUpDataSource(create: { _, _, _, _, _ in throw APIError.httpError(400, message: nil) },
                                          update: { _, _, _, _ in }))
         model.select(peerId: 2)
         model.amount.replaceEntry(cents: 1_200)
@@ -190,6 +190,107 @@ struct SettleUpViewModelTests {
         #expect(result?.settlesUp == true)
     }
 
+    // Recording a payment received.
+
+    @Test func preselectingADebtOwedToYouRecordsBeingPaidByThatPeer() async {
+        let session = await makeSession(summary([debt(from: 2, to: 1, cents: 2_350)]))
+        let row = BalanceRow(from: DebtMember(id: 2, name: "Bob", avatarUrl: ""),
+                             to: DebtMember(id: 1, name: "You", avatarUrl: ""),
+                             amountCents: 2_350, involvement: .paysYou)
+        let model = SettleUpViewModel(session: session, currentUserId: 1, preselectedRow: row)
+        #expect(model.direction == .youReceive)
+        #expect(model.selectedPeer?.userId == 2)
+        #expect(model.amountCents == 0)
+        #expect(model.heading == L10n.Settlement.paidYou("Bob"))
+        #expect(model.payAllTitle == L10n.Settlement.fullAmount("$23.50"))
+    }
+
+    @Test func aCreditorIsOfferedTheGroupsDebtorsAndASuggestion() async {
+        let session = await makeSession(summary([
+            debt(from: 3, to: 2, cents: 700), debt(from: 3, to: 1, cents: 500)
+        ]), members: members + [cara])
+        let model = SettleUpViewModel(session: session, currentUserId: 1)
+        model.suggestPayment()
+        #expect(model.peers.map(\.userId) == [3])
+        #expect(model.selectedPeer?.userId == 3)
+        #expect(model.debtCents(for: 3) == 500)
+    }
+
+    @Test func aSettledMemberHasNobodyToSettleWith() async {
+        let session = await makeSession(summary([debt(from: 2, to: 3, cents: 700)]), members: members + [cara])
+        let model = SettleUpViewModel(session: session, currentUserId: 1)
+        model.suggestPayment()
+        #expect(model.direction == nil)
+        #expect(model.peers.isEmpty)
+        #expect(model.selectedPeer == nil)
+    }
+
+    @Test func aReceivedPaymentIsSentWithThePeerAsPayerAndSettlesYouUp() async {
+        let sent = SentPayments()
+        let model = await makeViewModel(summary([debt(from: 2, to: 1, cents: 1_200)]), dataSource: sent.dataSource)
+        model.payAll()
+        let result = await model.submit()
+        #expect(sent.created.count == 1)
+        #expect(sent.created.first?.payerId == 2)
+        #expect(sent.created.first?.payeeId == 1)
+        #expect(sent.created.first?.amountCents == 1_200)
+        #expect(result?.payerId == 2)
+        #expect(result?.payeeId == 1)
+        #expect(result?.settlesUp == true)
+    }
+
+    @Test func aReceivedPaymentKeptForLaterIsQueuedWithThePeerAsPayer() async {
+        let sent = SentPayments()
+        let model = await makeViewModel(summary([debt(from: 2, to: 1, cents: 1_200)]), dataSource: sent.queuedDataSource)
+        model.payAll()
+        let result = await model.submit()
+        #expect(sent.created.isEmpty)
+        #expect(sent.queued.count == 1)
+        #expect(sent.queued.first?.payerId == 2)
+        #expect(sent.queued.first?.payeeId == 1)
+        #expect(result?.payerId == 2)
+        #expect(result?.queued == true)
+        #expect(result?.clientId == sent.clientId)
+    }
+
+    @Test func aPartialReceivedPaymentDoesNotSettleYouUp() async {
+        let model = await makeViewModel(summary([debt(from: 2, to: 1, cents: 1_200)]), dataSource: succeeding)
+        model.amount.replaceEntry(cents: 1_000)
+        let result = await model.submit()
+        #expect(result?.settlesUp == false)
+    }
+
+    @Test func rejectingMoreThanYouAreOwedNamesWhatThePeerOwes() async {
+        let model = await makeViewModel(summary([debt(from: 2, to: 1, cents: 1_200)]))
+        model.amount.replaceEntry(cents: 1_201)
+        model.recordSubmissionFailure(TestError())
+        #expect(model.errorMessage == L10n.Settlement.onlyOwesYou("Bob", "$12.00"))
+    }
+
+    // Editing a payment either side recorded.
+
+    @Test func editingAPaymentYouReceivedNamesThePayerNotYou() async {
+        let model = await makeEditModel(remainingCents: 300, paidBy: 2, debtorIsYou: false)
+        #expect(model.selectedPeer?.userId == 2)
+        #expect(model.heading == L10n.Settlement.paymentWith("Bob"))
+    }
+
+    @Test func editingAPaymentBetweenTwoOthersNamesBothAndNeverSettlesYouUp() async {
+        // You owe Bob $5.00; Cara paid Bob $5.00, and raising it moves nothing of yours.
+        let session = await makeSession(summary([debt(from: 1, to: 2, cents: 500)]), members: members + [cara])
+        let settlement = TestExpense.make(id: 18, paidBy: 3, amount: 5, splitAmounts: [3: 5, 2: -5],
+                                          type: .payment, date: "2026-03-01T12:00:00Z")
+        let model = SettleUpViewModel(session: session, currentUserId: 1, settlement: settlement,
+                                      dataSource: succeeding)
+        #expect(model.direction == nil)
+        #expect(model.heading == L10n.Group.payerPaidPayee("Cara", "Bob"))
+        model.amount.replaceEntry(cents: 1_000)
+        let result = await model.submit()
+        #expect(result?.payerId == 3)
+        #expect(result?.payeeId == 2)
+        #expect(result?.settlesUp == false)
+    }
+
     private func makeEditModel(remainingCents: Int, paidBy payer: Int, debtorIsYou: Bool = true) async -> SettleUpViewModel {
         let remaining = debtorIsYou ? debt(from: 1, to: 2, cents: remainingCents) : debt(from: 2, to: 1, cents: remainingCents)
         let session = await makeSession(summary([remaining]))
@@ -199,8 +300,12 @@ struct SettleUpViewModelTests {
         return SettleUpViewModel(session: session, currentUserId: 1, settlement: settlement, dataSource: succeeding)
     }
 
+    private var cara: GroupMember {
+        GroupMember(id: 30, userId: 3, name: "Cara", email: "cara@example.com", avatarUrl: "")
+    }
+
     private var succeeding: SettleUpDataSource {
-        SettleUpDataSource(create: { _, _, _, _ in }, update: { _, _, _, _ in })
+        SettleUpDataSource(create: { _, _, _, _, _ in }, update: { _, _, _, _ in })
     }
 
     private func makeViewModel(_ summary: GroupBalanceSummary,
@@ -241,3 +346,31 @@ struct SettleUpViewModelTests {
 }
 
 private struct TestError: Error {}
+
+/// Keeps every payment the screen asked to create.
+@MainActor
+private final class SentPayments {
+    private(set) var created: [(payerId: Int, payeeId: Int, amountCents: Int)] = []
+
+    var dataSource: SettleUpDataSource {
+        SettleUpDataSource(
+            create: { _, payerId, payeeId, amountCents, _ in
+                self.created.append((payerId, payeeId, amountCents))
+            },
+            update: { _, _, _, _ in }
+        )
+    }
+
+    private(set) var queued: [(payerId: Int, payeeId: Int, amountCents: Int)] = []
+    let clientId = UUID()
+
+    /// Keeps every payment for later, the way the outbox does offline.
+    var queuedDataSource: SettleUpDataSource {
+        var source = dataSource
+        source.send = { _, payerId, payeeId, amountCents, _ in
+            self.queued.append((payerId, payeeId, amountCents))
+            return .queued(clientId: self.clientId)
+        }
+        return source
+    }
+}

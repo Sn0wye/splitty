@@ -62,7 +62,8 @@ struct PendingChangesSheet: View {
             ]
         case .overCap(let capCents):
             guard capCents > 0, case .settle(let draft, let row) = write.action else { return [discard] }
-            let capped = SettleDraft(payeeId: draft.payeeId, amountCents: capCents, date: draft.date, currency: draft.currency)
+            let capped = SettleDraft(payeeId: draft.payeeId, amountCents: capCents, date: draft.date,
+                                     currency: draft.currency, payerId: draft.payerId)
             let cappedRow = PendingRows.payment(capped, payerId: row.paidBy, id: row.id, groupId: write.groupId,
                                                 clientId: write.id, members: session.members)
             return [

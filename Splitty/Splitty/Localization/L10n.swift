@@ -663,6 +663,17 @@ enum L10n {
         static func onlyOwe(_ name: String, _ amount: String) -> String {
             format("settlement.only_owe", default: "You only owe %1$@ %2$@.", name, amount)
         }
+        /// The amount screen's heading when the current user records being paid.
+        static func paidYou(_ name: String) -> String {
+            format("settlement.paid_you", default: "%@ paid you", name)
+        }
+        /// Fills in what the peer owes the current user, the received side's Pay all.
+        static func fullAmount(_ amount: String) -> String {
+            format("settlement.full_amount", default: "Full amount %@", amount)
+        }
+        static func onlyOwesYou(_ name: String, _ amount: String) -> String {
+            format("settlement.only_owes_you", default: "%1$@ only owes you %2$@.", name, amount)
+        }
         static var recordFailed: String {
             text(
                 "settlement.record_failed",

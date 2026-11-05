@@ -38,7 +38,7 @@ struct GroupSessionTests {
         data.release(call: 1)
         await first.value
 
-        session.report(.paymentRecorded(payee: TestExpense.members[1], amountCents: 500,
+        session.report(.paymentRecorded(payerId: 1, payeeId: 2, amountCents: 500,
                                         date: Date(), currentUserId: 1))
         let payment = try #require(session.expenses.first)
         #expect(payment.id < 0)
@@ -421,7 +421,7 @@ struct GroupSessionTests {
         #expect(data.paymentDeleteCount == 1)
         #expect(data.expenseDeleteCount == 0)
 
-        session.report(.paymentRecorded(payee: TestExpense.members[1], amountCents: 500,
+        session.report(.paymentRecorded(payerId: 1, payeeId: 2, amountCents: 500,
                                         date: Date(), currentUserId: 1))
         guard let pending = session.expenses.first(where: session.isPendingPayment) else {
             Issue.record("Expected a pending payment")
@@ -538,7 +538,7 @@ struct GroupSessionTests {
         let session = store.open(1)
         await session.appear().value
         await session.report(.paymentRecorded(
-            payee: TestExpense.members[1], amountCents: 500,
+            payerId: 1, payeeId: 2, amountCents: 500,
             date: paymentDate, currentUserId: 1
         )).value
         await gate.waitForStart()
@@ -573,7 +573,7 @@ struct GroupSessionTests {
         let data = ControlledGroupData()
         let session = GroupSessionStore(dataSource: { data.source() }).open(1, seed: group(id: 1, net: -5_000))
         let date = try #require(Expense.parseTimestamp("2026-03-01T12:00:00Z"))
-        session.record(SettleUpResult(peer: TestExpense.members[1], amountCents: 2_350,
+        session.record(SettleUpResult(payerId: 1, payeeId: 2, amountCents: 2_350,
                                      date: date, settlementId: nil), currentUserId: 1)
 
         let payment = try #require(session.expenses.first)
@@ -589,6 +589,21 @@ struct GroupSessionTests {
         session.discard()
     }
 
+    @Test func aReceivedPaymentIsRecordedWithThePeerAsPayerAndLowersYourNet() throws {
+        let data = ControlledGroupData()
+        let session = GroupSessionStore(dataSource: { data.source() }).open(1, seed: group(id: 1, net: 5_000))
+        let date = try #require(Expense.parseTimestamp("2026-03-01T12:00:00Z"))
+        session.record(SettleUpResult(payerId: 2, payeeId: 1, amountCents: 2_350,
+                                     date: date, settlementId: nil), currentUserId: 1)
+
+        let payment = try #require(session.expenses.first)
+        #expect(payment.paidBy == 2)
+        #expect(payment.peer?.id == 1)
+        #expect(session.isPendingPayment(payment))
+        #expect(session.netBalanceCents == 2_650)
+        session.discard()
+    }
+
     @Test func settleUpResultEditsTheExistingPayment() async throws {
         let data = ControlledGroupData()
         data.autoRelease = true
@@ -600,7 +615,7 @@ struct GroupSessionTests {
         data.autoRelease = false
         let date = try #require(Expense.parseTimestamp("2026-09-10T12:00:00Z"))
 
-        session.record(SettleUpResult(peer: TestExpense.members[1], amountCents: 2_500,
+        session.record(SettleUpResult(payerId: 1, payeeId: 2, amountCents: 2_500,
                                      date: date, settlementId: 8), currentUserId: 1)
         #expect(session.expenses.map(\.id) == [8])
         #expect(session.expenses.first?.amount == 25)
@@ -649,7 +664,7 @@ struct GroupSessionTests {
                                       splitAmounts: [1: 23.50, 2: -23.50], type: .payment,
                                       category: .payment, date: "2026-03-01T12:00:00Z")
         data.expensesForCall = { _ in [stored] }
-        let refresh = session.record(SettleUpResult(peer: TestExpense.members[1], amountCents: 2_350,
+        let refresh = session.record(SettleUpResult(payerId: 1, payeeId: 2, amountCents: 2_350,
                                                     date: date, settlementId: nil), currentUserId: 1)
         #expect(store.liveBalance(for: 1) == GroupLiveBalance(netBalanceCents: -2_650, balancesPending: true))
         #expect(store.liveBalance(for: 99) == nil)

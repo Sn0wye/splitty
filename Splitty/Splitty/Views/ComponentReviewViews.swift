@@ -184,26 +184,42 @@ enum ReviewSamples {
     static let settleUpTrip = Group(id: groupId, name: "Weekend trip", description: nil,
                                     netBalanceCents: -16_500, createdAt: "2026-01-01", members: members)
 
+    /// The other side of `settleUpDebt`: Ana owes you $165.00, so recording that she paid
+    /// it all settles you up.
+    static let settleUpCredit = BalanceRow(
+        from: DebtMember(id: users[1].id, name: users[1].name, avatarUrl: ""),
+        to: DebtMember(id: users[0].id, name: users[0].name, avatarUrl: ""),
+        amountCents: 16_500,
+        involvement: .paysYou
+    )
+
+    static let settleUpCreditTrip = Group(id: groupId, name: "Weekend trip", description: nil,
+                                          netBalanceCents: 16_500, createdAt: "2026-01-01", members: members)
+
+    static let settleUpGroup = makeSettleUpGroup(trip: settleUpTrip, row: settleUpDebt)
+    static let settleUpCreditGroup = makeSettleUpGroup(trip: settleUpCreditTrip, row: settleUpCredit)
+
     /// The group reads behind the settle-up sheet, answered locally. The debt never clears,
     /// so every opening owes it again.
-    static let settleUpGroup = GroupDataSource(
-        group: { _ in settleUpTrip },
-        expenses: { _ in [] },
-        summary: { _ in
-            GroupBalanceSummary(
-                simplifiedDebts: [SimplifiedDebt(from: settleUpDebt.from, to: settleUpDebt.to,
-                                                 amountCents: settleUpDebt.amountCents)],
-                balancesPending: false
-            )
-        },
-        requestBalanceRefresh: { _ in },
-        deleteExpense: { _, _, _ in throw ReviewOnly() },
-        deletePayment: { _, _ in throw ReviewOnly() }
-    )
+    private static func makeSettleUpGroup(trip: Group, row: BalanceRow) -> GroupDataSource {
+        GroupDataSource(
+            group: { _ in trip },
+            expenses: { _ in [] },
+            summary: { _ in
+                GroupBalanceSummary(
+                    simplifiedDebts: [SimplifiedDebt(from: row.from, to: row.to, amountCents: row.amountCents)],
+                    balancesPending: false
+                )
+            },
+            requestBalanceRefresh: { _ in },
+            deleteExpense: { _, _, _ in throw ReviewOnly() },
+            deletePayment: { _, _ in throw ReviewOnly() }
+        )
+    }
 
     /// Recording waits like a request would, then succeeds without writing anything.
     static let settleUp = SettleUpDataSource(
-        create: { _, _, _, _ in try await Task.sleep(for: .milliseconds(600)) },
+        create: { _, _, _, _, _ in try await Task.sleep(for: .milliseconds(600)) },
         update: { _, _, _, _ in try await Task.sleep(for: .milliseconds(600)) }
     )
 
@@ -457,21 +473,29 @@ struct ReviewPlansView: View {
 /// again once dismissed so the dismissal and a fresh opening can both be reviewed.
 /// The real settle-up sheet on `ReviewSamples.settleUpDebt`: recording the whole amount
 /// plays the settled-up moment, a smaller one dismisses as usual. Without a balance row
-/// it opens on the person step, the way the group's Settle up button does.
+/// it opens on the person step, the way the group's Settle up button does. When you are
+/// owed, it opens on `ReviewSamples.settleUpCredit` and records Ana paying you.
 struct ReviewSettleUpSheet: View {
-    var startsFromBalanceRow = true
+    private let startsFromBalanceRow: Bool
+    private let row: BalanceRow
 
-    @StateObject private var session = GroupSession(
-        groupId: ReviewSamples.groupId,
-        seed: ReviewSamples.settleUpTrip,
-        dataSource: ReviewSamples.settleUpGroup
-    )
+    @StateObject private var session: GroupSession
+
+    init(startsFromBalanceRow: Bool = true, youAreOwed: Bool = false) {
+        self.startsFromBalanceRow = startsFromBalanceRow
+        row = youAreOwed ? ReviewSamples.settleUpCredit : ReviewSamples.settleUpDebt
+        _session = StateObject(wrappedValue: GroupSession(
+            groupId: ReviewSamples.groupId,
+            seed: youAreOwed ? ReviewSamples.settleUpCreditTrip : ReviewSamples.settleUpTrip,
+            dataSource: youAreOwed ? ReviewSamples.settleUpCreditGroup : ReviewSamples.settleUpGroup
+        ))
+    }
 
     var body: some View {
         SettleUpSheet(
             session: session,
             currentUserId: ReviewSamples.currentUserId,
-            preselectedRow: startsFromBalanceRow ? ReviewSamples.settleUpDebt : nil,
+            preselectedRow: startsFromBalanceRow ? row : nil,
             dataSource: ReviewSamples.settleUp
         )
         .task { await session.appear().value }

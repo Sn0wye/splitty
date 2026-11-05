@@ -66,6 +66,7 @@ Screen names are the raw values of `ReviewScreen` in
 | `plansEmpty` | Plans for a group with no active recurring expense. |
 | `settleUp` | The same sheet opened from the group's Settle up button: the person step first, then the amount. |
 | `settledUp` | The real Settle up sheet on a $165.00 debt to Ana. Recording it all plays the settled-up moment; a smaller amount dismisses as usual. Nothing is written. |
+| `paidToYou` | The same sheet from the other side: Ana owes you $165.00 and the sheet records her paying you, with Full amount in place of Pay all. Recording it all plays the settled-up moment. Nothing is written. |
 | `avatarCrop` | The real avatar crop screen on a generated landscape photo with a grid: pan, flick and pinch past the bounds. |
 | `appearance` | The real Appearance setting. Picking a theme changes and stores the app's theme. |
 

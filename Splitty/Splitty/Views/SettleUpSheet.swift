@@ -80,7 +80,7 @@ struct SettleUpSheet: View {
                 HStack(spacing: 12) {
                     peerAvatar(peer)
 
-                    Text(peer.name)
+                    Text(MemberDisplay(peer).name)
                         .font(.body.weight(.semibold))
 
                     Spacer()
@@ -89,7 +89,8 @@ struct SettleUpSheet: View {
                         Text(Money.formatted(cents: debt, currency: currency))
                             .font(.body.weight(.semibold))
                             .monospacedDigit()
-                            .foregroundStyle(.red)
+                            // Red for what the user owes, green for what they are owed.
+                            .foregroundStyle(viewModel.direction == .youReceive ? Color("positive") : .red)
                     }
                 }
                 .foregroundStyle(Color.expenseForeground)
@@ -119,7 +120,7 @@ struct SettleUpSheet: View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            Text(viewModel.isEditing ? L10n.Settlement.paymentWith(viewModel.selectedPeer?.name ?? L10n.Common.member) : L10n.Settlement.pay(viewModel.selectedPeer?.name ?? L10n.Common.member))
+            Text(viewModel.heading)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Color("muted-foreground"))
                 .padding(.bottom, 8)
