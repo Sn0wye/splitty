@@ -8,8 +8,7 @@ minus one payments. Exact minimum-transaction optimization is out of scope.
 The background replay replaces the stored simplified rows after writing pairwise balances.
 Reads never compute them. The summary returns `simplifiedDebts`, each with `from` and `to`
 objects containing `id`, `name`, and `avatarUrl`, plus `amount`. It includes the whole group
-and retains `balancesPending`. People aggregates these same debts with positive amounts
-meaning the peer owes the caller. The migration marks existing groups pending; startup
+and retains `balancesPending`. The migration marks existing groups pending; startup
 queues pending groups through the existing worker to populate their simplified debts.
 
 A settlement is capped at the smaller of the payer's net debt and the payee's net credit,
