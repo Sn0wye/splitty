@@ -266,8 +266,7 @@ _Avoid_: portion, cut, my spending, cost
 
 **Peer**:
 A member of a group you are also in, seen from your side. Already the domain word — it is
-the `Balance.PeerId` column. The code and API say peer; the screen listing them is called
-**People**, the same code-versus-screen split as settlement versus payment.
+the `Balance.PeerId` column.
 _Avoid_: friend, contact, counterparty
 
 ## Balance recomputation
@@ -305,12 +304,11 @@ every message it read, skipped ones included.
 So **balances are eventually consistent** — right after creating an expense, a read may
 still return pre-expense numbers. The client must not assume a write is immediately
 reflected. A group's net balance is the sum of the signed-in member's pairwise `Balance`
-rows; the overall figure on the groups list is the sum of those group nets.
+rows; the groups list totals those group nets per currency (ADR 0007).
 
 `Group.BalancesPending`, surfaced as `balancesPending` on the summary response, says a
 recomputation is outstanding, including simplified debts. The summary serves the whole
-group's stored simplified debts, and People uses those same per-group amounts. Pending
-figures may be stale. Settlements are not refused for it: their cap reads the rows (invariant 5).
+group's stored simplified debts. Pending figures may be stale. Settlements are not refused for it: their cap reads the rows (invariant 5).
 The flag is eventually consistent, not a lock or transaction barrier. The summary reads it
 through the ledger before the debts, so a replay landing between the reads reports fresh
 figures as pending rather than stale ones as settled.
@@ -679,8 +677,7 @@ SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
   and pending state when available, and the server's list value otherwise. One pending-balance
   watcher per session supplies the header, Balances and Settle-up with the same summary and
   pending status. The session also decides whether a saved settle-up payment is new or edited,
-  when settle-up forces a fresh summary, and what a delete's outcome is. People keeps its last successful response visible
-  during a refetch, including an empty response.
+  when settle-up forces a fresh summary, and what a delete's outcome is.
 - **Offline** — see `docs/adr/0008-offline-writes.md`. `LocalStore` (SQLite through the
   system `libsqlite3`, in Application Support, excluded from backup) keeps, per signed-in
   user, the groups list, each group's last snapshot (group, expenses, summary) and the

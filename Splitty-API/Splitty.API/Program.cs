@@ -223,7 +223,6 @@ builder.Services.AddScoped<IBalanceService, BalanceService>();
 builder.Services.AddScoped<IInviteService, InviteService>();
 builder.Services.AddScoped<IOAuthService, OAuthService>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
-builder.Services.AddScoped<IPeopleService, PeopleService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IGroupStatsService, GroupStatsService>();
 builder.Services.AddScoped<IRecurringExpenseService, RecurringExpenseService>();

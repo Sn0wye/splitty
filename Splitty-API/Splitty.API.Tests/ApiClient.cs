@@ -169,9 +169,6 @@ public sealed class ApiClient
     public Task<HttpResponseMessage> RemoveMemberAsync(int groupId, int userId) =>
         _http.DeleteAsync($"/group/{groupId}/members/{userId}");
 
-    public Task<HttpResponseMessage> GetPeopleAsync() =>
-        _http.GetAsync("/people");
-
     public Task<HttpResponseMessage> SettleUpAsync(int groupId, object body) =>
         _http.PostAsJsonAsync($"/group/{groupId}/settle", body);
 

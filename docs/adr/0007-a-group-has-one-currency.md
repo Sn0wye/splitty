@@ -38,8 +38,7 @@ deserializer rejects an unlisted code with a `400` before any handler runs.
 - No query may sum amounts across groups unless it buckets them by currency. The groups list
   totals each currency separately. Its header shows the net in the currency most groups are
   in, coloured by direction, and folds the other currencies behind a count that expands on
-  tap. The People screen still sums across groups. It predates this decision and is due to
-  be removed.
+  tap. The People screen, which summed across groups, was removed rather than bucketed.
 - The client formats each currency from its own fixed table: symbol, symbol position, spacing,
   and separators. `R$ 1.234,50` reads the same whatever the app language, because the format
   belongs to the money, not to the reader. The decimal key on the expense keypad shows that

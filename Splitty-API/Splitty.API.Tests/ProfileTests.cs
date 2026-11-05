@@ -373,18 +373,6 @@ public sealed class ProfileTests : IDisposable
         Assert.Contains($"seed={group.OwnerId}", owner.GetProperty("avatarUrl").GetString()!);
     }
 
-    [Fact]
-    public async Task A_peer_row_carries_the_resolved_avatar()
-    {
-        var group = await GroupFixture.CreateAsync(_factory);
-        await _factory.DrainProcessedAsync();
-
-        var body = await group.Owner.ReadJsonAsync(await group.Owner.GetPeopleAsync());
-        var peer = body.GetProperty("peers").EnumerateArray().Single();
-
-        Assert.Contains($"seed={group.GuestId}", peer.GetProperty("avatarUrl").GetString()!);
-    }
-
     private async Task<string> UploadAsync(ApiClient client, long contentLength = 60_000, string? contentType = null)
     {
         var response = await client.CreateAvatarUploadAsync();

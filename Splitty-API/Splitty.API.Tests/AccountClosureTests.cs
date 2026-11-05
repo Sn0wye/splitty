@@ -193,18 +193,6 @@ public sealed class AccountClosureTests : IDisposable
     }
 
     [Fact]
-    public async Task A_deleted_peer_with_a_balance_shows_as_removed_in_people()
-    {
-        var pair = await PairWhereGuestOwesAsync(10m);
-
-        (await pair.GuestClient.DeleteAccountAsync()).EnsureSuccessStatusCode();
-
-        var people = await pair.OwnerClient.ReadJsonAsync(await pair.OwnerClient.GetPeopleAsync());
-        var peer = people.GetProperty("peers").EnumerateArray().Single();
-        Assert.Equal("[removed]", peer.GetProperty("name").GetString());
-    }
-
-    [Fact]
     public async Task The_sole_member_deleting_deletes_the_group()
     {
         var user = await ApiClient.Create(_factory).SignInAsync();

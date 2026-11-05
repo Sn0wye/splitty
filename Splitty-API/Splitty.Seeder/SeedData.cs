@@ -30,8 +30,8 @@ internal static class SeedData
 
     /// <summary>
     /// The first six are kept as they were: `POST /auth/dev-login` and the docs name these
-    /// addresses. Mia and Leo only share some groups with John, so People has peers he
-    /// meets in one group and peers he meets in several.
+    /// addresses. Mia and Leo only share some groups with John, so he has peers he meets
+    /// in one group and peers he meets in several.
     /// </summary>
     public static readonly IReadOnlyList<SeedUser> Users =
     [
