@@ -40,6 +40,12 @@ struct GroupsView: View {
                             .padding(.horizontal, 20)
                     }
 
+                    SyncStatusBanner(
+                        isOffline: appState.groupSessions.outbox.map { !$0.isOnline } ?? false,
+                        savedAt: viewModel.savedAt
+                    )
+                    .padding(.horizontal, 20)
+
                     if let errorMessage = viewModel.errorMessage, viewModel.groups.isEmpty {
                         VStack(spacing: 16) {
                             Text(errorMessage)
@@ -166,7 +172,10 @@ struct GroupsView: View {
     }
 
     private func reloadGroups() async {
-        await viewModel.loadGroups(recentlyOpened: appState.groupSessions.recentlyOpenedGroupIds)
+        await viewModel.loadGroups(
+            recentlyOpened: appState.groupSessions.recentlyOpenedGroupIds,
+            cache: appState.groupSessions.outbox?.cache
+        )
     }
 
     private var header: some View {

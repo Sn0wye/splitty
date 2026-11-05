@@ -52,7 +52,10 @@ struct ContentView: View {
                             groupId: group.id,
                             currency: group.currency,
                             members: group.members,
-                            currentUserId: currentUserId
+                            currentUserId: currentUserId,
+                            dataSource: appState.groupSessions.outbox.map {
+                                .queued(outbox: $0, members: group.members, currency: group.currency) { _ in nil }
+                            } ?? .live
                         ) { write in
                             appState.groupSessions.report(write, groupId: group.id)
                         }
@@ -112,6 +115,7 @@ private struct SessionExpenseSheet: View {
             members: group.members,
             currentUserId: currentUserId,
             timelineExpenses: session.expenses,
+            dataSource: session.expenseFormDataSource(),
             onSaved: onSaved
         )
     }

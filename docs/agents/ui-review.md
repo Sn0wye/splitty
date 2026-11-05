@@ -58,6 +58,7 @@ Screen names are the raw values of `ReviewScreen` in
 | `timeline` | Real timeline rows on sample data: every row shape (an installment badge among them), date headers, swipe to delete, the last row's clearance above the tab bar. Reset restores deleted rows. |
 | `timelineEuros` | The timeline in a EUR group: amounts written `42,50 €`. |
 | `groupOpen` | The real Groups tab pushing the real group screen, over reads that take 1.2s. The first open shows the timeline loader under the seeded header; Back and opening it again shows the cached rows at once while the same read runs. |
+| `groupOffline` | The same Groups tab and group screen with every read failing, as with no network. The group opens on the copy saved two hours ago, with an expense added offline waiting to send and an edit that met another member's edit of the same field; the banner opens Unsent changes. |
 | `charts` | The real Charts sheet; each range lands on different numbers after a short delay. |
 | `chartsFailed` | The first load fails; Try again succeeds. |
 | `chartsEmpty` | Charts for a group with no expenses. |

@@ -8,7 +8,7 @@
 import Foundation
 
 /// A new expense as the form built it.
-struct NewExpenseRequest: Equatable {
+struct NewExpenseRequest: Codable, Equatable {
     let groupId: Int
     let description: String
     let amountCents: Int
@@ -19,11 +19,15 @@ struct NewExpenseRequest: Equatable {
     let splits: [ExpenseSplitRequest]
     /// Nil unless it repeats: `never` is the server's default, so it is not sent.
     var repeats: RepeatStart? = nil
+    /// Makes a resend safe: the server answers a create it already stored with that row.
+    var clientId: UUID? = nil
+    /// The group currency the form showed, so a relabelled group refuses the write.
+    var currency: Currency? = nil
 }
 
 /// How a new expense repeats. The frequency and the zone travel together: the server
 /// needs the zone to know which day "the 1st" is.
-struct RepeatStart: Equatable {
+struct RepeatStart: Codable, Equatable {
     let frequency: ExpenseRepeat
     /// The device's IANA identifier when the expense was saved.
     let timeZone: String
@@ -32,7 +36,7 @@ struct RepeatStart: Equatable {
 }
 
 /// An edit. Every nil field is left unchanged by the server.
-struct ExpenseUpdateRequest: Equatable {
+struct ExpenseUpdateRequest: Codable, Equatable {
     let groupId: Int
     let expenseId: Int
     var description: String? = nil
@@ -44,12 +48,17 @@ struct ExpenseUpdateRequest: Equatable {
     var splits: [ExpenseSplitRequest]? = nil
     /// Nil for an expense entered by hand, whose edit has nothing to reach past it.
     var reach: EditReach? = nil
+    /// The version the edit was made against; a newer row refuses it (ADR 0008).
+    var baseVersion: Int? = nil
+    /// Makes a resend of an edit that already succeeded answer with the row.
+    var opId: UUID? = nil
+    var currency: Currency? = nil
 }
 
 /// How far an edit of an expense a recurring expense added reaches. Only "this and
 /// following" changes the recurring expense itself, so only it carries a frequency, a zone
 /// and an end; the server refuses any of them on `this`.
-enum EditReach: Equatable {
+enum EditReach: Codable, Equatable {
     case this
     /// `repeat` is nil to keep the frequency, or `never` to stop. `timeZone` is the device's
     /// current IANA identifier, so later repeats come due where the member is now. `end` is
@@ -88,6 +97,8 @@ class ExpenseService {
             "splits": request.splits.map(Self.splitBody(_:))
         ]
         if let date = request.date { body["date"] = Self.timestamp(from: date) }
+        if let clientId = request.clientId { body["clientId"] = clientId.uuidString }
+        if let currency = request.currency { body["currency"] = currency.rawValue }
         if let repeats = request.repeats {
             body["repeat"] = repeats.frequency.rawValue
             body["timeZone"] = repeats.timeZone
@@ -112,6 +123,9 @@ class ExpenseService {
         // a mode is rejected, so they travel together or not at all.
         if let splitMode = request.splitMode { body["splitMode"] = splitMode.rawValue }
         if let splits = request.splits { body["splits"] = splits.map(Self.splitBody(_:)) }
+        if let baseVersion = request.baseVersion { body["baseVersion"] = baseVersion }
+        if let opId = request.opId { body["opId"] = opId.uuidString }
+        if let currency = request.currency { body["currency"] = currency.rawValue }
         if case .following(let repeatFrequency, let timeZone, let end) = request.reach {
             if let repeatFrequency { body["repeat"] = repeatFrequency.rawValue }
             body["timeZone"] = timeZone

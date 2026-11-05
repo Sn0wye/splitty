@@ -33,7 +33,7 @@ struct RepeatEndDraft: Equatable {
 }
 
 /// What a "this and following" edit asks of the end.
-enum RepeatEndChange: Equatable {
+enum RepeatEndChange: Codable, Equatable {
     /// A new last day, `yyyy-MM-dd`.
     case on(String)
     /// No end any more.

@@ -71,7 +71,8 @@ struct ExpenseDetailView: View {
                 members: members,
                 currentUserId: currentUserId,
                 expense: expense,
-                timelineExpenses: timelineExpenses
+                timelineExpenses: timelineExpenses,
+                dataSource: appState.groupSessions.session(for: expense.groupId)?.expenseFormDataSource() ?? .live
             ) { write in
                 appState.groupSessions.report(write, groupId: expense.groupId)
                 onMoneyWrite?()

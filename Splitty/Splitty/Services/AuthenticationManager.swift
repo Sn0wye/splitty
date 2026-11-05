@@ -6,6 +6,12 @@ protocol AuthenticationSource {
     func isAuthenticated() -> Bool
     func currentUser() async throws -> User
     func logout()
+    /// Who the stored credentials name, read without a network. Nil when unknown.
+    func storedUser() -> User?
+}
+
+extension AuthenticationSource {
+    func storedUser() -> User? { nil }
 }
 
 @MainActor
@@ -92,9 +98,30 @@ class AuthenticationManager: ObservableObject {
                 logout()
             default:
                 print("⚠️ Could not load the signed-in profile: \(error.localizedDescription)")
+                useStoredUser()
             }
         } catch {
             print("⚠️ Could not load the signed-in profile: \(error.localizedDescription)")
+            useStoredUser()
+        }
+    }
+
+    /// With no network the profile cannot load, but the groups and writes this device kept
+    /// are keyed by user: the stored token says whose they are, so the app opens on them
+    /// (ADR 0008). The next successful profile read replaces this.
+    private func useStoredUser() {
+        guard currentUser == nil, let stored = source.storedUser() else { return }
+        currentUser = stored
+        Task { [weak self] in
+            // Fill in the real profile once the network is back.
+            for delay in [5, 15, 30, 60, 120] {
+                try? await Task.sleep(for: .seconds(delay))
+                guard let self, self.isAuthenticated, self.currentUser?.id == stored.id else { return }
+                if let user = try? await self.source.currentUser() {
+                    self.updateCurrentUser(user)
+                    return
+                }
+            }
         }
     }
 

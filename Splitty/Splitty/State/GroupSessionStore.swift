@@ -17,11 +17,23 @@ final class GroupSessionStore: ObservableObject {
     private var sessions: [Int: GroupSession] = [:]
     private var recentGroupIds: [Int] = []
     private let cacheLimit = 8
+    /// Nil leaves every write online-only and keeps nothing on disk, which is what most
+    /// tests want. The app passes the shared outbox (ADR 0008).
+    let outbox: Outbox?
 
-    init(defaults: UserDefaults = .standard, dataSource: @escaping () -> GroupDataSource = { .live }) {
+    init(
+        defaults: UserDefaults = .standard,
+        dataSource: @escaping () -> GroupDataSource = { .live },
+        outbox: Outbox? = nil
+    ) {
         self.defaults = defaults
         self.dataSource = dataSource
+        self.outbox = outbox
+        // The groups list and its banner read the outbox's network state through the store.
+        outboxChanges = outbox?.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
     }
+
+    private var outboxChanges: AnyCancellable?
 
     private static func currentGroupKey(userId: Int) -> String { "currentGroupId.\(userId)" }
 
@@ -29,6 +41,7 @@ final class GroupSessionStore: ObservableObject {
         guard signedInUserId != userId else { return }
         discard()
         signedInUserId = userId
+        outbox?.setUser(userId)
         if let userId,
            let groupId = defaults.object(forKey: Self.currentGroupKey(userId: userId)) as? Int {
             open(groupId).appear()
@@ -61,7 +74,13 @@ final class GroupSessionStore: ObservableObject {
             persistCurrentGroup()
             return session
         }
-        let session = GroupSession(groupId: groupId, seed: seed, dataSource: dataSource())
+        let session = GroupSession(
+            groupId: groupId,
+            seed: seed,
+            dataSource: dataSource(),
+            cache: outbox?.cache,
+            outbox: outbox
+        )
         sessions[groupId] = session
         observations[groupId] = session.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
@@ -77,7 +96,11 @@ final class GroupSessionStore: ObservableObject {
         return session
     }
 
+    /// The group is gone for this member: left, removed, or no longer readable. What this
+    /// device kept for it goes too, unsent writes included, since the server would refuse them.
     func remove(_ groupId: Int) {
+        outbox?.cache?.remove(groupId: groupId)
+        outbox?.dropWrites(groupId: groupId)
         observations.removeValue(forKey: groupId)
         sessions.removeValue(forKey: groupId)?.discard()
         recentGroupIds.removeAll { $0 == groupId }

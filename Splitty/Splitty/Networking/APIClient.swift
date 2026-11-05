@@ -51,6 +51,10 @@ final class APIClient: Sendable {
         tokens.hasCredentials
     }
 
+    var storedUser: User? {
+        tokens.storedUser
+    }
+
     // MARK: - Generic Request Method
     /// Not private: a service owns its own endpoints and calls this directly rather than
     /// adding another pass-through method here.
@@ -175,6 +179,9 @@ final class APIClient: Sendable {
 enum APIErrorCode: String {
     case outstandingBalance = "outstanding_balance"
     case balancesPending = "balances_pending"
+    case versionConflict = "version_conflict"
+    case settlementExceedsCap = "settlement_exceeds_cap"
+    case currencyChanged = "currency_changed"
 }
 
 enum APIError: Error, LocalizedError {
@@ -191,6 +198,11 @@ enum APIError: Error, LocalizedError {
     /// A refusal the server named with a code this build knows. Only refusals a client
     /// must tell apart from others with the same status carry one.
     case refused(Int, code: APIErrorCode, message: String?)
+    /// An edit made against a version the row has moved past. Carries the row as it is
+    /// now, so the edit can be merged without another read (ADR 0008).
+    case versionConflict(current: Expense, message: String?)
+    /// A settlement larger than the cap of invariant 5, with the cap as it is now.
+    case settlementExceedsCap(capCents: Int, message: String?)
     case networkError(Error)
     case decodingError(Error)
     
@@ -199,7 +211,10 @@ enum APIError: Error, LocalizedError {
     /// raw `localizedDescription`.
     var displayMessage: String {
         switch self {
-        case .httpError(_, .some(let message)), .refused(_, _, .some(let message)): return message
+        case .httpError(_, .some(let message)), .refused(_, _, .some(let message)),
+             .versionConflict(_, .some(let message)), .settlementExceedsCap(_, .some(let message)): return message
+        case .versionConflict(_, nil): return L10n.Errors.changedElsewhere
+        case .settlementExceedsCap(_, nil): return L10n.Errors.rejected
         case .refused(_, .balancesPending, nil): return L10n.Errors.balancesUpdating
         case .refused(_, .outstandingBalance, nil): return L10n.Errors.outstandingBalance
         case .httpError(400, _): return L10n.Errors.rejected
@@ -228,6 +243,10 @@ enum APIError: Error, LocalizedError {
             return "Invalid response"
         case .httpError(let code, _), .refused(let code, _, _):
             return "HTTP error: \(code)"
+        case .versionConflict:
+            return "HTTP error: 409"
+        case .settlementExceedsCap:
+            return "HTTP error: 400"
         case .networkError(let error):
             return "Network error: \(error.localizedDescription)"
         case .decodingError(let error):
@@ -265,7 +284,7 @@ extension Error {
 }
 
 // MARK: - Request Types
-struct ExpenseSplitRequest: Equatable {
+struct ExpenseSplitRequest: Codable, Equatable {
     let userId: Int
     let amountCents: Int
     /// Percent units (`70`). Non-nil on every row of a percentage expense, nil elsewhere:

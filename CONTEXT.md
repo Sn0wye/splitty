@@ -666,7 +666,9 @@ SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
 - `AuthenticationManager.currentUser` is the signed-in `User`: set from the sign-in response,
   and fetched once on a cold launch that restored a stored refresh token. Everything that says
   "you" reads it. Not cached in UserDefaults — a second copy of the profile can go stale, the
-  Keychain credentials cannot. The profile route is `GET /profile`.
+  Keychain credentials cannot. When the profile read fails for want of a network, it is
+  filled from the stored access token's claims (id, name, email) and replaced by the real
+  profile once a read succeeds. The profile route is `GET /profile`.
 - **Group sessions** — a single observable session owns each group's snapshot and commands.
   Up to eight recently opened sessions live above the tab switch; reopening one shows cached
   data while a fresh read runs. A read that returns the rows already shown publishes
@@ -679,6 +681,28 @@ SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
   pending status. The session also decides whether a saved settle-up payment is new or edited,
   when settle-up forces a fresh summary, and what a delete's outcome is. People keeps its last successful response visible
   during a refetch, including an empty response.
+- **Offline** — see `docs/adr/0008-offline-writes.md`. `LocalStore` (SQLite through the
+  system `libsqlite3`, in Application Support, excluded from backup) keeps, per signed-in
+  user, the groups list, each group's last snapshot (group, expenses, summary) and the
+  **outbox**: writes made on this device that the server has not confirmed. A session opens
+  on its snapshot and keeps it when a read fails; the groups list saves every group's rows
+  after it loads, reading expenses and summary only, never `GET group`, which catches
+  recurring expenses up. `Outbox` sends writes one at a time in the order they were made,
+  under the write's id as `clientId` or `opId`, retries network failures with backoff and
+  again when the path comes back or the app returns to the foreground, and merges a queued
+  write into one not yet sent to the same row. Expense creates, plain edits and deletes, new
+  payments and payment deletes go through it; a repeating expense, a "this and following"
+  edit and a payment edit stay online-only. An edit sends only the field groups the member
+  changed (money, description, category, date). A `version_conflict` over other groups is
+  resent against the newer row on its own; over the same group, or an edit of a deleted row,
+  the write keeps a problem and waits in **Unsent changes** for the member. A refusal on a
+  write's first send is shown where it was made, as before. While writes are queued the
+  header net and the debts are an **estimate**: the server's simplified debts give every
+  member's net, each queued write adds its change, and `LedgerMath` simplifies them again
+  with the server's greedy order. A cold launch with no network reads who is signed in from
+  the stored access token's claims, so the app opens on that user's copy. A sign-out the
+  member chooses deletes the copy and warns when unsent writes would go with it; a sign-out
+  forced by a rejected refresh keeps it.
 
 **Money is integer cents everywhere on the client**, converted to `Double` once at the
 request boundary (`Money`). The API validates that splits sum *exactly* to the total against

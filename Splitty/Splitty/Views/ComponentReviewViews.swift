@@ -514,9 +514,17 @@ struct ReviewSheetHost<Sheet: View>: View {
 struct ReviewGroupOpenView: View {
     let onDone: () -> Void
 
-    @StateObject private var appState = AppState(
-        groupSessions: GroupSessionStore(dataSource: { ReviewSamples.slowGroup })
-    )
+    @StateObject private var appState: AppState
+
+    init(
+        makeAppState: @escaping @MainActor () -> AppState = {
+            AppState(groupSessions: GroupSessionStore(dataSource: { ReviewSamples.slowGroup }))
+        },
+        onDone: @escaping () -> Void
+    ) {
+        _appState = StateObject(wrappedValue: makeAppState())
+        self.onDone = onDone
+    }
     /// Set only when the gallery opened without a signed-in user, so the rows can say
     /// "you"; a gallery opened from Settings keeps the account's own user.
     @State private var borrowedCurrentUser = false
@@ -562,6 +570,85 @@ struct ReviewGroupOpenView: View {
 }
 
 extension ReviewSamples {
+    private static let unreachable = APIError.networkError(URLError(.notConnectedToInternet))
+
+    /// Every read fails as it would with no network.
+    static let offlineGroup = GroupDataSource(
+        group: { _ in throw unreachable },
+        expenses: { _ in throw unreachable },
+        summary: { _ in throw unreachable },
+        waitForBalanceRetry: { _ in try await Task.sleep(for: .seconds(3600)) },
+        requestBalanceRefresh: { _ in throw unreachable },
+        deleteExpense: { _, _, _ in throw unreachable },
+        deletePayment: { _, _ in throw unreachable }
+    )
+
+    /// A trip opened with no network: the copy saved two hours ago, a taxi added offline
+    /// and waiting, and an edit that met another member's edit of the same field.
+    @MainActor
+    static func offlineAppState() -> AppState {
+        let store = LocalStore(url: nil)
+        let me = currentUserId
+        let outbox = Outbox(
+            store: store,
+            transport: OutboxTransport(
+                create: { _ in throw unreachable },
+                update: { _ in throw unreachable },
+                deleteExpense: { _, _ in throw unreachable },
+                settle: { _, _, _ in throw unreachable },
+                deleteSettlement: { _, _ in throw unreachable }
+            ),
+            isOnline: false,
+            wait: { _ in try await Task.sleep(for: .seconds(3600)) }
+        )
+        outbox.setUser(me)
+        let rows = timeline()
+        GroupCache(store: store, userId: me).save(
+            GroupSnapshot(
+                group: trip,
+                expenses: rows,
+                summary: GroupBalanceSummary(simplifiedDebts: [], balancesPending: false),
+                savedAt: Date().addingTimeInterval(-2 * 3600)
+            ),
+            groupId: groupId
+        )
+
+        if let dinner = rows.first(where: { $0.type == .expense && $0.paidBy != me }) {
+            var theirs = PendingRows.applying(
+                ExpenseUpdateRequest(groupId: groupId, expenseId: dinner.id, description: "Dinner at Ana's"),
+                to: dinner, members: members
+            )
+            theirs.version = 2
+            let mine = ExpenseUpdateRequest(groupId: groupId, expenseId: dinner.id, description: "Sushi, birthday", baseVersion: 1)
+            outbox.enqueue(PendingWrite(
+                id: UUID(),
+                groupId: groupId,
+                action: .editExpense(mine, base: dinner, row: PendingRows.applying(mine, to: dinner, members: members)),
+                problem: .conflict(theirs: theirs)
+            ))
+        }
+
+        let clientId = UUID()
+        let taxi = NewExpenseRequest(
+            groupId: groupId,
+            description: "Airport taxi",
+            amountCents: 4_800,
+            paidBy: me,
+            date: Date(),
+            category: .taxi,
+            splitMode: .equal,
+            splits: [1, 2, 3].map { ExpenseSplitRequest(userId: $0, amountCents: 1_600, percentage: nil) },
+            clientId: clientId
+        )
+        outbox.enqueue(PendingWrite(
+            id: clientId,
+            groupId: groupId,
+            action: .createExpense(taxi, row: PendingRows.expense(from: taxi, id: outbox.makeLocalId(), clientId: clientId, members: members))
+        ))
+
+        return AppState(groupSessions: GroupSessionStore(dataSource: { offlineGroup }, outbox: outbox))
+    }
+
     static let trip = Group(id: groupId, name: "Weekend trip", description: nil,
                             netBalanceCents: 4_250, createdAt: "2026-01-01", members: members)
 

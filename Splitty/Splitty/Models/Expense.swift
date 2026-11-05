@@ -97,10 +97,18 @@ struct Expense: Codable, Identifiable, Equatable {
     /// Which installment this is. Nil for an expense entered by hand and for one added by
     /// a recurring expense with no end.
     var installment: ExpenseInstallment? = nil
+    /// The id the creating device gave this row before the server saw it. Nil for rows
+    /// written without one. A row this device queued carries it from the start, which is
+    /// how the server's answer is matched to the row already on screen (ADR 0008).
+    var clientId: UUID? = nil
+    /// Goes up by one on every edit; an edit sends it back as `baseVersion`. Nil on a row
+    /// the server has not stored yet.
+    var version: Int? = nil
 
     enum CodingKeys: String, CodingKey {
         case id, groupId, paidBy, amount, description, type, category, splitMode, date
         case createdAt, updatedAt, paidByUser, splits, recurringExpenseId, endsOn, installment
+        case clientId, version
         case repeatFrequency = "repeat"
     }
 
@@ -148,6 +156,8 @@ extension Expense {
         repeatFrequency = try? container.decodeIfPresent(ExpenseRepeat.self, forKey: .repeatFrequency)
         endsOn = try? container.decodeIfPresent(String.self, forKey: .endsOn)
         installment = try? container.decodeIfPresent(ExpenseInstallment.self, forKey: .installment)
+        clientId = try? container.decodeIfPresent(UUID.self, forKey: .clientId)
+        version = try? container.decodeIfPresent(Int.self, forKey: .version)
     }
 }
 

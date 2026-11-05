@@ -50,7 +50,9 @@ struct SettleUpViewModelTests {
         #expect(model.peers.map(\.userId) == [2, 3])
     }
 
-    @Test func pendingSessionCannotBeSubmittedAndSettledRefreshAllowsIt() async {
+    /// Pending balances no longer block a payment: the server caps it against the rows,
+    /// not the stored balances (ADR 0009). The refresh still brings the settled debt in.
+    @Test func pendingSessionCanBeSubmittedAndSettledRefreshUpdatesTheDebt() async {
         let data = ControlledGroupData()
         data.autoRelease = true
         data.cancelBalanceRetry = true
@@ -62,8 +64,11 @@ struct SettleUpViewModelTests {
         await session.appear().value
         let model = SettleUpViewModel(session: session, currentUserId: 1)
         model.suggestPayment()
-        #expect(!model.canSubmit)
         #expect(model.selectedPeer?.userId == 2)
+        model.payAll()
+        #expect(model.amountCents == 1_200)
+        #expect(model.canSubmit)
+        model.amount.clear()
 
         await session.refresh()
         // No summary or pending value is copied into the screen model.
