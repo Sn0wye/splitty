@@ -8,13 +8,11 @@ import SwiftUI
 
 enum AppTab: Int, CaseIterable {
     case groups
-    case people
     case settings
 
     var title: String {
         switch self {
         case .groups: L10n.Tabs.groups
-        case .people: L10n.Tabs.people
         case .settings: L10n.Tabs.settings
         }
     }
@@ -22,7 +20,6 @@ enum AppTab: Int, CaseIterable {
     var icon: String {
         switch self {
         case .groups: return "square.grid.2x2"
-        case .people: return "arrow.left.arrow.right"
         case .settings: return "gearshape"
         }
     }

@@ -240,13 +240,13 @@ struct GroupSessionTests {
         #expect(appState.currentGroupId == nil)
     }
 
-    @Test func appHasThreeTabsAndOpeningAGroupPushesItOnGroups() {
-        #expect(AppTab.allCases == [.groups, .people, .settings])
+    @Test func appHasTwoTabsAndOpeningAGroupPushesItOnGroups() {
+        #expect(AppTab.allCases == [.groups, .settings])
         let appState = AppState(groupSessions: GroupSessionStore(defaults: isolatedDefaults(), dataSource: {
             ControlledGroupData().source()
         }))
         appState.setSignedInUser(700_124)
-        appState.selectedTab = .people
+        appState.selectedTab = .settings
         appState.openGroup(1, seed: group(id: 1))
         #expect(appState.selectedTab == .groups)
         #expect(appState.groupsPath == [1])
@@ -270,7 +270,7 @@ struct GroupSessionTests {
 
         appState.openGroup(2, seed: group(id: 2))
         #expect(appState.groupNotice == nil)
-        appState.selectedTab = .people
+        appState.selectedTab = .settings
         appState.leaveUnavailableGroup(message: "Gone")
         #expect(appState.groupsPath.isEmpty)
         #expect(appState.selectedTab == .groups)
@@ -312,7 +312,7 @@ struct GroupSessionTests {
         data.expensesForCall = { _ in [row] }
         let appState = AppState(groupSessions: GroupSessionStore(defaults: isolatedDefaults(), dataSource: { data.source() }))
         appState.openGroup(1, seed: group(id: 1))
-        appState.selectedTab = .people
+        appState.selectedTab = .settings
 
         appState.groupSessions.report(.expenseCreated(row), groupId: 1)
         #expect(appState.groupSessions.current?.expenses.map(\.id) == [51])

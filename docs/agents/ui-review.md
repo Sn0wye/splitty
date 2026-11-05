@@ -52,7 +52,7 @@ Screen names are the raw values of `ReviewScreen` in
 | Screen | What it holds |
 |---|---|
 | `welcome`, `setup`, `create`, `join`, `invite` | First-run flow |
-| `groupsEmpty`, `groupEmpty`, `peopleEmpty`, `balanceHint` | Empty states |
+| `groupsEmpty`, `groupEmpty`, `balanceHint` | Empty states |
 | `expenseForm` | The real expense sheet: amount digits, keypad, details step with the keyboard, split screens. Saving fails on purpose. |
 | `expenseFormReais` | The same expense sheet in a BRL group: `R$` ahead of the amount and a `,` decimal key. |
 | `timeline` | Real timeline rows on sample data: every row shape (an installment badge among them), date headers, swipe to delete, the last row's clearance above the tab bar. Reset restores deleted rows. |
@@ -78,7 +78,7 @@ component's existing data-source seam (`GroupDataSource`, `ChartsDataSource`,
 `ExpenseFormDataSource`) rather than a copy of the component.
 
 The gallery is not the real app: `isReview` turns off autofocus and fetches in
-`JoinGroupSheet`, `GroupsView`, `PeopleView` and `GroupFormSheet`, so confirm a
+`JoinGroupSheet`, `GroupsView` and `GroupFormSheet`, so confirm a
 focus or loading finding in the real app.
 
 ## Drive and capture
