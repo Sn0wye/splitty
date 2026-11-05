@@ -690,6 +690,14 @@ SwiftUI, `Views/` + `ViewModels/` + `Components/`, no third-party dependencies.
   credentials. Logout clears them at once and revokes the refresh token at `/auth/logout` as
   best effort. Built on `APITransport` (builds, sends and decodes requests) and
   `TokenRefresher`.
+- `PushNotifications` — the permission, the APNs token and the tapped group. It never asks
+  on launch: `offerIfUseful()` shows the app's own question once, after joining a group,
+  creating an invite, or saving an expense others share, and Settings > Notifications has
+  the rest (the main switch and one per kind, saved with `PUT /profile/notifications`). With
+  permission it registers on every sign-in and launch, and sends the token again with the
+  app language after a language change. A tap opens the notification's group once someone
+  is signed in; a notification about the group on screen refreshes it instead of showing a
+  banner. Balances offers Remind on each row where someone owes you.
 - `TokenRefresher` — owns the stored credentials. Refreshes before a request when the access
   token's `exp` is within 60 seconds. One refresh runs at a time and concurrent callers await
   it, because two refreshes with the same token look like reuse. Only a 401 from

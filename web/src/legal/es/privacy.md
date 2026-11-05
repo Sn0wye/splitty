@@ -23,11 +23,13 @@ Para cualquier cuestión sobre tus datos, escribe a {{privacyEmail}}. Esa direcc
 
 **Sesiones.** Para mantener tu sesión abierta emitimos tokens a tu dispositivo. Del token de larga duración solo guardamos un hash, nunca el token en sí.
 
+**Notificaciones push.** Si permites las notificaciones, tu dispositivo nos da un token de push. Lo guardamos junto con el idioma que elegiste en la app y la sesión a la que pertenece, y guardamos qué tipos de notificación desactivaste. Cada notificación indica el grupo, quién hizo el cambio, el gasto y el importe, para que sepas qué cambió.
+
 **Informes de fallos y errores.** Cuando la app se cierra, se bloquea o recibe un error inesperado de nuestro servidor, envía un informe: el tipo de problema, detalles técnicos como la traza de la pila o la solicitud que falló, la versión de la app, la versión de iOS y el modelo del dispositivo. Los informes se envían sin tu cuenta y no contienen nombre, correo ni datos de gastos. No están vinculados a ti.
 
 **Registros del servidor.** Nuestro servidor registra eventos técnicos, como errores e identificadores de solicitud, para mantener el servicio funcionando y seguro. Estos registros pueden incluir tu número de cuenta y la dirección IP de tu dispositivo.
 
-**Solo en tu dispositivo.** El tema y el idioma que eliges se guardan en tu teléfono y nunca se nos envían.
+**Solo en tu dispositivo.** El tema que eliges se guarda en tu teléfono y nunca se nos envía. El idioma también, salvo que actives las notificaciones: entonces se envía con tu token de push, para que las notificaciones lleguen en ese idioma.
 
 No recogemos tu ubicación, tus contactos, tu fototeca (más allá de la foto que decidas subir), datos de pago ni datos de otras apps.
 
@@ -36,6 +38,7 @@ No recogemos tu ubicación, tus contactos, tu fototeca (más allá de la foto qu
 | Qué hacemos | Datos | Base legal |
 |---|---|---|
 | Crear tu cuenta e iniciar tu sesión | Datos de la cuenta, sesiones | Ejecución del contrato contigo (LGPD art. 7, V; RGPD art. 6.1.b) |
+| Avisarte cuando algo en tus grupos cambia lo que debes o te deben, y enviar los recordatorios que piden los miembros | Token de push, idioma, ajustes de notificaciones, lo que pones en Splitty | Ejecución del contrato contigo |
 | Prestar el servicio: mantener tus grupos, calcular saldos, mostrar a los miembros entre sí | Datos de la cuenta, foto de perfil, lo que pones en Splitty | Ejecución del contrato contigo |
 | Encontrar y corregir fallos | Informes de fallos y errores, registros del servidor | Nuestro interés legítimo en una app que funcione (LGPD art. 7, IX; RGPD art. 6.1.f) |
 | Mantener el servicio seguro y evitar abusos, como adivinar códigos de invitación | Registros del servidor | Nuestro interés legítimo en la seguridad |
@@ -54,6 +57,7 @@ No usamos tus datos para decisiones automatizadas con efectos jurídicos o igual
 - **Cloudflare** (almacenamiento R2): guarda las fotos de perfil que se suben.
 - **DiceBear**: si no tienes foto, la app carga un dibujo generado por el servicio de DiceBear. La solicitud lleva tu número de cuenta de Splitty como semilla del dibujo, nunca tu nombre ni tu correo, y DiceBear ve la dirección IP de tu dispositivo, como cualquier sitio web.
 - **Alojamiento**: nuestro servidor, la base de datos y los registros funcionan en infraestructura que operamos nosotros.
+- **Apple** (Apple Push Notification service): entrega las notificaciones en tu dispositivo. El texto de cada notificación pasa por Apple por el camino.
 
 Tu foto de perfil de Google se carga desde los servidores de Google, que ven la dirección IP de tu dispositivo al cargarla.
 
@@ -73,6 +77,7 @@ Algunos de los proveedores anteriores tratan datos fuera de Brasil, por ejemplo 
 - **Cuando eliminas tu cuenta**: tu nombre, tu correo, tus fotos y los vínculos de inicio de sesión se borran en el momento y se cierran todas tus sesiones. Los gastos y pagos que compartiste siguen en tus grupos, porque los saldos de los demás dependen de ellos, pero aparecen como "Miembro eliminado" en lugar de tu nombre. Los grupos que se quedan sin miembros se eliminan.
 - **Cuando desactivas tu cuenta**: no se borra nada. Se cierran tus sesiones y, al volver a iniciar sesión, la cuenta se reactiva.
 - **Sesiones**: caducan tras {{refreshTokenDays}} días sin uso o cuando cierras sesión.
+- **Tokens de push**: se eliminan cuando cierras sesión en ese dispositivo, desactivas o eliminas tu cuenta, o cuando Apple nos indica que la app ya no está instalada. Un token deja de usarse cuando caduca su sesión.
 - **Informes de fallos y registros del servidor**: se conservan hasta {{logRetentionDays}} días y después se eliminan.
 - **Correos con nosotros**: el tiempo necesario para atender tu solicitud y el plazo que exija la ley.
 
@@ -90,7 +95,7 @@ Según la LGPD (art. 18), puedes pedirnos:
 
 Si estás en la Unión Europea o en el Reino Unido, el RGPD te da derechos similares: acceso, rectificación, supresión, limitación, portabilidad y oposición, incluida la oposición al tratamiento basado en el interés legítimo.
 
-**En la app** puedes cambiar tu nombre y tu foto, exportar los gastos de un grupo en un archivo CSV y desactivar o eliminar tu cuenta en Ajustes. Para todo lo demás, escribe a {{privacyEmail}}. Respondemos en un plazo de 15 días. Podemos pedirte que confirmes la solicitud desde el correo de tu cuenta.
+**En la app** puedes cambiar tu nombre y tu foto, exportar los gastos de un grupo en un archivo CSV, elegir qué notificaciones recibes y desactivar o eliminar tu cuenta en Ajustes. Para todo lo demás, escribe a {{privacyEmail}}. Respondemos en un plazo de 15 días. Podemos pedirte que confirmes la solicitud desde el correo de tu cuenta.
 
 También tienes derecho a presentar una reclamación ante la autoridad brasileña de protección de datos, la ANPD (gov.br/anpd), o ante la autoridad de control de tu país si estás en la Unión Europea o en el Reino Unido.
 

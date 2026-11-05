@@ -2,6 +2,8 @@ import SwiftUI
 
 @main
 struct SplittyApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     init() {
         PerformanceSignpost.beginLaunch()
         PerformanceScenarioLaunch.logDeviceConditions()
@@ -37,6 +39,7 @@ struct RootView: View {
     @StateObject private var appState = AppState()
     @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject private var languageManager = LanguageManager.shared
+    @ObservedObject private var push = PushNotifications.shared
 
     var body: some View {
         ZStack {
@@ -92,10 +95,31 @@ struct RootView: View {
         }
         .onChange(of: authManager.currentUser?.id, initial: true) { _, userId in
             appState.setSignedInUser(userId)
+            openTappedGroup()
+        }
+        .task(id: authManager.currentUser?.id) {
+            push.appState = appState
+            guard authManager.currentUser != nil else { return }
+            await push.registerIfAllowed()
+        }
+        .onChange(of: languageManager.language) { _, _ in
+            // The server writes notifications in the app's language.
+            Task { await push.upload() }
+        }
+        .onChange(of: push.groupToOpen) { _, _ in
+            openTappedGroup()
         }
         .onOpenURL { url in
             GoogleSignInService.handle(url)
         }
+    }
+
+    /// A tapped notification opens its group once someone is signed in. Waiting for the
+    /// user matters on a cold launch: setting the user resets the Groups stack.
+    private func openTappedGroup() {
+        guard let groupId = push.groupToOpen, appState.signedInUserId != nil else { return }
+        push.groupToOpen = nil
+        appState.openGroup(groupId)
     }
 
     private func resolveOnboarding() async {

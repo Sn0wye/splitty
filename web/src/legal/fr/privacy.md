@@ -23,11 +23,13 @@ Pour toute question sur vos données, écrivez à {{privacyEmail}}. Cette adress
 
 **Sessions.** Pour vous garder connecté, nous délivrons des jetons à votre appareil. Du jeton de longue durée, nous ne conservons qu’une empreinte (hash), jamais le jeton lui-même.
 
+**Notifications push.** Si vous autorisez les notifications, votre appareil nous donne un jeton push. Nous le conservons avec la langue choisie dans l’app et la session à laquelle il appartient, ainsi que les types de notification que vous avez désactivés. Chaque notification indique le groupe, la personne qui a agi, la dépense et le montant, pour que vous sachiez ce qui a changé.
+
 **Rapports de plantage et d’erreur.** Quand l’app plante, se fige ou reçoit une erreur inattendue de notre serveur, elle envoie un rapport : le type de problème, des détails techniques comme la pile d’appels ou la requête en échec, la version de l’app, la version d’iOS et le modèle de l’appareil. Les rapports sont envoyés sans votre compte et ne contiennent ni nom, ni adresse e-mail, ni données de dépenses. Ils ne sont pas liés à vous.
 
 **Journaux du serveur.** Notre serveur enregistre des événements techniques, comme les erreurs et les identifiants de requête, pour assurer le fonctionnement et la sécurité du service. Ces journaux peuvent inclure votre numéro de compte et l’adresse IP de votre appareil.
 
-**Sur votre appareil uniquement.** Le thème et la langue que vous choisissez restent sur votre téléphone et ne nous sont jamais envoyés.
+**Sur votre appareil uniquement.** Le thème que vous choisissez reste sur votre téléphone et ne nous est jamais envoyé. La langue aussi, sauf si vous activez les notifications : elle est alors envoyée avec votre jeton push, pour que les notifications arrivent dans cette langue.
 
 Nous ne collectons ni votre position, ni vos contacts, ni votre photothèque (au-delà de la photo que vous choisissez d’importer), ni vos données de paiement, ni les données d’autres apps.
 
@@ -36,6 +38,7 @@ Nous ne collectons ni votre position, ni vos contacts, ni votre photothèque (au
 | Ce que nous faisons | Données | Base légale |
 |---|---|---|
 | Créer votre compte et vous connecter | Données du compte, sessions | Exécution du contrat (LGPD art. 7, V ; RGPD art. 6.1.b) |
+| Vous prévenir quand quelque chose dans vos groupes change ce que vous devez ou ce qu’on vous doit, et envoyer les rappels demandés par les membres | Jeton push, langue, réglages des notifications, ce que vous mettez dans Splitty | Exécution du contrat |
 | Faire fonctionner le service : conserver vos groupes, calculer les soldes, montrer les membres les uns aux autres | Données du compte, photo de profil, ce que vous mettez dans Splitty | Exécution du contrat |
 | Trouver et corriger les plantages et les bugs | Rapports de plantage et d’erreur, journaux du serveur | Notre intérêt légitime à avoir une app qui fonctionne (LGPD art. 7, IX ; RGPD art. 6.1.f) |
 | Assurer la sécurité du service et empêcher les abus, comme deviner des codes d’invitation | Journaux du serveur | Notre intérêt légitime en matière de sécurité |
@@ -54,6 +57,7 @@ Nous n’utilisons pas vos données pour des décisions automatisées produisant
 - **Cloudflare** (stockage R2) : conserve les photos de profil importées.
 - **DiceBear** : si vous n’avez pas de photo, l’app charge un dessin généré par le service DiceBear. La requête contient votre numéro de compte Splitty comme graine du dessin, jamais votre nom ni votre adresse e-mail, et DiceBear voit l’adresse IP de votre appareil, comme n’importe quel site.
 - **Hébergement** : notre serveur, notre base de données et nos journaux tournent sur une infrastructure que nous exploitons nous-mêmes.
+- **Apple** (Apple Push Notification service) : livre les notifications sur votre appareil. Le texte de chaque notification transite par Apple.
 
 Votre photo de profil Google est chargée depuis les serveurs de Google, qui voient alors l’adresse IP de votre appareil.
 
@@ -73,6 +77,7 @@ Certains prestataires ci-dessus traitent des données hors du Brésil, par exemp
 - **Quand vous supprimez votre compte** : votre nom, votre adresse e-mail, vos photos et vos liens de connexion sont effacés immédiatement, et toutes vos sessions prennent fin. Les dépenses et paiements que vous avez partagés restent dans vos groupes, car les soldes des autres membres en dépendent, mais ils affichent « Membre retiré » à la place de votre nom. Les groupes qui n’ont plus aucun membre sont supprimés.
 - **Quand vous désactivez votre compte** : rien n’est supprimé. Vos sessions prennent fin, et vous reconnecter réactive le compte.
 - **Sessions** : expirent après {{refreshTokenDays}} jours sans utilisation, ou quand vous vous déconnectez.
+- **Jetons push** : supprimés quand vous vous déconnectez sur cet appareil, désactivez ou supprimez votre compte, ou quand Apple nous indique que l’app n’est plus installée. Un jeton cesse d’être utilisé quand sa session expire.
 - **Rapports de plantage et journaux du serveur** : conservés {{logRetentionDays}} jours au maximum, puis supprimés.
 - **Échanges d’e-mails** : le temps nécessaire pour traiter votre demande, et pendant toute durée imposée par la loi.
 
@@ -90,7 +95,7 @@ Selon la LGPD (art. 18), vous pouvez nous demander :
 
 Si vous êtes dans l’Union européenne ou au Royaume-Uni, le RGPD vous donne des droits similaires : accès, rectification, effacement, limitation, portabilité et opposition, y compris au traitement fondé sur l’intérêt légitime.
 
-**Dans l’app**, vous pouvez modifier votre nom et votre photo, exporter les dépenses d’un groupe dans un fichier CSV, et désactiver ou supprimer votre compte dans les Réglages. Pour tout le reste, écrivez à {{privacyEmail}}. Nous répondons sous 15 jours. Nous pouvons vous demander de confirmer la demande depuis l’adresse e-mail de votre compte.
+**Dans l’app**, vous pouvez modifier votre nom et votre photo, exporter les dépenses d’un groupe dans un fichier CSV, choisir les notifications que vous recevez, et désactiver ou supprimer votre compte dans les Réglages. Pour tout le reste, écrivez à {{privacyEmail}}. Nous répondons sous 15 jours. Nous pouvons vous demander de confirmer la demande depuis l’adresse e-mail de votre compte.
 
 Vous avez aussi le droit de saisir l’autorité brésilienne de protection des données, l’ANPD (gov.br/anpd), ou l’autorité de contrôle de votre pays si vous êtes dans l’Union européenne ou au Royaume-Uni, comme la CNIL en France.
 

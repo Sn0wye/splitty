@@ -201,6 +201,48 @@ enum ReviewSamples {
         deletePayment: { _, _ in throw ReviewOnly() }
     )
 
+    /// Ana and Bo both owe you, so both rows offer a reminder.
+    static let reminderGroup = GroupDataSource(
+        group: { _ in
+            Group(id: groupId, name: "Weekend trip", description: nil,
+                  netBalanceCents: 5_250, createdAt: "2026-01-01", members: members)
+        },
+        expenses: { _ in [] },
+        summary: { _ in
+            let you = DebtMember(id: users[0].id, name: users[0].name, avatarUrl: "")
+            return GroupBalanceSummary(
+                simplifiedDebts: [
+                    SimplifiedDebt(from: DebtMember(id: users[1].id, name: users[1].name, avatarUrl: ""),
+                                   to: you, amountCents: 4_000),
+                    SimplifiedDebt(from: DebtMember(id: users[2].id, name: users[2].name, avatarUrl: ""),
+                                   to: you, amountCents: 1_250),
+                ],
+                balancesPending: false
+            )
+        },
+        requestBalanceRefresh: { _ in },
+        deleteExpense: { _, _, _ in throw ReviewOnly() },
+        deletePayment: { _, _ in throw ReviewOnly() }
+    )
+
+    /// Reminding Ana succeeds; Bo was already reminded today, as the server answers.
+    static func remind(groupId: Int, debtorId: Int) async throws {
+        try await Task.sleep(for: .milliseconds(600))
+        if debtorId == users[2].id { throw APIError.httpError(429, message: nil) }
+    }
+
+    /// The switches as a user who turned off edits might have them, saved after a short wait.
+    static let notificationSettings = NotificationSettingsDataSource(
+        load: {
+            try await Task.sleep(for: .milliseconds(400))
+            return NotificationSettings(enabled: true, muted: [.expenseChanged])
+        },
+        save: { settings in
+            try await Task.sleep(for: .milliseconds(300))
+            return settings
+        }
+    )
+
     /// Recording waits like a request would, then succeeds without writing anything.
     static let settleUp = SettleUpDataSource(
         create: { _, _, _, _ in try await Task.sleep(for: .milliseconds(600)) },
@@ -475,6 +517,21 @@ struct ReviewSettleUpSheet: View {
             dataSource: ReviewSamples.settleUp
         )
         .task { await session.appear().value }
+    }
+}
+
+/// The real Balances sheet with two people who owe you, each with a Remind button.
+struct ReviewBalancesView: View {
+    @StateObject private var session = GroupSession(
+        groupId: ReviewSamples.groupId,
+        seed: nil,
+        dataSource: ReviewSamples.reminderGroup
+    )
+
+    var body: some View {
+        BalancesView(session: session, currentUserId: ReviewSamples.currentUserId,
+                     remind: ReviewSamples.remind(groupId:debtorId:))
+            .task { await session.appear().value }
     }
 }
 

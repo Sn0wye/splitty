@@ -23,11 +23,13 @@ Para qualquer assunto sobre seus dados, escreva para {{privacyEmail}}. Esse ende
 
 **Sessões de login.** Para manter você conectado, emitimos tokens para o seu aparelho. Do token de longa duração guardamos só um hash, nunca o token em si.
 
+**Notificações push.** Se você permitir notificações, seu aparelho nos dá um token de push. Guardamos esse token junto com o idioma escolhido no app e o login a que ele pertence, e guardamos quais tipos de notificação você desligou. Cada notificação traz o grupo, quem fez a ação, a despesa e o valor, para você saber o que mudou.
+
 **Relatórios de falhas e erros.** Quando o app trava, congela ou recebe um erro inesperado do nosso servidor, ele envia um relatório: o tipo de problema, detalhes técnicos como o rastreamento da pilha ou a requisição que falhou, a versão do app, a versão do iOS e o modelo do aparelho. Os relatórios são enviados sem a sua conta e não contêm nome, e-mail nem dados de despesas. Eles não são vinculados a você.
 
 **Registros do servidor.** Nosso servidor registra eventos técnicos, como erros e identificadores de requisição, para manter o serviço funcionando e seguro. Esses registros podem incluir o número da sua conta e o endereço IP do seu aparelho.
 
-**Só no seu aparelho.** O tema e o idioma que você escolhe ficam guardados no seu celular e nunca são enviados para nós.
+**Só no seu aparelho.** O tema que você escolhe fica guardado no seu celular e nunca é enviado para nós. O idioma também, a menos que você ative as notificações: aí ele é enviado junto com o token de push, para as notificações chegarem nesse idioma.
 
 Não coletamos sua localização, seus contatos, sua galeria de fotos (além da foto que você escolher enviar), dados de pagamento ou dados de outros apps.
 
@@ -36,6 +38,7 @@ Não coletamos sua localização, seus contatos, sua galeria de fotos (além da 
 | O que fazemos | Dados | Base legal |
 |---|---|---|
 | Criar sua conta e fazer seu login | Dados da conta, sessões | Execução de contrato com você (LGPD art. 7º, V; GDPR art. 6(1)(b)) |
+| Avisar você quando algo nos seus grupos muda o que você deve ou tem a receber, e enviar lembretes que os membros pedem | Token de push, idioma, configurações de notificação, o que você coloca no Splitty | Execução de contrato com você |
 | Operar o serviço: manter seus grupos, calcular saldos, mostrar os membros uns aos outros | Dados da conta, foto de perfil, o que você coloca no Splitty | Execução de contrato com você |
 | Encontrar e corrigir falhas e bugs | Relatórios de falhas e erros, registros do servidor | Nosso legítimo interesse em um app que funcione (LGPD art. 7º, IX; GDPR art. 6(1)(f)) |
 | Manter o serviço seguro e impedir abusos, como tentar adivinhar códigos de convite | Registros do servidor | Nosso legítimo interesse em segurança |
@@ -54,6 +57,7 @@ Não usamos seus dados para decisões automatizadas que tenham efeitos jurídico
 - **Cloudflare** (armazenamento R2): guarda as fotos de perfil enviadas.
 - **DiceBear**: quando você não tem foto, o app carrega um desenho gerado pelo serviço do DiceBear. A requisição leva o número da sua conta no Splitty como semente do desenho, nunca seu nome ou e-mail, e o DiceBear vê o endereço IP do seu aparelho, como qualquer site.
 - **Hospedagem**: nosso servidor, banco de dados e registros rodam em infraestrutura que nós mesmos operamos.
+- **Apple** (Apple Push Notification service): entrega as notificações no seu aparelho. O texto de cada notificação passa pela Apple no caminho.
 
 Sua foto de perfil do Google é carregada dos servidores do Google, que veem o endereço IP do seu aparelho nesse momento.
 
@@ -73,6 +77,7 @@ Alguns dos prestadores acima tratam dados fora do Brasil, por exemplo nos Estado
 - **Quando você apaga sua conta**: seu nome, e-mail, fotos e vínculos de login são apagados na hora, e todas as suas sessões são encerradas. As despesas e pagamentos que você compartilhou continuam nos grupos, porque os saldos dos outros membros dependem deles, mas aparecem como "Membro removido" em vez do seu nome. Grupos que ficarem sem nenhum membro são apagados.
 - **Quando você desativa sua conta**: nada é apagado. Suas sessões são encerradas, e entrar de novo reativa a conta.
 - **Sessões de login**: expiram após {{refreshTokenDays}} dias sem uso, ou quando você sai.
+- **Tokens de push**: apagados quando você sai da conta naquele aparelho, desativa ou apaga sua conta, ou quando a Apple nos avisa que o app não está mais instalado. Um token deixa de ser usado quando o login dele expira.
 - **Relatórios de falhas e registros do servidor**: guardados por até {{logRetentionDays}} dias e depois apagados.
 - **E-mails trocados com a gente**: pelo tempo necessário para atender seu pedido e pelo prazo que a lei exigir.
 
@@ -90,7 +95,7 @@ Pela LGPD (art. 18), você pode nos pedir:
 
 Se você estiver na União Europeia ou no Reino Unido, o GDPR garante direitos semelhantes: acesso, retificação, apagamento, limitação, portabilidade e oposição, inclusive ao tratamento baseado em legítimo interesse.
 
-**No app**, você pode mudar seu nome e sua foto, exportar as despesas de um grupo em arquivo CSV e desativar ou apagar sua conta em Ajustes. Para todo o resto, escreva para {{privacyEmail}}. Respondemos em até 15 dias. Podemos pedir que você confirme o pedido a partir do e-mail cadastrado na sua conta.
+**No app**, você pode mudar seu nome e sua foto, exportar as despesas de um grupo em arquivo CSV, escolher quais notificações recebe e desativar ou apagar sua conta em Ajustes. Para todo o resto, escreva para {{privacyEmail}}. Respondemos em até 15 dias. Podemos pedir que você confirme o pedido a partir do e-mail cadastrado na sua conta.
 
 Você também tem o direito de reclamar à Autoridade Nacional de Proteção de Dados, a ANPD (gov.br/anpd), ou à autoridade de controle do seu país, se você estiver na União Europeia ou no Reino Unido.
 

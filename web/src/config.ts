@@ -14,7 +14,7 @@ export const contact = {
 };
 
 /** Date the privacy policy and terms last changed. Bump both texts together. */
-export const legalUpdated = "2026-10-16";
+export const legalUpdated = "2026-11-05";
 
 export const minimumAge = 13;
 

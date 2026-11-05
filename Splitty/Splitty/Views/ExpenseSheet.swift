@@ -128,6 +128,9 @@ struct ExpenseSheet: View {
                 savedCount += 1
                 onSaved(write)
                 dismiss()
+                if case .expenseCreated = write, viewModel.members.count > 1 {
+                    PushNotifications.shared.offerIfUseful()
+                }
             }
         }
     }

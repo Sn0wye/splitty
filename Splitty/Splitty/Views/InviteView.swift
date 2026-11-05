@@ -133,6 +133,8 @@ struct InviteView: View {
         do {
             let invite = try await GroupService.shared.createInvite(groupId: groupId)
             state = .created(code: invite.code)
+            // Whoever joins with it is announced to the person who made it.
+            PushNotifications.shared.offerIfUseful()
         } catch is CancellationError {
             state = .failed(message: L10n.Invite.interrupted)
         } catch {

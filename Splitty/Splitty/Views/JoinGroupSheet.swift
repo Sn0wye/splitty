@@ -62,6 +62,7 @@ struct JoinGroupSheet: View {
                     InviteGroupPreview(metadata: preview, viewModel: viewModel) { group in
                         onJoined(group)
                         dismiss()
+                        PushNotifications.shared.offerIfUseful()
                     }
                 }
             }

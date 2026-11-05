@@ -48,8 +48,10 @@ struct OnboardingReviewView: View {
                     row(.plansEmpty)
                     row(.settleUp)
                     row(.settledUp)
+                    row(.balancesReminder)
                     row(.avatarCrop)
                     row(.appearance)
+                    row(.notifications)
                 } header: {
                     Text("Components")
                 } footer: {
@@ -159,6 +161,20 @@ struct OnboardingReviewView: View {
             ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
                 ReviewSettleUpSheet()
             }
+        case .balancesReminder:
+            ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
+                ReviewBalancesView()
+            }
+        case .notifications:
+            // The real screen; the switches are held in memory, the permission is the device's.
+            NavigationStack {
+                NotificationsView(dataSource: ReviewSamples.notificationSettings)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button(L10n.Common.done) { selectedScreen = nil }
+                        }
+                    }
+            }
         case .avatarCrop:
             AvatarCropView(
                 image: ReviewSamples.avatarPhoto,
@@ -236,8 +252,10 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
     case plansEmpty
     case settleUp
     case settledUp
+    case balancesReminder
     case avatarCrop
     case appearance
+    case notifications
 
     var id: String { rawValue }
 
@@ -264,8 +282,10 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .plansEmpty: "Plans, no installments"
         case .settleUp: "Settle up"
         case .settledUp: "Settled up"
+        case .balancesReminder: "Balances, remind"
         case .avatarCrop: "Avatar crop"
         case .appearance: "Appearance"
+        case .notifications: "Notifications"
         }
     }
 
@@ -292,8 +312,10 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .plansEmpty: "repeat.circle"
         case .settleUp: "person.crop.circle"
         case .settledUp: "checkmark.circle"
+        case .balancesReminder: "bell"
         case .avatarCrop: "crop"
         case .appearance: "circle.lefthalf.filled"
+        case .notifications: "bell.badge"
         }
     }
 }
