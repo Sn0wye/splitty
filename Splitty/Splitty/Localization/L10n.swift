@@ -675,8 +675,50 @@ enum L10n {
         }
     }
 
+    enum Notifications {
+        static var title: String { text("notifications.title", default: "Notifications") }
+        static var receive: String { text("notifications.receive", default: "Receive notifications") }
+        static var sectionExpenses: String { text("notifications.section_expenses", default: "Expenses") }
+        static var sectionPayments: String { text("notifications.section_payments", default: "Payments") }
+        static var sectionReminders: String { text("notifications.section_reminders", default: "Reminders") }
+        static var sectionGroup: String { text("notifications.section_group", default: "Group") }
+        static var expenseAdded: String { text("notifications.kind.expense_added", default: "New expense") }
+        static var expenseAddedDetail: String { text("notifications.kind.expense_added_detail", default: "Someone adds an expense with you") }
+        static var recurringExpenseAdded: String { text("notifications.kind.recurring_expense_added", default: "New recurring expense") }
+        static var recurringExpenseAddedDetail: String { text("notifications.kind.recurring_expense_added_detail", default: "Someone adds a recurring expense with you") }
+        static var expenseChanged: String { text("notifications.kind.expense_changed", default: "Expense changed") }
+        static var expenseChangedDetail: String { text("notifications.kind.expense_changed_detail", default: "Your share changes, or you are added or removed") }
+        static var expenseDeleted: String { text("notifications.kind.expense_deleted", default: "Expense deleted") }
+        static var expenseDeletedDetail: String { text("notifications.kind.expense_deleted_detail", default: "Someone deletes an expense with you") }
+        static var paymentReceived: String { text("notifications.kind.payment_received", default: "Payment received") }
+        static var paymentReceivedDetail: String { text("notifications.kind.payment_received_detail", default: "Someone records a payment to you") }
+        static var paymentChanged: String { text("notifications.kind.payment_changed", default: "Payment changed") }
+        static var paymentChangedDetail: String { text("notifications.kind.payment_changed_detail", default: "Someone changes the amount of a payment of yours") }
+        static var paymentDeleted: String { text("notifications.kind.payment_deleted", default: "Payment deleted") }
+        static var paymentDeletedDetail: String { text("notifications.kind.payment_deleted_detail", default: "Someone deletes a payment of yours") }
+        static var paymentReminder: String { text("notifications.kind.payment_reminder", default: "Payment reminders") }
+        static var paymentReminderDetail: String { text("notifications.kind.payment_reminder_detail", default: "Someone asks you to pay") }
+        static var inviteAccepted: String { text("notifications.kind.invite_accepted", default: "Joined with your invite") }
+        static var inviteAcceptedDetail: String { text("notifications.kind.invite_accepted_detail", default: "Someone joins with an invite of yours") }
+        static var removedFromGroup: String { text("notifications.kind.removed_from_group", default: "Removed from a group") }
+        static var removedFromGroupDetail: String { text("notifications.kind.removed_from_group_detail", default: "Someone removes you from a group") }
+        static var systemOff: String { text("notifications.system_off", default: "Notifications are turned off in Settings.") }
+        static var openSettings: String { text("notifications.open_settings", default: "Open Settings") }
+        static var turnOn: String { text("notifications.turn_on", default: "Turn On Notifications") }
+        static var saveFailed: String { text("notifications.save_failed", default: "Could not save the change") }
+        static var offerTitle: String { text("notifications.offer_title", default: "Get notified?") }
+        static var offerMessage: String { text("notifications.offer_message", default: "Know when someone adds an expense with you or records a payment.") }
+        static var offerAccept: String { text("notifications.offer_accept", default: "Turn On") }
+        static var offerDecline: String { text("notifications.offer_decline", default: "Not Now") }
+    }
+
     enum Balances {
         static var title: String { text("balances.title", default: "Balances") }
+        static var remind: String { text("balances.remind", default: "Remind") }
+        static var reminderSent: String { text("balances.reminder_sent", default: "Reminder sent") }
+        static var remindHint: String { text("balances.remind_hint", default: "Asks them to pay") }
+        static var remindedToday: String { text("balances.reminded_today", default: "You already sent a reminder today.") }
+        static var remindFailed: String { text("balances.remind_failed", default: "Could not send the reminder") }
         static var owedOverall: String { text("balances.owed_overall", default: "You are owed overall") }
         static var oweOverall: String { text("balances.owe_overall", default: "You owe overall") }
         static var yourBalance: String { text("balances.your_balance", default: "Your balance") }

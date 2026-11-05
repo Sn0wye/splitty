@@ -1,6 +1,9 @@
 ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
 ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor
 CODE_SIGN_STYLE = Automatic
+// Push notifications. Automatic signing writes `production` into an App Store or TestFlight
+// archive; Debug builds get sandbox tokens, which is what the app tells the API.
+CODE_SIGN_ENTITLEMENTS = Config/Splitty.entitlements
 CURRENT_PROJECT_VERSION = 1
 DEVELOPMENT_ASSET_PATHS = "Splitty/Preview Content"
 ENABLE_PREVIEWS = YES

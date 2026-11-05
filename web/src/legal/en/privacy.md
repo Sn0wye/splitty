@@ -23,11 +23,13 @@ For anything about your data, write to {{privacyEmail}}. That address reaches th
 
 **Sign-in sessions.** To keep you signed in, we issue tokens to your device. We store only a hashed form of the long-lived token, never the token itself.
 
+**Push notifications.** If you allow notifications, your device gives us a push token. We store it with the language you picked in the app and the sign-in it belongs to, and we store which kinds of notification you turned off. Each notification names the group, the member who acted, the expense and the amount, so you know what changed.
+
 **Crash and error reports.** When the app crashes, freezes or gets an unexpected error from our server, it sends a report: the kind of problem, technical details such as a stack trace or the failing request, the app version, the iOS version and the device model. Reports are sent without your account and contain no name, email or expense data. They aren't linked to you.
 
 **Server logs.** Our server records technical events, such as errors and request identifiers, to keep the service running and secure. These logs can include your account number and your device's IP address.
 
-**On your device only.** Your theme and language choice are stored on your phone and never sent to us.
+**On your device only.** Your theme is stored on your phone and never sent to us. Your language choice is too, unless you turn on notifications: then it is sent with your push token, so notifications arrive in that language.
 
 We don't collect your location, contacts, photo library (beyond the one photo you choose to upload), payment details, or any data from other apps.
 
@@ -36,6 +38,7 @@ We don't collect your location, contacts, photo library (beyond the one photo yo
 | What we do | Data | Legal basis |
 |---|---|---|
 | Create your account and sign you in | Account details, sessions | Performing our contract with you (LGPD art. 7, V; GDPR art. 6(1)(b)) |
+| Tell you when something in your groups changes what you owe or are owed, and send reminders members ask for | Push token, language, notification settings, what you put in Splitty | Performing our contract with you |
 | Run the service: keep your groups, calculate balances, show members to each other | Account details, profile photo, what you put in Splitty | Performing our contract with you |
 | Find and fix crashes and bugs | Crash and error reports, server logs | Our legitimate interest in a working app (LGPD art. 7, IX; GDPR art. 6(1)(f)) |
 | Keep the service secure and stop abuse, such as guessing invite codes | Server logs | Our legitimate interest in security |
@@ -54,6 +57,7 @@ We don't use your data for automated decisions that have legal or similarly sign
 - **Cloudflare** (R2 storage): stores uploaded profile photos.
 - **DiceBear**: when you have no photo, the app loads a generated drawing from DiceBear's service. The request carries your Splitty account number as the drawing's seed, never your name or email, and DiceBear sees your device's IP address, as any website does.
 - **Hosting**: our server, database and logs run on infrastructure we operate.
+- **Apple** (Apple Push Notification service): delivers notifications to your device. The text of each notification passes through Apple on the way.
 
 Your Google profile photo is loaded from Google's servers, which see your device's IP address when it loads.
 
@@ -73,6 +77,7 @@ Some providers above process data outside Brazil, for example in the United Stat
 - **When you delete your account**: your name, email, photos and sign-in links are erased straight away, and all your sessions end. Expenses and payments you shared stay in your groups because other members' balances depend on them, but they show "Removed member" instead of you. Groups where nobody remains are deleted.
 - **When you deactivate your account**: nothing is deleted. Your sessions end, and signing in again restores the account.
 - **Sign-in sessions**: expire after {{refreshTokenDays}} days without use, or when you sign out.
+- **Push tokens**: deleted when you sign out on that device, deactivate or delete your account, or when Apple tells us the app is no longer installed. A token stops being used when its sign-in expires.
 - **Crash reports and server logs**: kept for up to {{logRetentionDays}} days, then deleted.
 - **Emails with us**: as long as needed to deal with your request, and for any period the law requires.
 
@@ -90,7 +95,7 @@ Under the LGPD (art. 18) you can ask us to:
 
 If you are in the EU or UK, the GDPR gives you similar rights: access, rectification, erasure, restriction, portability and objection, including objecting to processing based on legitimate interests.
 
-**In the app**, you can change your name and photo, export a group's expenses as a CSV file, and deactivate or delete your account in Settings. For anything else, email {{privacyEmail}}. We reply within 15 days. We may ask you to confirm the request from the email address on your account.
+**In the app**, you can change your name and photo, export a group's expenses as a CSV file, choose which notifications you get, and deactivate or delete your account in Settings. For anything else, email {{privacyEmail}}. We reply within 15 days. We may ask you to confirm the request from the email address on your account.
 
 You also have the right to complain to Brazil's data protection authority, the ANPD (gov.br/anpd), or to the supervisory authority where you live in the EU or UK.
 

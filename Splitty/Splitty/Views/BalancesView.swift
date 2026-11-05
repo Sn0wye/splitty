@@ -10,8 +10,16 @@ struct BalancesView: View {
     @ObservedObject var session: GroupSession
     let currentUserId: Int
 
+    var remind: (_ groupId: Int, _ debtorId: Int) async throws -> Void = { groupId, debtorId in
+        try await NotificationService.shared.remind(groupId: groupId, userId: debtorId)
+    }
+
     @Environment(\.dismiss) private var dismiss
     @State private var selectedDebt: BalanceRow?
+    /// Rows reminded while the sheet is open. The server allows one a day per member.
+    @State private var reminded: Set<String> = []
+    @State private var reminding: String?
+    @State private var remindError: String?
 
     var body: some View {
         NavigationStack {
@@ -49,6 +57,28 @@ struct BalancesView: View {
                 currentUserId: currentUserId,
                 preselectedRow: row
             )
+        }
+        .alert(
+            Text(L10n.Balances.remindFailed),
+            isPresented: Binding(get: { remindError != nil }, set: { if !$0 { remindError = nil } })
+        ) {
+            Button(L10n.Common.ok, role: .cancel) { remindError = nil }
+        } message: {
+            Text(remindError ?? "")
+        }
+    }
+
+    private func sendReminder(_ row: BalanceRow) async {
+        reminding = row.id
+        defer { reminding = nil }
+        do {
+            try await remind(session.groupId, row.from.id)
+            reminded.insert(row.id)
+        } catch APIError.httpError(429, _) {
+            reminded.insert(row.id)
+            remindError = L10n.Balances.remindedToday
+        } catch {
+            if !error.isCancellation { remindError = error.displayMessage }
         }
     }
 
@@ -125,6 +155,15 @@ struct BalancesView: View {
                         .buttonStyle(.plain)
                         .disabled(session.balancesPending)
                         .accessibilityHint(L10n.Balances.recordsPayment)
+                    } else if row.involvement == .paysYou {
+                        SimplifiedDebtRow(
+                            row: row,
+                            numbersArePending: session.balancesPending,
+                            reminder: reminded.contains(row.id) ? .sent
+                                : reminding == row.id ? .sending
+                                : session.balancesPending ? .unavailable : .available,
+                            onRemind: { Task { await sendReminder(row) } }
+                        )
                     } else {
                         balanceRow(row)
                     }
@@ -144,9 +183,13 @@ struct BalancesView: View {
 }
 
 private struct SimplifiedDebtRow: View {
+    enum Reminder { case available, unavailable, sending, sent }
+
     @Environment(\.currency) private var currency
     let row: BalanceRow
     let numbersArePending: Bool
+    var reminder: Reminder?
+    var onRemind: () -> Void = {}
 
     private var directionColor: Color {
         switch row.involvement {
@@ -184,6 +227,10 @@ private struct SimplifiedDebtRow: View {
                     // Foreground, not the accent: Coral Deep on the row's red tint is 4:1.
                     .foregroundStyle(Color("card-foreground"))
                 }
+
+                if let reminder {
+                    reminderButton(reminder)
+                }
             }
         }
         .padding(.vertical, 12)
@@ -195,7 +242,40 @@ private struct SimplifiedDebtRow: View {
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(row.statement(in: currency))
-        .accessibilityValue(numbersArePending ? L10n.Common.updating : "")
+        .accessibilityValue(reminder == .sent ? L10n.Balances.reminderSent
+            : numbersArePending ? L10n.Common.updating : "")
+        .accessibilityActions {
+            if reminder == .available {
+                Button(L10n.Balances.remind, action: onRemind)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func reminderButton(_ reminder: Reminder) -> some View {
+        if reminder == .sent {
+            Label(L10n.Balances.reminderSent, systemImage: "checkmark")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color("muted-foreground"))
+        } else {
+            Button(action: onRemind) {
+                HStack(spacing: 3) {
+                    if reminder == .sending {
+                        ProgressView().controlSize(.mini)
+                    } else {
+                        Image(systemName: "bell")
+                    }
+                    Text(L10n.Balances.remind)
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color("card-foreground"))
+                .frame(minHeight: 28)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(reminder != .available)
+            .accessibilityHint(L10n.Balances.remindHint)
+        }
     }
 
     private var debtMemberAvatars: some View {

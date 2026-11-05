@@ -114,6 +114,19 @@ struct SettingsView: View {
                     }
 
                     NavigationLink {
+                        NotificationsView()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "bell")
+                                .foregroundStyle(Color("muted-foreground"))
+                                .frame(width: 24)
+
+                            Text(L10n.Notifications.title)
+                        }
+                        .frame(minHeight: 44)
+                    }
+
+                    NavigationLink {
                         LanguageView()
                     } label: {
                         HStack(spacing: 12) {
