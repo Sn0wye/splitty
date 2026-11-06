@@ -84,7 +84,7 @@ public sealed class SimplifiedDebtTests(ApiFactory factory)
     }
 
     [Fact]
-    public async Task Pending_balances_refuse_creation_and_edit_even_when_stored_debt_exists()
+    public async Task Pending_balances_still_accept_creation_and_edit_within_the_rows_cap()
     {
         var (group, _, creditorId) = await ChainAsync();
         (await group.Guest.SettleUpAsync(group.Id, new { withUserId = creditorId, amount = 2m }))
@@ -99,12 +99,14 @@ public sealed class SimplifiedDebtTests(ApiFactory factory)
         (await guest.RequestSummaryRefreshAsync(group.Id)).EnsureSuccessStatusCode();
         await gate.WaitForEntryAsync();
         Assert.True((await guest.ReadSummaryAsync(group.Id)).BalancesPending);
-        await ErrorResponseAssertions.AssertErrorAsync(
-            await guest.SettleUpAsync(group.Id, new { withUserId = creditorId, amount = 1m }), HttpStatusCode.BadRequest);
-        await ErrorResponseAssertions.AssertErrorAsync(
-            await guest.UpdateSettlementAsync(group.Id, id, new { amount = 1m }), HttpStatusCode.BadRequest);
+
+        // The cap reads the rows, not the pending flag (ADR 0009).
+        (await guest.SettleUpAsync(group.Id, new { withUserId = creditorId, amount = 1m })).EnsureSuccessStatusCode();
+        (await guest.UpdateSettlementAsync(group.Id, id, new { amount = 1m })).EnsureSuccessStatusCode();
+
+        // The refresh, the settlement and the edit each queued a request.
         gate.Release();
-        await gated.WaitForProcessedAsync();
+        await gated.WaitForProcessedAsync(3);
     }
 
     [Fact]

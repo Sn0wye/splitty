@@ -109,8 +109,8 @@ orders by it, then by the groups opened this launch, then by `CreatedAt`.
 the expense routes, even though a settlement is an `Expense` row. The expense `PUT`/`DELETE`
 refuse `Payment` rows rather than branching on `Type`. The settlement edit rebuilds both
 splits from the new amount and re-applies the cap of invariant 5 with the settlement's *own*
-contribution excluded — the stored balance already counts it, so a cap read raw would reject
-even re-saving the amount already there. See
+contribution excluded — the rows already count it, so a cap read raw would reject even
+re-saving the amount already there. See
 `docs/adr/0001-settlements-have-their-own-routes.md`.
 
 Deletion is immediate and permanent, with no history or restore. Any member may delete any
@@ -118,9 +118,22 @@ expense or settlement, just as any member may edit one. If a settlement has alre
 against an expense, deleting that expense deliberately leaves the payment in place and
 reverses the debt so the group can settle it in the other direction.
 
+**Offline writes** rely on three columns on `Expense`. `ClientId` is the id the creating
+client gave the row, unique per group; a create or settle resent with it answers with the
+row its first send made and adds nothing. `Version` starts at 1 and goes up on every edit;
+an edit that sends `baseVersion` is refused with `409 version_conflict`, carrying the current
+row, when the row has moved on. `LastOpId` is the id of the last edit applied, so an edit
+resent with the same `opId` answers with the row instead of a conflict with itself. A write
+may also send the group `currency` it believed in, refused with `409 currency_changed` when
+the group has since been relabelled (ADR 0007). A delete never sends a version: **a delete
+wins over any edit**, and an edit of a deleted row is a `404`. All of it lives on the row, in
+the save that writes it, never in an outer transaction: see
+`docs/adr/0008-offline-writes.md`.
+
 **Settle direction** is always caller-as-debtor. `POST /settle` records *the caller* paying
 the peer, so "who can settle a debt" has exactly one answer: the person who owes it. There is
-no route for recording that someone paid *you*, and no counterparty confirmation.
+no route for recording that someone paid *you*, and no counterparty confirmation. It answers
+with the settlement it recorded, like an expense create; so does a settlement edit.
 
 Entities use `[Table("Name")]` (singular, PascalCase — so do the Postgres tables),
 `[DatabaseGenerated(Identity)]` int keys, and `[JsonIgnore]` on back-references to stop
@@ -154,10 +167,13 @@ These are the rules the domain actually depends on:
    the test project, which `InternalsVisibleTo` lets wrap the replay step to hold or fail
    it; no production code can. Request a recomputation, never perform one.
 5. **Settlements are capped at the smaller of the payer's net debt and the payee's net credit
-   in that group.** Both positions come from stored pairwise balances, not from the suggested
-   pairs. Members can pay a net creditor without having shared an expense. Editing excludes
-   the payment's own contribution from both positions. Pending groups cap at zero; the
-   eventually consistent cap can produce a retryable `400`.
+   in that group.** Both positions are read from the money rows, with the replay's own
+   aggregate query and `LedgerCore`, not from the stored balances or the suggested pairs, so
+   a pending group has a real cap. Nothing is written, so the replay keeps its single caller
+   (invariant 4). Members can pay a net creditor without having shared an expense. Editing
+   excludes the payment's own contribution from both positions. Over the cap is a
+   `400 settlement_exceeds_cap` carrying `cap`. See
+   `docs/adr/0009-the-settlement-cap-reads-the-rows.md`.
 
 ## Language
 
@@ -294,7 +310,7 @@ rows; the overall figure on the groups list is the sum of those group nets.
 `Group.BalancesPending`, surfaced as `balancesPending` on the summary response, says a
 recomputation is outstanding, including simplified debts. The summary serves the whole
 group's stored simplified debts, and People uses those same per-group amounts. Pending
-figures may be stale and settlement creation or editing is refused until recomputation.
+figures may be stale. Settlements are not refused for it: their cap reads the rows (invariant 5).
 The flag is eventually consistent, not a lock or transaction barrier. The summary reads it
 through the ledger before the debts, so a replay landing between the reads reports fresh
 figures as pending rather than stale ones as settled.
@@ -589,8 +605,11 @@ Enums serialize as snake_case strings (`JsonStringEnumConverter` in `Program.cs`
 
 `ErrorResponse.code` is set only where a client must tell refusals with the same status
 apart: leaving or removing a member answers 409 with `outstanding_balance` or
-`balances_pending`. Branch on the code, never on `message`, which is English prose. Every
-other error omits the key.
+`balances_pending`; a stale edit answers 409 `version_conflict` with the current row in
+`expense`; a write in a currency the group no longer has answers 409 `currency_changed`; a
+settlement over the cap answers 400 `settlement_exceeds_cap` with the cap in `cap`. Services
+raise the coded refusals as `RefusalException`, which the middleware maps. Branch on the code,
+never on `message`, which is English prose. Every other error omits the key.
 
 Every response carries an `X-Trace-Id` header, the request's `TraceIdentifier`. Errors from
 the middleware also put it in `ErrorResponse.traceId`. It is the `RequestId` property on that

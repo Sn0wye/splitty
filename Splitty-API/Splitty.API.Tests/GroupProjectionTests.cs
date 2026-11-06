@@ -149,7 +149,7 @@ public sealed class GroupProjectionTests(ApiFactory factory)
         var id = await group.SettleAsync(6m);
         await factory.WaitForProcessedAsync();
         var date = new DateTime(2026, 3, 15, 12, 0, 0, DateTimeKind.Utc);
-        Assert.Equal(HttpStatusCode.NoContent,
+        Assert.Equal(HttpStatusCode.OK,
             (await group.Owner.UpdateSettlementAsync(group.Id, id, new { amount = 10m, date })).StatusCode);
         await factory.WaitForProcessedAsync();
         (await group.Guest.LeaveGroupAsync(group.Id)).EnsureSuccessStatusCode();

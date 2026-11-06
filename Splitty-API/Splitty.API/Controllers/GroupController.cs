@@ -239,7 +239,9 @@ public class GroupController(
             ExpenseSplits = request.Splits,
             Repeat = request.Repeat,
             TimeZone = request.TimeZone,
-            EndsOn = request.EndsOn
+            EndsOn = request.EndsOn,
+            ClientId = request.ClientId,
+            Currency = request.Currency
         };
 
         var expense = await expenseService.CreateAsync(dto, int.Parse(userId));
@@ -282,7 +284,10 @@ public class GroupController(
             TimeZone = request.TimeZone,
             EndsOn = request.EndsOn,
             EndsNever = request.EndsNever,
-            Scope = scope
+            Scope = scope,
+            BaseVersion = request.BaseVersion,
+            OpId = request.OpId,
+            Currency = request.Currency
         };
 
         var expense = await expenseService.UpdateAsync(dto, int.Parse(userId));
@@ -308,7 +313,7 @@ public class GroupController(
     }
 
     [HttpPut("{groupId}/settlements/{expenseId:int}")]
-    public async Task<ActionResult> UpdateSettlement(
+    public async Task<ActionResult<ExpenseResponse>> UpdateSettlement(
         int groupId,
         int expenseId,
         [FromBody] UpdateSettlementRequest request)
@@ -319,9 +324,15 @@ public class GroupController(
 
         if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
 
-        await balanceService.UpdateSettlement(groupId, expenseId, int.Parse(userId), request.Amount, request.Date);
-
-        return NoContent();
+        return Ok(await balanceService.UpdateSettlement(
+            groupId,
+            expenseId,
+            int.Parse(userId),
+            request.Amount,
+            request.Date,
+            request.BaseVersion,
+            request.OpId,
+            request.Currency));
     }
 
     [HttpDelete("{groupId}/settlements/{expenseId:int}")]
@@ -402,7 +413,11 @@ public class GroupController(
     }
 
     [HttpPost("{groupId}/settle")]
-    public async Task<ActionResult> SettleUp(int groupId, [FromBody] SettleUpRequest request)
+    /// <summary>
+    /// Answers with the settlement it recorded, so a client can match it to the row it showed
+    /// before the answer came, by <c>clientId</c>.
+    /// </summary>
+    public async Task<ActionResult<ExpenseResponse>> SettleUp(int groupId, [FromBody] SettleUpRequest request)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -410,13 +425,13 @@ public class GroupController(
         
         if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
 
-        await balanceService.SettleUp(
+        return Ok(await balanceService.SettleUp(
             groupId,
             int.Parse(userId),
             request.WithUserId,
             request.Amount,
-            request.Date);
-
-        return Ok();
+            request.Date,
+            request.ClientId,
+            request.Currency));
     }
 }

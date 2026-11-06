@@ -1,3 +1,4 @@
+using Splitty.Domain.Entities;
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.TestHost;
@@ -79,5 +80,8 @@ public sealed class InviteAcceptanceTests
         public Task<bool> GroupExistsAsync(int groupId) => inner.GroupExistsAsync(groupId);
         public Task<bool> IsMemberAsync(int groupId, int userId) => inner.IsMemberAsync(groupId, userId);
         public Task<decimal> GetMemberNetAsync(int groupId, int userId) => inner.GetMemberNetAsync(groupId, userId);
+        public Task<Currency> GetCurrencyAsync(int groupId) => inner.GetCurrencyAsync(groupId);
+        public Task<(int Id, ExpenseType Type)?> FindByClientIdAsync(int groupId, Guid clientId) =>
+            inner.FindByClientIdAsync(groupId, clientId);
     }
 }

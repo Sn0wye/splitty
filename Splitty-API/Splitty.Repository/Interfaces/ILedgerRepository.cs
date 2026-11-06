@@ -29,9 +29,6 @@ internal interface ILedgerRepository
     /// </summary>
     Task<List<PairwisePosition<int>>> GetPositionsAsync(int groupId, CancellationToken cancellationToken);
 
-    /// <summary>The group's stored pairwise balances. Untracked.</summary>
-    Task<List<PairwiseBalance<int>>> GetBalancesAsync(int groupId, CancellationToken cancellationToken);
-
     /// <summary>
     /// Writes a replay's result in one transaction: inserts new pairs, updates changed pairs,
     /// zeroes pairs that disappeared, replaces the simplified debts, and clears the pending

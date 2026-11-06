@@ -18,6 +18,9 @@ public class UpdateExpenseDTO
     public DateOnly? EndsOn { get; set; }
     public bool EndsNever { get; set; }
     public ExpenseScope Scope { get; set; } = ExpenseScope.This;
+    public int? BaseVersion { get; set; }
+    public Guid? OpId { get; set; }
+    public Currency? Currency { get; set; }
 }
 
 /// <summary>

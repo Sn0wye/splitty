@@ -173,6 +173,15 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
 
+            // Rows written before offline writes start at version 1 like any new row.
+            entity.Property(e => e.Version).IsRequired().HasDefaultValue(1);
+
+            // Unique per group, and only where a client sent one: rows written without a
+            // client id share the absence. See docs/adr/0008-offline-writes.md.
+            entity.HasIndex(e => new { e.GroupId, e.ClientId })
+                .IsUnique()
+                .HasFilter("\"ClientId\" IS NOT NULL");
+
             entity.HasOne(e => e.PaidByUser)
                 .WithMany()
                 .HasForeignKey(e => e.PaidBy)

@@ -5,9 +5,18 @@ namespace Splitty.Repository.Interfaces;
 public interface IExpenseRepository
 {
     Task<Expense> CreateAsync(Expense expense);
+
+    /// <summary>
+    /// Saves <paramref name="expense"/>, or returns false and saves nothing when the group
+    /// already stores a row under its client id: a resent create lost a race to its first send.
+    /// </summary>
+    Task<bool> CreateOnceAsync(Expense expense);
     Task<List<Expense>> CreateExpenses(List<Expense> expenses);
     Task<Expense?> GetForUpdateAsync(int id);
+    /// Throws <see cref="ConcurrentEditException"/> when the row's version moved since it was read.
     Task<Expense> UpdateAsync(Expense expense);
+
+    /// Deletes the row even when an edit landed after it was read: a delete wins.
     Task DeleteAsync(Expense expense);
 
     /// <summary>

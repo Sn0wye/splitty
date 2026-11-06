@@ -16,6 +16,12 @@ public sealed class ExpenseResponse
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
 
+    /// The id the creating client gave this row, null when it sent none.
+    public Guid? ClientId { get; init; }
+
+    /// Goes up by one on every edit. Send it back as <c>baseVersion</c> on an edit.
+    public int Version { get; init; }
+
     /// The recurring expense that added this expense, null for one entered by hand.
     public int? RecurringExpenseId { get; init; }
 

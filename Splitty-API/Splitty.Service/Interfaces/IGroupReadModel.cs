@@ -1,3 +1,4 @@
+using Splitty.Domain.Entities;
 using Splitty.DTO.Internal;
 using Splitty.DTO.Response;
 
@@ -15,4 +16,10 @@ public interface IGroupReadModel
     Task<bool> GroupExistsAsync(int groupId);
     Task<bool> IsMemberAsync(int groupId, int userId);
     Task<decimal> GetMemberNetAsync(int groupId, int userId);
+
+    /// The group's currency. The group must exist.
+    Task<Currency> GetCurrencyAsync(int groupId);
+
+    /// The id and type of the row created in the group under a client id, or null.
+    Task<(int Id, ExpenseType Type)?> FindByClientIdAsync(int groupId, Guid clientId);
 }

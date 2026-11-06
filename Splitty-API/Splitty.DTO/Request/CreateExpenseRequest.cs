@@ -56,4 +56,18 @@ public class CreateExpenseRequest
     /// before the start day. A client asking for "after N times" sends the Nth due day.
     /// </summary>
     public DateOnly? EndsOn { get; set; }
+
+    /// <summary>
+    /// The id the client gave this expense before sending it. A create carrying one the group
+    /// already stores answers with that row and adds nothing, so a create may be resent
+    /// safely. Optional. See docs/adr/0008-offline-writes.md.
+    /// </summary>
+    public Guid? ClientId { get; set; }
+
+    /// <summary>
+    /// The group currency the client believed it was writing in. Refused with
+    /// <c>currency_changed</c> when the group's currency is different now, because the
+    /// amounts would be relabelled (ADR 0007). Optional.
+    /// </summary>
+    public Currency? Currency { get; set; }
 }

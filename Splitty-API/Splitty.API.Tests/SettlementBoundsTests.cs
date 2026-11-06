@@ -98,19 +98,59 @@ public sealed class SettlementBoundsTests(ApiFactory factory)
     }
 
     /// <summary>
-    /// The cap reads the balance table, so a group the worker has not replayed yet caps at
-    /// zero. Accepted: a retryable 400 rather than an unbounded settlement.
+    /// The cap reads the money rows, not the balance table, so an expense no replay has
+    /// turned into a balance yet still counts. See docs/adr/0009-the-settlement-cap-reads-the-rows.md.
     /// </summary>
     [Fact]
-    public async Task Settling_against_a_group_with_no_computed_balances_is_rejected()
+    public async Task The_cap_counts_an_expense_no_replay_has_seen_yet()
     {
         var group = await GroupFixture.CreateAsync(factory);
         await factory.DrainProcessedAsync();
         await group.InsertExpenseDirectlyAsync(amount: 20m, share: 10m);
 
-        var response = await group.Guest.SettleUpAsync(group.Id, new { withUserId = group.OwnerId, amount = 10m });
+        var over = await group.Guest.SettleUpAsync(group.Id, new { withUserId = group.OwnerId, amount = 10.01m });
+        var exact = await group.Guest.SettleUpAsync(group.Id, new { withUserId = group.OwnerId, amount = 10m });
 
-        await ErrorResponseAssertions.AssertErrorAsync(response, HttpStatusCode.BadRequest);
+        await ErrorResponseAssertions.AssertErrorAsync(over, HttpStatusCode.BadRequest);
+        Assert.Equal(HttpStatusCode.OK, exact.StatusCode);
+    }
+
+    /// <summary>
+    /// A client back online sends its queued expenses and then its settlement, so the group
+    /// is still pending when the settlement arrives. It is accepted against the rows.
+    /// </summary>
+    [Fact]
+    public async Task Settling_while_the_group_is_pending_is_accepted()
+    {
+        var group = await GroupFixture.CreateAsync(factory);
+        await factory.DrainProcessedAsync();
+        using var gate = new RecomputeGate(group.Id);
+        await using var gated = factory.WithGate(gate);
+        await gated.DrainProcessedAsync();
+        var guest = ApiClient.Create(gated, group.GuestToken);
+        var owner = ApiClient.Create(gated, group.OwnerToken);
+
+        (await owner.CreateExpenseAsync(group.Id, new
+        {
+            paidBy = group.OwnerId,
+            amount = 20m,
+            description = "Dinner",
+            splitMode = "equal",
+            splits = new[]
+            {
+                new { userId = group.OwnerId, amount = 10m },
+                new { userId = group.GuestId, amount = 10m }
+            }
+        })).EnsureSuccessStatusCode();
+        await gate.WaitForEntryAsync();
+        Assert.True((await owner.ReadSummaryAsync(group.Id)).BalancesPending);
+
+        var response = await guest.SettleUpAsync(group.Id, new { withUserId = group.OwnerId, amount = 10m });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        gate.Release();
+        await gated.WaitForProcessedAsync();
+        Assert.Equal(0m, (await owner.ReadSummaryAsync(group.Id)).AmountOwedBy(group.OwnerId, group.GuestId));
     }
 
     [Fact]

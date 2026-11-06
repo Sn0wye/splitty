@@ -1,3 +1,5 @@
+using Splitty.Domain.Entities;
+
 namespace Splitty.DTO.Request;
 
 /// <summary>
@@ -10,4 +12,10 @@ public class SettleUpRequest
     public int WithUserId { get; set; }
     public decimal Amount { get; set; }
     public DateTime? Date { get; set; }
+
+    /// <summary>See <see cref="CreateExpenseRequest.ClientId"/>.</summary>
+    public Guid? ClientId { get; set; }
+
+    /// <summary>See <see cref="CreateExpenseRequest.Currency"/>.</summary>
+    public Currency? Currency { get; set; }
 }

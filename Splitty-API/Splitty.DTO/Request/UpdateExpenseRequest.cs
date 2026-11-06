@@ -57,4 +57,20 @@ public class UpdateExpenseRequest
     /// <c>false</c> leaves the end to <see cref="EndsOn"/>.
     /// </summary>
     public bool EndsNever { get; set; }
+
+    /// <summary>
+    /// The <c>version</c> of the expense the edit was made against. Refused with
+    /// <c>version_conflict</c> when the expense has moved on since. Omitted means the edit
+    /// applies whatever the current version is.
+    /// </summary>
+    public int? BaseVersion { get; set; }
+
+    /// <summary>
+    /// The client's id for this edit. Resending an edit that already succeeded with the same
+    /// id answers with the expense as it is instead of a conflict with itself.
+    /// </summary>
+    public Guid? OpId { get; set; }
+
+    /// <summary>See <see cref="CreateExpenseRequest.Currency"/>.</summary>
+    public Currency? Currency { get; set; }
 }

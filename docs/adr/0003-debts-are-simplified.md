@@ -13,7 +13,9 @@ meaning the peer owes the caller. The migration marks existing groups pending; s
 queues pending groups through the existing worker to populate their simplified debts.
 
 A settlement is capped at the smaller of the payer's net debt and the payee's net credit,
-read from stored pairwise rows. Capping against a suggested pair would reject valid payments
+read from stored pairwise rows. _Superseded in part by
+`0009-the-settlement-cap-reads-the-rows.md`: the cap now reads the money rows, so pending
+groups no longer cap at zero._ Capping against a suggested pair would reject valid payments
 when greedy matching changes the suggestions. Edits remove the payment's contribution from
 both positions before applying the cap. Pending groups cap at zero. This remains an
 eventually consistent read, so a refusal may require a refresh and retry. Payments still use
