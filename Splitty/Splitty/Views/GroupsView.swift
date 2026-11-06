@@ -27,7 +27,10 @@ struct GroupsView: View {
     var body: some View {
         NavigationStack(path: $appState.groupsPath) {
             ScrollView(.vertical) {
-                VStack(spacing: 10) {
+                // Lazy: a card is built when it scrolls into view. Eager, every card was
+                // rebuilt on each push, pop and tab switch, and every one of them took part
+                // in each frame of a scroll.
+                LazyVStack(spacing: 10) {
                     header
 
                     if let groupNotice = appState.groupNotice {
