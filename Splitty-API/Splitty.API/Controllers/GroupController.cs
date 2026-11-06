@@ -422,16 +422,38 @@ public class GroupController(
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         if (userId is null) return Unauthorized();
-        
-        if (!await groupService.IsMemberAsync(groupId, int.Parse(userId))) return Forbid();
+
+        var callerId = int.Parse(userId);
+
+        if (!await groupService.IsMemberAsync(groupId, callerId)) return Forbid();
+
+        if (SettlementParties(request, callerId) is not var (payerId, payeeId))
+        {
+            return BadRequest(Error(400,
+                "Send either withUserId, or both fromUserId and toUserId."));
+        }
 
         return Ok(await balanceService.SettleUp(
             groupId,
-            int.Parse(userId),
-            request.WithUserId,
+            callerId,
+            payerId,
+            payeeId,
             request.Amount,
             request.Date,
             request.ClientId,
             request.Currency));
     }
+
+    /// <summary>
+    /// Who pays whom. <c>withUserId</c> is the shape clients sent when only the payer could
+    /// record a payment, so it still means the caller paid. Null for a body that mixes the
+    /// shapes or names only one side.
+    /// </summary>
+    private static (int PayerId, int PayeeId)? SettlementParties(SettleUpRequest request, int callerId) =>
+        (request.WithUserId, request.FromUserId, request.ToUserId) switch
+        {
+            ({ } peerId, null, null) => (callerId, peerId),
+            (null, { } fromId, { } toId) => (fromId, toId),
+            _ => null
+        };
 }

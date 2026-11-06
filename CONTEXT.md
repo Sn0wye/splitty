@@ -130,10 +130,13 @@ wins over any edit**, and an edit of a deleted row is a `404`. All of it lives o
 the save that writes it, never in an outer transaction: see
 `docs/adr/0008-offline-writes.md`.
 
-**Settle direction** is always caller-as-debtor. `POST /settle` records *the caller* paying
-the peer, so "who can settle a debt" has exactly one answer: the person who owes it. There is
-no route for recording that someone paid *you*, and no counterparty confirmation. It answers
-with the settlement it recorded, like an expense create; so does a settlement edit.
+**Settle direction** is either way, recorded by anyone. `POST /settle` takes `fromUserId` and
+`toUserId` and records one member paying another; the caller need not be either. `withUserId`
+alone, the shape older clients send, still means the caller paid. The app offers the two
+sides: a net debtor records "I paid", a net creditor records "I was paid". There is no
+counterparty confirmation and no record of who entered a payment. It answers with the
+settlement it recorded, like an expense create; so does a settlement edit. See
+`docs/adr/0010-any-member-records-a-payment-either-way.md`.
 
 Entities use `[Table("Name")]` (singular, PascalCase — so do the Postgres tables),
 `[DatabaseGenerated(Identity)]` int keys, and `[JsonIgnore]` on back-references to stop
@@ -167,9 +170,9 @@ These are the rules the domain actually depends on:
    the test project, which `InternalsVisibleTo` lets wrap the replay step to hold or fail
    it; no production code can. Request a recomputation, never perform one.
 5. **Settlements are capped at the smaller of the payer's net debt and the payee's net credit
-   in that group.** Both positions are read from the money rows, with the replay's own
-   aggregate query and `LedgerCore`, not from the stored balances or the suggested pairs, so
-   a pending group has a real cap. Nothing is written, so the replay keeps its single caller
+   in that group**, whoever records them. Both positions are read from the money rows, with
+   the replay's own aggregate query and `LedgerCore`, not from the stored balances or the
+   suggested pairs, so a pending group has a real cap. Nothing is written, so the replay keeps its single caller
    (invariant 4). Members can pay a net creditor without having shared an expense. Editing
    excludes the payment's own contribution from both positions. Over the cap is a
    `400 settlement_exceeds_cap` carrying `cap`. See
@@ -575,8 +578,9 @@ the empty string and a deleted user's address is free to sign up again.
 
 **Tombstones and membership.** `IsMemberAsync` requires the member's user to be live, so
 expense create and update refuse a tombstone as payer or participant (403). Settling reads
-the membership row directly, so a debtor can still pay a deleted creditor. Member removal
-also reads the row, so any member can remove a settled tombstone through the existing
+the membership row directly, so a tombstone can be either side of a payment: a debtor can
+still pay a deleted creditor, and a creditor can record being paid by a deleted debtor.
+Member removal also reads the row, so any member can remove a settled tombstone through the existing
 zero-balance route. Member counts (the empty-group check on leave or removal, and the invite
 preview) count only live members, so the last live member leaving deletes a group of
 tombstones. Projections need no change: they read the stored `[removed]` name and

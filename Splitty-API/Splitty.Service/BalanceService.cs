@@ -39,10 +39,18 @@ public class BalanceService(
         }).ToList();
     }
 
+    /// <summary>
+    /// Records <paramref name="payerId"/> paying <paramref name="payeeId"/>. Any member may
+    /// record a payment between any two members — the payer saying "I paid", the payee
+    /// saying "I was paid", or anyone else — because membership is the only authorization
+    /// boundary (invariant 2). Both sides are checked by membership row, not liveness, so a
+    /// tombstone can be either one. See docs/adr/0010-any-member-records-a-payment-either-way.md.
+    /// </summary>
     public async Task<ExpenseResponse> SettleUp(
         int groupId,
-        int userId,
-        int peerId,
+        int callerId,
+        int payerId,
+        int payeeId,
         decimal amount,
         DateTime? date,
         Guid? clientId = null,
@@ -52,12 +60,12 @@ public class BalanceService(
         // cap, which that first send already paid down.
         if (await ClientWrites.ExistingAsync(readModel, groupId, clientId, ExpenseType.Payment) is { } existing)
         {
-            return await readModel.GetExpenseAsync(groupId, existing, userId);
+            return await readModel.GetExpenseAsync(groupId, existing, callerId);
         }
 
-        if (userId == peerId)
+        if (payerId == payeeId)
         {
-            throw new ArgumentException("A settlement must be recorded against another member.");
+            throw new ArgumentException("A settlement must be recorded between two different members.");
         }
 
         if (amount <= 0)
@@ -65,10 +73,11 @@ public class BalanceService(
             throw new ArgumentException("Settlement amount must be greater than zero.");
         }
 
-        await EnsureMemberAsync(groupId, userId);
-        await EnsureMemberAsync(groupId, peerId);
+        await EnsureMemberAsync(groupId, callerId);
+        await EnsureMemberAsync(groupId, payerId);
+        await EnsureMemberAsync(groupId, payeeId);
 
-        var payee = await userRepository.GetByIdAsync(peerId);
+        var payee = await userRepository.GetByIdAsync(payeeId);
 
         if (payee is null)
         {
@@ -77,7 +86,7 @@ public class BalanceService(
 
         await ClientWrites.EnsureCurrencyAsync(readModel, groupId, currency);
 
-        var owed = await groupLedger.SettlementCapAsync(groupId, userId, peerId);
+        var owed = await groupLedger.SettlementCapAsync(groupId, payerId, payeeId);
 
         if (amount > owed) throw ExceedsCap(owed, payee);
 
@@ -87,7 +96,7 @@ public class BalanceService(
             GroupId = groupId,
             Description = $"Payment to {payee.Name}",
             Amount = amount,
-            PaidBy = userId,
+            PaidBy = payerId,
             Type = ExpenseType.Payment,
             // Not taken from the caller: a settlement always carries Payment, which is the
             // category no expense may hold and the picker never offers.
@@ -97,12 +106,12 @@ public class BalanceService(
             {
                 new()
                 {
-                    UserId = userId,
+                    UserId = payerId,
                     Amount = amount
                 },
                 new()
                 {
-                    UserId = peerId,
+                    UserId = payeeId,
                     Amount = -amount
                 }
             }
@@ -117,12 +126,12 @@ public class BalanceService(
         if (!await expenseRepository.CreateOnceAsync(settleExpense))
         {
             var first = await ClientWrites.ExistingAsync(readModel, groupId, clientId, ExpenseType.Payment);
-            return await readModel.GetExpenseAsync(groupId, first!.Value, userId);
+            return await readModel.GetExpenseAsync(groupId, first!.Value, callerId);
         }
 
         await groupLedger.RequestRecomputationAsync(groupId);
 
-        return await readModel.GetExpenseAsync(groupId, settleExpense.Id, userId);
+        return await readModel.GetExpenseAsync(groupId, settleExpense.Id, callerId);
     }
 
     private static RefusalException ExceedsCap(decimal owed, User payee) =>
