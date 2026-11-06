@@ -20,6 +20,11 @@ struct ExpenseDetailsStep: View {
     @FocusState private var descriptionFocused: Bool
     @State private var showingDatePicker = false
     @State private var showingScopeChoice = false
+    @State private var showingSplit = false
+    @State private var showingCategories = false
+    /// The keyboard comes up on the first arrival only. Back from the split or the
+    /// category list, the next step is usually Save.
+    @State private var hasArrived = false
 
     var body: some View {
         ScrollView {
@@ -85,7 +90,21 @@ struct ExpenseDetailsStep: View {
         // it ride in alongside the push. The focus state is still set, so SwiftUI agrees
         // about what has focus, and it remains the fallback if the field is not found.
         .background(KeyboardArrivesWithScreen())
-        .onAppear { descriptionFocused = true }
+        .onAppear {
+            guard !hasArrived else { return }
+            hasArrived = true
+            descriptionFocused = true
+        }
+        // The keyboard is put away before these push, not by the push. A field still
+        // focused when a screen goes on top is remembered by UIKit and handed the keyboard
+        // back during the pop, in the middle of the transition, where SwiftUI never sees
+        // it arrive: Save stayed at the bottom of the screen, under the keyboard.
+        .navigationDestination(isPresented: $showingSplit) {
+            SplitConfigurationView(viewModel: viewModel)
+        }
+        .navigationDestination(isPresented: $showingCategories) {
+            ExpenseCategoryPickerView(selection: $viewModel.category)
+        }
         .sheet(isPresented: $showingDatePicker) {
             ExpenseDatePicker(
                 date: $viewModel.date,
@@ -142,8 +161,9 @@ struct ExpenseDetailsStep: View {
     }
 
     private var splitRow: some View {
-        NavigationLink {
-            SplitConfigurationView(viewModel: viewModel)
+        Button {
+            descriptionFocused = false
+            showingSplit = true
         } label: {
             HStack(spacing: 14) {
                 rowIcon("person.2")
@@ -218,8 +238,9 @@ struct ExpenseDetailsStep: View {
                 )
             }
 
-            NavigationLink {
-                ExpenseCategoryPickerView(selection: $viewModel.category)
+            Button {
+                descriptionFocused = false
+                showingCategories = true
             } label: {
                 Image(systemName: "list.bullet")
                     .font(.system(size: 16, weight: .semibold))
@@ -293,16 +314,24 @@ struct ExpenseDetailsStep: View {
 }
 
 /// Makes the first text field on the screen it sits in first responder as that screen
-/// enters the window, so the keyboard animates in with the navigation push rather than
-/// after it.
+/// first enters the window, so the keyboard animates in with the navigation push rather
+/// than after it.
+///
+/// Once only. Pushing another screen on top moves this one into the transition's
+/// container, which takes it out of the window and puts it back: focusing again there
+/// raised the keyboard the push had just put away, and the two input-view reloads held
+/// the main thread for most of a second, stalling the push near its end.
 private struct KeyboardArrivesWithScreen: UIViewRepresentable {
     func makeUIView(context: Context) -> AnchorView { AnchorView() }
     func updateUIView(_ uiView: AnchorView, context: Context) {}
 
     final class AnchorView: UIView {
+        private var hasFocused = false
+
         override func didMoveToWindow() {
             super.didMoveToWindow()
-            guard window != nil else { return }
+            guard window != nil, !hasFocused else { return }
+            hasFocused = true
             focusField(attemptsLeft: 10)
         }
 

@@ -72,6 +72,13 @@ struct SplitConfigurationView: View {
         // an invalid one has neither, and only a tap on the chevron explains why.
         .navigationBarBackButtonHidden(!viewModel.canLeaveSplit)
         .toolbar {
+            // With the keyboard up, the total and payer step aside and nothing on screen
+            // says how to finish. Done is always there, and holds an invalid split the
+            // same way the back chevron does.
+            ToolbarItem(placement: .confirmationAction) {
+                Button(action: leave) { Text(L10n.Common.done) }
+                    .accessibilityIdentifier("split.done")
+            }
             if !viewModel.canLeaveSplit {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(action: leave) {
@@ -91,6 +98,7 @@ struct SplitConfigurationView: View {
     /// Pops a split that could be saved; otherwise points at what is wrong with it.
     private func leave() {
         guard !viewModel.canLeaveSplit else {
+            focusedField = nil
             dismiss()
             return
         }
