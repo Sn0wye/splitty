@@ -65,13 +65,6 @@ enum PerformanceAutoplay {
                 }
             }
 
-            await measure("PeopleTab", into: &results) {
-                appState.selectedTab = .people
-                try? await Task.sleep(for: .seconds(1.0))
-                appState.selectedTab = .groups
-                try? await Task.sleep(for: .seconds(1.0))
-            }
-
             report(results)
         }
     }
