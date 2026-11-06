@@ -206,9 +206,17 @@ extension Expense {
 
     /// Parses the API's ISO-8601 timestamps, with and without fractional seconds.
     ///
-    /// The formatters are shared. Building one costs more than the parse it performs,
-    /// and the timeline parses every loaded record.
+    /// The shapes the API writes are read by hand first; anything else goes to the
+    /// formatters, which decide it exactly as before.
     static func parseTimestamp(_ value: String) -> Date? {
+        if let date = Self.readTimestamp(value) { return date }
+        return parseTimestampWithFormatters(value)
+    }
+
+    /// The formatters are shared. Building one costs more than the parse it performs,
+    /// and the timeline parses every loaded record. Even shared, a parse costs tens of
+    /// microseconds, and a groups list or a timeline parses hundreds on the main thread.
+    static func parseTimestampWithFormatters(_ value: String) -> Date? {
         if let date = fractionalISO8601Formatter.date(from: value) {
             return date
         }
@@ -237,6 +245,95 @@ extension Expense {
         formatter.formatOptions = [.withInternetDateTime]
         return formatter
     }()
+
+    /// `yyyy-MM-ddTHH:mm:ss`, then optionally `.` and fractional digits, then `Z`, a
+    /// `±HH:mm` offset, or nothing, read to the same instant the formatters give it: the
+    /// fraction is cut to milliseconds, and with no zone it is UTC and the fraction is
+    /// dropped. Nil for anything else, including a value the formatters read leniently
+    /// (Feb 30, 24:00) or on the Julian calendar (before 1583), so those stay theirs.
+    static func readTimestamp(_ value: String) -> Date? {
+        var value = value
+        return value.withUTF8(readTimestamp(bytes:))
+    }
+
+    private static func readTimestamp(bytes: UnsafeBufferPointer<UInt8>) -> Date? {
+        let count = bytes.count
+        guard count >= 19,
+              bytes[4] == UInt8(ascii: "-"), bytes[7] == UInt8(ascii: "-"), bytes[10] == UInt8(ascii: "T"),
+              bytes[13] == UInt8(ascii: ":"), bytes[16] == UInt8(ascii: ":")
+        else { return nil }
+
+        func digits(_ start: Int, _ length: Int) -> Int? {
+            var value = 0
+            for index in start..<(start + length) {
+                let digit = Int(bytes[index]) - 48
+                guard digit >= 0, digit <= 9 else { return nil }
+                value = value * 10 + digit
+            }
+            return value
+        }
+
+        guard let year = digits(0, 4), let month = digits(5, 2), let day = digits(8, 2),
+              let hour = digits(11, 2), let minute = digits(14, 2), let second = digits(17, 2),
+              year >= 1900, (1...12).contains(month), hour <= 23, minute <= 59, second <= 59,
+              day >= 1, day <= daysIn(month: month, year: year)
+        else { return nil }
+
+        var index = 19
+        var milliseconds = 0
+        if index < count, bytes[index] == UInt8(ascii: ".") {
+            index += 1
+            let start = index
+            while index < count, bytes[index] >= 48, bytes[index] <= 57 {
+                if index - start < 3 { milliseconds = milliseconds * 10 + Int(bytes[index]) - 48 }
+                index += 1
+            }
+            let read = index - start
+            guard read > 0 else { return nil }
+            for _ in min(read, 3)..<3 { milliseconds *= 10 }
+        }
+
+        let offset: Int
+        if index == count {
+            // No zone: UTC, whole seconds, the way the zoneless fallback reads it.
+            offset = 0
+            milliseconds = 0
+        } else if bytes[index] == UInt8(ascii: "Z"), index + 1 == count {
+            offset = 0
+        } else if bytes[index] == UInt8(ascii: "+") || bytes[index] == UInt8(ascii: "-"),
+                  index + 6 == count, bytes[index + 3] == UInt8(ascii: ":"),
+                  let offsetHours = digits(index + 1, 2), let offsetMinutes = digits(index + 4, 2),
+                  offsetHours <= 14, offsetMinutes <= 59 {
+            let magnitude = offsetHours * 3_600 + offsetMinutes * 60
+            offset = bytes[index] == UInt8(ascii: "-") ? -magnitude : magnitude
+        } else {
+            return nil
+        }
+
+        let seconds = daysSince1970(year: year, month: month, day: day) * 86_400
+            + hour * 3_600 + minute * 60 + second - offset
+        // The same arithmetic the formatters do: milliseconds since 1970, then seconds since 2001.
+        let since1970Milliseconds = Double(seconds * 1_000 + milliseconds)
+        return Date(timeIntervalSinceReferenceDate: since1970Milliseconds / 1_000 - Date.timeIntervalBetween1970AndReferenceDate)
+    }
+
+    private static func daysIn(month: Int, year: Int) -> Int {
+        switch month {
+        case 2: (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 ? 29 : 28
+        case 4, 6, 9, 11: 30
+        default: 31
+        }
+    }
+
+    /// Days from 1970-01-01 to a proleptic Gregorian date (Howard Hinnant's `days_from_civil`).
+    private static func daysSince1970(year: Int, month: Int, day: Int) -> Int {
+        let shiftedYear = month <= 2 ? year - 1 : year
+        let era = shiftedYear / 400
+        let yearOfEra = shiftedYear - era * 400
+        let dayOfYear = (153 * (month > 2 ? month - 3 : month + 9) + 2) / 5 + day - 1
+        let dayOfEra = yearOfEra * 365 + yearOfEra / 4 - yearOfEra / 100 + dayOfYear
+        return era * 146_097 + dayOfEra - 719_468
+    }
 
     /// Timestamps serialized without a zone marker are UTC, like every other one.
     private static let zonelessUTCFormatter: DateFormatter = {

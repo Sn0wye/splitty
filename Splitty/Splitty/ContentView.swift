@@ -26,6 +26,7 @@ struct ContentView: View {
         }
         .background(Color("background").ignoresSafeArea())
         .environmentObject(appState)
+        .task { PerformanceAutoplay.start(appState: appState) }
         .sheet(item: $addDestination) { destination in
             switch destination {
             case .createGroup:

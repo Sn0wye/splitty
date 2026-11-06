@@ -3,6 +3,7 @@
 //  Splitty
 //
 
+import ImageIO
 import SwiftUI
 
 /// Avatars are immutable for a given URL, so a decoded image is worth keeping
@@ -50,11 +51,8 @@ final class AvatarImageCache {
         }
 
         let task = Task.detached(priority: .userInitiated) { [session] () -> UIImage? in
-            guard
-                let (data, _) = try? await session.data(from: url),
-                let image = UIImage(data: data)
-            else { return nil }
-            return image
+            guard let (data, _) = try? await session.data(from: url) else { return nil }
+            return Self.decodedForDisplay(data) ?? UIImage(data: data)
         }
         inFlight[url] = task
 
@@ -64,6 +62,26 @@ final class AvatarImageCache {
             memory.setObject(image, forKey: url as NSURL)
         }
         return image
+    }
+
+    /// The largest face the app draws, in pixels: the 112pt profile avatar at 3x.
+    nonisolated static let maxPixelSize = 336
+
+    /// Decodes on the calling thread, at no more than `maxPixelSize`, through ImageIO's
+    /// thumbnail path. `UIImage(data:)` defers decoding to the first frame that draws the
+    /// image, which is on the main thread, and keeps the source's full resolution for a
+    /// 40pt circle. Nil when ImageIO cannot read the data.
+    nonisolated static func decodedForDisplay(_ data: Data) -> UIImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary)
+        else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+        ]
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        return UIImage(cgImage: image)
     }
 }
 
