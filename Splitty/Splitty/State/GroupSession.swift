@@ -10,7 +10,7 @@ enum GroupMoneyWrite {
     case expenseEditedWithFollowing(Expense)
     /// `clientId` matches the payment to the server's row; `queued` says it has not been
     /// sent yet, so its net comes from the outbox until it is (ADR 0008).
-    case paymentRecorded(payee: GroupMember, amountCents: Int, date: Date, currentUserId: Int,
+    case paymentRecorded(payerId: Int, payeeId: Int, amountCents: Int, date: Date, currentUserId: Int,
                          clientId: UUID? = nil, queued: Bool = false)
     case paymentEdited(id: Int, amountCents: Int, date: Date)
 }
@@ -257,8 +257,9 @@ final class GroupSession: ObservableObject {
         if let id = result.settlementId {
             return report(.paymentEdited(id: id, amountCents: result.amountCents, date: result.date))
         }
-        return report(.paymentRecorded(payee: result.peer, amountCents: result.amountCents,
-                                       date: result.date, currentUserId: currentUserId,
+        return report(.paymentRecorded(payerId: result.payerId, payeeId: result.payeeId,
+                                       amountCents: result.amountCents, date: result.date,
+                                       currentUserId: currentUserId,
                                        clientId: result.clientId, queued: result.queued))
     }
 
@@ -337,12 +338,14 @@ final class GroupSession: ObservableObject {
             // edit committed with the later rows it rewrote, so the next read is current.
             insert(row)
             pendingRows.removeValue(forKey: row.id)
-        case .paymentRecorded(let payee, let amountCents, let date, let currentUserId, let clientId, let queued):
-            if let currentUser = members.first(where: { $0.userId == currentUserId }) {
+        case .paymentRecorded(let payerId, let payeeId, let amountCents, let date, let currentUserId, let clientId, let queued):
+            if let payer = members.first(where: { $0.userId == payerId }),
+               let payee = members.first(where: { $0.userId == payeeId }) {
                 insertPendingPayment(
-                    currentUser: currentUser,
-                    peer: payee,
+                    payer: payer,
+                    payee: payee,
                     amountCents: amountCents,
+                    currentUserId: currentUserId,
                     date: date,
                     clientId: clientId,
                     adjustsNet: !queued
@@ -553,11 +556,13 @@ final class GroupSession: ObservableObject {
                 expenses.removeAll { $0.id == base.id }
                 groupedExpenses = Expense.groupExpensesByDate(expenses)
             case .settle(let draft, _):
-                guard let me = members.first(where: { $0.userId == outbox.userId }),
-                      let peer = members.first(where: { $0.userId == draft.payeeId })
+                guard let me = outbox.userId,
+                      let payer = members.first(where: { $0.userId == draft.payerId ?? me }),
+                      let payee = members.first(where: { $0.userId == draft.payeeId })
                 else { continue }
-                insertPendingPayment(currentUser: me, peer: peer, amountCents: draft.amountCents,
-                                     date: draft.date, clientId: write.id, adjustsNet: false)
+                insertPendingPayment(payer: payer, payee: payee, amountCents: draft.amountCents,
+                                     currentUserId: me, date: draft.date, clientId: write.id,
+                                     adjustsNet: false)
             }
         }
     }
@@ -571,7 +576,7 @@ final class GroupSession: ObservableObject {
             guard let queued = self.write(for: row) else { return false }
             queuedWriteIds.insert(queued.id)
             return true
-        case .paymentRecorded(_, _, _, _, let clientId, let queued):
+        case .paymentRecorded(_, _, _, _, _, let clientId, let queued):
             guard queued, let clientId, outbox.writes.contains(where: { $0.id == clientId }) else { return false }
             queuedWriteIds.insert(clientId)
             return true
@@ -799,9 +804,10 @@ final class GroupSession: ObservableObject {
     /// negative id keeps navigation and deletion away from a resource that does not exist.
     @discardableResult
     private func insertPendingPayment(
-        currentUser: GroupMember,
-        peer: GroupMember,
+        payer: GroupMember,
+        payee: GroupMember,
         amountCents: Int,
+        currentUserId: Int,
         date: Date? = nil,
         clientId: UUID? = nil,
         adjustsNet: Bool = true,
@@ -810,29 +816,29 @@ final class GroupSession: ObservableObject {
         let id = nextPendingPaymentId
         nextPendingPaymentId -= 1
         let timestamp = ExpenseService.timestamp(from: now)
-        let payer = Self.user(from: currentUser, timestamp: timestamp)
-        let payee = Self.user(from: peer, timestamp: timestamp)
+        let payerUser = Self.user(from: payer, timestamp: timestamp)
+        let payeeUser = Self.user(from: payee, timestamp: timestamp)
         let amount = Money.amount(cents: amountCents)
 
         let payment = Expense(
             id: id,
             groupId: groupId,
-            paidBy: currentUser.userId,
+            paidBy: payer.userId,
             amount: amount,
             // Server-owned data, not copy: BalanceService writes this exact English
             // string and the refresh overwrites whatever we put here. The row title
             // is localized at render time instead.
-            description: "Payment to \(peer.name)",
+            description: "Payment to \(payee.name)",
             type: .payment,
             category: .payment,
             splitMode: nil,
             date: date.map(ExpenseService.timestamp(from:)),
             createdAt: timestamp,
             updatedAt: timestamp,
-            paidByUser: payer,
+            paidByUser: payerUser,
             splits: [
-                ExpenseSplit(id: id * 10, expenseId: id, userId: currentUser.userId, amount: amount, percentage: nil, user: payer),
-                ExpenseSplit(id: id * 10 - 1, expenseId: id, userId: peer.userId, amount: -amount, percentage: nil, user: payee)
+                ExpenseSplit(id: id * 10, expenseId: id, userId: payer.userId, amount: amount, percentage: nil, user: payerUser),
+                ExpenseSplit(id: id * 10 - 1, expenseId: id, userId: payee.userId, amount: -amount, percentage: nil, user: payeeUser)
             ],
             clientId: clientId
         )
@@ -840,10 +846,14 @@ final class GroupSession: ObservableObject {
         pendingPaymentIds.insert(id)
         knownServerIdsAtPaymentWrite[id] = Set(expenses.filter { $0.id > 0 }.map(\.id))
         insert(payment)
-        // A payment still on this device is counted by the outbox until it is sent.
+        // A payment still on this device is counted by the outbox until it is sent. Paying
+        // raises the current user's net, being paid lowers it, and a payment between two
+        // others leaves it alone.
         if adjustsNet {
-            pendingNetAdjustmentCents += amountCents
-            group?.netBalanceCents += amountCents
+            let netChange = payer.userId == currentUserId ? amountCents
+                : payee.userId == currentUserId ? -amountCents : 0
+            pendingNetAdjustmentCents += netChange
+            group?.netBalanceCents += netChange
             balancesPending = true
         }
         return payment

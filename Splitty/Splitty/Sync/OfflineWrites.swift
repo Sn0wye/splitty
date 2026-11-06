@@ -76,10 +76,10 @@ enum SettleUpSend {
 extension SettleUpDataSource {
     static func queued(outbox: Outbox, currency: Currency) -> SettleUpDataSource {
         var source = SettleUpDataSource.live
-        source.send = { groupId, peerId, amountCents, date in
+        source.send = { groupId, payerId, payeeId, amountCents, date in
             let clientId = UUID()
-            let draft = SettleDraft(payeeId: peerId, amountCents: amountCents, date: date, currency: currency)
-            let payerId = await outbox.userId ?? 0
+            let draft = SettleDraft(payeeId: payeeId, amountCents: amountCents, date: date,
+                                    currency: currency, payerId: payerId)
             let row = PendingRows.payment(
                 draft,
                 payerId: payerId,

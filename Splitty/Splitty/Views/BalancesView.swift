@@ -124,7 +124,9 @@ struct BalancesView: View {
         case .balances(let rows):
             LazyVStack(spacing: 0) {
                 ForEach(rows) { row in
-                    if row.involvement == .youPay {
+                    // Either side records the payment: the debtor that they paid, the
+                    // creditor that they were paid.
+                    if row.involvement != .uninvolved {
                         Button { selectedDebt = row } label: {
                             balanceRow(row)
                         }
@@ -181,7 +183,7 @@ private struct SimplifiedDebtRow: View {
                     .foregroundStyle(directionColor)
                     .opacity(numbersArePending ? 0.5 : 1)
 
-                if row.involvement == .youPay {
+                if row.involvement != .uninvolved {
                     HStack(spacing: 3) {
                         Text(L10n.Balances.settle)
                         Image(systemName: "chevron.right")

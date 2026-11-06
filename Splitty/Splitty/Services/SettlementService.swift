@@ -13,22 +13,31 @@ class SettlementService {
 
     private init() {}
 
-    /// Answers with the settlement the server recorded. `clientId` makes a resend safe: the
-    /// server answers a settlement it already stored with that row (ADR 0008).
+    /// Records `fromUserId` paying `toUserId` and answers with the settlement the server
+    /// recorded. Either may be the current user: the payer records "I paid", the payee "I was
+    /// paid". A nil `fromUserId` sends the older shape, which means the current user paid; a
+    /// queued draft saved before either side could record has no payer. `clientId` makes a
+    /// resend safe: the server answers a settlement it already stored with that row (ADR 0008).
     @discardableResult
     func settleUp(
         groupId: Int,
-        withUserId: Int,
+        fromUserId: Int?,
+        toUserId: Int,
         amountCents: Int,
         date: Date,
         clientId: UUID? = nil,
         currency: Currency? = nil
     ) async throws -> Expense {
         var body: [String: Any] = [
-            "withUserId": withUserId,
             "amount": Money.requestValue(cents: amountCents),
             "date": ExpenseService.timestamp(from: date)
         ]
+        if let fromUserId {
+            body["fromUserId"] = fromUserId
+            body["toUserId"] = toUserId
+        } else {
+            body["withUserId"] = toUserId
+        }
         if let clientId { body["clientId"] = clientId.uuidString }
         if let currency { body["currency"] = currency.rawValue }
         return try await APIClient.shared.request(

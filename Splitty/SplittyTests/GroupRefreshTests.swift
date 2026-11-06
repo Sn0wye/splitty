@@ -118,7 +118,7 @@ struct GroupRefreshTests {
         let session = GroupSession(groupId: 1, dataSource: data.source())
 
         await session.refresh()
-        await session.report(.paymentRecorded(payee: TestExpense.members[1], amountCents: 500, date: paymentDate, currentUserId: 1)).value
+        await session.report(.paymentRecorded(payerId: 1, payeeId: 2, amountCents: 500, date: paymentDate, currentUserId: 1)).value
         let pending = try #require(session.expenses.first)
         #expect(pending.id < 0)
         #expect(session.isPendingPayment(pending))
@@ -161,7 +161,7 @@ struct GroupRefreshTests {
         let session = GroupSession(groupId: 1, dataSource: data.source())
         await session.refresh()
 
-        await session.report(.paymentRecorded(payee: TestExpense.members[1], amountCents: 500, date: paymentDate, currentUserId: 1)).value
+        await session.report(.paymentRecorded(payerId: 1, payeeId: 2, amountCents: 500, date: paymentDate, currentUserId: 1)).value
 
         #expect(session.expenses.map(\.id) == [42])
         #expect(!session.expenses.contains(where: session.isPendingPayment))
@@ -198,7 +198,7 @@ struct GroupRefreshTests {
         let session = GroupSession(groupId: 1, dataSource: data.source())
         await session.refresh()
 
-        await session.report(.paymentRecorded(payee: TestExpense.members[1], amountCents: 500, date: paymentDate, currentUserId: 1)).value
+        await session.report(.paymentRecorded(payerId: 1, payeeId: 2, amountCents: 500, date: paymentDate, currentUserId: 1)).value
 
         #expect(data.groupCallCount == 3)
         #expect(session.group?.netBalanceCents == finalNetCents)

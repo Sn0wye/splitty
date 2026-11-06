@@ -10198,6 +10198,35 @@
         }
       }
     },
+    "settlement.full_amount" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Full amount %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importe total %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Montant total %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valor total %@"
+          }
+        }
+      }
+    },
     "settlement.only_owe" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -10223,6 +10252,64 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Você só deve %2$@ a %1$@."
+          }
+        }
+      }
+    },
+    "settlement.only_owes_peer" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ only owes %2$@ %3$@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ solo le debe %3$@ a %2$@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ne doit que %3$@ à %2$@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ só deve %3$@ a %2$@."
+          }
+        }
+      }
+    },
+    "settlement.only_owes_you" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ only owes you %2$@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ solo te debe %2$@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ ne vous doit que %2$@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ só deve %2$@ a você."
           }
         }
       }
@@ -10256,31 +10343,31 @@
         }
       }
     },
-    "settlement.pay" : {
+    "settlement.paid_to_whom" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pay %@"
+            "value" : "To whom?"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pagar %@"
+            "value" : "¿A quién?"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Payer %@"
+            "value" : "À qui ?"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pagar %@"
+            "value" : "Para quem?"
           }
         }
       }
@@ -10339,35 +10426,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pagamento para %@"
-          }
-        }
-      }
-    },
-    "settlement.payment_with" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Payment with %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pago con %@"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Paiement avec %@"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pagamento com %@"
           }
         }
       }
@@ -10484,6 +10542,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pagamento"
+          }
+        }
+      }
+    },
+    "settlement.who_paid" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Who paid?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Quién pagó?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qui a payé ?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quem pagou?"
           }
         }
       }

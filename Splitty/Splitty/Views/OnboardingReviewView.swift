@@ -47,6 +47,7 @@ struct OnboardingReviewView: View {
                     row(.plansEmpty)
                     row(.settleUp)
                     row(.settledUp)
+                    row(.paidToYou)
                     row(.avatarCrop)
                     row(.appearance)
                 } header: {
@@ -147,6 +148,10 @@ struct OnboardingReviewView: View {
             ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
                 ReviewSettleUpSheet()
             }
+        case .paidToYou:
+            ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
+                ReviewSettleUpSheet(youAreOwed: true)
+            }
         case .avatarCrop:
             AvatarCropView(
                 image: ReviewSamples.avatarPhoto,
@@ -224,6 +229,7 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
     case plansEmpty
     case settleUp
     case settledUp
+    case paidToYou
     case avatarCrop
     case appearance
 
@@ -252,6 +258,7 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .plansEmpty: "Plans, no installments"
         case .settleUp: "Settle up"
         case .settledUp: "Settled up"
+        case .paidToYou: "Settled up, paid to you"
         case .avatarCrop: "Avatar crop"
         case .appearance: "Appearance"
         }
@@ -280,6 +287,7 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .plansEmpty: "repeat.circle"
         case .settleUp: "person.crop.circle"
         case .settledUp: "checkmark.circle"
+        case .paidToYou: "arrow.down.circle"
         case .avatarCrop: "crop"
         case .appearance: "circle.lefthalf.filled"
         }

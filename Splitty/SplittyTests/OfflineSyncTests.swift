@@ -123,6 +123,26 @@ struct PendingWriteTests {
         )
     }
 
+    @Test func aQueuedPaymentKeepsItsPayerAndAnOlderOneHasNone() throws {
+        let date = Date(timeIntervalSince1970: 1_790_000_000)
+        let received = SettleDraft(payeeId: 1, amountCents: 1200, date: date, payerId: 2)
+        // A draft saved before it carried a payer is stored without the key.
+        let older = try JSONSerialization.jsonObject(with: JSONEncoder().encode(received)) as! [String: Any]
+        let olderData = try JSONSerialization.data(withJSONObject: older.filter { $0.key != "payerId" })
+
+        #expect(try JSONDecoder().decode(SettleDraft.self, from: JSONEncoder().encode(received)) == received)
+        #expect(try JSONDecoder().decode(SettleDraft.self, from: olderData).payerId == nil)
+    }
+
+    @Test func aPaymentYouReceivedLowersYourNet() {
+        let draft = SettleDraft(payeeId: 1, amountCents: 1200, date: Date(), payerId: 2)
+        let row = PendingRows.payment(draft, payerId: 2, id: -1, groupId: 1, clientId: UUID(), members: TestExpense.members)
+        let write = PendingWrite(id: row.clientId!, groupId: 1, action: .settle(draft, row: row))
+
+        #expect(write.nets[1] == -1200)
+        #expect(write.nets[2] == 1200)
+    }
+
     @Test func anEditSendsOnlyTheFieldGroupsThatChanged() {
         let patch = fullEdit(description: "Late dinner").changes(against: base)
 

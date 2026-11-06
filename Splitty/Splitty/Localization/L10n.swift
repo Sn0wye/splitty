@@ -651,18 +651,26 @@ enum L10n {
             )
         }
         static var paidConnector: String { text("settlement.paid_connector", default: " paid ") }
-        static func paymentWith(_ name: String) -> String {
-            format("settlement.payment_with", default: "Payment with %@", name)
-        }
-        static func pay(_ name: String) -> String {
-            format("settlement.pay", default: "Pay %@", name)
-        }
         static func payAll(_ amount: String) -> String {
             format("settlement.pay_all", default: "Pay all %@", amount)
         }
         static func onlyOwe(_ name: String, _ amount: String) -> String {
             format("settlement.only_owe", default: "You only owe %1$@ %2$@.", name, amount)
         }
+        /// Fills in what the peer owes the current user, the received side's Pay all.
+        static func fullAmount(_ amount: String) -> String {
+            format("settlement.full_amount", default: "Full amount %@", amount)
+        }
+        static func onlyOwesYou(_ name: String, _ amount: String) -> String {
+            format("settlement.only_owes_you", default: "%1$@ only owes you %2$@.", name, amount)
+        }
+        /// A payment between two other members over what the payer owes and the payee is owed.
+        static func onlyOwesPeer(_ payer: String, _ payee: String, _ amount: String) -> String {
+            format("settlement.only_owes_peer", default: "%1$@ only owes %2$@ %3$@.", payer, payee, amount)
+        }
+        /// The settle-up sheet's two questions before the amount.
+        static var whoPaid: String { text("settlement.who_paid", default: "Who paid?") }
+        static var paidToWhom: String { text("settlement.paid_to_whom", default: "To whom?") }
         static var recordFailed: String {
             text(
                 "settlement.record_failed",

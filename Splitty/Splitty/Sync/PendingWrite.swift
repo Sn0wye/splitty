@@ -6,6 +6,9 @@ struct SettleDraft: Codable, Equatable {
     let amountCents: Int
     let date: Date
     var currency: Currency? = nil
+    /// Nil only in a draft saved before either side could record a payment, which always
+    /// meant the current user paid (ADR 0010).
+    var payerId: Int? = nil
 }
 
 /// A write made on this device that the server has not confirmed yet (ADR 0008).

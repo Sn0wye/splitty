@@ -10,13 +10,14 @@ struct SettleUpSheet: View {
     @ObservedObject private var session: GroupSession
     @StateObject private var viewModel: SettleUpViewModel
     @Environment(\.dismiss) private var dismiss
-    @State private var showingAmount: Bool
     @State private var showingDatePicker = false
     @State private var savedCount = 0
     @State private var settledUp = false
 
-    private let startsWithFixedPeer: Bool
     private let shouldLoadDebts: Bool
+
+    /// False while the sheet asks who paid and to whom, before the amount.
+    @State private var partiesPicked: Bool
 
     init(
         session: GroupSession,
@@ -35,18 +36,27 @@ struct SettleUpSheet: View {
         )
         model.suggestPayment()
         _viewModel = StateObject(wrappedValue: model)
-        let isEditing = settlement != nil
-        _showingAmount = State(initialValue: preselectedRow != nil || isEditing)
-        startsWithFixedPeer = isEditing
-        shouldLoadDebts = !isEditing
+        shouldLoadDebts = settlement == nil
+        // A balance row or the payment being edited already names both sides.
+        _partiesPicked = State(initialValue: settlement != nil || preselectedRow != nil)
     }
 
     var body: some View {
         NavigationStack {
-            personStep
-                .navigationDestination(isPresented: $showingAmount) {
-                    amountStep
-                }
+            if partiesPicked {
+                amountStep
+            } else {
+                SettlePartiesPicker(viewModel: viewModel) { partiesPicked = true }
+                    .navigationTitle(Text(L10n.Settlement.settleUp))
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbarBackground(Color.expenseBackground, for: .navigationBar)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button { dismiss() } label: { Text(L10n.Common.cancel) }
+                                .foregroundStyle(Color.expenseForeground)
+                        }
+                    }
+            }
         }
         .overlay {
             if settledUp {
@@ -59,7 +69,7 @@ struct SettleUpSheet: View {
         .sensoryFeedback(.success, trigger: savedCount)
         .task {
             if shouldLoadDebts {
-                // Loading may suggest a peer, but only a balance-row entry skips the picker.
+                // Loading suggests the two sides unless a balance row or the member chose them.
                 await refreshDebts()
             }
         }
@@ -71,58 +81,14 @@ struct SettleUpSheet: View {
         }
     }
 
-    private var personStep: some View {
-        List(viewModel.peers) { peer in
-            Button {
-                viewModel.select(peerId: peer.userId)
-                showingAmount = true
-            } label: {
-                HStack(spacing: 12) {
-                    peerAvatar(peer)
-
-                    Text(peer.name)
-                        .font(.body.weight(.semibold))
-
-                    Spacer()
-
-                    if let debt = viewModel.debtCents(for: peer.userId), debt > 0 {
-                        Text(Money.formatted(cents: debt, currency: currency))
-                            .font(.body.weight(.semibold))
-                            .monospacedDigit()
-                            .foregroundStyle(.red)
-                    }
-                }
-                .foregroundStyle(Color.expenseForeground)
-                .opacity((viewModel.debtCents(for: peer.userId) ?? 0) > 0 ? 1 : 0.45)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .listRowBackground(Color("card"))
-        }
-        .scrollContentBackground(.hidden)
-        .background(Color.expenseBackground)
-        .navigationTitle(Text(L10n.Settlement.settleUp))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(Color.expenseBackground, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button { dismiss() } label: { Text(L10n.Common.cancel) }
-                    .foregroundStyle(Color.expenseForeground)
-            }
-        }
-        .refreshable {
-            await refreshDebts()
-        }
-    }
-
     private var amountStep: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: 0)
+            SettlePartiesSummary(viewModel: viewModel) {
+                withAnimation(.snappy(duration: 0.3)) { partiesPicked = false }
+            }
+            .padding(.top, 8)
 
-            Text(viewModel.isEditing ? L10n.Settlement.paymentWith(viewModel.selectedPeer?.name ?? L10n.Common.member) : L10n.Settlement.pay(viewModel.selectedPeer?.name ?? L10n.Common.member))
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Color("muted-foreground"))
-                .padding(.bottom, 8)
+            Spacer(minLength: 0)
 
             AmountDisplay(text: viewModel.amount.displayText)
                 .frame(maxWidth: .infinity)
@@ -150,10 +116,15 @@ struct SettleUpSheet: View {
             }
 
             if let payAllTitle = viewModel.payAllTitle, !viewModel.isEditing {
+                // Plain text, with a full 44pt touch target.
                 Button(payAllTitle) { viewModel.payAll() }
-                    .font(.subheadline.weight(.semibold))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(Color.accentColor)
-                    .padding(.bottom, 12)
+                    .frame(minHeight: 44)
+                    .padding(.horizontal, 20)
+                    .contentShape(Rectangle())
+                    .accessibilityIdentifier("settleUp.payAll")
+                    .padding(.bottom, 4)
             }
 
             Button {
@@ -190,14 +161,11 @@ struct SettleUpSheet: View {
         .background(Color.expenseBackground)
         .navigationTitle(Text(viewModel.isEditing ? L10n.Settlement.edit : L10n.Settlement.settleUp))
         .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(startsWithFixedPeer)
         .toolbarBackground(Color.expenseBackground, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                if startsWithFixedPeer {
-                    Button { dismiss() } label: { Text(L10n.Common.cancel) }
-                        .foregroundStyle(Color.expenseForeground)
-                }
+                Button { dismiss() } label: { Text(L10n.Common.cancel) }
+                    .foregroundStyle(Color.expenseForeground)
             }
         }
     }
@@ -247,18 +215,6 @@ struct SettleUpSheet: View {
 
     private func refreshDebts() async {
         await viewModel.loadDebts()
-    }
-
-    private func peerAvatar(_ peer: GroupMember) -> some View {
-        CachedAsyncImage(url: URL(string: peer.avatarUrl)) { image in
-            image.resizable().scaledToFill()
-        } placeholder: {
-            Image(systemName: "person.crop.circle.fill")
-                .resizable()
-                .foregroundStyle(Color("muted-foreground"))
-        }
-        .frame(width: 40, height: 40)
-        .clipShape(Circle())
     }
 }
 
