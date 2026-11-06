@@ -825,7 +825,74 @@ enum L10n {
         }
     }
 
+    /// Working without a network: what is saved on this iPhone and what has not been sent.
+    enum Sync {
+        static var offline: String { text("sync.offline", default: "Offline. Changes are sent when you reconnect.") }
+        static var couldNotRefresh: String { text("sync.could_not_refresh", default: "Could not refresh") }
+        static func lastUpdated(_ when: String) -> String {
+            format("sync.last_updated", default: "Last updated %@", when)
+        }
+        static func waiting(_ count: Int) -> String {
+            text("sync.waiting", default: "\(count) changes waiting to send")
+        }
+        static func needsAttention(_ count: Int) -> String {
+            text("sync.needs_attention", default: "\(count) changes need your attention")
+        }
+        static var estimate: String {
+            text("sync.estimate", default: "Estimate, includes changes not sent yet")
+        }
+        static var stillSending: String {
+            text("sync.still_sending", default: "This is still being sent. Try again in a moment.")
+        }
+        static var unsentTitle: String { text("sync.unsent_title", default: "Unsent changes") }
+        static var allSent: String { text("sync.all_sent", default: "Everything has been sent.") }
+        static var rowWaiting: String { text("sync.row_waiting", default: "Waiting to send") }
+        static var rowNeedsAttention: String { text("sync.row_needs_attention", default: "Needs your attention") }
+        static var sending: String { text("sync.sending", default: "Sending…") }
+        static var payment: String { text("sync.payment", default: "Payment") }
+        static var kindNewExpense: String { text("sync.kind_new_expense", default: "New expense") }
+        static var kindEdit: String { text("sync.kind_edit", default: "Edit") }
+        static var kindDelete: String { text("sync.kind_delete", default: "Deletion") }
+        static var kindNewPayment: String { text("sync.kind_new_payment", default: "New payment") }
+        static var problemConflict: String {
+            text("sync.problem_conflict", default: "Someone else changed the same details.")
+        }
+        static var problemDeleted: String {
+            text("sync.problem_deleted", default: "Someone deleted this before your edit arrived.")
+        }
+        static func problemOverCap(_ amount: String) -> String {
+            format("sync.problem_over_cap", default: "More than is owed now. The most you can record is %@.", amount)
+        }
+        static var problemNothingOwed: String {
+            text("sync.problem_nothing_owed", default: "Nothing is owed to this person now.")
+        }
+        static var problemCurrency: String {
+            text("sync.problem_currency", default: "The group's currency changed. Amounts are not converted.")
+        }
+        static func theirVersion(_ description: String, _ amount: String) -> String {
+            format("sync.their_version", default: "Now on the server: %1$@, %2$@", description, amount)
+        }
+        static var keepMine: String { text("sync.keep_mine", default: "Keep mine") }
+        static var keepTheirs: String { text("sync.keep_theirs", default: "Keep theirs") }
+        static var saveAsNew: String { text("sync.save_as_new", default: "Save as new") }
+        static func recordAmount(_ amount: String) -> String {
+            format("sync.record_amount", default: "Record %@", amount)
+        }
+        static var saveAnyway: String { text("sync.save_anyway", default: "Save anyway") }
+        static var discard: String { text("sync.discard", default: "Discard") }
+        static var signOutUnsentTitle: String {
+            text("sync.sign_out_unsent_title", default: "Sign out with unsent changes?")
+        }
+        static func signOutUnsentMessage(_ count: Int) -> String {
+            text("sync.sign_out_unsent_message", default: "\(count) changes made on this iPhone have not been sent. Signing out deletes them.")
+        }
+        static var signOutAnyway: String { text("sync.sign_out_anyway", default: "Sign out and delete") }
+    }
+
     enum Errors {
+        static var changedElsewhere: String {
+            text("errors.changed_elsewhere", default: "Someone else changed this while you were editing.")
+        }
         static var rejected: String {
             text("errors.rejected", default: "The server rejected this. Check the amounts and try again.")
         }

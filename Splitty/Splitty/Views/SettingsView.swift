@@ -57,6 +57,7 @@ struct SettingsView: View {
     @State private var showingOnboardingReview = false
     @StateObject private var authManager = AuthenticationManager.shared
     @ObservedObject private var themeManager = ThemeManager.shared
+    @ObservedObject private var outbox = Outbox.shared
     @ObservedObject private var languageManager = LanguageManager.shared
 
     var body: some View {
@@ -159,13 +160,19 @@ struct SettingsView: View {
             .fullScreenCover(isPresented: $showingOnboardingReview) {
                 OnboardingReviewView()
             }
-            .alert(Text(L10n.Settings.logOut), isPresented: $showingLogoutAlert) {
+            .alert(
+                Text(outbox.writes.isEmpty ? L10n.Settings.logOut : L10n.Sync.signOutUnsentTitle),
+                isPresented: $showingLogoutAlert
+            ) {
                 Button(role: .cancel) { } label: { Text(L10n.Common.cancel) }
                 Button(role: .destructive) {
-                    authManager.logout()
-                } label: { Text(L10n.Settings.logOut) }
+                    signOut()
+                } label: { Text(outbox.writes.isEmpty ? L10n.Settings.logOut : L10n.Sync.signOutAnyway) }
             } message: {
-                Text(L10n.Settings.logOutConfirm)
+                // Signing out deletes what this iPhone kept, so a write not sent yet is lost.
+                Text(outbox.writes.isEmpty
+                     ? L10n.Settings.logOutConfirm
+                     : L10n.Sync.signOutUnsentMessage(outbox.writes.count))
             }
             .alert(
                 pendingClosure?.alertTitle ?? "",
@@ -184,7 +191,7 @@ struct SettingsView: View {
                 Text(closure.alertMessage)
             }
             .alert(Text(L10n.Settings.accountDeleted), isPresented: $showingAccountDeleted) {
-                Button { authManager.logout() } label: { Text(L10n.Common.ok) }
+                Button { signOut() } label: { Text(L10n.Common.ok) }
             }
             .alert(
                 Text(L10n.Settings.closeAccountFailed),
@@ -267,6 +274,14 @@ struct SettingsView: View {
         }
     }
 
+    /// A sign-out the member chose. It also deletes the groups and the unsent writes this
+    /// iPhone kept for them; a sign-out forced by a rejected refresh keeps them, so signing
+    /// back in carries on (ADR 0008).
+    private func signOut() {
+        outbox.purgeSignedInUser()
+        authManager.logout()
+    }
+
     /// Failure leaves the user signed in so they can retry. Success never re-enables the
     /// rows: the next step is signing out.
     private func closeAccount(_ closure: AccountClosure) async {
@@ -275,7 +290,7 @@ struct SettingsView: View {
             switch closure {
             case .deactivate:
                 try await ProfileService.shared.deactivateAccount()
-                authManager.logout()
+                signOut()
             case .delete:
                 try await ProfileService.shared.deleteAccount()
                 // Revoked before the confirmation rather than after it: the old tokens are

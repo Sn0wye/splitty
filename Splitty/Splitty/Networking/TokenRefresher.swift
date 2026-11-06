@@ -31,6 +31,11 @@ final class TokenRefresher: Sendable {
         credentials.load() != nil
     }
 
+    /// Who the stored access token names, for a launch with no network. See `Credentials`.
+    var storedUser: User? {
+        credentials.load()?.accessTokenUser
+    }
+
     func save(_ pair: Credentials) {
         credentialLock.withLock { credentials.save(pair) }
     }

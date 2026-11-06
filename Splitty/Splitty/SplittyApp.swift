@@ -35,6 +35,7 @@ struct RootView: View {
     @State private var resolvedOnboardingUserId: Int?
     @StateObject private var authManager = AuthenticationManager.shared
     @StateObject private var appState = AppState()
+    @Environment(\.scenePhase) private var scenePhase
     @ObservedObject private var themeManager = ThemeManager.shared
     @ObservedObject private var languageManager = LanguageManager.shared
 
@@ -92,6 +93,10 @@ struct RootView: View {
         }
         .onChange(of: authManager.currentUser?.id, initial: true) { _, userId in
             appState.setSignedInUser(userId)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Back in the foreground is a good moment to send what waited (ADR 0008).
+            if phase == .active { appState.groupSessions.outbox?.resume() }
         }
         .onOpenURL { url in
             GoogleSignInService.handle(url)

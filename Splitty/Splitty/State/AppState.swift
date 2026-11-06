@@ -78,7 +78,7 @@ final class AppState: ObservableObject {
     var currentGroupId: Int? { groupSessions.currentGroupId }
 
     init(groupSessions: GroupSessionStore? = nil) {
-        self.groupSessions = groupSessions ?? GroupSessionStore()
+        self.groupSessions = groupSessions ?? GroupSessionStore(outbox: .shared)
         sessionChanges = self.groupSessions.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }

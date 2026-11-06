@@ -46,6 +46,10 @@ final class AuthService: AuthenticationSource {
         client.hasCredentials
     }
     
+    func storedUser() -> User? {
+        client.storedUser
+    }
+
     func currentUser() async throws -> User {
         let profile: ProfileResponse = try await client.request(endpoint: "/profile")
         return profile.user

@@ -47,7 +47,8 @@ struct BalancesView: View {
             SettleUpSheet(
                 session: session,
                 currentUserId: currentUserId,
-                preselectedRow: row
+                preselectedRow: row,
+                dataSource: session.settleUpDataSource()
             )
         }
     }
@@ -59,7 +60,7 @@ struct BalancesView: View {
                 .foregroundStyle(Color("muted-foreground"))
 
             HStack(spacing: 10) {
-                Text(Money.formatted(cents: abs(session.group?.netBalanceCents ?? 0), currency: currency))
+                Text(Money.formatted(cents: abs(session.netBalanceCents ?? 0), currency: currency))
                     .font(.largeTitle.weight(.bold))
                     .monospacedDigit()
                     .foregroundStyle(Color("foreground"))
@@ -70,13 +71,18 @@ struct BalancesView: View {
                         .controlSize(.small)
                 }
             }
+            if session.hasUnsentWrites {
+                Text(L10n.Sync.estimate)
+                    .font(.footnote)
+                    .foregroundStyle(Color("muted-foreground"))
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var netLabel: String {
-        if (session.group?.netBalanceCents ?? 0) > 0 { return L10n.Balances.owedOverall }
-        if (session.group?.netBalanceCents ?? 0) < 0 { return L10n.Balances.oweOverall }
+        if (session.netBalanceCents ?? 0) > 0 { return L10n.Balances.owedOverall }
+        if (session.netBalanceCents ?? 0) < 0 { return L10n.Balances.oweOverall }
         return L10n.Balances.yourBalance
     }
 

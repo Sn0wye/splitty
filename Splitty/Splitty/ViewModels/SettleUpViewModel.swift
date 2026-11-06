@@ -12,11 +12,17 @@ struct SettleUpResult {
     let settlementId: Int?
     /// True when this payment brings the payer's net balance in the group to zero.
     var settlesUp = false
+    /// The id the payment was sent under, which matches it to the server's row (ADR 0008).
+    var clientId: UUID? = nil
+    /// True when it was kept to send later rather than recorded now.
+    var queued = false
 }
 
 struct SettleUpDataSource {
     var create: (Int, Int, Int, Date) async throws -> Void
     var update: (Int, Int, Int, Date) async throws -> Void
+    /// Sends a new payment through the outbox instead of `create`, when set.
+    var send: ((Int, Int, Int, Date) async throws -> SettleUpSend)? = nil
 
     static let live = SettleUpDataSource(
         create: { groupId, peerId, amountCents, date in
@@ -85,7 +91,9 @@ final class SettleUpViewModel: ObservableObject {
     }
 
     var balancesPending: Bool { session.balancesPending }
-    private var debts: [SimplifiedDebt] { session.latestSummary?.simplifiedDebts ?? [] }
+    /// The session's debts with this device's unsent writes counted, so a payment recorded
+    /// offline is measured against what is really owed.
+    private var debts: [SimplifiedDebt] { session.displaySummary?.simplifiedDebts ?? [] }
     private var payablePeerIds: Set<Int> {
         Set(debts.map(\.to.id).filter { $0 != currentUserId })
     }
@@ -93,7 +101,9 @@ final class SettleUpViewModel: ObservableObject {
     var isEditing: Bool { settlementId != nil }
     var amountCents: Int { amount.resolvedCents }
     var canSubmit: Bool {
-        selectedPeer != nil && amountCents > 0 && !isSubmitting && !balancesPending
+        // Pending balances no longer block a payment: the server caps it against the rows,
+        // not the stored balances (ADR 0009).
+        selectedPeer != nil && amountCents > 0 && !isSubmitting
     }
 
     var selectedPeer: GroupMember? {
@@ -192,13 +202,24 @@ final class SettleUpViewModel: ObservableObject {
         defer { isSubmitting = false }
 
         do {
+            var sent: SettleUpSend?
             if let settlementId {
                 try await dataSource.update(groupId, settlementId, amountCents, date)
+            } else if let send = dataSource.send {
+                sent = try await send(groupId, peer.userId, amountCents, date)
             } else {
                 try await dataSource.create(groupId, peer.userId, amountCents, date)
             }
-            return SettleUpResult(peer: peer, amountCents: amountCents, date: date,
-                                  settlementId: settlementId, settlesUp: settlesUp)
+            var result = SettleUpResult(peer: peer, amountCents: amountCents, date: date,
+                                        settlementId: settlementId, settlesUp: settlesUp)
+            switch sent {
+            case .confirmed(let clientId): result.clientId = clientId
+            case .queued(let clientId):
+                result.clientId = clientId
+                result.queued = true
+            case nil: break
+            }
+            return result
         } catch {
             recordSubmissionFailure(error)
             return nil
@@ -206,6 +227,11 @@ final class SettleUpViewModel: ObservableObject {
     }
 
     func recordSubmissionFailure(_ error: Error) {
+        // The server's cap is current; the debts on screen may predate another payment.
+        if case .settlementExceedsCap(let cap, _) = error as? APIError, let peer = selectedPeer, cap > 0 {
+            errorMessage = L10n.Settlement.onlyOwe(peer.name, Money.formatted(cents: cap, currency: session.currency))
+            return
+        }
         if !isEditing,
            let peer = selectedPeer,
            let debtCents = debtCents(for: peer.userId),

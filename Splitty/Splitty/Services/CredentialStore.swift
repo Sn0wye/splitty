@@ -17,6 +17,31 @@ struct Credentials: Codable, Equatable, Sendable {
     /// The access token's `exp`, read only to refresh ahead of a certain 401. A token
     /// without a readable `exp` returns nil and is sent as is.
     var accessTokenExpiry: Date? {
+        guard let exp = accessTokenClaims?["exp"] as? TimeInterval else { return nil }
+        return Date(timeIntervalSince1970: exp)
+    }
+
+    /// Who the access token was issued to, read without a network so a cold launch offline
+    /// still knows whose groups to open (ADR 0008). Only identity: the profile request
+    /// replaces it as soon as it succeeds. The token may be expired; it is never sent on
+    /// the strength of this.
+    var accessTokenUser: User? {
+        guard let claims = accessTokenClaims else { return nil }
+        func claim(_ short: String, _ long: String) -> String? {
+            (claims[short] as? String) ?? (claims[long] as? String)
+        }
+        guard let id = claim("nameid", "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")
+            .flatMap(Int.init) else { return nil }
+        return User(
+            id: id,
+            name: claim("unique_name", "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name") ?? "",
+            email: claim("email", "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress") ?? "",
+            createdAt: "",
+            updatedAt: ""
+        )
+    }
+
+    private var accessTokenClaims: [String: Any]? {
         let segments = accessToken.components(separatedBy: ".")
         guard segments.count == 3 else { return nil }
 
@@ -27,13 +52,8 @@ struct Credentials: Codable, Equatable, Sendable {
             base64 += "="
         }
 
-        guard let data = Data(base64Encoded: base64),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let exp = json["exp"] as? TimeInterval else {
-            return nil
-        }
-
-        return Date(timeIntervalSince1970: exp)
+        guard let data = Data(base64Encoded: base64) else { return nil }
+        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
     }
 }
 

@@ -13,15 +13,28 @@ class SettlementService {
 
     private init() {}
 
-    func settleUp(groupId: Int, withUserId: Int, amountCents: Int, date: Date) async throws {
-        let _: EmptyResponse = try await APIClient.shared.request(
+    /// Answers with the settlement the server recorded. `clientId` makes a resend safe: the
+    /// server answers a settlement it already stored with that row (ADR 0008).
+    @discardableResult
+    func settleUp(
+        groupId: Int,
+        withUserId: Int,
+        amountCents: Int,
+        date: Date,
+        clientId: UUID? = nil,
+        currency: Currency? = nil
+    ) async throws -> Expense {
+        var body: [String: Any] = [
+            "withUserId": withUserId,
+            "amount": Money.requestValue(cents: amountCents),
+            "date": ExpenseService.timestamp(from: date)
+        ]
+        if let clientId { body["clientId"] = clientId.uuidString }
+        if let currency { body["currency"] = currency.rawValue }
+        return try await APIClient.shared.request(
             endpoint: "/group/\(groupId)/settle",
             method: .POST,
-            body: [
-                "withUserId": withUserId,
-                "amount": Money.requestValue(cents: amountCents),
-                "date": ExpenseService.timestamp(from: date)
-            ]
+            body: body
         )
     }
 

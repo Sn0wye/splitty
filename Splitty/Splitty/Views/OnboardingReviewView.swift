@@ -41,6 +41,7 @@ struct OnboardingReviewView: View {
                     row(.expenseForm)
                     row(.timeline)
                     row(.groupOpen)
+                    row(.groupOffline)
                     row(.charts)
                     row(.chartsFailed)
                     row(.chartsEmpty)
@@ -149,6 +150,8 @@ struct OnboardingReviewView: View {
                 .environment(\.currency, .eur)
         case .groupOpen:
             ReviewGroupOpenView { selectedScreen = nil }
+        case .groupOffline:
+            ReviewGroupOpenView(makeAppState: ReviewSamples.offlineAppState) { selectedScreen = nil }
         case .plans, .plansEmpty:
             ReviewPlansView(plans: screen == .plans ? ReviewSamples.plans : []) { selectedScreen = nil }
         case .settleUp:
@@ -229,6 +232,7 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
     case timeline
     case timelineEuros
     case groupOpen
+    case groupOffline
     case charts
     case chartsFailed
     case chartsEmpty
@@ -257,6 +261,7 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .timeline: "Timeline"
         case .timelineEuros: "Timeline, euros"
         case .groupOpen: "Opening a group"
+        case .groupOffline: "A group offline"
         case .charts: "Charts"
         case .chartsFailed: "Charts, first load fails"
         case .chartsEmpty: "Charts, no expenses"
@@ -285,6 +290,7 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .timeline: "list.bullet.rectangle"
         case .timelineEuros: "eurosign"
         case .groupOpen: "arrow.right.square"
+        case .groupOffline: "wifi.slash"
         case .charts: "chart.pie"
         case .chartsFailed: "exclamationmark.triangle"
         case .chartsEmpty: "chart.pie.fill"

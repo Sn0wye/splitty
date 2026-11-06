@@ -25,6 +25,12 @@ class GroupsViewModel: ObservableObject {
     @Published var groups: [Group] = []
     @Published var errorMessage: String?
     @Published var isLoading = false
+    /// When the list on screen was read, while it is this device's copy because the latest
+    /// read failed. Nil once a read succeeds.
+    @Published private(set) var savedAt: Date?
+    /// When the list on screen was saved, shown only once a read fails.
+    private var shownCopySavedAt: Date?
+    private var prefetchTask: Task<Void, Never>?
 
     /// One net per currency, in the order the list first shows each. Amounts in different
     /// currencies are never added together (ADR 0007), and a currency that nets to zero is
@@ -71,18 +77,59 @@ class GroupsViewModel: ObservableObject {
     
     /// Most recently active first (`Group.recentFirst`). `recentlyOpened` is the session
     /// store's groups opened this launch, newest first.
-    func loadGroups(recentlyOpened: [Int] = []) async {
+    ///
+    /// With a `cache`, the saved list shows at once and stays when the read fails, and every
+    /// group's rows are saved so it opens offline (ADR 0008).
+    func loadGroups(recentlyOpened: [Int] = [], cache: GroupCache? = nil) async {
         if PerformanceScenarioLaunch.isEnabled {
             groups = Group.recentFirst(PerformanceScenarios.groups, recentlyOpened: recentlyOpened)
             return
+        }
+        if groups.isEmpty, let saved = cache?.groups {
+            groups = Group.recentFirst(saved.groups, recentlyOpened: recentlyOpened)
+            shownCopySavedAt = saved.savedAt
         }
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
         do {
-            groups = Group.recentFirst(try await GroupService.shared.getGroups(), recentlyOpened: recentlyOpened)
+            let loaded = try await GroupService.shared.getGroups()
+            groups = Group.recentFirst(loaded, recentlyOpened: recentlyOpened)
+            savedAt = nil
+            shownCopySavedAt = nil
+            if let cache {
+                cache.save(groups: loaded)
+                prefetch(loaded, into: cache)
+            }
         } catch {
-            errorMessage = error.localizedDescription
+            if error.isCancellation { return }
+            // The saved list is still the best answer there is; the banner says how old it is.
+            if let shownCopySavedAt { savedAt = shownCopySavedAt }
+            if savedAt == nil || groups.isEmpty { errorMessage = error.localizedDescription }
+        }
+    }
+
+    /// Saves the rows of every group this device has no recent copy of, one group at a time,
+    /// so a group never opened this launch still opens offline. Reads the expense list and
+    /// the summary only: `GET group` catches recurring expenses up (ADR 0006), which opening
+    /// the group already does, and the list row carries the group itself.
+    private func prefetch(_ groups: [Group], into cache: GroupCache) {
+        prefetchTask?.cancel()
+        prefetchTask = Task {
+            for group in groups {
+                if Task.isCancelled { return }
+                if let saved = cache.snapshot(groupId: group.id), saved.savedAt > Date().addingTimeInterval(-3600) {
+                    continue
+                }
+                guard let expenses = try? await ExpenseService.shared.getExpenses(groupId: group.id) else { return }
+                let summary = try? await GroupService.shared.getBalanceSummary(groupId: group.id)
+                if Task.isCancelled { return }
+                // A session that read the group in the meantime saved something newer.
+                if let saved = cache.snapshot(groupId: group.id), saved.savedAt > Date().addingTimeInterval(-60) {
+                    continue
+                }
+                cache.save(GroupSnapshot(group: group, expenses: expenses, summary: summary, savedAt: Date()), groupId: group.id)
+            }
         }
     }
 }

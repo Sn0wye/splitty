@@ -87,7 +87,18 @@ struct APITransport: Sendable {
     private static func refusal(status: Int, data: Data) -> APIError {
         let json = data.isEmpty ? nil : (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         let message = json.flatMap(serverMessage(from:))
-        if let code = (json?["code"] as? String).flatMap(APIErrorCode.init(rawValue:)) {
+        let code = (json?["code"] as? String).flatMap(APIErrorCode.init(rawValue:))
+        if code == .versionConflict,
+           let row = json?["expense"],
+           let rowData = try? JSONSerialization.data(withJSONObject: row),
+           let current = try? JSONDecoder().decode(Expense.self, from: rowData) {
+            return .versionConflict(current: current, message: message)
+        }
+        if code == .settlementExceedsCap,
+           let cap = (json?["cap"] as? NSNumber).map({ Money.cents(from: $0.decimalValue) }) {
+            return .settlementExceedsCap(capCents: cap, message: message)
+        }
+        if let code {
             return .refused(status, code: code, message: message)
         }
         return .httpError(status, message: message)

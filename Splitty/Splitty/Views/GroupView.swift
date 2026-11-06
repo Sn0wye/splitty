@@ -17,6 +17,7 @@ struct GroupView: View {
     @State private var showingSettings = false
     @State private var showingSettleUpSheet = false
     @State private var showingBalancesSheet = false
+    @State private var showingPendingChanges = false
     @State private var showingChartsSheet = false
     /// Set when the Charts sheet asks for an expense, so the form opens once it is gone.
     @State private var addExpenseAfterCharts = false
@@ -115,9 +116,13 @@ struct GroupView: View {
             if let currentUserId {
                 SettleUpSheet(
                     session: session,
-                    currentUserId: currentUserId
+                    currentUserId: currentUserId,
+                    dataSource: session.settleUpDataSource()
                 )
             }
+        }
+        .sheet(isPresented: $showingPendingChanges) {
+            PendingChangesSheet(session: session)
         }
         .sheet(isPresented: $showingBalancesSheet) {
             if session.group != nil, let currentUserId {
@@ -206,6 +211,7 @@ struct GroupView: View {
         ScrollView {
             LazyVStack(spacing: 0) {
                 headerSection
+                syncStatus
                 actionButtonsSection
 
                 if let actionErrorMessage = session.actionErrorMessage {
@@ -331,7 +337,7 @@ struct GroupView: View {
     @ViewBuilder
     private func expenseRow(_ expense: Expense, currentUserId: Int) -> some View {
         if session.isPendingPayment(expense) {
-            ExpenseRow(expense: expense, currentUserId: currentUserId)
+            ExpenseRow(expense: expense, currentUserId: currentUserId, syncState: session.syncState(for: expense))
                 .opacity(0.6)
                 .accessibilityValue(L10n.Common.updating)
         } else {
@@ -341,7 +347,7 @@ struct GroupView: View {
             } onDelete: {
                 pendingDeletion = expense
             } content: {
-                ExpenseRow(expense: expense, currentUserId: currentUserId)
+                ExpenseRow(expense: expense, currentUserId: currentUserId, syncState: session.syncState(for: expense))
             }
         }
     }
@@ -413,19 +419,43 @@ struct GroupView: View {
         .padding(.top, 10)
     }
     
+    /// Offline, an old copy, or writes not sent yet. Opens the unsent writes when there are any.
+    @ViewBuilder
+    private var syncStatus: some View {
+        let writes = session.unsentWrites
+        SyncStatusBanner(
+            isOffline: session.isOffline,
+            savedAt: session.savedAt,
+            waitingCount: writes.filter { $0.problem == nil }.count,
+            attentionCount: writes.filter { $0.problem != nil }.count,
+            onOpen: { showingPendingChanges = true }
+        )
+        .padding(.horizontal, 20)
+        .padding(.top, 8)
+        .padding(.bottom, 12)
+    }
+
     @ViewBuilder
     private var balanceText: some View {
-        if let balanceCents = session.group?.netBalanceCents {
-            HStack(spacing: 6) {
-                Text(BalanceCopy.overall(cents: balanceCents, currency: session.currency))
-                // A recomputation is outstanding, so this number predates the last write.
-                // Greyed with a spinner rather than presented as final.
-                .foregroundColor(Color("muted-foreground"))
-                .opacity(session.balancesPending ? 0.5 : 1)
+        if let balanceCents = session.netBalanceCents {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(BalanceCopy.overall(cents: balanceCents, currency: session.currency))
+                    // A recomputation is outstanding, so this number predates the last write.
+                    // Greyed with a spinner rather than presented as final.
+                    .foregroundColor(Color("muted-foreground"))
+                    .opacity(session.balancesPending ? 0.5 : 1)
 
-                if session.balancesPending {
-                    ProgressView()
-                        .controlSize(.mini)
+                    if session.balancesPending {
+                        ProgressView()
+                            .controlSize(.mini)
+                    }
+                }
+                // Counts writes the server has not seen, so it is an estimate until they land.
+                if session.hasUnsentWrites {
+                    Text(L10n.Sync.estimate)
+                        .font(.footnote)
+                        .foregroundColor(Color("muted-foreground"))
                 }
             }
         } else {
@@ -578,15 +608,22 @@ struct ExpenseRow: View {
     @Environment(\.currency) private var currency
     let expense: Expense
     let currentUserId: Int
+    /// Set while this device holds a write for the row the server has not confirmed.
+    var syncState: RowSyncState? = nil
     
     var body: some View {
         HStack(spacing: 16) {
             leadingIcon
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.headline)
-                    .foregroundColor(Color("card-foreground"))
+                HStack(spacing: 6) {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundColor(Color("card-foreground"))
+                    if let syncState {
+                        RowSyncBadge(state: syncState)
+                    }
+                }
                 
                 paymentText
 
