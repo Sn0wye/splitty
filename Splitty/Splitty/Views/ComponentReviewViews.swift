@@ -473,7 +473,7 @@ struct ReviewPlansView: View {
 /// again once dismissed so the dismissal and a fresh opening can both be reviewed.
 /// The real settle-up sheet on `ReviewSamples.settleUpDebt`: recording the whole amount
 /// plays the settled-up moment, a smaller one dismisses as usual. Without a balance row
-/// it opens on the person step, the way the group's Settle up button does. When you are
+/// it asks who paid and to whom first, the way the group's Settle up button does. When you are
 /// owed, it opens on `ReviewSamples.settleUpCredit` and records Ana paying you.
 struct ReviewSettleUpSheet: View {
     private let startsFromBalanceRow: Bool
