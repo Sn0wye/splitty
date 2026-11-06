@@ -52,23 +52,6 @@ public sealed class SimplifiedDebtTests(ApiFactory factory)
             HttpStatusCode.BadRequest);
     }
 
-    [Fact]
-    public async Task People_uses_the_same_simplified_pairs_in_both_directions()
-    {
-        var (group, creditor, creditorId) = await ChainAsync();
-        foreach (var (client, peerId, amount) in new[]
-                 { (group.Guest, creditorId, -10m), (creditor, group.GuestId, 10m) })
-        {
-            var people = await client.ReadJsonAsync(await client.GetPeopleAsync());
-            var peers = people.GetProperty("peers").EnumerateArray().ToList();
-            var peer = peers.Single(p => p.GetProperty("userId").GetInt32() == peerId);
-            Assert.Equal(amount, peer.GetProperty("netAmount").GetDecimal());
-            Assert.Equal(amount, Assert.Single(peer.GetProperty("groups").EnumerateArray()).GetProperty("amount").GetDecimal());
-            Assert.Equal(0m, peers.Single(p => p.GetProperty("userId").GetInt32() == group.OwnerId)
-                .GetProperty("netAmount").GetDecimal());
-        }
-    }
-
     [Theory]
     [InlineData(4, 10, 4.01)]
     [InlineData(10, 4, 4.01)]

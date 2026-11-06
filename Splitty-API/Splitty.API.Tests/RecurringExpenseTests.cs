@@ -209,7 +209,6 @@ public sealed class RecurringExpenseTests : IDisposable
         _factory.Clock.Set(Now.AddDays(21));
         (await group.Owner.GetSummaryAsync(group.Id)).EnsureSuccessStatusCode();
         (await group.Owner.GetStatsAsync(group.Id, "tz=UTC")).EnsureSuccessStatusCode();
-        (await group.Owner.GetPeopleAsync()).EnsureSuccessStatusCode();
 
         Assert.Single(await group.ExpensesAsync());
     }

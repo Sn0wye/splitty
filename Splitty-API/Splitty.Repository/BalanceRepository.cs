@@ -28,8 +28,4 @@ public class BalanceRepository(ApplicationDbContext context) : IBalanceRepositor
             .Include(d => d.FromUser).Include(d => d.ToUser)
             .Where(d => d.GroupId == groupId)
             .OrderBy(d => d.FromUserId).ThenBy(d => d.ToUserId).ToListAsync();
-
-    public Task<List<SimplifiedDebt>> GetUserSimplifiedDebtsAsync(int userId) =>
-        context.SimplifiedDebt.AsNoTracking()
-            .Where(d => d.FromUserId == userId || d.ToUserId == userId).ToListAsync();
 }
