@@ -12,11 +12,29 @@ enum L10n {
 
     /// Resolves a catalog entry. Interpolating values into `defaultValue` lets the
     /// localization system pick plural variations and substitutions from the catalog.
+    ///
+    /// Looked up in the language's own `.lproj` rather than through a
+    /// `LocalizedStringResource` naming a locale: that route reads the string table from
+    /// disk on every call, and the timeline resolves several strings per row on every
+    /// frame it scrolls. A bundle's own table is read once and kept.
     nonisolated static func text(_ key: StaticString, default defaultValue: String.LocalizationValue) -> String {
-        var resource = LocalizedStringResource(key, defaultValue: defaultValue)
-        resource.locale = locale
-        return String(localized: resource)
+        let language = AppLanguage.current
+        guard let bundle = tables[language] else {
+            var resource = LocalizedStringResource(key, defaultValue: defaultValue)
+            resource.locale = language.locale
+            return String(localized: resource)
+        }
+        return String(localized: key, defaultValue: defaultValue, bundle: bundle, locale: language.locale)
     }
+
+    /// Each shipped language's compiled catalog, as a bundle whose only localization it is.
+    nonisolated private static let tables: [AppLanguage: Bundle] = Dictionary(
+        uniqueKeysWithValues: AppLanguage.allCases.compactMap { language in
+            Bundle.main.path(forResource: language.rawValue, ofType: "lproj")
+                .flatMap(Bundle.init(path:))
+                .map { (language, $0) }
+        }
+    )
 
     /// printf-style substitution for copy that takes arguments but needs no plural
     /// agreement. Anything with two or more arguments must use positional specifiers
