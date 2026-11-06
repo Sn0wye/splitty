@@ -22,7 +22,7 @@ class GroupFormViewModel: ObservableObject {
         existingGroupId: Int? = nil,
         name: String = "",
         description: String = "",
-        currency: Currency = .usd
+        currency: Currency = .preferred()
     ) {
         self.existingGroupId = existingGroupId
         self.name = name

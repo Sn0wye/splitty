@@ -169,7 +169,6 @@ enum L10n {
 
     enum Tabs {
         static var groups: String { text("tabs.groups", default: "Groups") }
-        static var people: String { text("tabs.people", default: "People") }
         static var settings: String { text("tabs.settings", default: "Settings") }
         static var addExpense: String { text("tabs.add_expense", default: "Add expense") }
     }
@@ -376,24 +375,6 @@ enum L10n {
             )
         }
         static var confirm: String { text("leave.confirm", default: "Leave") }
-    }
-
-    enum People {
-        static var title: String { text("people.title", default: "People") }
-        static var settled: String { text("people.settled", default: "Settled") }
-        static var emptyTitle: String { text("people.empty_title", default: "No people yet") }
-        static var emptyMessage: String {
-            text("people.empty_message", default: "People you share a group with will appear here.")
-        }
-        static var viewGroups: String { text("people.view_groups", default: "View groups") }
-        static var opensGroup: String { text("people.opens_group", default: "Opens this group") }
-        static func youOwe(_ amount: String) -> String {
-            format("people.you_owe", default: "You owe %@", amount)
-        }
-        static func owesYou(_ amount: String) -> String {
-            format("people.owes_you", default: "Owes you %@", amount)
-        }
-        static var settledUp: String { text("people.settled_up", default: "Settled up") }
     }
 
     enum Expense {

@@ -3,7 +3,7 @@
 iPad remains enabled by `TARGETED_DEVICE_FAMILY = 1,2` in
 `Splitty/Config/App.xcconfig`. The Info.plist permits all four iPad orientations.
 
-Wide windows center group cards, the expense timeline, People content, and
+Wide windows center group cards, the expense timeline and
 Settings within 760 points; login and onboarding use at most 560. These are
 maximum widths, so narrower windows can still use their available width.
 Backgrounds fill the window. The tabs are the system tab bar, which iPad shows

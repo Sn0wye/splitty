@@ -10,9 +10,6 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var authManager = AuthenticationManager.shared
-    @StateObject private var peopleViewModel = PeopleViewModel(
-        loadPeople: PerformanceScenarioLaunch.isEnabled ? { PerformanceScenarios.people } : GroupService.shared.getPeople
-    )
     @State private var addDestination: AddExpenseDestination?
     @State private var isResolvingAdd = false
     @State private var addErrorMessage: String?
@@ -23,8 +20,6 @@ struct ContentView: View {
             case .groups:
                 // "+" lives on a pushed group's screen and adds to that group.
                 GroupsView(onAddGroupExpense: { Task { await beginAddingExpense() } })
-            case .people:
-                PeopleView(viewModel: peopleViewModel)
             case .settings:
                 SettingsView()
             }

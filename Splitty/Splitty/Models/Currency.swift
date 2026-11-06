@@ -24,6 +24,12 @@ enum Currency: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var code: String { rawValue }
 
+    /// A new group's starting currency: the one of the phone's region, which the app language
+    /// does not change, or USD when the region's currency is not in the list.
+    static func preferred(for locale: Locale = .current) -> Currency {
+        locale.currency.flatMap { Currency(rawValue: $0.identifier) } ?? .usd
+    }
+
     /// The short forms Apple uses outside each currency's home country, so no two
     /// currencies in the list share a symbol.
     var symbol: String {

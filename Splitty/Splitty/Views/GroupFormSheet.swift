@@ -19,7 +19,7 @@ struct GroupFormSheet: View {
             existingGroupId: group?.id,
             name: group?.name ?? "",
             description: group?.description ?? "",
-            currency: group?.currency ?? .usd
+            currency: group?.currency ?? .preferred()
         ))
         self.onSaved = onSaved
         self.isReview = isReview

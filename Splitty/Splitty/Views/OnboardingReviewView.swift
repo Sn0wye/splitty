@@ -11,7 +11,6 @@ struct OnboardingReviewView: View {
         _selectedScreen = State(initialValue: screen)
     }
     @State private var previewTab: AppTab = .groups
-    @State private var peoplePreviewTab: AppTab = .people
 
     var body: some View {
         NavigationStack {
@@ -32,7 +31,6 @@ struct OnboardingReviewView: View {
                 Section("In the app") {
                     row(.groupsEmpty)
                     row(.groupEmpty)
-                    row(.peopleEmpty)
                     row(.invite)
                     row(.balanceHint)
                 }
@@ -118,19 +116,6 @@ struct OnboardingReviewView: View {
         case .groupEmpty, .balanceHint:
             OnboardingGroupReviewView(showsBalanceHint: screen == .balanceHint) {
                 selectedScreen = nil
-            }
-        case .peopleEmpty:
-            AppTabView(selection: $peoplePreviewTab) { tab in
-                if tab == .people {
-                    PeopleView(
-                        isReview: true,
-                        onReviewDone: { selectedScreen = nil },
-                        onShowGroups: { selectedScreen = .groupsEmpty }
-                    )
-                    .environmentObject(AppState())
-                } else {
-                    Color("background").ignoresSafeArea()
-                }
             }
         case .expenseForm, .expenseFormReais:
             ReviewSheetHost(title: screen.title, onDone: { selectedScreen = nil }) {
@@ -225,7 +210,6 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
     case invite
     case groupsEmpty
     case groupEmpty
-    case peopleEmpty
     case balanceHint
     case expenseForm
     case expenseFormReais
@@ -254,7 +238,6 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .invite: "Invite people"
         case .groupsEmpty: "No groups"
         case .groupEmpty: "No expenses"
-        case .peopleEmpty: "No people"
         case .balanceHint: "First balance"
         case .expenseForm: "Expense form"
         case .expenseFormReais: "Expense form, reais"
@@ -283,7 +266,6 @@ enum ReviewScreen: String, CaseIterable, Identifiable {
         case .invite: "square.and.arrow.up"
         case .groupsEmpty: "square.grid.2x2"
         case .groupEmpty: "tray"
-        case .peopleEmpty: "person.2"
         case .balanceHint: "arrow.left.arrow.right"
         case .expenseForm: "number"
         case .expenseFormReais: "brazilianrealsign"
