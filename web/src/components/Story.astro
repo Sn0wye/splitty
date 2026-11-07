@@ -9,7 +9,7 @@
  */
 import Coin from "./Coin.astro";
 import Icon from "./PhoneIcon.astro";
-import { currency, fill, formatMoney, htmlLang, t, type Locale } from "../i18n";
+import { currency, currencyWriting, fill, formatMoney, htmlLang, t, type Locale } from "../i18n";
 
 interface Props {
   locale: Locale;
@@ -19,11 +19,21 @@ const { locale } = Astro.props;
 const copy = t(locale);
 const p = copy.phone;
 const money = (value: number) => formatMoney(locale, value);
-// The keypad sets the symbol after the digits, as `AmountDisplay` does.
-const symbol =
-  new Intl.NumberFormat(htmlLang[locale], { style: "currency", currency: currency[locale] })
-    .formatToParts(0)
-    .find((part) => part.type === "currency")?.value ?? "$";
+// `AmountDisplay` writes the symbol on the side the group's currency does (`42,50 €`, but
+// `R$ 42,50`), and the keypad's decimal key is that currency's separator.
+const writing = currencyWriting(currency[locale]);
+const symbol = writing.symbol;
+const symbolFollows = writing.follows;
+const decimal = writing.decimal;
+
+// The details step's keyboard, in the layout each language's iPhone uses.
+const keyboardRows: Record<Locale, string[]> = {
+  en: ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"],
+  "pt-br": ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"],
+  es: ["QWERTYUIOP", "ASDFGHJKLÑ", "ZXCVBNM"],
+  fr: ["AZERTYUIOP", "QSDFGHJKLM", "WXCVBN'"],
+};
+const rows = keyboardRows[locale];
 
 const members = [
   { id: "you", name: p.you, initial: p.you[0], tint: "#3f3f46" },
@@ -39,6 +49,9 @@ const splits = {
   percentages: [24, 24, 24, 48],
 };
 const percents = [20, 20, 20, 40];
+
+// What each member owes the group, the Who paid? captions. Ana is owed, so she has none.
+const owesGroup = { you: 165, bruno: 105, caio: 45 };
 
 // Graph nodes on a 300×260 board and the debts between them, before and after netting.
 const nodes = {
@@ -119,7 +132,6 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
             <span class="action primary">{p.settleUp}</span>
             <span class="action">{p.balances}</span>
             <span class="action">{p.charts}</span>
-            <span class="action">{p.export}</span>
           </div>
           <div class="seg section-picker">
             <span class="seg-thumb" style="left:2px;width:calc(50% - 2px)"></span>
@@ -164,17 +176,18 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
               <div class="page">
                 <div class="nav"><span class="glass capsule">{p.cancel}</span></div>
                 <div class="amount">
+                  {!symbolFollows && <span class="symbol">{symbol}</span>}
                   <span class="digits" data-digits><span>0</span></span>
-                  <span class="symbol">{symbol}</span>
+                  {symbolFollows && <span class="symbol">{symbol}</span>}
                 </div>
                 <span class="primary-button" data-next>{p.next}</span>
                 <div class="keys">
-                  {["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0"].map((key) => <span data-key={key}>{key}</span>)}
+                  {["1", "2", "3", "4", "5", "6", "7", "8", "9", decimal, "0"].map((key) => <span data-key={key}>{key}</span>)}
                   <span><Icon name="back" /></span>
                 </div>
               </div>
               <!-- Details: what it was for, and how it splits -->
-              <div class="page">
+              <div class="page details">
                 <div class="nav">
                   <span class="glass round"><Icon name="back" /></span>
                   <span class="nav-title">{money(120)}</span>
@@ -198,6 +211,34 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
                 </div>
                 <span class="primary-button ready" data-save>{p.save}</span>
               </div>
+            </div>
+            <!-- The details keyboard arrives with the screen, and Save rides above it. -->
+            <div class="keyboard" data-keyboard>
+              <div class="predictions"><span></span><span></span><span></span></div>
+              {
+                rows.map((row, index) => (
+                  <div class="kb-row">
+                    {index === 2 && <span class="kb-key kb-wide">⇧</span>}
+                    {[...row].map((letter) => (
+                      <span class="kb-key" data-letter={letter.toLowerCase()}>
+                        {letter}
+                      </span>
+                    ))}
+                    {index === 2 && (
+                      <span class="kb-key kb-wide">
+                        <Icon name="delete" />
+                      </span>
+                    )}
+                  </div>
+                ))
+              }
+              <div class="kb-row">
+                <span class="kb-key kb-wide kb-small">123</span>
+                <span class="kb-key kb-wide"><Icon name="smile" /></span>
+                <span class="kb-key kb-space" data-letter=" "></span>
+                <span class="kb-key kb-wide kb-return"><Icon name="check" /></span>
+              </div>
+              <div class="kb-bottom"><Icon name="globe" /><Icon name="mic" /></div>
             </div>
           </div>
         </div>
@@ -290,7 +331,10 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
 
       <!-- Simplify: six debts net down to three -->
       <div class="screen graph" data-screen="2">
-        <div class="bar"><span class="bar-title">{p.balances}</span></div>
+        <div class="bar">
+          <span class="bar-title">{p.balances}</span>
+          <span class="bar-done">{p.done}</span>
+        </div>
         <p class="count">
           <span data-count-before>{p.payments.before}</span>
           <span data-count-after>{p.payments.after}</span>
@@ -339,21 +383,36 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
             })
           }
         </svg>
+        <!-- `BalancesView`'s rows: your own debt tinted, with Settle; the others plain. -->
         <ul class="owed" data-owed>
           {
             edges
               .filter((edge) => edge.keep)
               .map((edge) => {
                 const from = members.find((m) => m.id === edge.from)!;
+                const ana = members[1];
+                const mine = from.id === "you";
                 // Every kept edge carries its netted amount.
                 const amount = money("after" in edge ? edge.after : 0);
                 return (
-                  <li>
-                    <span class="avatar" style={`--tint:${from.tint}`}>{from.initial}</span>
-                    <span>
-                      {from.id === "you"
+                  <li data-mine={mine ? "" : undefined}>
+                    <span class="pair">
+                      <span class="avatar" style={`--tint:${from.tint}`}>{from.initial}</span>
+                      <span class="avatar" style={`--tint:${ana.tint}`}>{ana.initial}</span>
+                    </span>
+                    <span class="statement">
+                      {mine
                         ? fill(p.youOwePeer, { name: "Ana", amount })
                         : fill(p.peerOwesPeer, { from: from.name, to: "Ana", amount })}
+                    </span>
+                    <span class="debt">
+                      <strong>{amount}</strong>
+                      {mine && (
+                        <span class="settle-link">
+                          {p.settle}
+                          <Icon name="chevron" />
+                        </span>
+                      )}
                     </span>
                   </li>
                 );
@@ -362,17 +421,76 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
         </ul>
       </div>
 
-      <!-- Settle: pay, and the halves meet -->
-      <div class="screen settle" data-screen="3">
-        <div class="bar"><span class="bar-title">{p.group}</span></div>
-        <div class="settle-card" data-settle-card>
-          <span class="avatar large" style={`--tint:${members[1].tint}`}>A</span>
-          <p>{fill(p.youOwePeer, { name: "Ana", amount: money(165) })}</p>
-          <span class="pay" data-pay>{fill(p.pay, { amount: money(165) })}</span>
-        </div>
-        <div class="settled" data-settled>
-          <Coin separation={1} size={180} id="settle-coin" />
-          <p>{p.settled}</p>
+      <!-- Settle: who paid, to whom, Pay all, and the halves meet -->
+      <div class="screen" data-screen="3">
+        <div class="pt settle">
+          <div class="sheet shown">
+            <div class="nav">
+              <span class="glass capsule cancel">
+                <span class="cancel-back" data-cancel-back><Icon name="back" /></span>
+                {p.cancel}
+              </span>
+              <span class="nav-title">{p.settleTitle}</span>
+            </div>
+
+            <!-- `SettlePartiesPicker`: a grid of faces, each with what they owe -->
+            <div class="parties" data-parties>
+              <h3 class="parties-title">
+                <span data-ask="payer">{p.whoPaid}</span>
+                <span data-ask="payee">{p.toWhom}</span>
+              </h3>
+              <div class="party-grid">
+                {
+                  members.map((member) => {
+                    const owes = owesGroup[member.id as keyof typeof owesGroup];
+                    return (
+                      <span class="party" data-party={member.id}>
+                        <span class="ring">
+                          <span class="face huge">{member.initial}</span>
+                        </span>
+                        <span class="party-name">{member.name}</span>
+                        <span class="party-caption">
+                          {owes !== undefined && <span class="owes" data-ask="payer">{money(owes)}</span>}
+                          {member.id === "ana" && <span class="owed-to" data-ask="payee">{money(165)}</span>}
+                        </span>
+                      </span>
+                    );
+                  })
+                }
+              </div>
+            </div>
+
+            <!-- The amount: it starts at 0 until Pay all -->
+            <div class="settle-amount" data-settle-amount>
+              <span class="parties-summary">
+                <span class="face small">{members[0].initial}</span>
+                <strong>{fill(p.payerPaidPayee, { payer: p.you, payee: "Ana" })}</strong>
+                <span class="face small">{members[1].initial}</span>
+                <Icon name="pencil" />
+              </span>
+              <div class="amount">
+                {!symbolFollows && <span class="symbol">{symbol}</span>}
+                <span class="digits" data-settle-digits><span>0</span></span>
+                {symbolFollows && <span class="symbol">{symbol}</span>}
+              </div>
+              <span class="pay-all" data-pay-all>{fill(p.payAll, { amount: money(165) })}</span>
+              <span class="date-button"><Icon name="calendar" />{p.today}</span>
+              <span class="primary-button" data-record>
+                <span class="label">{p.recordPayment}</span>
+                <span class="spinner"></span>
+              </span>
+              <div class="keys">
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9", decimal, "0"].map((key) => <span>{key}</span>)}
+                <span><Icon name="back" /></span>
+              </div>
+            </div>
+
+            <!-- `SettledUpMoment`: the coin's halves meet and turn green -->
+            <div class="settled" data-settled>
+              <Coin separation={1} size={150} id="settle-coin" />
+              <p>{p.settled}</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -393,11 +511,11 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
 <script>
   import { animate, inView, stagger } from "motion";
   import { Coin, countTo, springs, wait } from "../scripts/motion";
+  import { formatAmount } from "../i18n/locales";
 
   const story = document.querySelector<HTMLElement>("[data-story]")!;
-  const lang = story.dataset.lang!;
-  const money = new Intl.NumberFormat(lang, { style: "currency", currency: story.dataset.currency });
-  const fmt = (value: number) => money.format(value);
+  const code = story.dataset.currency!;
+  const fmt = (value: number) => formatAmount(value, code);
   const screens = [...story.querySelectorAll<HTMLElement>("[data-screen]")];
 
   // Each step's playback checks this token after every pause and stops if a newer step
@@ -461,11 +579,20 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
   const oweTemplate = story.dataset.oweTemplate!;
   const oweText = (value: number) => oweTemplate.replace("{amount}", fmt(value));
   const description = story.dataset.description!;
+  const keyboard = logScreen.querySelector<HTMLElement>("[data-keyboard]")!;
+
+  /** The key a typed character lands on, lit for a moment as the system keyboard does. */
+  function tapKey(character: string) {
+    const key = keyboard.querySelector<HTMLElement>(`[data-letter="${CSS.escape(character.toLowerCase())}"]`);
+    if (!key) return;
+    play(key, { backgroundColor: ["#6b6b70", "#46464a"] }, { duration: 0.18, ease: "easeOut" });
+  }
 
   function resetLog() {
     set(sheet, { y: "100%" });
     set(dim, { opacity: 0 });
     set(pages, { x: "0%" });
+    set(keyboard, { y: "100%" });
     set(inserted, { height: 0, opacity: 0 });
     digits.innerHTML = "<span>0</span>";
     next.classList.remove("ready");
@@ -475,13 +602,43 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
     owe.textContent = oweText(135);
   }
 
-  /** `AmountDisplay`: each new digit pushes in from below through a blur. */
-  function typeDigit(typed: string) {
-    if (typed.length === 1) digits.innerHTML = "";
+  /**
+   * `AmountDisplay`'s `BlurPushTransition`: a new glyph rises from 40pt below, blurred and at
+   * 55% scale; a replaced one leaves upward the same way. The leaving glyph is lifted out of
+   * the row so the digits that stay close the gap on the same spring.
+   */
+  function pushGlyph(row: HTMLElement, character: string) {
     const glyph = document.createElement("span");
-    glyph.textContent = typed.at(-1)!;
-    digits.append(glyph);
-    play(glyph, { y: ["0.5em", 0], opacity: [0, 1], filter: ["blur(6px)", "blur(0px)"] }, springs.amount);
+    glyph.textContent = character;
+    row.append(glyph);
+    play(glyph, { y: [40, 0], scale: [0.55, 1], opacity: [0, 1], filter: ["blur(9px)", "blur(0px)"] }, springs.amount);
+  }
+
+  function retireGlyph(glyph: HTMLElement) {
+    const { offsetLeft, offsetTop } = glyph;
+    glyph.dataset.leaving = "";
+    glyph.style.position = "absolute";
+    glyph.style.left = `${offsetLeft}px`;
+    glyph.style.top = `${offsetTop}px`;
+    play(glyph, { y: [0, -40], scale: [1, 0.55], opacity: [1, 0], filter: ["blur(0px)", "blur(9px)"] }, springs.amount).then(
+      () => glyph.remove(),
+    );
+  }
+
+  /**
+   * Replaces what the amount shows. A glyph's identity is its position and character, as in
+   * the app: the shared start stays put, everything after it is retired and pushed anew.
+   */
+  function writeAmount(row: HTMLElement, text: string) {
+    const live = [...row.children].filter((glyph) => !glyph.hasAttribute("data-leaving")) as HTMLElement[];
+    let keep = 0;
+    while (keep < live.length && keep < text.length && live[keep].textContent === text[keep]) keep++;
+    live.slice(keep).forEach(retireGlyph);
+    [...text.slice(keep)].forEach((character) => pushGlyph(row, character));
+  }
+
+  function typeDigit(typed: string) {
+    writeAmount(digits, typed);
   }
 
   async function playLog(run: number) {
@@ -512,15 +669,18 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
     press(next, 0.97);
     await wait(160);
     if (!live()) return;
+    // The details step and its keyboard arrive together, on the push's own curve.
+    play(keyboard, { y: ["100%", "0%"] }, springs.snappy);
     await play(pages, { x: ["0%", "-50%"] }, springs.snappy);
 
     // The description, typed; then the category it suggests.
-    await wait(200);
+    await wait(260);
     placeholder.hidden = true;
     for (let i = 1; i <= description.length; i++) {
       if (!live()) return;
       desc.textContent = description.slice(0, i);
-      await wait(32);
+      tapKey(description[i - 1]);
+      await wait(48);
     }
     await wait(250);
     if (!live()) return;
@@ -707,33 +867,90 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
 
   // Settle ---------------------------------------------------------------------------------
 
-  const settleCard = story.querySelector<HTMLElement>("[data-settle-card]")!;
-  const pay = story.querySelector<HTMLElement>("[data-pay]")!;
-  const settled = story.querySelector<HTMLElement>("[data-settled]")!;
-  const settleCoin = new Coin(story.querySelector<SVGSVGElement>("#settle-coin")!);
+  const settleScreen = screens[3];
+  const parties = settleScreen.querySelector<HTMLElement>("[data-parties]")!;
+  const cancelBack = settleScreen.querySelector<HTMLElement>("[data-cancel-back]")!;
+  const faces = Object.fromEntries(
+    [...settleScreen.querySelectorAll<HTMLElement>("[data-party]")].map((face) => [face.dataset.party!, face]),
+  );
+  const settleAmount = settleScreen.querySelector<HTMLElement>("[data-settle-amount]")!;
+  const settleDigits = settleScreen.querySelector<HTMLElement>("[data-settle-digits]")!;
+  const payAll = settleScreen.querySelector<HTMLElement>("[data-pay-all]")!;
+  const record = settleScreen.querySelector<HTMLElement>("[data-record]")!;
+  const settled = settleScreen.querySelector<HTMLElement>("[data-settled]")!;
+  const settleCoin = new Coin(settleScreen.querySelector<SVGSVGElement>("#settle-coin")!);
 
-  async function playSettle(run: number) {
-    set(settleCard, { opacity: 1, scale: 1 });
+  /** Which question the grid asks, and who is picked: `SettlePartiesPicker`'s two states. */
+  function askParties(ask: "payer" | "payee") {
+    parties.dataset.ask = ask;
+    faces.you.toggleAttribute("data-on", ask === "payer");
+    faces.ana.toggleAttribute("data-on", ask === "payee");
+    faces.you.toggleAttribute("data-dim", ask === "payee");
+  }
+
+  function resetSettle() {
+    askParties("payer");
+    set(parties, { opacity: 1, x: 0 });
+    set(settleAmount, { opacity: 0, x: 0 });
+    set(cancelBack, { width: 0, opacity: 0 });
     set(settled, { opacity: 0 });
+    settleAmount.inert = true;
+    settleDigits.innerHTML = "<span>0</span>";
+    record.classList.remove("ready", "busy");
     settled.removeAttribute("data-done");
     settleCoin.render(1);
+  }
 
-    await wait(900);
-    if (run !== token) return;
-    await press(pay, 0.96);
-    if (run !== token) return;
-    play(settleCard, { opacity: [1, 0], scale: [1, 0.96] }, { duration: 0.2 });
-    play(settled, { opacity: [0, 1] }, { duration: 0.25 });
+  async function playSettle(run: number) {
+    resetSettle();
+    const live = () => run === token;
+
+    // Who paid? You, already picked from the balances. Tapping it asks to whom.
+    await wait(1000);
+    if (!live()) return;
+    press(faces.you);
+    await wait(140);
+    if (!live()) return;
+    play(parties.querySelector("h3")!, { opacity: [0.3, 1] }, { duration: 0.3, ease: "easeOut" });
+    play(cancelBack, { width: [0, 30], opacity: [0, 1] }, springs.snappy);
+    askParties("payee");
+
+    // To whom? Ana, with what you owe her.
+    await wait(1100);
+    if (!live()) return;
+    press(faces.ana);
+    await wait(160);
+    if (!live()) return;
+    play(cancelBack, { width: 0, opacity: 0 }, springs.snappy);
+    play(parties, { opacity: [1, 0] }, { duration: 0.2 });
+    await play(settleAmount, { opacity: [0, 1] }, { duration: 0.3, ease: "easeOut" });
+
+    // The amount starts at 0; Pay all fills in the whole debt.
+    await wait(700);
+    if (!live()) return;
+    press(payAll, 0.96);
+    writeAmount(settleDigits, "165");
+    record.classList.add("ready");
+
+    await wait(1000);
+    if (!live()) return;
+    press(record, 0.97);
+    record.classList.add("busy");
+    await wait(450);
+    if (!live()) return;
+
+    // `SettledUpMoment` fades over the sheet; a beat, then the coral halves meet and the
+    // coin turns green as they close.
+    await play(settled, { opacity: [0, 1] }, { duration: 0.25, ease: "easeOut" });
     await wait(200);
-    if (run !== token) return;
-    // `SettledCoin`: a beat, then the halves meet and the coin turns green.
+    if (!live()) return;
     settled.dataset.done = "";
     track(settleCoin.close());
   }
 
   const plays = [playLog, playSplit, playSimplify, playSettle];
 
-  const captions = [...story.querySelectorAll<HTMLElement>("[data-caption]")];
+  const captions = [...story.querySelectorAll<HTMLElement>(".caption [data-caption]")];
 
   function activate(index: number) {
     if (index === current) return;
@@ -772,6 +989,7 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
 
   resetLog();
   resetSplit();
+  resetSettle();
 </script>
 
 <style>
@@ -1218,7 +1436,9 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
     font-variant-numeric: tabular-nums;
   }
 
+  /* Positioned, so a glyph on its way out can leave the row without moving the rest. */
   .digits {
+    position: relative;
     display: inline-flex;
   }
 
@@ -1372,6 +1592,90 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
 
   .page .primary-button {
     margin-top: auto;
+  }
+
+  /* The system keyboard under the details step, iPhone 17 points: Save sits 13pt above it. */
+  .page.details {
+    padding-bottom: 341px;
+  }
+
+  .keyboard {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    align-content: start;
+    gap: 11px;
+    height: 328px;
+    padding: 0 4px;
+    border-radius: 26px 26px 0 0;
+    background: #2a2a2d;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
+    transform: translateY(100%);
+  }
+
+  .predictions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    height: 44px;
+    align-items: center;
+  }
+
+  .predictions span + span {
+    height: 22px;
+    border-left: 1px solid rgb(255 255 255 / 0.12);
+  }
+
+  .kb-row {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .kb-key {
+    display: grid;
+    place-items: center;
+    flex: 0 1 34px;
+    height: 43px;
+    border-radius: 8px;
+    background: #46464a;
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .kb-wide {
+    flex-basis: 44px;
+    font-size: 20px;
+  }
+
+  .kb-row:nth-child(4) .kb-wide:first-child {
+    margin-right: 8px;
+  }
+
+  .kb-row:nth-child(4) .kb-wide:last-child {
+    margin-left: 8px;
+  }
+
+  .kb-small {
+    font-size: 17px;
+  }
+
+  .kb-space {
+    flex: 1;
+  }
+
+  .kb-return {
+    flex-basis: 92px;
+    background: #0a84ff;
+    font-size: 22px;
+  }
+
+  .kb-bottom {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 26px 0;
+    font-size: 26px;
   }
 
   /* Split: the total, the payer's face, then everyone's share */
@@ -1691,8 +1995,22 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
     transform-origin: center;
   }
 
+  /* `BalancesView`'s rows: the pair's faces, the statement, the amount. A row you are in is
+     tinted the way the money goes and offers Settle. */
+  .bar-done {
+    position: absolute;
+    right: 0;
+    padding: 0.375rem 0.875rem;
+    border-radius: 999px;
+    background: rgb(42 42 45 / 0.92);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07);
+    color: var(--coral);
+    font-size: 0.9375rem;
+    font-weight: 500;
+  }
+
   .owed {
-    margin-top: 1.25rem;
+    margin-top: 1rem;
     padding: 0;
     list-style: none;
   }
@@ -1700,10 +2018,74 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
   .owed li {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding-block: 0.625rem;
-    border-bottom: 1px solid var(--line);
-    font-size: 0.875rem;
+    gap: 0.625rem;
+    padding: 0.625rem 0;
+    font-size: 0.8125rem;
+    line-height: 1.25;
+  }
+
+  .owed li + li {
+    border-top: 1px solid var(--line);
+  }
+
+  .owed li[data-mine] {
+    padding-inline: 0.5rem;
+    border-radius: 0.75rem;
+    background: rgb(251 113 133 / 0.08);
+  }
+
+  .owed li[data-mine] + li {
+    border-top-color: transparent;
+  }
+
+  .pair {
+    flex: none;
+    display: flex;
+    width: 2.75rem;
+  }
+
+  .pair .avatar {
+    width: 1.625rem;
+    height: 1.625rem;
+    font-size: 0.6875rem;
+    box-shadow: 0 0 0 2px var(--ground);
+  }
+
+  .pair .avatar + .avatar {
+    margin-left: -0.5rem;
+  }
+
+  .statement {
+    flex: 1;
+    min-width: 0;
+    font-weight: 600;
+  }
+
+  .debt {
+    display: grid;
+    justify-items: end;
+    gap: 0.125rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .debt strong {
+    font-weight: 600;
+  }
+
+  [data-mine] .debt strong {
+    color: var(--negative);
+  }
+
+  .settle-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+  }
+
+  .settle-link :global(.icon) {
+    font-size: 0.5625rem;
   }
 
   .node text {
@@ -1712,47 +2094,220 @@ function edgePath(from: keyof typeof nodes, to: keyof typeof nodes, at = 0.5) {
     font-weight: 700;
   }
 
-  /* Settle */
-  .settle-card,
-  .settled {
-    position: absolute;
-    top: 50%;
-    left: var(--pad);
-    right: var(--pad);
-    translate: 0 -50%;
-    display: grid;
-    justify-items: center;
-    gap: 1rem;
-    padding: 2rem 1.25rem;
-    border-radius: 1.75rem;
-    background: var(--card);
-    text-align: center;
+  /* Settle: the sheet over the group, in points like the other app screens. */
+  .sheet.shown {
+    transform: none;
+    padding-top: 16px;
   }
 
-  .settle-card p {
-    font-size: 1.125rem;
+  .settle .nav {
+    margin: 0 16px;
+  }
+
+  .cancel {
+    display: inline-flex;
+    align-items: center;
+    padding-left: 14px;
+  }
+
+  .cancel-back {
+    display: inline-grid;
+    place-items: center start;
+    overflow: hidden;
+    width: 0;
+    font-size: 20px;
+  }
+
+  .parties,
+  .settle-amount {
+    position: absolute;
+    inset: 76px 0 0;
+  }
+
+  .parties-title {
+    padding: 12px 20px 0;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .parties[data-ask="payer"] [data-ask="payee"],
+  .parties[data-ask="payee"] [data-ask="payer"] {
+    display: none;
+  }
+
+  .party-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px 8px;
+    padding: 20px 12px 0;
+  }
+
+  .party {
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 6px;
+    transition: opacity 0.3s;
+  }
+
+  .party .ring {
+    width: 70px;
+    height: 70px;
+    box-shadow: inset 0 0 0 2px transparent;
+    transition: box-shadow 0.3s;
+  }
+
+  .party[data-on] .ring {
+    box-shadow: inset 0 0 0 2px var(--coral);
+  }
+
+  .party[data-dim] {
+    opacity: 0.35;
+  }
+
+  .face.huge {
+    width: 64px;
+    height: 64px;
+    font-size: 22px;
+    font-weight: 500;
+  }
+
+  .face.small {
+    width: 32px;
+    height: 32px;
+    font-size: 11px;
+  }
+
+  .party-name {
+    font-size: 12px;
+    color: #98989f;
+  }
+
+  .party[data-on] .party-name {
+    color: var(--text);
     font-weight: 600;
   }
 
-  .pay {
-    display: grid;
-    place-items: center;
-    width: 100%;
-    height: 3.25rem;
-    border-radius: 999px;
-    background: var(--coral);
-    color: #fff;
-    font-weight: 700;
+  .party-caption {
+    min-height: 14px;
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
 
+  .owes {
+    color: var(--negative);
+  }
+
+  .owed-to {
+    color: var(--positive);
+  }
+
+  .settle-amount {
+    display: flex;
+    flex-direction: column;
+    padding-top: 8px;
+  }
+
+  .parties-summary {
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgb(250 250 250 / 0.07);
+    font-size: 15px;
+  }
+
+  .parties-summary strong {
+    font-weight: 600;
+  }
+
+  .parties-summary :global(.icon) {
+    color: #98989f;
+    font-size: 13px;
+  }
+
+  .pay-all {
+    align-self: center;
+    display: grid;
+    place-items: center;
+    min-height: 44px;
+    margin-bottom: 4px;
+    padding: 0 20px;
+    color: var(--coral);
+    font-weight: 600;
+  }
+
+  .date-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin: 0 20px 12px;
+    padding: 12px;
+    border-radius: 14px;
+    background: rgb(250 250 250 / 0.07);
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .settle .primary-button {
+    margin: 0 20px 16px;
+  }
+
+  .settle .keys {
+    margin: 0 0 34px;
+  }
+
+  .spinner {
+    display: none;
+    width: 20px;
+    height: 20px;
+    border: 2.5px solid rgb(255 255 255 / 0.85);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+
+  .primary-button.busy {
+    background: #5b2318;
+  }
+
+  .primary-button.busy .label {
+    display: none;
+  }
+
+  .primary-button.busy .spinner {
+    display: block;
+  }
+
+  @keyframes spin {
+    to {
+      rotate: 1turn;
+    }
+  }
+
+  /* `SettledUpMoment`: the whole sheet, a coral coin that closes and turns green. */
   .settled {
-    background: none;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 32px;
+    background: var(--ground);
+    text-align: center;
     opacity: 0;
   }
 
   .settled p {
-    font-size: 1.25rem;
-    font-weight: 650;
+    font-size: 20px;
+    font-weight: 600;
   }
 
   .settled[data-done] {

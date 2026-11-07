@@ -23,7 +23,7 @@ export const fr: Dictionary = {
     steps: [
       {
         title: "Notez-la avant d’oublier",
-        body: "Saisissez le montant et choisissez qui a payé. La dépense apparaît dans la chronologie du groupe pour tout le monde, avec ce que chacun doit.",
+        body: "Touchez +, tapez le montant et dites à quoi il a servi. Le clavier est déjà ouvert quand vous y arrivez. La dépense arrive dans la chronologie du groupe avec ce que chacun doit.",
       },
       {
         title: "Répartissez comme ça s’est passé",
@@ -35,7 +35,7 @@ export const fr: Dictionary = {
       },
       {
         title: "Réglez les comptes",
-        body: "Enregistrez un paiement et le solde revient à zéro. Splitty ne touche jamais à votre argent. Il tient les comptes, c’est tout.",
+        body: "Choisissez qui a payé et à qui. Payer la totalité remplit toute la dette et, une fois quittes, la pièce se ressoude. Chacun des deux peut l’enregistrer. Splitty ne touche jamais à votre argent.",
       },
     ],
   },
@@ -60,7 +60,6 @@ export const fr: Dictionary = {
     assignedOf: "{assigned} sur {total}",
     settleUp: "Régler",
     charts: "Graphiques",
-    export: "Exporter",
     expensesTab: "Dépenses",
     plansTab: "Plans",
     diningOut: "Restaurants",
@@ -81,7 +80,13 @@ export const fr: Dictionary = {
     payments: { before: "6 paiements", after: "3 paiements" },
     youOwePeer: "Vous devez {amount} à {name}",
     peerOwesPeer: "{from} doit {amount} à {to}",
-    pay: "Payer {amount}",
+    settleTitle: "Régler",
+    whoPaid: "Qui a payé ?",
+    toWhom: "À qui ?",
+    recordPayment: "Enregistrer le paiement",
+    payAll: "Payer la totalité à {amount}",
+    payerPaidPayee: "{payer} a payé {payee}",
+    settle: "Régler",
     settled: "Tout est réglé pour vous",
     expenses: {
       apartment: "Appartement",
@@ -91,6 +96,28 @@ export const fr: Dictionary = {
   },
   more: {
     title: "Et aussi",
+    offline: {
+      title: "Fonctionne sans réseau",
+      body: "Vos groupes restent sur le téléphone. Ajoutez une dépense dans l’avion, elle part toute seule à l’atterrissage. En attendant, Splitty signale ce qui n’est pas encore parti et indique que le solde est une estimation.",
+      banner: "Hors ligne. Les modifications sont envoyées à la reconnexion.",
+      waiting: "1 modification en attente d’envoi",
+      estimate: "Estimation, inclut des modifications pas encore envoyées",
+    },
+    currencies: {
+      title: "Chaque groupe dans sa devise",
+      body: "Des euros pour la coloc, des livres pour le voyage. Les soldes en devises différentes ne sont jamais additionnés, et un nouveau groupe démarre dans la devise de votre région.",
+      groupsTitle: "Groupes",
+      owedOverall: "On vous doit {amount} au total",
+      oweOverall: "Vous devez {amount} au total",
+      moreCurrencies: "+2 devises",
+      youAreOwed: "On vous doit",
+      youOwe: "Vous devez",
+      groups: [
+        { name: "Coloc", currency: "EUR", net: 86.4 },
+        { name: "Week-end à Londres", currency: "GBP", net: -38.2 },
+        { name: "Voyage à Rio", currency: "BRL", net: 412.5 },
+      ],
+    },
     items: [
       {
         title: "Dépenses récurrentes",
@@ -106,7 +133,7 @@ export const fr: Dictionary = {
       },
       {
         title: "Export CSV",
-        body: "Récupérez les dépenses d’un groupe dans un tableur quand vous voulez.",
+        body: "Depuis les réglages du groupe, emportez ses dépenses dans un tableur quand vous voulez.",
       },
       {
         title: "Quatre langues",
@@ -143,7 +170,7 @@ export const fr: Dictionary = {
       },
       {
         q: "Splitty envoie-t-il ou reçoit-il de l’argent ?",
-        a: "Non. Splitty enregistre ce que chacun a payé et doit. Quand vous remboursez quelqu’un en dehors de l’app, enregistrez le paiement avec Régler pour mettre le solde à jour.",
+        a: "Non. Splitty enregistre ce que chacun a payé et doit. Quand quelqu’un rembourse une autre personne en dehors de l’app, l’un ou l’autre l’enregistre avec Régler et le solde se met à jour.",
       },
       {
         q: "Qui peut modifier une dépense ?",
@@ -151,7 +178,7 @@ export const fr: Dictionary = {
       },
       {
         q: "Comment récupérer mes données ?",
-        a: "Ouvrez un groupe et touchez Exporter pour enregistrer ses dépenses dans un fichier CSV. Pour une copie de tout ce que nous détenons sur vous, écrivez-nous.",
+        a: "Ouvrez le groupe, puis Réglages du groupe, puis Exporter les dépenses (CSV). Pour une copie de tout ce que nous détenons sur vous, écrivez-nous.",
       },
       {
         q: "Comment supprimer mon compte ?",

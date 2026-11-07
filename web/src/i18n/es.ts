@@ -23,7 +23,7 @@ export const es: Dictionary = {
     steps: [
       {
         title: "Anótalo antes de olvidarlo",
-        body: "Escribe el importe y elige quién pagó. El gasto aparece en la cronología del grupo para todos, con lo que debe cada uno.",
+        body: "Toca +, escribe el importe y di para qué fue. El teclado ya está abierto cuando llegas. El gasto aparece en la cronología del grupo con lo que debe cada uno.",
       },
       {
         title: "Divídelo como fue",
@@ -35,7 +35,7 @@ export const es: Dictionary = {
       },
       {
         title: "Salda las cuentas",
-        body: "Registra un pago y el saldo queda en cero. Splitty nunca toca tu dinero. Solo mantiene las cuentas claras.",
+        body: "Elige quién pagó y a quién. Pagar todo rellena la deuda entera y, cuando estáis al día, la moneda vuelve a unirse. Cualquiera de los dos puede registrarlo. Splitty nunca toca tu dinero.",
       },
     ],
   },
@@ -60,7 +60,6 @@ export const es: Dictionary = {
     assignedOf: "{assigned} de {total}",
     settleUp: "Saldar",
     charts: "Gráficos",
-    export: "Exportar",
     expensesTab: "Gastos",
     plansTab: "Planes",
     diningOut: "Comer fuera",
@@ -81,7 +80,13 @@ export const es: Dictionary = {
     payments: { before: "6 pagos", after: "3 pagos" },
     youOwePeer: "Debes {amount} a {name}",
     peerOwesPeer: "{from} debe {amount} a {to}",
-    pay: "Pagar {amount}",
+    settleTitle: "Saldar",
+    whoPaid: "¿Quién pagó?",
+    toWhom: "¿A quién?",
+    recordPayment: "Registrar pago",
+    payAll: "Pagar todo a {amount}",
+    payerPaidPayee: "{payer} ha pagado {payee}",
+    settle: "Saldar",
     settled: "Estás al día",
     expenses: {
       apartment: "Apartamento",
@@ -91,6 +96,28 @@ export const es: Dictionary = {
   },
   more: {
     title: "Y además",
+    offline: {
+      title: "Funciona sin cobertura",
+      body: "Tus grupos se quedan en el móvil. Añade un gasto en el avión y se envía solo al aterrizar. Mientras tanto, Splitty marca lo que aún no ha salido y avisa de que el saldo es una estimación.",
+      banner: "Sin conexión. Los cambios se envían cuando vuelvas a conectarte.",
+      waiting: "1 cambio pendiente de enviar",
+      estimate: "Estimación, incluye cambios aún no enviados",
+    },
+    currencies: {
+      title: "Cada grupo en su moneda",
+      body: "Euros para el piso, libras para el viaje. Los saldos en monedas distintas nunca se suman, y un grupo nuevo empieza en la moneda de tu región.",
+      groupsTitle: "Grupos",
+      owedOverall: "Te deben {amount} en total",
+      oweOverall: "Debes {amount} en total",
+      moreCurrencies: "+2 monedas",
+      youAreOwed: "Te deben",
+      youOwe: "Debes",
+      groups: [
+        { name: "Piso compartido", currency: "EUR", net: 86.4 },
+        { name: "Fin de semana en Londres", currency: "GBP", net: -38.2 },
+        { name: "Viaje a Río", currency: "BRL", net: 412.5 },
+      ],
+    },
     items: [
       {
         title: "Gastos recurrentes",
@@ -106,7 +133,7 @@ export const es: Dictionary = {
       },
       {
         title: "Exporta a CSV",
-        body: "Lleva los gastos de un grupo a una hoja de cálculo cuando quieras.",
+        body: "Desde los ajustes del grupo, lleva sus gastos a una hoja de cálculo cuando quieras.",
       },
       {
         title: "Cuatro idiomas",
@@ -143,7 +170,7 @@ export const es: Dictionary = {
       },
       {
         q: "¿Splitty envía o recibe dinero?",
-        a: "No. Splitty registra lo que cada uno pagó y debe. Cuando le pagues a alguien fuera de la app, registra el pago con Saldar para que el saldo se actualice.",
+        a: "No. Splitty registra lo que cada uno pagó y debe. Cuando alguien le paga a otra persona fuera de la app, cualquiera de los dos lo registra con Saldar y el saldo se actualiza.",
       },
       {
         q: "¿Quién puede editar un gasto?",
@@ -151,7 +178,7 @@ export const es: Dictionary = {
       },
       {
         q: "¿Cómo obtengo mis datos?",
-        a: "Abre un grupo y toca Exportar para guardar sus gastos en un archivo CSV. Para recibir una copia de todo lo que tenemos sobre ti, escríbenos.",
+        a: "Abre el grupo, luego Ajustes del grupo y Exportar gastos (CSV). Para obtener una copia de todo lo que tenemos sobre ti, escríbenos.",
       },
       {
         q: "¿Cómo elimino mi cuenta?",
