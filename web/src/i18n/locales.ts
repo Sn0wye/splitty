@@ -44,11 +44,35 @@ export function localePaths() {
   }));
 }
 
-export function formatMoney(locale: Locale, value: number): string {
-  return new Intl.NumberFormat(htmlLang[locale], {
-    style: "currency",
-    currency: currency[locale],
-  }).format(value);
+/**
+ * How the app writes each currency, from `Currency` in the iOS client: the symbol's side and
+ * spacing and both separators belong to the currency, not to the reader's language. So a
+ * euro amount reads `1.240,00 €` in every language, as it does in the app.
+ */
+const writing: Record<string, { symbol: string; follows: boolean; spaced: boolean; decimal: string; group: string }> = {
+  USD: { symbol: "$", follows: false, spaced: false, decimal: ".", group: "," },
+  GBP: { symbol: "£", follows: false, spaced: false, decimal: ".", group: "," },
+  BRL: { symbol: "R$", follows: false, spaced: true, decimal: ",", group: "." },
+  EUR: { symbol: "€", follows: true, spaced: true, decimal: ",", group: "." },
+};
+
+/** `Money.formatted`: an amount in a currency, written the app's way. */
+export function formatAmount(value: number, code: string): string {
+  const style = writing[code] ?? writing.USD;
+  const [whole, cents] = Math.abs(value).toFixed(2).split(".");
+  const number = `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, style.group)}${style.decimal}${cents}`;
+  const space = style.spaced ? "\u00a0" : "";
+  const written = style.follows ? `${number}${space}${style.symbol}` : `${style.symbol}${space}${number}`;
+  return value < 0 ? `-${written}` : written;
+}
+
+/** The symbol and decimal key the keypad shows for a currency. */
+export function currencyWriting(code: string) {
+  return writing[code] ?? writing.USD;
+}
+
+export function formatMoney(locale: Locale, value: number, code: string = currency[locale]): string {
+  return formatAmount(value, code);
 }
 
 export function formatDate(locale: Locale, iso: string): string {

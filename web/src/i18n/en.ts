@@ -27,7 +27,7 @@ export const en = {
     steps: [
       {
         title: "Log it before you forget",
-        body: "Type the amount and pick who paid. The expense shows up in the group's timeline for everyone, with what each person owes.",
+        body: "Tap +, type the amount and say what it was for. The keyboard is already up when you get there. The expense lands in the group's timeline with what each person owes.",
       },
       {
         title: "Split it the way it happened",
@@ -39,7 +39,7 @@ export const en = {
       },
       {
         title: "Settle up",
-        body: "Record a payment and the balance goes to zero. Splitty never touches your money. It keeps the record straight.",
+        body: "Pick who paid and who got it. Pay all fills in the whole debt, and when you're square the coin comes back together. Either side can record it. Splitty never touches your money.",
       },
     ],
   },
@@ -58,8 +58,8 @@ export const en = {
     next: "Next",
     // app: common.cancel / common.save / common.done, split.title / split.paid_by /
     // split.select_all / split.select_none / split.all_assigned / split.each /
-    // split.people (plural "other") / split.assigned_of, group.settle_up / group.charts /
-    // group.export, plans.expenses / plans.title, category.dining_out / category.groceries /
+    // split.people (plural "other") / split.assigned_of, group.settle_up / group.charts,
+    // plans.expenses / plans.title, category.dining_out / category.groceries /
     // category.games, expense.what_for
     cancel: "Cancel",
     save: "Save",
@@ -74,7 +74,6 @@ export const en = {
     assignedOf: "{assigned} of {total}",
     settleUp: "Settle up",
     charts: "Charts",
-    export: "Export",
     expensesTab: "Expenses",
     plansTab: "Plans",
     diningOut: "Dining out",
@@ -101,8 +100,15 @@ export const en = {
     youOwePeer: "You owe {name} {amount}",
     // app: balances.peer_owes_peer
     peerOwesPeer: "{from} owes {to} {amount}",
-    // app: settlement.pay
-    pay: "Pay {amount}",
+    // app: settlement.settle_up / settlement.who_paid / settlement.paid_to_whom /
+    // settlement.record / settlement.pay_all / group.payer_paid_payee / balances.settle
+    settleTitle: "Settle up",
+    whoPaid: "Who paid?",
+    toWhom: "To whom?",
+    recordPayment: "Record payment",
+    payAll: "Pay all {amount}",
+    payerPaidPayee: "{payer} paid {payee}",
+    settle: "Settle",
     // app: balances.all_settled
     settled: "You are all settled up",
     expenses: {
@@ -113,6 +119,32 @@ export const en = {
   },
   more: {
     title: "Also in Splitty",
+    offline: {
+      title: "Works with no signal",
+      body: "Your groups stay on the phone. Add an expense on the plane and it sends itself when you land. Until then Splitty marks what hasn't gone out, and says the balance is an estimate.",
+      // app: sync.offline / sync.waiting (one)
+      banner: "Offline. Changes are sent when you reconnect.",
+      waiting: "1 change waiting to send",
+      // app: sync.estimate
+      estimate: "Estimate, includes changes not sent yet",
+    },
+    currencies: {
+      title: "Each group in its own currency",
+      body: "Dollars for the roommates, euros for the trip. Balances in different currencies are never added together, and a new group starts in your region's.",
+      // app: groups.title / balances.owed_overall_amount / balances.owe_overall_amount /
+      // groups.more_currencies / groups.you_are_owed / groups.you_owe
+      groupsTitle: "Groups",
+      owedOverall: "You are owed {amount} overall",
+      oweOverall: "You owe {amount} overall",
+      moreCurrencies: "+2 currencies",
+      youAreOwed: "You are owed",
+      youOwe: "You owe",
+      groups: [
+        { name: "Roommates", currency: "USD", net: 86.4 },
+        { name: "Lisbon trip", currency: "EUR", net: -165 },
+        { name: "London weekend", currency: "GBP", net: 38.2 },
+      ],
+    },
     items: [
       {
         title: "Recurring expenses",
@@ -128,7 +160,7 @@ export const en = {
       },
       {
         title: "Export to CSV",
-        body: "Take a group's expenses into a spreadsheet whenever you want.",
+        body: "From the group's settings, take its expenses into a spreadsheet whenever you want.",
       },
       {
         title: "Four languages",
@@ -165,7 +197,7 @@ export const en = {
       },
       {
         q: "Does Splitty send or receive money?",
-        a: "No. Splitty records what people paid and owe. When you pay someone back outside the app, record the payment with Settle up so the balance updates.",
+        a: "No. Splitty records what people paid and owe. When someone pays someone back outside the app, either of them records it with Settle up and the balance updates.",
       },
       {
         q: "Who can edit an expense?",
@@ -173,7 +205,7 @@ export const en = {
       },
       {
         q: "How do I get my data out?",
-        a: "Open a group and tap Export to save its expenses as a CSV file. For a copy of everything we hold about you, email us.",
+        a: "Open the group, then Group settings, then Export expenses (CSV). For a copy of everything we hold about you, email us.",
       },
       {
         q: "How do I delete my account?",

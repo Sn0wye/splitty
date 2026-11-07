@@ -1,16 +1,125 @@
 ---
-import { t, type Locale } from "../i18n";
+/**
+ * What else the app does. The two newest behaviours get a drawn piece of the app each, in
+ * the app's own words: the offline banner settling once the phone reconnects, and the Groups
+ * header folding every currency but one behind a count. The rest is a plain list.
+ */
+import Icon from "./PhoneIcon.astro";
+import { fill, formatMoney, t, type Locale } from "../i18n";
 
 interface Props {
   locale: Locale;
 }
 
 const { locale } = Astro.props;
-const copy = t(locale).more;
+const dictionary = t(locale);
+const copy = dictionary.more;
+const phone = dictionary.phone;
+const currencies = copy.currencies;
+
+const amount = (value: number, code: string) => formatMoney(locale, Math.abs(value), code);
+const overall = (net: number, code: string) =>
+  fill(net > 0 ? currencies.owedOverall : currencies.oweOverall, { amount: amount(net, code) });
+const [primary, ...others] = currencies.groups;
 ---
 
-<section class="more wrap">
+<section class="more wrap" data-more>
   <h2>{copy.title}</h2>
+
+  <div class="highlights">
+    <article class="highlight" data-offline>
+      <div class="text">
+        <h3>{copy.offline.title}</h3>
+        <p>{copy.offline.body}</p>
+      </div>
+      <!-- `SyncStatusBanner` over the timeline, then the reconnect clearing it -->
+      <div class="vignette" aria-hidden="true">
+        <!-- The group header: the balance greys out while it counts writes not sent yet -->
+        <div class="group-head">
+          <h4>{phone.group}</h4>
+          <p class="group-balance" data-balance>{fill(phone.oweOverall, { amount: formatMoney(locale, 165) })}</p>
+          <div class="estimate-slot" data-estimate>
+            <p class="estimate">{copy.offline.estimate}</p>
+          </div>
+        </div>
+        <div class="banner-slot" data-banner>
+          <div class="banner">
+            <span class="banner-icon"><Icon name="wifiSlash" /></span>
+            <span class="banner-text">
+              <strong>{copy.offline.banner}</strong>
+              <span>{copy.offline.waiting}</span>
+            </span>
+          </div>
+        </div>
+        <div class="mini-timeline">
+          <h4>{phone.today}</h4>
+          <div class="mini-row" data-new-row>
+            <span class="glyph food"><Icon name="food" /></span>
+            <span class="what">
+              <strong>
+                {phone.expenses.dinner}
+                <span class="badge" data-badge><Icon name="clock" /></span>
+              </strong>
+              <span>{fill(phone.paid, { name: "Caio", amount: formatMoney(locale, 120) })}</span>
+            </span>
+            <span class="share"><span>{phone.youBorrowed}</span><strong>{formatMoney(locale, 30)}</strong></span>
+          </div>
+          <div class="mini-row">
+            <span class="glyph transport"><Icon name="car" /></span>
+            <span class="what">
+              <strong>{phone.expenses.taxi}</strong>
+              <span>{fill(phone.paid, { name: "Bruno", amount: formatMoney(locale, 60) })}</span>
+            </span>
+            <span class="share"><span>{phone.youBorrowed}</span><strong>{formatMoney(locale, 15)}</strong></span>
+          </div>
+          <div class="mini-row">
+            <span class="glyph home"><Icon name="house" /></span>
+            <span class="what">
+              <strong>{phone.expenses.apartment}</strong>
+              <span>{fill(phone.paid, { name: "Ana", amount: formatMoney(locale, 480) })}</span>
+            </span>
+            <span class="share"><span>{phone.youBorrowed}</span><strong>{formatMoney(locale, 120)}</strong></span>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <article class="highlight" data-currencies>
+      <div class="text">
+        <h3>{currencies.title}</h3>
+        <p>{currencies.body}</p>
+      </div>
+      <!-- The Groups header: one currency leads, the rest fold behind a count -->
+      <div class="vignette" aria-hidden="true">
+        <div class="groups-head">
+          <h4>{currencies.groupsTitle}</h4>
+          <p class:list={["lead", primary.net > 0 ? "up" : "down"]}>{overall(primary.net, primary.currency)}</p>
+          <button type="button" tabindex="-1" class="fold" data-fold>
+            {currencies.moreCurrencies}
+            <span class="chevron" data-chevron><Icon name="chevronDown" /></span>
+          </button>
+          <div class="others" data-others>
+            {others.map((group) => <p>{overall(group.net, group.currency)}</p>)}
+          </div>
+        </div>
+        <div class="cards">
+          {
+            currencies.groups.map((group) => (
+              <div class="card">
+                <span class="card-text">
+                  <strong>{group.name}</strong>
+                  <span>{group.net > 0 ? currencies.youAreOwed : currencies.youOwe}</span>
+                  <b class={group.net > 0 ? "up" : "down"}>{amount(group.net, group.currency)}</b>
+                </span>
+                <Icon name="chevron" />
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </article>
+  </div>
+
   <dl>
     {
       copy.items.map((item) => (
@@ -28,6 +137,89 @@ const copy = t(locale).more;
   </dl>
 </section>
 
+<script>
+  import { animate, inView } from "motion";
+  import { springs, wait } from "../scripts/motion";
+
+  const more = document.querySelector<HTMLElement>("[data-more]")!;
+  const offline = more.querySelector<HTMLElement>("[data-offline]")!;
+  const bannerSlot = offline.querySelector<HTMLElement>("[data-banner]")!;
+  const newRow = offline.querySelector<HTMLElement>("[data-new-row]")!;
+  const badge = offline.querySelector<HTMLElement>("[data-badge]")!;
+  const balance = offline.querySelector<HTMLElement>("[data-balance]")!;
+  const estimate = offline.querySelector<HTMLElement>("[data-estimate]")!;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Offline: the banner is up, an expense lands with its clock and turns the balance into an
+  // estimate, and on reconnect all three clear.
+  inView(
+    offline,
+    () => {
+      let live = true;
+      const run = async () => {
+        animate(bannerSlot, { height: "auto", opacity: 1 }, { duration: 0 });
+        animate(badge, { opacity: 1, scale: 1 }, { duration: 0 });
+        animate(newRow, { opacity: 0, y: -8 }, { duration: 0 });
+        animate(estimate, { height: 0, opacity: 0 }, { duration: 0 });
+        animate(balance, { opacity: 1 }, { duration: 0 });
+        await wait(500);
+        if (!live) return;
+        const layout = reduce ? { duration: 0.2 } : springs.snappy;
+        animate(newRow, { opacity: [0, 1], y: [-8, 0] }, layout);
+        animate(estimate, { height: "auto", opacity: 1 }, layout);
+        animate(balance, { opacity: 0.5 }, { duration: 0.25 });
+        await wait(2400);
+        if (!live) return;
+        // Back online: the write goes out, its clock goes, the balance is final again, and
+        // the banner has nothing left to say.
+        animate(badge, { opacity: 0, scale: 0.6 }, { duration: 0.25, ease: "easeOut" });
+        animate(balance, { opacity: 1 }, { duration: 0.25 });
+        await wait(250);
+        if (!live) return;
+        animate(estimate, { height: 0, opacity: 0 }, layout);
+        animate(bannerSlot, { height: 0, opacity: 0 }, layout);
+      };
+      run();
+      return () => {
+        live = false;
+      };
+    },
+    { amount: 0.6 },
+  );
+
+  // Currencies: the fold opens on the app's `.snappy(duration: 0.25)`, chevron turning over.
+  const currencies = more.querySelector<HTMLElement>("[data-currencies]")!;
+  const fold = currencies.querySelector<HTMLElement>("[data-fold]")!;
+  const chevron = currencies.querySelector<HTMLElement>("[data-chevron]")!;
+  const others = currencies.querySelector<HTMLElement>("[data-others]")!;
+  const lines = [...others.children] as HTMLElement[];
+  let open = false;
+
+  function setOpen(next: boolean, animated = true) {
+    open = next;
+    const transition = animated && !reduce ? springs.snappy : { duration: animated ? 0.2 : 0 };
+    animate(chevron, { rotate: next ? 180 : 0 }, transition);
+    animate(others, { height: next ? "auto" : 0 }, transition);
+    // `.opacity.combined(with: .move(edge: .top))`
+    animate(lines, { opacity: next ? 1 : 0, y: next ? 0 : -10 }, transition);
+  }
+
+  fold.addEventListener("click", () => setOpen(!open));
+  setOpen(false, false);
+
+  inView(
+    currencies,
+    () => {
+      const timer = setTimeout(() => setOpen(true), 1100);
+      return () => {
+        clearTimeout(timer);
+        setOpen(false, false);
+      };
+    },
+    { amount: 0.6 },
+  );
+</script>
+
 <style>
   .more {
     padding-block: clamp(4rem, 10vw, 8rem);
@@ -38,8 +230,299 @@ const copy = t(locale).more;
     letter-spacing: -0.03em;
   }
 
-  dl {
+  .highlights {
     margin-top: clamp(2rem, 5vw, 3.5rem);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+    gap: 1.25rem;
+  }
+
+  .highlight {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 2rem;
+    padding: clamp(1.5rem, 3vw, 2.25rem);
+    border-radius: 1.75rem;
+    background: var(--card);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+    overflow: hidden;
+  }
+
+  h3 {
+    font-size: var(--step-2);
+    letter-spacing: -0.02em;
+  }
+
+  .text p {
+    margin-top: 0.625rem;
+    max-width: 38ch;
+    color: var(--text-muted);
+  }
+
+  /* The drawn app: real proportions at a little under 1pt per px, on the app's ground. */
+  .vignette {
+    align-self: stretch;
+    display: grid;
+    align-content: start;
+    min-height: 15.5rem;
+    padding: 1rem;
+    border-radius: 1.25rem;
+    background: var(--ground);
+    font-size: 0.9375rem;
+    line-height: 1.3;
+    user-select: none;
+  }
+
+  .group-head {
+    padding: 0 0.25rem 0.875rem;
+  }
+
+  .group-head h4,
+  .groups-head h4 {
+    margin: 0 0 0.25rem;
+    font-size: 1.625rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .group-balance {
+    color: var(--text-muted);
+  }
+
+  .estimate-slot,
+  .banner-slot {
+    overflow: hidden;
+  }
+
+  .estimate {
+    padding-top: 0.125rem;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+  }
+
+  /* `SyncStatusBanner`: a muted card, the symbol on the first baseline. */
+  .banner {
+    display: flex;
+    align-items: baseline;
+    gap: 0.625rem;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    background: var(--muted);
+  }
+
+  .banner-icon {
+    color: var(--text-muted);
+    translate: 0 0.15em;
+  }
+
+  .banner-text {
+    display: grid;
+    gap: 0.125rem;
+  }
+
+  .banner-text strong {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .banner-text span {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+  }
+
+  .mini-timeline {
+    border-radius: 1rem;
+    background: var(--card);
+    overflow: hidden;
+  }
+
+  .mini-timeline h4 {
+    margin: 0;
+    padding: 0.875rem 1rem 0.25rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .mini-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .mini-row + .mini-row {
+    border-top: 1px solid var(--line);
+  }
+
+  .glyph {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 1rem;
+  }
+
+  .food {
+    background: #9a3412;
+  }
+
+  .transport {
+    background: #7f1d1d;
+  }
+
+  .home {
+    background: #704700;
+  }
+
+  .what {
+    flex: 1;
+    display: grid;
+    gap: 0.125rem;
+    min-width: 0;
+  }
+
+  /* Titles wrap, as the timeline's do, with the clock riding the last line. */
+  .what strong {
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  .what > span {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+  }
+
+  /* `RowSyncBadge`: the clock beside a title this device has not sent yet. */
+  .badge {
+    display: inline-grid;
+    margin-left: 0.25rem;
+    vertical-align: -0.05em;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+  }
+
+  .share {
+    display: grid;
+    justify-items: end;
+    gap: 0.125rem;
+    color: var(--negative);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .share span {
+    max-width: 6.5rem;
+    font-size: 0.6875rem;
+    line-height: 1.2;
+    text-align: right;
+  }
+
+  .share strong {
+    font-weight: 600;
+  }
+
+  /* The Groups header and its cards. */
+  .groups-head {
+    display: grid;
+    justify-items: start;
+    gap: 0.25rem;
+    padding: 0 0.25rem 0.875rem;
+  }
+
+  .up {
+    color: var(--positive);
+  }
+
+  .down {
+    color: var(--negative);
+  }
+
+  .fold {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.125rem 0;
+    border: 0;
+    background: none;
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+
+  .chevron {
+    display: inline-grid;
+    font-size: 0.625rem;
+  }
+
+  .others {
+    display: grid;
+    gap: 0.25rem;
+    overflow: hidden;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  .cards {
+    display: grid;
+    gap: 0.625rem;
+  }
+
+  /* `GroupCard`: name, what you are owed or owe, and the amount in the group's currency. */
+  .card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 1rem;
+    background: var(--card);
+  }
+
+  .card-text {
+    flex: 1;
+    display: grid;
+    min-width: 0;
+  }
+
+  .card-text strong {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-text span {
+    margin-top: 0.125rem;
+    font-size: 0.75rem;
+  }
+
+  .card-text b {
+    font-size: 1.0625rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card :global(.icon) {
+    margin-top: 0.25rem;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+  }
+
+  @media (max-width: 30rem) {
+    .highlight {
+      padding: 1.25rem;
+    }
+
+    .vignette {
+      padding: 0.75rem;
+    }
+  }
+
+  dl {
+    margin-top: clamp(3rem, 6vw, 4.5rem);
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
     gap: 2.5rem clamp(2rem, 5vw, 4rem);

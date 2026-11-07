@@ -23,7 +23,7 @@ export const ptBr: Dictionary = {
     steps: [
       {
         title: "Registre antes de esquecer",
-        body: "Digite o valor e escolha quem pagou. A despesa aparece na linha do tempo do grupo para todo mundo, com quanto cada um deve.",
+        body: "Toque em +, digite o valor e diga com o que foi. O teclado já está aberto quando você chega lá. A despesa entra na linha do tempo do grupo com quanto cada um deve.",
       },
       {
         title: "Divida do jeito que aconteceu",
@@ -35,7 +35,7 @@ export const ptBr: Dictionary = {
       },
       {
         title: "Acerte as contas",
-        body: "Registre um pagamento e o saldo vai a zero. O Splitty nunca mexe no seu dinheiro. Ele só mantém as contas certas.",
+        body: "Escolha quem pagou e quem recebeu. Pagar tudo preenche a dívida inteira e, quando ninguém deve nada, a moeda se junta de novo. Qualquer um dos dois pode registrar. O Splitty nunca mexe no seu dinheiro.",
       },
     ],
   },
@@ -60,7 +60,6 @@ export const ptBr: Dictionary = {
     assignedOf: "{assigned} de {total}",
     settleUp: "Quitar contas",
     charts: "Gráficos",
-    export: "Exportar",
     expensesTab: "Despesas",
     plansTab: "Planos",
     diningOut: "Restaurantes",
@@ -81,7 +80,13 @@ export const ptBr: Dictionary = {
     payments: { before: "6 pagamentos", after: "3 pagamentos" },
     youOwePeer: "Você deve {amount} a {name}",
     peerOwesPeer: "{from} deve {amount} a {to}",
-    pay: "Pagar {amount}",
+    settleTitle: "Acertar contas",
+    whoPaid: "Quem pagou?",
+    toWhom: "Para quem?",
+    recordPayment: "Registrar pagamento",
+    payAll: "Pagar tudo {amount}",
+    payerPaidPayee: "{payer} pagou {payee}",
+    settle: "Acertar",
     settled: "Você quitou todas as suas dívidas",
     expenses: {
       apartment: "Apartamento",
@@ -91,6 +96,28 @@ export const ptBr: Dictionary = {
   },
   more: {
     title: "E mais",
+    offline: {
+      title: "Funciona sem sinal",
+      body: "Seus grupos ficam no celular. Adicione uma despesa no avião e ela é enviada sozinha quando você pousar. Até lá, o Splitty marca o que ainda não foi e avisa que o saldo é uma estimativa.",
+      banner: "Offline. As alterações são enviadas quando a conexão voltar.",
+      waiting: "1 alteração aguardando envio",
+      estimate: "Estimativa, inclui alterações ainda não enviadas",
+    },
+    currencies: {
+      title: "Cada grupo na sua moeda",
+      body: "Reais para o apartamento, euros para a viagem. Saldos em moedas diferentes nunca são somados, e um grupo novo já começa na moeda da sua região.",
+      groupsTitle: "Grupos",
+      owedOverall: "Você tem {amount} a receber no total",
+      oweOverall: "Você deve {amount} no total",
+      moreCurrencies: "+2 moedas",
+      youAreOwed: "Você tem a receber",
+      youOwe: "Você deve",
+      groups: [
+        { name: "Apartamento", currency: "BRL", net: 412.5 },
+        { name: "Viagem a Lisboa", currency: "EUR", net: -165 },
+        { name: "Fim de semana em Londres", currency: "GBP", net: 38.2 },
+      ],
+    },
     items: [
       {
         title: "Despesas recorrentes",
@@ -106,7 +133,7 @@ export const ptBr: Dictionary = {
       },
       {
         title: "Exporte para CSV",
-        body: "Leve as despesas de um grupo para uma planilha quando quiser.",
+        body: "Nas configurações do grupo, leve as despesas para uma planilha quando quiser.",
       },
       {
         title: "Quatro idiomas",
@@ -143,7 +170,7 @@ export const ptBr: Dictionary = {
       },
       {
         q: "O Splitty envia ou recebe dinheiro?",
-        a: "Não. O Splitty registra o que cada um pagou e deve. Quando você pagar alguém fora do app, registre o pagamento em Quitar contas para o saldo ser atualizado.",
+        a: "Não. O Splitty registra o que cada um pagou e deve. Quando alguém pagar outra pessoa fora do app, qualquer um dos dois registra o pagamento em Quitar contas e o saldo é atualizado.",
       },
       {
         q: "Quem pode editar uma despesa?",
@@ -151,7 +178,7 @@ export const ptBr: Dictionary = {
       },
       {
         q: "Como pego uma cópia dos meus dados?",
-        a: "Abra um grupo e toque em Exportar para salvar as despesas em um arquivo CSV. Para receber uma cópia de tudo o que temos sobre você, mande um e-mail.",
+        a: "Abra o grupo, depois Configurações do grupo e Exportar despesas (CSV). Para receber uma cópia de tudo o que temos sobre você, mande um e-mail.",
       },
       {
         q: "Como apago minha conta?",
