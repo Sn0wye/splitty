@@ -446,15 +446,10 @@ struct ReviewPlansView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                PlansView(viewModel: viewModel) { opened = $0 }
-                    .frame(maxWidth: 760)
-                    .frame(maxWidth: .infinity)
-            }
-            .refreshable { await viewModel.load() }
-            .background(Color("background"))
-            .navigationTitle(L10n.Plans.title)
-            .navigationBarTitleDisplayMode(.inline)
+            PlansScreen(viewModel: viewModel, expenseId: { plan in
+                opened = plan
+                return nil
+            }, detail: { _ in EmptyView() })
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(L10n.Common.done, action: onDone)
@@ -573,7 +568,7 @@ struct ReviewGroupOpenView: View {
                     }
                     .navigationDestination(for: Int.self) { groupId in
                         if let session = appState.groupSessions.session(for: groupId) {
-                            GroupView(session: session).id(groupId)
+                            GroupView(session: session, plansDataSource: ReviewSamples.plansSource(ReviewSamples.plans)).id(groupId)
                         }
                     }
                 }
