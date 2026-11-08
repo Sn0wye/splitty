@@ -281,7 +281,6 @@ enum L10n {
 
     enum Group {
         static var settings: String { text("group.settings", default: "Group settings") }
-        static var settingsHint: String { text("group.settings_hint", default: "Opens group settings") }
         static var deleteQuestion: String { text("group.delete_question", default: "Delete?") }
         static var deleteUndone: String { text("group.delete_undone", default: "This cannot be undone.") }
         static func error(_ message: String) -> String {
@@ -289,6 +288,12 @@ enum L10n {
         }
         static var noExpenses: String {
             text("group.no_expenses", default: "No expenses yet")
+        }
+        static var searchPrompt: String { text("group.search_prompt", default: "Search expenses") }
+        static var clearSearch: String { text("group.clear_search", default: "Clear search") }
+        static var noResults: String { text("group.no_results", default: "No results") }
+        static func noResultsDetail(_ query: String) -> String {
+            format("group.no_results_detail", default: "Nothing in this group matches “%@”.", query)
         }
         static var loadingBalance: String { text("group.loading_balance", default: "Loading balance...") }
         static var settleUp: String { text("group.settle_up", default: "Settle up") }
@@ -498,8 +503,6 @@ enum L10n {
 
     enum Plans {
         static var title: String { text("plans.title", default: "Plans") }
-        static var expenses: String { text("plans.expenses", default: "Expenses") }
-        static var sectionLabel: String { text("plans.section_label", default: "Show") }
         static var installments: String { text("plans.installments", default: "Installments") }
         static func progress(_ added: Int, _ total: Int) -> String {
             format("plans.progress", default: "%1$lld of %2$lld", added, total)

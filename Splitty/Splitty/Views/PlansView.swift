@@ -23,6 +23,35 @@ struct PlansView: View {
     }
 }
 
+/// Plans as its own screen, pushed from the group screen's menu. A row pushes the expense
+/// `expenseId` names from here, so Back returns to Plans; nil leaves the row where it is.
+struct PlansScreen<Detail: View>: View {
+    @ObservedObject var viewModel: PlansViewModel
+    let expenseId: (RecurringPlan) -> Int?
+    @ViewBuilder let detail: (Int) -> Detail
+    @State private var openedExpenseId: Int?
+
+    var body: some View {
+        ScrollView {
+            PlansView(viewModel: viewModel) { plan in
+                openedExpenseId = expenseId(plan)
+            }
+                .background(Color("card"))
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 28, topTrailingRadius: 28, style: .continuous))
+                .padding(.top, 8)
+                .frame(maxWidth: 760)
+                .frame(maxWidth: .infinity)
+        }
+        .background(Color("background").ignoresSafeArea())
+        .refreshable { await viewModel.load() }
+        .navigationTitle(L10n.Plans.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(Color("background"), for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
+        .navigationDestination(item: $openedExpenseId, destination: detail)
+    }
+}
+
 private struct InstallmentsSection: View {
     let state: PlansViewModel.InstallmentsState
     let onOpenPlan: (RecurringPlan) -> Void

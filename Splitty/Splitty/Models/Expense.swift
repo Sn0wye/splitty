@@ -196,6 +196,46 @@ struct GroupedExpense: Identifiable {
     var id: Date { date }
 }
 
+// MARK: - Timeline Search
+extension Expense {
+    /// Whether a timeline search finds this row. Every word of `query` has to appear in
+    /// something the row says or stands for: its title (the user's description, or for a
+    /// payment the localized "Payment to …"), the payer, anyone in the split, the
+    /// category, or the amount as the group's currency writes it. Case and diacritics are
+    /// ignored, so "cafe" finds "Café". An empty query finds everything.
+    func matches(search query: String, currency: Currency) -> Bool {
+        let words = query.split(whereSeparator: \.isWhitespace)
+        guard !words.isEmpty else { return true }
+        let fields = searchFields(currency: currency)
+        return words.allSatisfy { word in
+            fields.contains { $0.localizedStandardContains(word) }
+        }
+    }
+
+    private func searchFields(currency: Currency) -> [String] {
+        let peerName = peer.map { MemberDisplay($0).name }
+        var fields = [
+            type == .payment ? L10n.Settlement.paymentTo(peerName ?? L10n.Common.someone) : description,
+            MemberDisplay(paidByUser).name,
+            category.name,
+            Money.formatted(amount: amount, currency: currency),
+        ]
+        fields += splits.map { MemberDisplay($0.user).name }
+        return fields
+    }
+}
+
+extension Array where Element == GroupedExpense {
+    /// The days that still hold a row `query` finds, each with only those rows. Days with
+    /// none drop out, so no header is left over an empty run.
+    func matching(search query: String, currency: Currency) -> [GroupedExpense] {
+        compactMap { day in
+            let hits = day.expenses.filter { $0.matches(search: query, currency: currency) }
+            return hits.isEmpty ? nil : GroupedExpense(date: day.date, dateString: day.dateString, expenses: hits)
+        }
+    }
+}
+
 // MARK: - Extensions for Date Formatting and Calculations
 extension Expense {
     /// The date the expense is filed under: the user-supplied one when there is one, the

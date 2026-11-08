@@ -28,7 +28,11 @@ struct GroupView: View {
     @State private var selectedExpenseId: Int?
     @State private var selectedExpense: Expense?
     @State private var backgroundedAt: Date?
-    @State private var section: GroupSection = .expenses
+    /// What the timeline is filtered by, while `isSearching`.
+    @State private var searchText = ""
+    /// The toolbar's search icon swaps the header for the search field.
+    @State private var isSearching = false
+    @State private var showingPlans = false
     @StateObject private var plans: PlansViewModel
 
     /// Roughly the height of the in-list title, so the toolbar picks the name up
@@ -37,11 +41,15 @@ struct GroupView: View {
 
     private var groupId: Int { session.groupId }
 
-    init(session: GroupSession, onAddExpense: @escaping () -> Void = {}) {
+    init(
+        session: GroupSession,
+        plansDataSource: PlansDataSource = .live,
+        onAddExpense: @escaping () -> Void = {}
+    ) {
         self.session = session
         self.onAddExpense = onAddExpense
         // The view is rebuilt per group (`.id(groupId)` on the Groups stack), so the group is fixed.
-        _plans = StateObject(wrappedValue: PlansViewModel(groupId: session.groupId))
+        _plans = StateObject(wrappedValue: PlansViewModel(groupId: session.groupId, dataSource: plansDataSource))
     }
 
     /// Pushed onto the Groups tab's stack, so the system back button and edge swipe
@@ -73,25 +81,37 @@ struct GroupView: View {
                 Text(session.group?.name ?? "")
                     .font(.headline)
                     .foregroundColor(Color("foreground"))
-                    .opacity(isTitleCollapsed ? 1 : 0)
+                    .opacity(isTitleCollapsed || isSearching ? 1 : 0)
             }
 
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    showingSettings = true
+                    withAnimation(.snappy) { isSearching = true }
                 } label: {
-                    Image(systemName: "gearshape")
+                    Image(systemName: "magnifyingglass")
                         .font(.system(size: 17, weight: .regular))
                         .foregroundColor(Color("foreground"))
                 }
-                .disabled(session.group == nil || currentUserId == nil)
-                .accessibilityLabel(L10n.Group.settings)
+                .disabled(session.expenses.isEmpty)
+                .accessibilityLabel(L10n.Group.searchPrompt)
+                .accessibilityIdentifier("group.search.open")
+            }
+
+            ToolbarItem(placement: .navigationBarTrailing) {
+                moreMenu
             }
 
             ToolbarItem(placement: .navigationBarTrailing) {
                 AddExpenseButton(action: onAddExpense)
                     .disabled(session.group == nil)
                     .accessibilityIdentifier("group.addExpense")
+            }
+        }
+        .navigationDestination(isPresented: $showingPlans) {
+            PlansScreen(viewModel: plans, expenseId: latestExpenseId) { expenseId in
+                if let currentUserId {
+                    detail(for: expenseId, currentUserId: currentUserId)
+                }
             }
         }
         .navigationDestination(isPresented: $showingSettings) {
@@ -210,40 +230,36 @@ struct GroupView: View {
     private var content: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
-                headerSection
-                syncStatus
-                actionButtonsSection
+                if !isSearching {
+                    headerSection
+                    syncStatus
 
-                if let actionErrorMessage = session.actionErrorMessage {
-                    Text(actionErrorMessage)
-                        .foregroundColor(.red)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 16)
+                    if let actionErrorMessage = session.actionErrorMessage {
+                        Text(actionErrorMessage)
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 16)
+                    }
                 }
 
-                sectionPicker
-
-                switch section {
-                case .expenses:
-                    timeline
-                case .plans:
-                    PlansView(viewModel: plans, onOpenPlan: open)
-                }
+                timeline
             }
             .frame(maxWidth: 760)
             .frame(maxWidth: .infinity)
         }
         .background(Color("background"))
+        .scrollDismissesKeyboard(.immediately)
         .closesOpenSwipeRow($openSwipeRow)
         .accessibilityIdentifier("group.timeline")
         .performanceScrollSignpost(.timelineScroll)
-        .refreshable {
-            switch section {
-            case .expenses: await session.refresh()
-            case .plans: await plans.load()
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if isSearching {
+                searchBar
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
+        .refreshable { await session.refresh() }
         // The title lives in the scroll content, so the toolbar picks it up as it leaves.
         .onScrollGeometryChange(for: Bool.self) { geometry in
             geometry.contentOffset.y + geometry.contentInsets.top > titleCollapseOffset
@@ -258,27 +274,96 @@ struct GroupView: View {
         }
     }
 
-    /// Expenses or Plans, for the group already open: Plans never asks for a group.
-    private var sectionPicker: some View {
-        Picker(selection: $section) {
-            ForEach(GroupSection.allCases) { section in
-                Text(section.title).tag(section)
+    /// Pinned under the bar while searching. Cancel empties the query and brings the
+    /// header back.
+    private var searchBar: some View {
+        HStack(spacing: 12) {
+            TimelineSearchField(text: $searchText, focusesOnAppear: true)
+            Button(L10n.Common.cancel) {
+                searchText = ""
+                withAnimation(.snappy) { isSearching = false }
             }
-        } label: {
-            Text(L10n.Plans.sectionLabel)
+            .foregroundStyle(Color("foreground"))
+            .accessibilityIdentifier("group.search.cancel")
         }
-        .pickerStyle(.segmented)
         .padding(.horizontal, 20)
-        .padding(.bottom, 16)
-        .accessibilityIdentifier("group.section")
+        .padding(.top, 4)
+        .padding(.bottom, 12)
+        .background(Color("background"))
+    }
+
+    /// Everything but search, Settle up and Add, behind one toolbar button, so the header
+    /// leaves the screen to the timeline.
+    private var moreMenu: some View {
+        Menu {
+            Button { showingBalancesSheet = true } label: {
+                Label(L10n.Group.balances, systemImage: "person.2")
+            }
+            .disabled(session.group == nil || currentUserId == nil)
+            Button { showingChartsSheet = true } label: {
+                Label(L10n.Group.charts, systemImage: "chart.pie")
+            }
+            .disabled(session.group == nil || currentUserId == nil)
+            Button { showingPlans = true } label: {
+                Label(L10n.Plans.title, systemImage: "repeat")
+            }
+            Divider()
+            Button { showingSettings = true } label: {
+                Label(L10n.Group.settings, systemImage: "gearshape")
+            }
+            .disabled(session.group == nil || currentUserId == nil)
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 17, weight: .regular))
+                .foregroundColor(Color("foreground"))
+        }
+        .accessibilityIdentifier("group.more")
+    }
+
+    /// The name, then the balance with Settle up beside it.
+    private var headerSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(session.group?.name ?? L10n.Common.loading)
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .foregroundColor(Color("foreground"))
+
+            // Side by side while both fit; at larger text sizes Settle up drops below.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 12) {
+                    balanceText
+                    Spacer(minLength: 0)
+                    settleUpButton
+                }
+                VStack(alignment: .leading, spacing: 12) {
+                    balanceText
+                    settleUpButton
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.top, 10)
+        .padding(.bottom, 20)
+    }
+
+    @ViewBuilder
+    private var settleUpButton: some View {
+        if session.members.count >= 2 {
+            ActionButton(title: L10n.Group.settleUp, color: Color("foreground"), textColor: Color("background")) {
+                showingSettleUpSheet = true
+            }
+            .disabled(currentUserId == nil)
+            .fixedSize()
+        }
     }
 
     /// A recurring expense is edited or stopped from one of its expenses, so a Plans row
     /// opens the newest one.
-    private func open(_ plan: RecurringPlan) {
-        guard let expense = plan.latestExpense(in: session.expenses) else { return }
+    private func latestExpenseId(of plan: RecurringPlan) -> Int? {
+        guard let expense = plan.latestExpense(in: session.expenses) else { return nil }
         selectedExpense = expense
-        selectedExpenseId = expense.id
+        return expense.id
     }
 
     @ViewBuilder
@@ -301,14 +386,19 @@ struct GroupView: View {
             )
             .disabled(session.group == nil)
         } else {
+            let days = visibleDays
             LazyVStack(spacing: 0) {
-                if session.expenses.count == 1 {
-                    FirstBalanceTip()
-                }
-                ForEach(session.groupedExpenses) { groupedExpense in
-                    TimelineDateHeader(title: groupedExpense.dateString)
-                    ForEach(groupedExpense.expenses) { expense in
-                        expenseRow(expense)
+                if days.isEmpty {
+                    TimelineNoResults(query: searchQuery)
+                } else {
+                    if session.expenses.count == 1 && searchQuery.isEmpty {
+                        FirstBalanceTip()
+                    }
+                    ForEach(days) { groupedExpense in
+                        TimelineDateHeader(title: groupedExpense.dateString)
+                        ForEach(groupedExpense.expenses) { expense in
+                            expenseRow(expense)
+                        }
                     }
                 }
             }
@@ -321,6 +411,18 @@ struct GroupView: View {
                 )
             )
         }
+    }
+
+    private var searchQuery: String {
+        isSearching ? searchText.trimmingCharacters(in: .whitespacesAndNewlines) : ""
+    }
+
+    /// The timeline's days, narrowed to what the search finds. Filtered only while there
+    /// is a query, so an idle timeline costs nothing extra per render.
+    private var visibleDays: [GroupedExpense] {
+        searchQuery.isEmpty
+            ? session.groupedExpenses
+            : session.groupedExpenses.matching(search: searchQuery, currency: session.currency)
     }
 
     @ViewBuilder
@@ -389,36 +491,6 @@ struct GroupView: View {
             : L10n.Group.deleteExpense(expense.description)
     }
 
-    private var headerSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(session.group?.name ?? L10n.Common.loading)
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .foregroundColor(Color("foreground"))
-
-            if let group = session.group {
-                Button {
-                    showingSettings = true
-                } label: {
-                    MultipleAvatar(
-                        urls: group.members.compactMap {
-                            MemberDisplay($0).resolved(currentUser: authManager.currentUser).avatarURL
-                        },
-                        total: group.members.count
-                    )
-                }
-                .buttonStyle(.pressable(scale: 0.96))
-                .accessibilityHint(L10n.Group.settingsHint)
-                .padding(.vertical, 6)
-            }
-
-            balanceText
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20)
-        .padding(.top, 10)
-    }
-    
     /// Offline, an old copy, or writes not sent yet. Opens the unsent writes when there are any.
     @ViewBuilder
     private var syncStatus: some View {
@@ -463,52 +535,6 @@ struct GroupView: View {
                 .foregroundColor(Color("muted-foreground"))
         }
     }
-    
-    private var actionButtonsSection: some View {
-        // The row runs off the edge once the titles are long enough — at larger
-        // text sizes they are — so it scrolls. Content margins rather than padding,
-        // so the inset doesn't clip the first and last pill mid-scroll.
-        ScrollView(.horizontal) {
-            LazyHStack(spacing: 12) {
-                if session.members.count >= 2 {
-                    ActionButton(title: L10n.Group.settleUp, color: Color("foreground"), textColor: Color("background")) {
-                        showingSettleUpSheet = true
-                    }
-                    .disabled(currentUserId == nil)
-                }
-
-                ActionButton(title: L10n.Group.balances, color: Color("muted"), textColor: Color("foreground")) {
-                    showingBalancesSheet = true
-                }
-                .disabled(session.group == nil || currentUserId == nil)
-
-                ActionButton(title: L10n.Group.charts, color: Color("muted"), textColor: Color("foreground")) {
-                    showingChartsSheet = true
-                }
-                .disabled(session.group == nil || currentUserId == nil)
-            }
-        }
-        .scrollIndicators(.hidden)
-        .contentMargins(.horizontal, 20, for: .scrollContent)
-        // Opt out of the tab bar's bottom margin, which would only make the row taller.
-        .contentMargins(.vertical, 0, for: .scrollContent)
-        .padding(.vertical, 20)
-    }
-}
-
-/// What the group screen shows under its header.
-enum GroupSection: String, CaseIterable, Identifiable {
-    case expenses
-    case plans
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .expenses: L10n.Plans.expenses
-        case .plans: L10n.Plans.title
-        }
-    }
 }
 
 /// The day a run of timeline rows belongs to.
@@ -524,6 +550,71 @@ struct TimelineDateHeader: View {
             .padding(.top, 18)
             .padding(.bottom, 8)
             .background(Color("card"))
+    }
+}
+
+/// Filters the timeline as you type.
+struct TimelineSearchField: View {
+    @Binding var text: String
+    var focusesOnAppear = false
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(Color("muted-foreground"))
+                .accessibilityHidden(true)
+
+            TextField(L10n.Group.searchPrompt, text: $text)
+                .focused($isFocused)
+                .submitLabel(.search)
+                .autocorrectionDisabled()
+                .foregroundStyle(Color("foreground"))
+                .accessibilityIdentifier("group.search")
+
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                    isFocused = true
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(Color("muted-foreground"))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L10n.Group.clearSearch)
+                .accessibilityIdentifier("group.search.clear")
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(minHeight: 40)
+        .background(Color("muted"), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .contentShape(Rectangle())
+        .onTapGesture { isFocused = true }
+        .task {
+            guard focusesOnAppear else { return }
+            isFocused = true
+        }
+    }
+}
+
+/// What the timeline card holds when the search finds nothing.
+struct TimelineNoResults: View {
+    let query: String
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(L10n.Group.noResults)
+                .font(.headline)
+                .foregroundStyle(Color("card-foreground"))
+            Text(L10n.Group.noResultsDetail(query))
+                .font(.subheadline)
+                .foregroundStyle(Color("muted-foreground"))
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 40)
+        .accessibilityElement(children: .combine)
     }
 }
 
